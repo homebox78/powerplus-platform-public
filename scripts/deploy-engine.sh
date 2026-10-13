@@ -1,0 +1,37 @@
+#!/usr/bin/env bash
+# powerDeck 엔진 코드(engine/)를 서버 ~/powerDeck/worker 에 올리고 다시 띄운다.
+# - config.json·fonts·.venv 는 서버 것을 그대로 둔다(덮지 않는다)
+# - 지금 도는 작업이 있으면 멈춘다(재시작하면 그 작업이 끊긴다) — FORCE=1 로 무시
+# - 올리기 전 서버 python 으로 문법 검사, 옛 코드는 ~/powerDeck/worker-bak-<시각>.tgz
+set -euo pipefail
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+bash "$ROOT/scripts/preflight.sh" engine || exit 1   # 배포 전 자가 검사
+KEY_SRC="${PP_SSH_KEY:-}"
+for k in "$HOME/google_key.pem"; do [ -n "$KEY_SRC" ] && break; [ -f "$k" ] && KEY_SRC="$k"; done
+[ -f "$KEY_SRC" ] || { echo "SSH 키 없음 — PP_SSH_KEY=/path/google_key.pem"; exit 1; }
+KEY=$(mktemp); cp "$KEY_SRC" "$KEY"; chmod 600 "$KEY"; trap 'rm -f "$KEY"' EXIT
+HOST="${PP_HOST:?PP_HOST=user@host 필요}"
+SSH=(ssh -i "$KEY" -o StrictHostKeyChecking=accept-new "$HOST")
+
+cd "$ROOT/engine"
+# 한 번 나온 오류의 회귀 시험(known_errors.json) — 하나라도 실패하면 올리지 않는다
+PY=$(command -v python3 || command -v python)
+"$PY" tests/test_known.py || { echo "회귀 시험 실패 — 배포 중단"; exit 3; }
+FILES=$(ls *.py *.md *.sh *.ps1 *.bat config.example.json 2>/dev/null | grep -v '^README.md$')
+FILES="$FILES known_errors.json pipeline skill"   # 기본 규칙 원천 · 초안 다듬기 도구·si-deck 스킬 사본(2026-10-12)
+
+if [ "${FORCE:-0}" != "1" ]; then
+  busy=$("${SSH[@]}" "sudo mysql -N pp_platform -e \"SELECT COUNT(*) FROM deck_jobs WHERE status='running' AND deleted_at IS NULL\"")
+  if [ "${busy:-0}" != "0" ]; then echo "도는 작업 ${busy}건 — 끝난 뒤 다시(FORCE=1 이면 무시)"; exit 2; fi
+fi
+
+TS=$(date +%Y%m%d-%H%M%S)
+tar -cf - $FILES | "${SSH[@]}" "set -e; rm -rf /tmp/pd-eng && mkdir -p /tmp/pd-eng && tar -xf - -C /tmp/pd-eng
+  ~/powerDeck/worker/.venv/bin/python -c 'import ast,glob; [ast.parse(open(f,encoding=\"utf-8\").read(),f) for f in glob.glob(\"/tmp/pd-eng/**/*.py\", recursive=True)]'   # 문법만 — .pyc 를 남기지 않는다
+  cd ~/powerDeck && tar -czf worker-bak-$TS.tgz --exclude=.venv --exclude=fonts --exclude=__pycache__ worker
+  rm -rf ~/powerDeck/worker/pipeline ~/powerDeck/worker/skill && cp -r /tmp/pd-eng/* ~/powerDeck/worker/ && rm -rf /tmp/pd-eng ~/powerDeck/worker/__pycache__
+  sudo systemctl restart powerdeck-worker && sleep 3 && systemctl is-active powerdeck-worker
+  journalctl -u powerdeck-worker -n 5 --no-pager | tail -5"
+# 디자인 지침(engine/reference-guide) → ~/powerDeck/reference/guide (design.py 가 기획·시안 때 읽는다)
+(cd "$ROOT/engine/reference-guide" && tar -cf - *.md) | "${SSH[@]}" "mkdir -p ~/powerDeck/reference/guide && tar -xf - -C ~/powerDeck/reference/guide"
+echo "엔진 배포 완료 (백업 worker-bak-$TS.tgz)"

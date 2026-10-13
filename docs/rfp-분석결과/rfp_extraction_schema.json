@@ -1,0 +1,341 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "rfp_extraction_schema.json",
+  "title": "RFP Extraction Schema for Proposal Presentation Generator",
+  "description": "공공 제안요청서(RFP)에서 발표장표 기획에 필요한 정보를 추출하기 위한 스키마. 54개 RFP 전수 분석(2026-10-07) 기반. 각 필드의 description에 '위치'(문서 내 탐색 위치)와 '규칙'을 기재. 값이 문서에 없으면 null + flags.missing에 필드명 추가, 문서 내 모순이면 flags.ambiguous에 기록.",
+  "type": "object",
+  "required": ["meta", "evaluation", "presentation", "proposal_rules", "requirements", "client_needs", "eligibility", "penalties", "flags"],
+  "properties": {
+
+    "meta": {
+      "type": "object",
+      "description": "A. 사업 메타. 위치: 표지, Ⅰ 사업개요, 추진체계, 입찰방식.",
+      "required": ["project_name", "client_org", "project_type", "doc_role"],
+      "properties": {
+        "project_name": {"type": "string"},
+        "project_name_variants": {"type": "array", "items": {"type": "string"}, "description": "표지·본문·서식 간 사업명 불일치 시 모두 기록"},
+        "client_org": {"type": "string", "description": "발주(수요)기관"},
+        "client_dept": {"type": ["string", "null"]},
+        "related_orgs": {
+          "type": "array",
+          "items": {"type": "object", "properties": {"role": {"type": "string", "enum": ["주관", "실행", "전문(계약)", "입찰집행", "협조", "감리", "현운영사", "기타"]}, "name": {"type": "string"}}}
+        },
+        "project_type": {
+          "type": "string",
+          "enum": ["IT구축", "IT고도화", "IT운영유지관리", "IT운영지원", "연구용역", "자문·컨설팅", "기획연구", "행사", "홍보·콘텐츠", "연수·교육", "해외탐방", "센터운영", "채용대행", "물품·설비", "EPC", "CM", "전시", "기타"],
+          "description": "판별 규칙: 요구사항 ID 분포(SFR 다수→구축, MPR/MAR·MHR→운영), 업종코드(1468 SW, 1169 학술연구, 9901 행사대행, 5720 국제회의, 1261 여행업), 사업명 키워드"
+        },
+        "project_subtype_notes": {"type": ["string", "null"], "description": "예: 장비+시설 복합, 2단계 경쟁, 긴급발주, 장기계속"},
+        "budget": {
+          "type": "object",
+          "properties": {
+            "amount_krw": {"type": ["integer", "null"]},
+            "vat_included": {"type": ["boolean", "null"]},
+            "note": {"type": ["string", "null"], "description": "연차별 금액, 자부담, 실비정산, 미확정, 리스 등"},
+            "is_estimate_price": {"type": ["boolean", "null"], "description": "추정가격/기초금액/예정금액 구분"}
+          }
+        },
+        "period": {
+          "type": "object",
+          "properties": {
+            "start": {"type": ["string", "null"]},
+            "end": {"type": ["string", "null"]},
+            "duration_text": {"type": ["string", "null"], "description": "예: 계약 후 240일, 12개월(6+6)"},
+            "fixed_dates": {"type": "array", "items": {"type": "object", "properties": {"label": {"type": "string"}, "date": {"type": "string"}}}, "description": "오픈일·행사일·납기 등 확정 일자 — 발표 핵심 메시지 후보"}
+          }
+        },
+        "contract_method": {"type": ["string", "null"], "description": "협상에 의한 계약 / 2단계 경쟁 / 적격 후 최저가 등"},
+        "bid_method": {"type": ["string", "null"], "description": "일반경쟁 / 제한경쟁 / 지명 등"},
+        "is_urgent": {"type": ["boolean", "null"]},
+        "evaluation_body": {"type": ["string", "null"], "description": "조달청 평가 / 수요기관 자체평가"},
+        "legal_basis": {"type": "array", "items": {"type": "string"}, "description": "국가계약법/지방계약법 계열 판별이 협상적격 기준 해석에 필요"},
+        "law_family": {"type": ["string", "null"], "enum": ["국가계약법", "지방계약법", "기타", null]},
+        "doc_role": {"type": "string", "enum": ["RFP", "공고문", "사전규격", "사업계획서", "과업지시서", "제출매뉴얼", "기타"], "description": "판별: 공고 제○호→공고문, 소요예산·성과계획서·체크리스트→사업계획서"},
+        "doc_version": {
+          "type": "object",
+          "properties": {
+            "date": {"type": ["string", "null"]},
+            "version_label": {"type": ["string", "null"], "description": "(안), 수정, 재공고, 최종, v2 등"},
+            "is_latest_known": {"type": ["boolean", "null"]},
+            "diff_from_previous": {"type": "array", "items": {"type": "string"}, "description": "동일 사업 복수 판본이 있을 때 배점·첨부·자격·일정 차이"}
+          }
+        },
+        "continuity": {
+          "type": "object",
+          "properties": {
+            "is_continuing": {"type": ["boolean", "null"]},
+            "phase_label": {"type": ["string", "null"], "description": "3차, 2단계, 제2회, 11기 등"},
+            "predecessors": {"type": "array", "items": {"type": "string"}, "description": "ISP, 1차, 전년도 유지관리 등"},
+            "reuse_clauses": {"type": "array", "items": {"type": "string"}, "description": "'기 구축 모듈 준용', '현 유지보수 사업단과 협업', '잔여분' 등 원문"},
+            "successor_hint": {"type": ["string", "null"], "description": "차기 RFP 초안 지원, 2차년도 범위 등"}
+          }
+        }
+      }
+    },
+
+    "evaluation": {
+      "type": "object",
+      "description": "B. 평가 구조. 위치: Ⅵ 평가방법·기술성 평가기준(본문 또는 붙임), 협상적격자 선정, 정량 세부기준 별표.",
+      "required": ["tech_price_ratio", "pass_threshold", "score_table"],
+      "properties": {
+        "tech_price_ratio": {"type": "object", "properties": {"tech": {"type": "integer"}, "price": {"type": "integer"}}},
+        "quant_qual_split": {"type": "object", "properties": {"quantitative": {"type": ["number", "null"]}, "qualitative": {"type": ["number", "null"]}, "note": {"type": ["string", "null"]}}},
+        "pass_threshold": {
+          "type": "object",
+          "properties": {
+            "basis": {"type": "string", "enum": ["기술점수_비율", "합산점수", "규격점수_통과", "기타"], "description": "국가계약법 계열=기술 85%, 지방계약법 계열=합산 70점, 2단계 경쟁=규격 90점"},
+            "value": {"type": "number"},
+            "unit": {"type": "string", "enum": ["%", "점"]},
+            "text": {"type": "string"}
+          }
+        },
+        "differential_scoring": {"type": "object", "properties": {"applied": {"type": ["boolean", "null"]}, "gap_points": {"type": ["number", "null"]}, "text": {"type": ["string", "null"]}}},
+        "scoring_method": {"type": ["string", "null"], "description": "최고·최저 제외 산술평균 / 상하 2개 제외 / 절대·상대 / 소수점"},
+        "grade_scale": {"type": ["string", "null"], "description": "예: A100/B90/C80/D70/E60 또는 10/9/8/7/6"},
+        "tie_break_rule": {"type": ["string", "null"]},
+        "score_table": {
+          "type": "array",
+          "description": "정성·정량 전 항목. 장표 배분의 근거.",
+          "items": {
+            "type": "object",
+            "required": ["section", "item", "points"],
+            "properties": {
+              "section": {"type": "string", "description": "대항목(전략 및 방법론 등)"},
+              "section_points": {"type": ["number", "null"]},
+              "item": {"type": "string", "description": "세부항목"},
+              "points": {"type": "number"},
+              "kind": {"type": "string", "enum": ["정성", "정량", "가점", "감점", "가격"]},
+              "criteria_text": {"type": ["string", "null"], "description": "평가기준·평가요소·착안점 원문 — 장표 소제목으로 재사용"},
+              "formula": {"type": ["string", "null"], "description": "정량 산식(실적 비율·건수, 등급표)"},
+              "maps_to_proposal_section": {"type": ["string", "null"]},
+              "source_location": {"type": ["string", "null"], "description": "본문 Ⅵ-다 / 붙임 3 등"}
+            }
+          }
+        },
+        "top_weight_items": {"type": "array", "items": {"type": "string"}, "description": "배점 상위 3개 세부항목 — 장표 2장 이상 배정"},
+        "quantitative_definitions": {
+          "type": "object",
+          "properties": {
+            "similar_performance_definition": {"type": ["string", "null"], "description": "유사실적 정의 원문(기간·단일금액·업종·동시수행)"},
+            "credit_rating_table": {"type": ["string", "null"]},
+            "staff_rating_table": {"type": ["string", "null"]},
+            "social_responsibility_deductions": {"type": ["string", "null"]},
+            "win_win_table": {"type": ["string", "null"], "description": "중소기업 지분율 구간표, 하도급 적정성 만점 조건"}
+          }
+        },
+        "bonus_points": {"type": "array", "items": {"type": "string"}},
+        "zero_point_triggers": {"type": "array", "items": {"type": "string"}, "description": "미기재·미제출 시 0점/최하등급 조건 — 10장 체크리스트"}
+      }
+    },
+
+    "presentation": {
+      "type": "object",
+      "description": "C. 발표(PT) 규정. 위치: Ⅵ 제안 설명회/제안서 평가, 입찰 시 유의사항, Ⅴ 작성지침(동영상·홍보 금지), 제출서류 표(발표자료·요약서), 공고문. 키워드 오탐 주의: '합격자 발표', '결과 발표'는 PT가 아님.",
+      "required": ["pt_required"],
+      "properties": {
+        "pt_required": {"type": "string", "enum": ["실시", "조건부", "서면", "불명확"], "description": "조건부='요구 시 설명회', '서면으로 갈음 가능', '조달청 일정에 따름'"},
+        "pt_time_present_min": {"type": ["integer", "null"], "description": "null이면 공고문 참조 플래그, 기본값 20분 + 15분 압축본 병행"},
+        "pt_time_qa_min": {"type": ["integer", "null"]},
+        "pt_time_adjustable": {"type": ["boolean", "null"], "description": "'제안사 수에 따라 조정 가능' 문구 존재"},
+        "presenter": {
+          "type": "object",
+          "properties": {
+            "rule": {"type": ["string", "null"], "enum": ["PM직접", "총괄책임자", "임원또는PM", "사업담당자", "재직직원", "제한없음", null]},
+            "rule_text": {"type": ["string", "null"], "description": "원문"},
+            "affiliation": {"type": ["string", "null"], "description": "주사업자/공동수급체 대표사 소속 등"},
+            "tenure_requirement": {"type": ["string", "null"], "description": "공고일 전일~평가일 / 180일 전 / 3개월 이상"},
+            "identity_docs": {"type": "array", "items": {"type": "string"}, "description": "신분증, 재직증명서, 건강보험자격득실확인서, 4대보험"},
+            "system_registration_required": {"type": ["boolean", "null"], "description": "나라장터 e-발주 발표자 등록"},
+            "replacement_rule": {"type": ["string", "null"], "description": "계약기간 교체 불가, 동급 이상 예외, 6개월 내 불가"}
+          }
+        },
+        "absence_rule": {"type": ["string", "null"], "enum": ["서면평가", "정성0점", "평가제외", "실격", "등급하향", "명시없음", null]},
+        "absence_rule_text": {"type": ["string", "null"]},
+        "attendees_limit": {"type": ["integer", "null"], "description": "발표자 포함 배석 인원. 미명시 시 기본 3"},
+        "material": {
+          "type": "object",
+          "properties": {
+            "type": {"type": ["string", "null"], "description": "발표자료 / 제안요약서 / 요약보고서 / 정성제안서 겸용 / 없음"},
+            "format": {"type": ["string", "null"], "description": "PPT / PDF / 출력본+저장매체 / 글꼴 포함"},
+            "page_limit": {"type": ["integer", "null"]},
+            "page_limit_scope": {"type": ["string", "null"], "description": "표지·간지 제외 여부, 한 페이지 분할 금지"},
+            "paper": {"type": ["string", "null"], "description": "A4 횡 / A3 가로 / 16:9"},
+            "copies": {"type": ["integer", "null"]},
+            "submission_timing": {"type": ["string", "null"], "description": "제안서와 동시 / 추첨 전 USB / 평가 전일 이메일"},
+            "submission_channel": {"type": ["string", "null"]},
+            "over_limit_penalty": {"type": ["string", "null"], "description": "발표 불가 / 채점 제외 / 감점"}
+          }
+        },
+        "equals_proposal": {
+          "type": "object",
+          "properties": {
+            "required": {"type": ["boolean", "null"]},
+            "discrepancy_rule": {"type": ["string", "null"], "description": "'상이 시 별도 명기(및 사유 설명)' / '지침위반' / '제안서 우선' / '기재 외 의사표시 불인정'"},
+            "pre_submitted_only": {"type": ["boolean", "null"], "description": "사전 제출본 외 자료 발표 금지"},
+            "precedence_text": {"type": ["string", "null"], "description": "'제안요청서 > 기술협상서 > 제안서 > 제안발표내용'"}
+          }
+        },
+        "video_rule": {"type": ["string", "null"], "enum": ["금지", "허용", "허용_샘플필수", "명시없음", null]},
+        "video_rule_text": {"type": ["string", "null"]},
+        "promo_content_banned": {"type": ["boolean", "null"], "description": "회사 홍보·임원 인사 금지"},
+        "blind": {
+          "type": "object",
+          "properties": {
+            "required": {"type": ["boolean", "null"]},
+            "scope": {"type": "array", "items": {"type": "string"}, "description": "회사명, 로고, 대표자, 참여자 성명, 사진, 주소, 이메일, 계열사명, 파일명"},
+            "original_copies_exempt": {"type": ["integer", "null"], "description": "보관용 원본 부수(식별정보 기재 허용)"},
+            "spoken_mention_banned": {"type": ["boolean", "null"], "description": "발표 중 회사명 언급 금지"},
+            "penalty_text": {"type": ["string", "null"], "description": "-1점 / -3점 / 건당 0.5점 최대 3점 / 페이지 폐기 / 무효 / 실격"}
+          }
+        },
+        "order_rule": {"type": ["string", "null"], "description": "접수순 / 역순 / 가나다 / 제출 시 추첨 / 당일 추첨"},
+        "venue_mode": {"type": ["string", "null"], "enum": ["대면", "온라인", "대면또는온라인", "명시없음", null]},
+        "datetime_place": {"type": ["string", "null"]},
+        "evaluators": {"type": "object", "properties": {"count": {"type": ["string", "null"]}, "composition": {"type": ["string", "null"]}, "pre_review_time": {"type": ["string", "null"]}, "result_disclosure": {"type": ["string", "null"]}}},
+        "delivery_scored": {"type": ["boolean", "null"], "description": "발표 전달력·태도·답변 충실성이 배점 또는 등급 정의에 포함"},
+        "other_rules": {"type": "array", "items": {"type": "string"}, "description": "타사 발표 청취 불가, 촬영·녹음 금지, 평가위원 접촉 금지(-5), 장비 발주자 제공 등"}
+      }
+    },
+
+    "proposal_rules": {
+      "type": "object",
+      "description": "D. 제안서 작성 규정. 위치: Ⅴ 제안서 작성요령, 붙임 작성지침·목차, 제출서류.",
+      "properties": {
+        "toc": {
+          "type": "array",
+          "items": {"type": "object", "properties": {"chapter": {"type": "string"}, "sections": {"type": "array", "items": {"type": "string"}}, "writing_guide": {"type": ["string", "null"], "description": "세부작성지침(예: 사업이해도에 목표시스템 구성도 필수)"}}}
+        },
+        "toc_specified": {"type": ["boolean", "null"], "description": "false면 평가항목 순서를 목차로 사용"},
+        "toc_matches_score_table": {"type": ["boolean", "null"]},
+        "limits": {
+          "type": "object",
+          "properties": {
+            "body_pages": {"type": ["string", "null"], "description": "예: 300p(150장) 권장 / 200p 양면 / 50매 / 제한 없음"},
+            "summary_pages": {"type": ["string", "null"]},
+            "paper_orientation": {"type": ["string", "null"]},
+            "font_rules": {"type": ["string", "null"]},
+            "file_format_size": {"type": ["string", "null"], "description": "PDF 300MB, 개별 100MB"},
+            "copies_binding": {"type": ["string", "null"]},
+            "over_limit_penalty": {"type": ["string", "null"]}
+          }
+        },
+        "compliance_matrix_required": {"type": ["boolean", "null"], "description": "조견표·수용여부 참조표·자가점검표"},
+        "compliance_matrix_text": {"type": ["string", "null"]},
+        "wording_rules": {"type": "object", "properties": {"banned_expressions": {"type": "array", "items": {"type": "string"}}, "penalty": {"type": ["string", "null"], "description": "불가능 간주 / 감점 / 무효"}, "quantify_required": {"type": ["boolean", "null"]}, "assertive_required": {"type": ["boolean", "null"]}}},
+        "mandatory_attachments": {"type": "array", "items": {"type": "string"}},
+        "proposal_compensation": {"type": ["string", "null"]},
+        "submission_rules": {"type": ["string", "null"], "description": "나라장터 PDF 1파일·분리 제출 / 방문접수만 / 밀봉 / 날인·원본대조필"}
+      }
+    },
+
+    "requirements": {
+      "type": "object",
+      "description": "E. 요구사항·과업. 위치: Ⅳ 제안요청 내용(총괄표·목록·상세), 과업지시서, 규격표.",
+      "properties": {
+        "taxonomy": {"type": ["string", "null"], "enum": ["SW사업표준ID", "운영형ID", "구분·세부과업표", "규격표", "과업지시서문단", "기타", null]},
+        "counts_by_category": {"type": "object", "additionalProperties": {"type": "integer"}, "description": "예: {\"SFR\":90,\"ECR\":17}"},
+        "total_count": {"type": ["integer", "null"]},
+        "items": {
+          "type": "array",
+          "items": {"type": "object", "properties": {"id": {"type": ["string", "null"]}, "category": {"type": ["string", "null"]}, "name": {"type": "string"}, "summary": {"type": ["string", "null"]}, "numbers": {"type": "array", "items": {"type": "string"}}, "deliverable": {"type": ["string", "null"]}, "is_key": {"type": ["boolean", "null"]}}}
+        },
+        "key_requirements": {"type": "array", "items": {"type": "string"}, "description": "수치·기한·의무가 박힌 고난도 요구 5~8개(ID+한 줄)"},
+        "key_numbers": {
+          "type": "array",
+          "items": {"type": "object", "properties": {"label": {"type": "string"}, "value": {"type": "string"}, "source": {"type": ["string", "null"]}}},
+          "description": "동시접속·응답시간·복구시간·가동률·장비수·사용자수·인원·톤수·건수 등 — 발표 약속 수치"
+        },
+        "scope_items": {"type": "array", "items": {"type": "string"}},
+        "staffing": {
+          "type": "object",
+          "properties": {
+            "pm": {"type": ["string", "null"], "description": "소속·등급·경력·재직·전담·교체"},
+            "min_onsite_headcount": {"type": ["integer", "null"]},
+            "roles": {"type": "array", "items": {"type": "object", "properties": {"role": {"type": "string"}, "count": {"type": ["string", "null"]}, "grade_or_experience": {"type": ["string", "null"]}}}},
+            "employment_rules": {"type": ["string", "null"], "description": "정규직, 프리랜서·파견 불가, 주사업자 50%↑, 4대보험, 공고일 전 입사"},
+            "replacement_rules": {"type": ["string", "null"], "description": "병행근무 일수, 승인, 동급 이상, 미준수 제재"},
+            "external_experts_required": {"type": ["string", "null"], "description": "박사급 자문위원 2인, 변호사·변리사·회계사·노무사 각 1인 등"}
+          }
+        },
+        "sla_kpi": {"type": "array", "items": {"type": "object", "properties": {"indicator": {"type": "string"}, "target": {"type": ["string", "null"]}, "penalty": {"type": ["string", "null"]}}}},
+        "compliance_list": {"type": "array", "items": {"type": "string"}},
+        "special_conditions": {"type": "array", "items": {"type": "string"}, "description": "감리 횟수, PMO, PIA, 윈백, 안정화 기간, 원격지 개발, 직접구매 SW, 과업심의위, 현장설명회 참가 조건"},
+        "deliverables": {"type": "array", "items": {"type": "string"}},
+        "reporting_cycle": {"type": ["string", "null"]},
+        "schedule_milestones": {"type": "array", "items": {"type": "object", "properties": {"label": {"type": "string"}, "when": {"type": "string"}}}}
+      }
+    },
+
+    "client_needs": {
+      "type": "object",
+      "description": "F. 발주처 니즈. 위치: Ⅰ 추진배경·목적·기대효과, Ⅱ 현황·문제점, Ⅲ 추진전략, 특수사항·제재조항(리스크 신호), 사업계획서(있을 때).",
+      "properties": {
+        "background_numbers": {"type": "array", "items": {"type": "object", "properties": {"text": {"type": "string"}, "value": {"type": "string"}, "use": {"type": ["string", "null"], "description": "사업이해도 첫 장표 재진술 후보"}}}},
+        "pain_points": {"type": "array", "items": {"type": "string"}, "description": "발주처 원문 문장"},
+        "goals": {"type": "array", "items": {"type": "string"}},
+        "repeated_keywords": {"type": "array", "items": {"type": "string"}, "description": "핵심 메시지·장표 제목에 발주처 어휘 그대로 사용"},
+        "policy_basis": {"type": "array", "items": {"type": "string"}, "description": "상위 정책·국정과제·법령·감사 지적"},
+        "expected_effects": {"type": ["string", "null"]},
+        "risk_emphasis": {"type": "array", "items": {"type": "object", "properties": {"signal": {"type": "string"}, "interpretation": {"type": ["string", "null"]}, "slide_response": {"type": ["string", "null"]}}}},
+        "stakeholders": {"type": "array", "items": {"type": "string"}},
+        "core_messages_suggested": {"type": "array", "items": {"type": "string"}, "maxItems": 3, "description": "분석 결과 도출된 핵심 메시지 3개(발주처 어휘·수치 포함)"},
+        "client_internal_logic": {
+          "type": ["object", "null"],
+          "description": "사업계획서가 함께 있을 때만",
+          "properties": {"budget_breakdown": {"type": "array", "items": {"type": "string"}}, "performance_targets": {"type": "array", "items": {"type": "string"}}, "roadmap": {"type": ["string", "null"]}, "audit_findings": {"type": "array", "items": {"type": "string"}}}
+        }
+      }
+    },
+
+    "eligibility": {
+      "type": "object",
+      "description": "G. 자격·제약. 위치: 입찰참가자격, 추진방안, 유의사항, 보안특약.",
+      "properties": {
+        "requirements": {"type": "array", "items": {"type": "string"}, "description": "업종코드, 직접생산증명, 기업규모, 대기업 하한, 상출제, 지역, 면허, 실적·매출 제한, 비영리"},
+        "big_company_rule": {"type": ["string", "null"]},
+        "consortium": {"type": "object", "properties": {"allowed": {"type": ["boolean", "null"]}, "method": {"type": ["string", "null"]}, "max_members": {"type": ["integer", "null"]}, "min_share_pct": {"type": ["number", "null"]}, "notes": {"type": ["string", "null"]}}},
+        "subcontract": {"type": "object", "properties": {"allowed": {"type": ["boolean", "null"]}, "rules": {"type": ["string", "null"], "description": "사전승인·50%·10%↑ 공동수급·85점·표준계약서·불허 사유"}, "full_score_condition": {"type": ["string", "null"]}}},
+        "security_rules": {"type": "array", "items": {"type": "string"}},
+        "site_rules": {"type": ["string", "null"]},
+        "ip_rights": {"type": ["string", "null"]},
+        "warranty": {"type": ["string", "null"]}
+      }
+    },
+
+    "penalties": {
+      "type": "object",
+      "description": "H. 감점·실격·무효·계약 제재. 위치: 유의사항, 입찰 무효, 가감점표, 보안 별표, 계약특수조건, 배점 단서.",
+      "properties": {
+        "disqualifiers": {"type": "array", "items": {"type": "string"}},
+        "deductions": {"type": "array", "items": {"type": "object", "properties": {"condition": {"type": "string"}, "points": {"type": ["string", "null"]}}}},
+        "contract_penalties": {"type": "array", "items": {"type": "string"}, "description": "지체상금·SLA 페널티·감액·보안 위약금 — 발표에서 리스크 인지 신호로 활용"}
+      }
+    },
+
+    "flags": {
+      "type": "object",
+      "description": "추출 품질·불명확 처리.",
+      "properties": {
+        "missing": {"type": "array", "items": {"type": "string"}, "description": "문서에 규정 없음 → 공고문 참조 플래그"},
+        "ambiguous": {"type": "array", "items": {"type": "object", "properties": {"field": {"type": "string"}, "issue": {"type": "string"}, "conservative_choice": {"type": ["string", "null"]}}}, "description": "문서 내 모순 — 보수적(엄격한) 값을 기본 적용"},
+        "template_residue": {"type": "array", "items": {"type": "string"}, "description": "타 사업 복붙 흔적(타 기관명, 유형 불일치 평가항목·배점표·목차 '준용' 문구)"},
+        "needs_announcement_doc": {"type": ["boolean", "null"], "description": "발표 시간·장소·방식이 공고문에 위임됨"},
+        "extraction_quality_notes": {"type": "array", "items": {"type": "string"}, "description": "표 깨짐, 글자 순서 깨짐, 구성도 비공개 등"}
+      }
+    },
+
+    "slide_plan_hints": {
+      "type": "object",
+      "description": "스키마 소비 측(장표 생성기)이 참고할 파생 값. 8장 규칙으로 계산.",
+      "properties": {
+        "recommended_slide_count": {"type": ["integer", "null"], "description": "발표시간 기준: 10분 8~10 / 15분 12~15 / 20분 15~18 / 25~30분 18~24, 발표자료 분량 상한이 있으면 그 값"},
+        "compressed_version_needed": {"type": ["boolean", "null"], "description": "'제안사 수에 따라 조정 가능' 시 15분 압축본"},
+        "slide_allocation": {"type": "array", "items": {"type": "object", "properties": {"eval_item": {"type": "string"}, "points": {"type": "number"}, "slides": {"type": "integer"}}}, "description": "배점 비례, top3는 2장 이상"},
+        "opening_block": {"type": "array", "items": {"type": "string"}, "description": "사업이해 ①(수치·법령·연차) → ②(문제→개선→목표시스템 구성도)"},
+        "mandatory_slides": {"type": "array", "items": {"type": "string"}, "description": "유형별 7장 템플릿 참조"},
+        "forbidden_elements": {"type": "array", "items": {"type": "string"}, "description": "동영상, 회사명·로고, 홍보, 제안서 외 내용, 모호표현"},
+        "script_voice": {"type": ["string", "null"], "description": "PM 1인칭·단정형·계량형, 블라인드 시 '저희 제안사'"}
+      }
+    }
+  }
+}

@@ -1,0 +1,202 @@
+/* C 묶음 — 레이어 1 (대화상자·확인 대화상자·시트·드로어·팝오버·호버 카드·툴팁·토스트)
+ * KRDS 모달·툴팁은 KRDS 마크업·CSS 를 그대로 쓰고, 여기에는 KRDS 에 없는 것과 radix/reka 결합에 필요한 것만 둔다.
+ * 쌓임 순서: 툴팁 1040 > 팝오버·호버 카드 1030 > 모달·시트(KRDS 1010) · 토스트 1100 */
+
+/* ── 포털 최상위에 hb-kit 을 붙이면 KRDS 의 html·body 초기화(:where(.hb-kit) — 흰 배경·폭/높이 100%·overflow-x:hidden)도
+ *    함께 걸린다. 그대로 두면 모달 뒤 화면이 흰색으로 가려지고 말풍선 꼬리가 잘린다 → 레이어 최상위에서만 되돌린다. */
+.hb-modal.hb-kit,
+.hb-drawer.hb-kit { background-color: transparent; }
+.hb-sheet-root.hb-kit { position: static; width: auto; height: auto; background: none; overflow: visible; }
+.hb-popover.hb-kit,
+.hb-hover-card.hb-kit,
+.hb-tip.hb-kit { height: auto; overflow: visible; }
+.hb-tip.hb-kit { width: auto; }
+.hb-toaster.hb-kit { height: auto; overflow: visible; }
+
+/* ── 공통 등장 효과 (움직임 줄이기 설정이면 끈다) */
+@keyframes hb-ov-fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes hb-ov-pop { from { opacity: 0; transform: scale(0.96); } to { opacity: 1; transform: scale(1); } }
+@keyframes hb-ov-up { from { transform: translateY(100%); } to { transform: translateY(0); } }
+@keyframes hb-ov-down { from { transform: translateY(-100%); } to { transform: translateY(0); } }
+@keyframes hb-ov-left { from { transform: translateX(100%); } to { transform: translateX(0); } }
+@keyframes hb-ov-right { from { transform: translateX(-100%); } to { transform: translateX(0); } }
+@keyframes hb-ov-spin { to { transform: rotate(360deg); } }
+
+/* ── 대화상자(KRDS modal) */
+.hb-modal .modal-back { animation: hb-ov-fade 0.2s ease-out; }
+.hb-modal .modal-dialog .modal-content { animation: hb-ov-pop 0.2s ease-out; }
+.hb-modal .modal-dialog .modal-content:focus-visible { outline: 2px solid var(--krds-light-color-border-primary); outline-offset: 4px; }
+.hb-modal .modal-conts .hb-modal-desc { margin: 0; }
+.hb-modal .modal-conts:focus-visible { outline: 2px solid var(--krds-light-color-border-primary); outline-offset: -2px; }
+
+/* ── 드로어(KRDS modal data-type="bottom-sheet") */
+.krds-modal.hb-drawer[data-type="bottom-sheet"] .modal-content {
+  bottom: 0;
+  padding-top: var(--krds-padding-4);
+  animation: hb-ov-up 0.3s ease-out;
+  transition: transform 0.2s ease-out;
+}
+/* 넓은 화면에서는 시트 자체를 읽기 좋은 폭으로 가운데에 (KRDS 바텀시트는 모바일 전용이라 폭 제한이 없다) */
+.krds-modal.hb-drawer[data-type="bottom-sheet"] .modal-content { right: 0; max-width: 760px; margin: 0 auto; }
+.krds-modal.hb-drawer .modal-dialog .modal-content > .hb-drawer-handle {
+  width: 48px;
+  flex-shrink: 0;
+  height: 5px;
+  margin: 0 auto var(--krds-padding-2);
+  border-radius: var(--krds-radius-max, 999px);
+  background-color: var(--krds-light-color-border-gray);
+  cursor: grab;
+  touch-action: none;
+}
+.hb-drawer-handle:active { cursor: grabbing; }
+.hb-drawer .modal-conts { padding-bottom: var(--krds-padding-4); }
+
+/* ── 시트 */
+.hb-sheet-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1010;
+  background-color: var(--krds-light-color-background-dim);
+  animation: hb-ov-fade 0.2s ease-out;
+}
+.hb-sheet {
+  position: fixed;
+  z-index: 1011;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  background-color: var(--krds-light-color-surface-white-subtler);
+  color: var(--krds-light-color-text-basic);
+  box-shadow: 0 0 2px 0 var(--krds-light-color-alpha-shadow2), 0 16px 24px 0 var(--krds-light-color-alpha-shadow3);
+  outline: none;
+}
+.hb-sheet[data-side="right"],
+.hb-sheet[data-side="left"] { top: 0; bottom: 0; width: 400px; max-width: calc(100% - 48px); }
+.hb-sheet[data-side="right"] { right: 0; border-left: 1px solid var(--krds-light-color-border-gray); animation: hb-ov-left 0.3s ease-out; }
+.hb-sheet[data-side="left"] { left: 0; border-right: 1px solid var(--krds-light-color-border-gray); animation: hb-ov-right 0.3s ease-out; }
+.hb-sheet[data-side="top"],
+.hb-sheet[data-side="bottom"] { left: 0; right: 0; max-height: 80vh; }
+.hb-sheet[data-side="top"] { top: 0; border-bottom: 1px solid var(--krds-light-color-border-gray); animation: hb-ov-down 0.3s ease-out; }
+.hb-sheet[data-side="bottom"] { bottom: 0; border-top: 1px solid var(--krds-light-color-border-gray); animation: hb-ov-up 0.3s ease-out; }
+.hb-sheet:focus-visible { outline: 2px solid var(--krds-light-color-border-primary); outline-offset: -4px; }
+.hb-sheet-header { flex-shrink: 0; padding: var(--krds-padding-8) 64px var(--krds-padding-4) var(--krds-padding-8); }
+.hb-sheet-title { margin: 0; font-size: var(--krds-pc-font-size-heading-small); font-weight: var(--krds-font-weight-bold); line-height: 1.4; }
+.hb-sheet-desc { margin: var(--krds-padding-2) 0 0; font-size: var(--krds-pc-font-size-body-small); color: var(--krds-light-color-text-subtle); }
+.hb-sheet-body { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding: var(--krds-padding-4) var(--krds-padding-8); }
+.hb-sheet-footer {
+  flex-shrink: 0;
+  display: flex;
+  gap: var(--krds-gap-3);
+  justify-content: flex-end;
+  padding: var(--krds-padding-6) var(--krds-padding-8) var(--krds-padding-8);
+  border-top: 1px solid var(--krds-light-color-border-gray-light);
+}
+.hb-sheet-close { position: absolute; top: var(--krds-padding-6); right: var(--krds-padding-6); }
+
+/* ── 팝오버·호버 카드 (KRDS 상자형 말풍선과 같은 면·테두리) */
+.hb-popover,
+.hb-hover-card {
+  z-index: 1030;
+  width: 320px;
+  max-width: calc(100vw - 32px);
+  padding: var(--krds-padding-6) var(--krds-padding-8);
+  border: 1px solid var(--krds-light-color-border-gray);
+  border-radius: var(--krds-radius-xlarge1);
+  background-color: var(--krds-light-color-surface-white-subtler);
+  color: var(--krds-light-color-text-basic);
+  font-size: var(--krds-pc-font-size-body-small);
+  box-shadow: 0 0 2px 0 var(--krds-light-color-alpha-shadow2), 0 8px 16px 0 var(--krds-light-color-alpha-shadow2);
+  animation: hb-ov-pop 0.15s ease-out;
+  outline: none;
+}
+.hb-popover:focus-visible { outline: 2px solid var(--krds-light-color-border-primary); outline-offset: 2px; }
+.hb-popover-arrow { fill: var(--krds-light-color-surface-white-subtler); stroke: var(--krds-light-color-border-gray); stroke-width: 1px; }
+.hb-popover-title { margin: 0 0 var(--krds-padding-2); font-size: var(--krds-pc-font-size-body-medium); font-weight: var(--krds-font-weight-bold); color: var(--krds-light-color-text-bolder); }
+.hb-popover-desc { margin: 0 0 var(--krds-padding-4); color: var(--krds-light-color-text-subtle); }
+
+/* ── 툴팁(KRDS .krds-tooltip-popover) — radix/reka 가 자리를 잡으므로 KRDS 의 고정 위치를 푼다 */
+.krds-tooltip-popover.hb-tip { position: relative; top: auto; left: auto; z-index: 1040; animation: hb-ov-fade 0.12s ease-out; }
+/* 꼬리: 실제로 뜬 쪽(data-side)을 따른다. 기본(KRDS) = 오른쪽에 뜸 → 왼쪽 꼬리 */
+.krds-tooltip-popover.hb-tip[data-side="left"]::before { left: calc(100% + var(--tooltip-arrow-gap)); }
+.krds-tooltip-popover.hb-tip[data-side="top"]::before,
+.krds-tooltip-popover.hb-tip[data-side="bottom"]::before { left: 50%; transform: translateX(-50%) rotate(45deg); }
+.krds-tooltip-popover.hb-tip[data-side="top"]::before { top: calc(100% + var(--tooltip-arrow-gap)); }
+.krds-tooltip-popover.hb-tip[data-side="bottom"]::before { top: var(--tooltip-arrow-gap); }
+.krds-tooltip-popover.hb-tip[data-side="top"][data-align="start"]::before,
+.krds-tooltip-popover.hb-tip[data-side="bottom"][data-align="start"]::before { left: var(--krds-tooltip--popover-margin-x); }
+.krds-tooltip-popover.hb-tip[data-side="top"][data-align="end"]::before,
+.krds-tooltip-popover.hb-tip[data-side="bottom"][data-align="end"]::before { left: calc(100% - var(--krds-tooltip--popover-margin-x)); }
+/* 상자형 꼬리는 테두리 두 변이 보이도록 방향마다 돌린다 */
+.krds-tooltip-popover.hb-tip.tooltip-box[data-side="right"]::before { transform: translateY(-50%) rotate(135deg); }
+.krds-tooltip-popover.hb-tip.tooltip-box[data-side="left"]::before { transform: translateY(-50%) rotate(-45deg); }
+.krds-tooltip-popover.hb-tip.tooltip-box[data-side="bottom"]::before { transform: translateX(-50%) rotate(-135deg); }
+@media (max-width: 420px) {
+  .krds-tooltip-popover.hb-tip { width: auto; max-width: calc(100vw - 32px); left: auto; transform: none; white-space: normal; }
+}
+
+/* ── 토스트 */
+.hb-toaster {
+  position: fixed;
+  z-index: 1100;
+  width: 380px;
+  max-width: calc(100vw - 32px);
+  padding: 0;
+  background: none;
+  pointer-events: none;
+}
+.hb-toaster[data-y="top"] { top: 24px; }
+.hb-toaster[data-y="bottom"] { bottom: 24px; }
+.hb-toaster[data-x="left"] { left: 24px; }
+.hb-toaster[data-x="right"] { right: 24px; }
+.hb-toaster[data-x="center"] { left: 50%; transform: translateX(-50%); }
+.hb-toast-list { display: flex; flex-direction: column; gap: var(--krds-gap-3); margin: 0; padding: 0; list-style: none; }
+.hb-toast {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--krds-gap-3);
+  padding: var(--krds-padding-5) var(--krds-padding-5) var(--krds-padding-5) var(--krds-padding-6);
+  border: 1px solid var(--krds-light-color-border-gray);
+  border-left-width: 4px;
+  border-radius: var(--krds-radius-large1);
+  background-color: var(--krds-light-color-surface-white-subtler);
+  color: var(--krds-light-color-text-basic);
+  box-shadow: 0 0 2px 0 var(--krds-light-color-alpha-shadow2), 0 8px 16px 0 var(--krds-light-color-alpha-shadow3);
+  pointer-events: auto;
+  animation: hb-ov-pop 0.2s ease-out;
+}
+.hb-toast:focus-visible { outline: 2px solid var(--krds-light-color-border-primary); outline-offset: 2px; }
+.hb-toast[data-type="default"],
+.hb-toast[data-type="loading"] { border-left-color: var(--krds-light-color-border-gray-dark); }
+.hb-toast[data-type="success"] { border-left-color: var(--krds-light-color-border-success); }
+.hb-toast[data-type="error"] { border-left-color: var(--krds-light-color-border-danger); }
+.hb-toast[data-type="info"] { border-left-color: var(--krds-light-color-border-information); }
+.hb-toast[data-type="warning"] { border-left-color: var(--krds-light-color-border-warning); }
+.hb-toast-icon.svg-icon { flex-shrink: 0; width: 20px; height: 20px; margin-top: 2px; }
+.hb-toast-spinner {
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+  margin: 3px 1px 0;
+  border: 2px solid var(--krds-light-color-border-gray-light);
+  border-top-color: var(--krds-light-color-border-primary);
+  border-radius: 50%;
+  animation: hb-ov-spin 0.8s linear infinite;
+}
+.hb-toast-body { flex: 1 1 auto; min-width: 0; }
+.hb-toast-title { margin: 0; font-size: var(--krds-pc-font-size-body-medium); font-weight: var(--krds-font-weight-bold); line-height: 1.5; color: var(--krds-light-color-text-bolder); }
+.hb-toast-desc { margin: 2px 0 0; font-size: var(--krds-pc-font-size-body-small); line-height: 1.5; color: var(--krds-light-color-text-subtle); }
+.hb-toast-action { flex-shrink: 0; align-self: center; }
+.hb-toast-close { flex-shrink: 0; margin: -2px -2px 0 0; }
+
+@media (prefers-reduced-motion: reduce) {
+  .hb-modal .modal-back,
+  .hb-modal .modal-dialog .modal-content,
+  .krds-modal.hb-drawer[data-type="bottom-sheet"] .modal-content,
+  .hb-sheet-overlay,
+  .hb-sheet,
+  .hb-popover,
+  .hb-hover-card,
+  .krds-tooltip-popover.hb-tip,
+  .hb-toast { animation: none; transition: none; }
+  .hb-toast-spinner { animation-duration: 2s; }
+}

@@ -1,0 +1,10 @@
+# /mockref/api/ → index.php 프론트 컨트롤러 (Apache mod_rewrite)
+# 상위 api/.htaccess 가 *.php 를 전부 차단하므로(소스 보호) 진입점만 다시 허용한다 — CHECKLIST G1
+Options -Indexes
+<Files "index.php">
+  Require all granted
+</Files>
+RewriteEngine On
+RewriteBase /mockref/api/
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteRule ^ index.php [L,QSA]

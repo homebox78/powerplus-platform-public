@@ -1,0 +1,2190 @@
+{
+  "version": "2026.10.2",
+  "org_types": [
+    {
+      "id": "central",
+      "parent": null,
+      "name_ko": "중앙행정기관"
+    },
+    {
+      "id": "central_ministry",
+      "parent": "central",
+      "name_ko": "부·처·청"
+    },
+    {
+      "id": "central_committee",
+      "parent": "central",
+      "name_ko": "위원회"
+    },
+    {
+      "id": "central_affiliate",
+      "parent": "central",
+      "name_ko": "소속기관"
+    },
+    {
+      "id": "local",
+      "parent": null,
+      "name_ko": "지방자치단체"
+    },
+    {
+      "id": "local_wide",
+      "parent": "local",
+      "name_ko": "광역자치단체(시·도)"
+    },
+    {
+      "id": "local_basic",
+      "parent": "local",
+      "name_ko": "기초자치단체(시·군·구)"
+    },
+    {
+      "id": "council",
+      "parent": null,
+      "name_ko": "지방의회"
+    },
+    {
+      "id": "public",
+      "parent": null,
+      "name_ko": "공공기관"
+    },
+    {
+      "id": "public_corp",
+      "parent": "public",
+      "name_ko": "공기업"
+    },
+    {
+      "id": "public_quasi",
+      "parent": "public",
+      "name_ko": "준정부기관"
+    },
+    {
+      "id": "public_research",
+      "parent": "public",
+      "name_ko": "연구기관"
+    },
+    {
+      "id": "public_medical",
+      "parent": "public",
+      "name_ko": "의료기관"
+    },
+    {
+      "id": "public_culture",
+      "parent": "public",
+      "name_ko": "문화·체육·관광"
+    },
+    {
+      "id": "public_support",
+      "parent": "public",
+      "name_ko": "진흥·지원기관"
+    },
+    {
+      "id": "public_other",
+      "parent": "public",
+      "name_ko": "기타공공기관"
+    },
+    {
+      "id": "local_public",
+      "parent": "public",
+      "name_ko": "지방공공기관(공사·공단·출연)"
+    },
+    {
+      "id": "education",
+      "parent": null,
+      "name_ko": "교육"
+    },
+    {
+      "id": "edu_office",
+      "parent": "education",
+      "name_ko": "교육청"
+    },
+    {
+      "id": "edu_univ",
+      "parent": "education",
+      "name_ko": "국공립대학"
+    },
+    {
+      "id": "edu_univ_private",
+      "parent": "education",
+      "name_ko": "사립대학"
+    },
+    {
+      "id": "edu_college",
+      "parent": "education",
+      "name_ko": "전문대학·기능대학"
+    },
+    {
+      "id": "edu_school",
+      "parent": "education",
+      "name_ko": "학교·교육기관"
+    },
+    {
+      "id": "judicial",
+      "parent": null,
+      "name_ko": "사법·입법·헌법기관"
+    },
+    {
+      "id": "etc",
+      "parent": null,
+      "name_ko": "기타(재단·협회 등 공공성)"
+    },
+    {
+      "id": "etc_assoc",
+      "parent": "etc",
+      "name_ko": "단체·협회"
+    },
+    {
+      "id": "etc_welfare",
+      "parent": "etc",
+      "name_ko": "복지·사회"
+    },
+    {
+      "id": "private",
+      "parent": null,
+      "name_ko": "민간"
+    },
+    {
+      "id": "private_corp",
+      "parent": "private",
+      "name_ko": "기업·브랜드"
+    },
+    {
+      "id": "private_agency",
+      "parent": "private",
+      "name_ko": "에이전시·스튜디오"
+    },
+    {
+      "id": "private_personal",
+      "parent": "private",
+      "name_ko": "개인·포트폴리오"
+    },
+    {
+      "id": "private_commerce",
+      "parent": "private",
+      "name_ko": "쇼핑·커머스"
+    },
+    {
+      "id": "private_culture",
+      "parent": "private",
+      "name_ko": "문화·예술·행사"
+    }
+  ],
+  "site_types": [
+    {
+      "id": "main",
+      "name_ko": "대표 홈페이지"
+    },
+    {
+      "id": "tour",
+      "name_ko": "문화관광"
+    },
+    {
+      "id": "council",
+      "name_ko": "의회"
+    },
+    {
+      "id": "library",
+      "name_ko": "도서관"
+    },
+    {
+      "id": "portal",
+      "name_ko": "통합포털·민원포털"
+    },
+    {
+      "id": "service",
+      "name_ko": "단일 서비스(예약·신청)"
+    },
+    {
+      "id": "campaign",
+      "name_ko": "행사·기념·캠페인"
+    },
+    {
+      "id": "mobile",
+      "name_ko": "모바일 전용"
+    },
+    {
+      "id": "etc",
+      "name_ko": "기타"
+    }
+  ],
+  "page_types": [
+    {
+      "id": "main",
+      "name_ko": "메인",
+      "scope": "main"
+    },
+    {
+      "id": "sub_visual",
+      "name_ko": "서브 대표(비주얼+본문)",
+      "scope": "sub"
+    },
+    {
+      "id": "board_list",
+      "name_ko": "게시판 목록",
+      "scope": "sub"
+    },
+    {
+      "id": "board_gallery",
+      "name_ko": "갤러리형 목록",
+      "scope": "sub"
+    },
+    {
+      "id": "board_view",
+      "name_ko": "게시판 상세",
+      "scope": "sub"
+    },
+    {
+      "id": "content",
+      "name_ko": "콘텐츠(안내·소개)",
+      "scope": "sub"
+    },
+    {
+      "id": "location",
+      "name_ko": "찾아오시는 길",
+      "scope": "sub"
+    },
+    {
+      "id": "history",
+      "name_ko": "연혁",
+      "scope": "sub"
+    },
+    {
+      "id": "vision",
+      "name_ko": "비전·방침·헌장",
+      "scope": "sub"
+    },
+    {
+      "id": "symbol",
+      "name_ko": "상징·캐릭터",
+      "scope": "sub"
+    },
+    {
+      "id": "procedure",
+      "name_ko": "절차·이용 안내",
+      "scope": "sub"
+    },
+    {
+      "id": "form",
+      "name_ko": "민원·신청 폼",
+      "scope": "sub"
+    },
+    {
+      "id": "org_chart",
+      "name_ko": "조직도·담당자",
+      "scope": "sub"
+    },
+    {
+      "id": "greeting",
+      "name_ko": "기관장 인사말",
+      "scope": "sub"
+    },
+    {
+      "id": "sitemap",
+      "name_ko": "사이트맵",
+      "scope": "common"
+    },
+    {
+      "id": "search",
+      "name_ko": "통합검색 결과",
+      "scope": "common"
+    },
+    {
+      "id": "login",
+      "name_ko": "로그인·인증",
+      "scope": "common"
+    },
+    {
+      "id": "info_disclosure",
+      "name_ko": "정보공개",
+      "scope": "sub"
+    },
+    {
+      "id": "faq",
+      "name_ko": "FAQ",
+      "scope": "sub"
+    },
+    {
+      "id": "error",
+      "name_ko": "오류·점검",
+      "scope": "common"
+    }
+  ],
+  "section_types": [
+    {
+      "id": "masthead",
+      "name_ko": "공식 배너",
+      "scope": "common",
+      "dom_hints": [
+        ".krds-masthead",
+        ".masthead",
+        "#masthead",
+        ".gov-banner"
+      ]
+    },
+    {
+      "id": "header",
+      "name_ko": "헤더/GNB",
+      "scope": "common",
+      "dom_hints": [
+        "#header",
+        "header",
+        ".header",
+        "#gnb",
+        ".gnb",
+        "nav.main"
+      ]
+    },
+    {
+      "id": "footer",
+      "name_ko": "푸터",
+      "scope": "common",
+      "dom_hints": [
+        "#footer",
+        "footer",
+        ".footer"
+      ]
+    },
+    {
+      "id": "skip_nav",
+      "name_ko": "건너뛰기 링크",
+      "scope": "common",
+      "dom_hints": [
+        "#skipNav",
+        ".skip",
+        ".skipnav",
+        "a[href='#content']"
+      ]
+    },
+    {
+      "id": "main_visual",
+      "name_ko": "메인 비주얼",
+      "scope": "main",
+      "dom_hints": [
+        ".visual",
+        ".main-visual",
+        "#visual",
+        ".mainVisual",
+        ".key-visual",
+        ".slide"
+      ]
+    },
+    {
+      "id": "main_search",
+      "name_ko": "통합검색 영역(메인)",
+      "scope": "main",
+      "dom_hints": [
+        ".total-search",
+        ".main-search",
+        "#totalSearch",
+        ".search-area"
+      ]
+    },
+    {
+      "id": "ai_chatbot",
+      "name_ko": "AI 챗봇",
+      "scope": "main",
+      "dom_hints": [
+        ".chatbot",
+        ".ai-chat",
+        ".chat_bot"
+      ]
+    },
+    {
+      "id": "quick_links",
+      "name_ko": "바로가기 서비스",
+      "scope": "main",
+      "dom_hints": [
+        ".quick",
+        ".quick-menu",
+        ".quickmenu",
+        ".shortcut",
+        ".icon-menu",
+        ".service"
+      ]
+    },
+    {
+      "id": "news_tabs",
+      "name_ko": "소식 탭 게시판",
+      "scope": "main",
+      "dom_hints": [
+        ".notice",
+        ".news",
+        ".tab-board",
+        ".board-tab",
+        ".latest"
+      ]
+    },
+    {
+      "id": "greeting_vision",
+      "name_ko": "기관장·비전",
+      "scope": "main",
+      "dom_hints": [
+        ".mayor",
+        ".greeting",
+        ".vision",
+        ".slogan"
+      ]
+    },
+    {
+      "id": "calendar",
+      "name_ko": "일정/캘린더",
+      "scope": "main",
+      "dom_hints": [
+        ".calendar",
+        ".schedule",
+        ".event"
+      ]
+    },
+    {
+      "id": "sns_video",
+      "name_ko": "SNS·카드뉴스",
+      "scope": "main",
+      "dom_hints": [
+        ".sns",
+        ".youtube",
+        ".video",
+        ".movie",
+        ".cardnews",
+        ".card_news",
+        ".photo_news",
+        ".photonews"
+      ]
+    },
+    {
+      "id": "tour_cards",
+      "name_ko": "명소·여행 안내",
+      "scope": "main",
+      "dom_hints": [
+        ".tour",
+        ".travel",
+        ".attraction"
+      ]
+    },
+    {
+      "id": "hero",
+      "name_ko": "히어로 영역",
+      "scope": "main",
+      "dom_hints": [
+        ".hero",
+        ".promotion",
+        ".main_banner_big"
+      ]
+    },
+    {
+      "id": "text_band",
+      "name_ko": "바로가기 텍스트 배너",
+      "scope": "main",
+      "dom_hints": []
+    },
+    {
+      "id": "banner_zone",
+      "name_ko": "배너존",
+      "scope": "main",
+      "dom_hints": [
+        ".banner",
+        ".bannerzone",
+        ".banner-zone",
+        "#banner",
+        ".family-banner"
+      ]
+    },
+    {
+      "id": "popup_zone",
+      "name_ko": "팝업존",
+      "scope": "main",
+      "dom_hints": [
+        ".popup",
+        ".popupzone",
+        ".popup-zone",
+        "#popup",
+        ".layer-popup"
+      ]
+    },
+    {
+      "id": "news_ticker",
+      "name_ko": "뉴스티커(자동전환)",
+      "scope": "main",
+      "dom_hints": [
+        ".ticker",
+        ".news-ticker",
+        ".rolling",
+        ".marquee",
+        ".auto-roll",
+        ".bodo-rolling"
+      ]
+    },
+    {
+      "id": "stats",
+      "name_ko": "통계/지표",
+      "scope": "main",
+      "dom_hints": [
+        ".stat",
+        ".count",
+        ".counter",
+        ".indicator"
+      ]
+    },
+    {
+      "id": "sub_visual",
+      "name_ko": "서브 비주얼",
+      "scope": "sub",
+      "dom_hints": [
+        ".sub-visual",
+        ".subvisual",
+        ".sub-top",
+        ".page-visual"
+      ]
+    },
+    {
+      "id": "breadcrumb",
+      "name_ko": "경로(브레드크럼)",
+      "scope": "sub",
+      "dom_hints": [
+        ".breadcrumb",
+        ".location",
+        ".navi",
+        ".path",
+        "nav[aria-label*='경로']",
+        "nav[aria-label*='위치']",
+        ".krds-breadcrumb"
+      ]
+    },
+    {
+      "id": "page_title",
+      "name_ko": "페이지 타이틀(인쇄·공유)",
+      "scope": "sub",
+      "dom_hints": [
+        ".page-title",
+        ".pageTitle",
+        ".title-area",
+        ".tit-area",
+        ".content-title",
+        ".sub-title",
+        ".page-header"
+      ]
+    },
+    {
+      "id": "content_tabs",
+      "name_ko": "탭 섹션",
+      "scope": "sub",
+      "dom_hints": [
+        "[role='tablist']",
+        ".tab-menu",
+        ".tabmenu",
+        ".tab-list",
+        ".tabs",
+        ".krds-tab",
+        "ul.tab"
+      ]
+    },
+    {
+      "id": "lnb",
+      "name_ko": "LNB(좌측/상단 메뉴)",
+      "scope": "sub",
+      "dom_hints": [
+        ".lnb",
+        "#lnb",
+        ".snb",
+        "#snb",
+        ".side-menu",
+        "aside"
+      ]
+    },
+    {
+      "id": "board_list",
+      "name_ko": "게시판 목록",
+      "scope": "sub",
+      "dom_hints": [
+        ".board-list",
+        ".bbs-list",
+        "table.board",
+        ".list-table",
+        ".gallery-list"
+      ]
+    },
+    {
+      "id": "board_view",
+      "name_ko": "게시판 상세",
+      "scope": "sub",
+      "dom_hints": [
+        ".board-view",
+        ".bbs-view",
+        ".view-wrap",
+        ".file-list",
+        ".prev-next"
+      ]
+    },
+    {
+      "id": "form",
+      "name_ko": "민원/신청 폼",
+      "scope": "sub",
+      "dom_hints": [
+        "form",
+        ".form",
+        ".step",
+        ".agree",
+        ".apply"
+      ]
+    },
+    {
+      "id": "org_chart",
+      "name_ko": "조직도",
+      "scope": "sub",
+      "dom_hints": [
+        ".org",
+        ".organization",
+        ".dept",
+        ".staff"
+      ]
+    },
+    {
+      "id": "sitemap",
+      "name_ko": "사이트맵",
+      "scope": "sub",
+      "dom_hints": [
+        ".sitemap",
+        "#sitemap",
+        ".allmenu",
+        ".all-menu"
+      ]
+    },
+    {
+      "id": "satisfaction",
+      "name_ko": "만족도 조사",
+      "scope": "sub",
+      "dom_hints": [
+        ".satisfy",
+        ".satisfaction",
+        ".survey",
+        ".content-manager",
+        ".charge"
+      ]
+    },
+    {
+      "id": "stat_cards",
+      "name_ko": "통계 카드",
+      "scope": "common",
+      "dom_hints": []
+    },
+    {
+      "id": "floating_quick",
+      "name_ko": "플로팅 퀵메뉴",
+      "scope": "common",
+      "dom_hints": [
+        ".quick_menu",
+        ".quickmenu",
+        ".quick-menu",
+        "#quick",
+        ".right_quick",
+        ".side_quick",
+        ".wing_menu"
+      ]
+    },
+    {
+      "id": "notice_box",
+      "name_ko": "안내문구",
+      "scope": "common",
+      "dom_hints": [
+        ".info-box",
+        ".infobox",
+        ".notice-box",
+        ".guide-box",
+        ".box-info",
+        ".txt-info",
+        ".alert",
+        ".caution",
+        ".tip-box",
+        ".krds-critical-alerts"
+      ]
+    },
+    {
+      "id": "timeline",
+      "name_ko": "연혁",
+      "scope": "sub",
+      "dom_hints": []
+    },
+    {
+      "id": "location_map",
+      "name_ko": "오시는 길·위치",
+      "scope": "sub",
+      "dom_hints": []
+    },
+    {
+      "id": "faq_list",
+      "name_ko": "FAQ·질문 목록",
+      "scope": "sub",
+      "dom_hints": []
+    },
+    {
+      "id": "contact_info",
+      "name_ko": "담당·문의 정보",
+      "scope": "sub",
+      "dom_hints": []
+    },
+    {
+      "id": "step_flow",
+      "name_ko": "절차·흐름",
+      "scope": "sub",
+      "dom_hints": []
+    },
+    {
+      "id": "photo_gallery",
+      "name_ko": "사진 모음",
+      "scope": "sub",
+      "dom_hints": []
+    },
+    {
+      "id": "info_table",
+      "name_ko": "안내 표·현황",
+      "scope": "sub",
+      "dom_hints": []
+    },
+    {
+      "id": "content_block",
+      "name_ko": "안내 블록(제목+설명)",
+      "scope": "sub",
+      "dom_hints": []
+    },
+    {
+      "id": "unknown",
+      "name_ko": "미분류(검수 대기)",
+      "scope": "common",
+      "dom_hints": []
+    }
+  ],
+  "style_tags": [
+    {
+      "id": "tone_navy",
+      "group": "tone",
+      "name_ko": "네이비 클래식"
+    },
+    {
+      "id": "tone_blue",
+      "group": "tone",
+      "name_ko": "블루 모던"
+    },
+    {
+      "id": "tone_green",
+      "group": "tone",
+      "name_ko": "그린 자연형"
+    },
+    {
+      "id": "tone_teal",
+      "group": "tone",
+      "name_ko": "틸/민트"
+    },
+    {
+      "id": "tone_red",
+      "group": "tone",
+      "name_ko": "레드/오렌지 액센트"
+    },
+    {
+      "id": "tone_purple",
+      "group": "tone",
+      "name_ko": "퍼플"
+    },
+    {
+      "id": "tone_gray",
+      "group": "tone",
+      "name_ko": "그레이 미니멀"
+    },
+    {
+      "id": "tone_gradient",
+      "group": "tone",
+      "name_ko": "그라데이션"
+    },
+    {
+      "id": "tone_illust",
+      "group": "tone",
+      "name_ko": "일러스트형"
+    },
+    {
+      "id": "layout_mega",
+      "group": "layout",
+      "name_ko": "메가메뉴"
+    },
+    {
+      "id": "layout_2depth",
+      "group": "layout",
+      "name_ko": "2단 드롭다운"
+    },
+    {
+      "id": "layout_hamburger",
+      "group": "layout",
+      "name_ko": "햄버거 전체메뉴"
+    },
+    {
+      "id": "layout_lnb_left",
+      "group": "layout",
+      "name_ko": "좌측 LNB"
+    },
+    {
+      "id": "layout_lnb_top",
+      "group": "layout",
+      "name_ko": "상단 탭 LNB"
+    },
+    {
+      "id": "layout_fullwidth",
+      "group": "layout",
+      "name_ko": "풀와이드 비주얼"
+    },
+    {
+      "id": "layout_boxed",
+      "group": "layout",
+      "name_ko": "박스형 컨테이너"
+    },
+    {
+      "id": "shape_round",
+      "group": "shape",
+      "name_ko": "라운드"
+    },
+    {
+      "id": "shape_sharp",
+      "group": "shape",
+      "name_ko": "각진"
+    },
+    {
+      "id": "shape_card",
+      "group": "shape",
+      "name_ko": "카드형"
+    },
+    {
+      "id": "shape_flat",
+      "group": "shape",
+      "name_ko": "플랫"
+    },
+    {
+      "id": "shape_shadow",
+      "group": "shape",
+      "name_ko": "그림자"
+    },
+    {
+      "id": "density_airy",
+      "group": "density",
+      "name_ko": "여백 넓음"
+    },
+    {
+      "id": "density_dense",
+      "group": "density",
+      "name_ko": "정보 밀집"
+    },
+    {
+      "id": "icon_line",
+      "group": "icon",
+      "name_ko": "라인 아이콘"
+    },
+    {
+      "id": "icon_fill",
+      "group": "icon",
+      "name_ko": "면 아이콘"
+    },
+    {
+      "id": "icon_3d",
+      "group": "icon",
+      "name_ko": "3D/입체 아이콘"
+    },
+    {
+      "id": "feature_ai_search",
+      "group": "feature",
+      "name_ko": "AI 검색"
+    },
+    {
+      "id": "feature_chatbot",
+      "group": "feature",
+      "name_ko": "챗봇"
+    },
+    {
+      "id": "feature_search_layer",
+      "group": "feature",
+      "name_ko": "검색 레이어"
+    },
+    {
+      "id": "feature_krds",
+      "group": "feature",
+      "name_ko": "KRDS 적용"
+    },
+    {
+      "id": "feature_wa_mark",
+      "group": "feature",
+      "name_ko": "웹접근성 인증마크"
+    }
+  ],
+  "krds_components": [
+    {
+      "id": "masthead",
+      "category": "identity",
+      "name_ko": "공식 배너",
+      "name_en": "Masthead",
+      "guide_file": "component_02_01.html"
+    },
+    {
+      "id": "identifier",
+      "category": "identity",
+      "name_ko": "운영기관 식별자",
+      "name_en": "Identifier",
+      "guide_file": "component_02_02.html"
+    },
+    {
+      "id": "header",
+      "category": "identity",
+      "name_ko": "헤더",
+      "name_en": "Header",
+      "guide_file": "component_02_03.html"
+    },
+    {
+      "id": "footer",
+      "category": "identity",
+      "name_ko": "푸터",
+      "name_en": "Footer",
+      "guide_file": "component_02_04.html"
+    },
+    {
+      "id": "skip_link",
+      "category": "navigation",
+      "name_ko": "건너뛰기 링크",
+      "name_en": "Skip link",
+      "guide_file": "component_03_01.html"
+    },
+    {
+      "id": "main_menu",
+      "category": "navigation",
+      "name_ko": "메인 메뉴",
+      "name_en": "Main menu",
+      "guide_file": "component_03_02.html"
+    },
+    {
+      "id": "breadcrumb",
+      "category": "navigation",
+      "name_ko": "브레드크럼",
+      "name_en": "Breadcrumb",
+      "guide_file": "component_03_03.html"
+    },
+    {
+      "id": "side_navigation",
+      "category": "navigation",
+      "name_ko": "사이드 메뉴",
+      "name_en": "Side navigation",
+      "guide_file": "component_03_04.html"
+    },
+    {
+      "id": "in_page_navigation",
+      "category": "navigation",
+      "name_ko": "콘텐츠 내 탐색",
+      "name_en": "In-page navigation",
+      "guide_file": "component_03_05.html"
+    },
+    {
+      "id": "pagination",
+      "category": "navigation",
+      "name_ko": "페이지네이션",
+      "name_en": "Pagination",
+      "guide_file": "component_03_06.html"
+    },
+    {
+      "id": "structured_list",
+      "category": "layout",
+      "name_ko": "구조화 목록",
+      "name_en": "Structured list",
+      "guide_file": "component_04_01.html"
+    },
+    {
+      "id": "critical_alerts",
+      "category": "layout",
+      "name_ko": "긴급 공지",
+      "name_en": "Critical alerts",
+      "guide_file": "component_04_02.html"
+    },
+    {
+      "id": "calendar",
+      "category": "layout",
+      "name_ko": "달력",
+      "name_en": "Calendar",
+      "guide_file": "component_04_03.html"
+    },
+    {
+      "id": "disclosure",
+      "category": "layout",
+      "name_ko": "디스클로저",
+      "name_en": "Disclosure",
+      "guide_file": "component_04_04.html"
+    },
+    {
+      "id": "modal",
+      "category": "layout",
+      "name_ko": "모달",
+      "name_en": "Modal",
+      "guide_file": "component_04_05.html"
+    },
+    {
+      "id": "badge",
+      "category": "layout",
+      "name_ko": "배지",
+      "name_en": "Badge",
+      "guide_file": "component_04_06.html"
+    },
+    {
+      "id": "accordion",
+      "category": "layout",
+      "name_ko": "아코디언",
+      "name_en": "Accordion",
+      "guide_file": "component_04_07.html"
+    },
+    {
+      "id": "image",
+      "category": "layout",
+      "name_ko": "이미지",
+      "name_en": "Image",
+      "guide_file": "component_04_08.html"
+    },
+    {
+      "id": "carousel",
+      "category": "layout",
+      "name_ko": "캐러셀",
+      "name_en": "Carousel",
+      "guide_file": "component_04_09.html"
+    },
+    {
+      "id": "tab",
+      "category": "layout",
+      "name_ko": "탭",
+      "name_en": "Tab",
+      "guide_file": "component_04_10.html"
+    },
+    {
+      "id": "table",
+      "category": "layout",
+      "name_ko": "표",
+      "name_en": "Table",
+      "guide_file": "component_04_11.html"
+    },
+    {
+      "id": "text_list",
+      "category": "layout",
+      "name_ko": "텍스트 목록",
+      "name_en": "Text list",
+      "guide_file": "component_04_13.html"
+    },
+    {
+      "id": "favicon",
+      "category": "layout",
+      "name_ko": "파비콘",
+      "name_en": "Favicon",
+      "guide_file": "component_04_14.html"
+    },
+    {
+      "id": "link",
+      "category": "action",
+      "name_ko": "링크",
+      "name_en": "Link",
+      "guide_file": "component_05_01.html"
+    },
+    {
+      "id": "button",
+      "category": "action",
+      "name_ko": "버튼",
+      "name_en": "Button",
+      "guide_file": "component_05_02.html"
+    },
+    {
+      "id": "fab",
+      "category": "action",
+      "name_ko": "플로팅 버튼",
+      "name_en": "FAB",
+      "guide_file": "component_05_03.html"
+    },
+    {
+      "id": "radio",
+      "category": "selection",
+      "name_ko": "라디오 버튼",
+      "name_en": "Radio button",
+      "guide_file": "component_06_01.html"
+    },
+    {
+      "id": "checkbox",
+      "category": "selection",
+      "name_ko": "체크박스",
+      "name_en": "Checkbox",
+      "guide_file": "component_06_02.html"
+    },
+    {
+      "id": "select",
+      "category": "selection",
+      "name_ko": "셀렉트",
+      "name_en": "Select",
+      "guide_file": "component_06_03.html"
+    },
+    {
+      "id": "tag",
+      "category": "selection",
+      "name_ko": "태그",
+      "name_en": "Tag",
+      "guide_file": "component_06_04.html"
+    },
+    {
+      "id": "toggle_switch",
+      "category": "selection",
+      "name_ko": "토글 스위치",
+      "name_en": "Toggle switch",
+      "guide_file": "component_06_07.html"
+    },
+    {
+      "id": "step_indicator",
+      "category": "feedback",
+      "name_ko": "단계 표시기",
+      "name_en": "Step indicator",
+      "guide_file": "component_07_01.html"
+    },
+    {
+      "id": "spinner",
+      "category": "feedback",
+      "name_ko": "스피너",
+      "name_en": "Spinner",
+      "guide_file": "component_07_02.html"
+    },
+    {
+      "id": "help_panel",
+      "category": "help",
+      "name_ko": "도움 패널",
+      "name_en": "Help panel",
+      "guide_file": "component_08_01.html"
+    },
+    {
+      "id": "tutorial_panel",
+      "category": "help",
+      "name_ko": "따라하기 패널",
+      "name_en": "Tutorial panel",
+      "guide_file": "component_08_02.html"
+    },
+    {
+      "id": "contextual_help",
+      "category": "help",
+      "name_ko": "맥락적 도움말",
+      "name_en": "Contextual help",
+      "guide_file": "component_08_03.html"
+    },
+    {
+      "id": "coach_mark",
+      "category": "help",
+      "name_ko": "코치마크",
+      "name_en": "Coach mark",
+      "guide_file": "component_08_04.html"
+    },
+    {
+      "id": "tooltip",
+      "category": "help",
+      "name_ko": "툴팁",
+      "name_en": "Tooltip",
+      "guide_file": "component_08_05.html"
+    },
+    {
+      "id": "tts",
+      "category": "help",
+      "name_ko": "음성지원",
+      "name_en": "TTS",
+      "guide_file": "component_08_06.html"
+    },
+    {
+      "id": "date_input",
+      "category": "input",
+      "name_ko": "날짜 입력 필드",
+      "name_en": "Date input",
+      "guide_file": "component_09_01.html"
+    },
+    {
+      "id": "textarea",
+      "category": "input",
+      "name_ko": "텍스트 영역",
+      "name_en": "Textarea",
+      "guide_file": "component_09_02.html"
+    },
+    {
+      "id": "text_input",
+      "category": "input",
+      "name_ko": "텍스트 입력 필드",
+      "name_en": "Text input",
+      "guide_file": "component_09_03.html"
+    },
+    {
+      "id": "file_upload",
+      "category": "input",
+      "name_ko": "파일 업로드",
+      "name_en": "File upload",
+      "guide_file": "component_09_04.html"
+    },
+    {
+      "id": "language_switcher",
+      "category": "settings",
+      "name_ko": "언어 변경",
+      "name_en": "Language switcher",
+      "guide_file": "component_10_01.html"
+    },
+    {
+      "id": "resize",
+      "category": "settings",
+      "name_ko": "화면 크기 조정",
+      "name_en": "Resize",
+      "guide_file": "component_10_02.html"
+    },
+    {
+      "id": "accessible_multimedia",
+      "category": "content",
+      "name_ko": "접근 가능한 미디어",
+      "name_en": "Accessible multimedia",
+      "guide_file": "component_11_01.html"
+    },
+    {
+      "id": "visually_hidden",
+      "category": "content",
+      "name_ko": "숨긴 콘텐츠",
+      "name_en": "Visually hidden",
+      "guide_file": "component_11_02.html"
+    },
+    {
+      "id": "range_slider",
+      "category": "mobile",
+      "name_ko": "범위 슬라이드",
+      "name_en": "Range slider",
+      "guide_file": "component_12_01.html"
+    },
+    {
+      "id": "back_button",
+      "category": "mobile",
+      "name_ko": "뒤로가기 버튼",
+      "name_en": "Back button",
+      "guide_file": "component_12_02.html"
+    },
+    {
+      "id": "bottom_sheet",
+      "category": "mobile",
+      "name_ko": "바텀시트",
+      "name_en": "Bottom sheet",
+      "guide_file": "component_12_03.html"
+    },
+    {
+      "id": "quantity_toggle",
+      "category": "mobile",
+      "name_ko": "수량 토글",
+      "name_en": "Quantity toggle",
+      "guide_file": "component_12_04.html"
+    },
+    {
+      "id": "toast",
+      "category": "mobile",
+      "name_ko": "토스트",
+      "name_en": "Toast",
+      "guide_file": "component_12_05.html"
+    },
+    {
+      "id": "snackbar",
+      "category": "mobile",
+      "name_ko": "스낵바",
+      "name_en": "Snackbar",
+      "guide_file": "component_12_06.html"
+    },
+    {
+      "id": "tab_bar",
+      "category": "mobile",
+      "name_ko": "탭바",
+      "name_en": "Tab bars",
+      "guide_file": "component_12_07.html"
+    },
+    {
+      "id": "splash_screen",
+      "category": "mobile",
+      "name_ko": "스플래시 스크린",
+      "name_en": "Splash screen",
+      "guide_file": "component_12_08.html"
+    }
+  ],
+  "krds_component_categories": [
+    {
+      "id": "identity",
+      "name_ko": "아이덴티티"
+    },
+    {
+      "id": "navigation",
+      "name_ko": "탐색"
+    },
+    {
+      "id": "layout",
+      "name_ko": "레이아웃 및 표현"
+    },
+    {
+      "id": "action",
+      "name_ko": "액션"
+    },
+    {
+      "id": "selection",
+      "name_ko": "선택"
+    },
+    {
+      "id": "feedback",
+      "name_ko": "피드백"
+    },
+    {
+      "id": "help",
+      "name_ko": "도움"
+    },
+    {
+      "id": "input",
+      "name_ko": "입력"
+    },
+    {
+      "id": "settings",
+      "name_ko": "설정"
+    },
+    {
+      "id": "content",
+      "name_ko": "콘텐츠"
+    },
+    {
+      "id": "mobile",
+      "name_ko": "모바일"
+    }
+  ],
+  "krds_patterns": [
+    {
+      "id": "basic_pii_input",
+      "kind": "basic",
+      "name_ko": "개인 식별 정보 입력"
+    },
+    {
+      "id": "basic_help",
+      "kind": "basic",
+      "name_ko": "도움"
+    },
+    {
+      "id": "basic_consent",
+      "kind": "basic",
+      "name_ko": "동의"
+    },
+    {
+      "id": "basic_list_navigation",
+      "kind": "basic",
+      "name_ko": "목록 탐색"
+    },
+    {
+      "id": "basic_user_feedback",
+      "kind": "basic",
+      "name_ko": "사용자 피드백"
+    },
+    {
+      "id": "basic_detail",
+      "kind": "basic",
+      "name_ko": "상세 정보 확인"
+    },
+    {
+      "id": "basic_error",
+      "kind": "basic",
+      "name_ko": "오류"
+    },
+    {
+      "id": "basic_form",
+      "kind": "basic",
+      "name_ko": "입력 폼"
+    },
+    {
+      "id": "basic_attachment",
+      "kind": "basic",
+      "name_ko": "첨부파일"
+    },
+    {
+      "id": "basic_filter_sort",
+      "kind": "basic",
+      "name_ko": "필터링·정렬"
+    },
+    {
+      "id": "basic_confirm",
+      "kind": "basic",
+      "name_ko": "확인"
+    },
+    {
+      "id": "service_visit",
+      "kind": "service",
+      "name_ko": "방문"
+    },
+    {
+      "id": "service_search",
+      "kind": "service",
+      "name_ko": "검색"
+    },
+    {
+      "id": "service_login",
+      "kind": "service",
+      "name_ko": "로그인"
+    },
+    {
+      "id": "service_apply",
+      "kind": "service",
+      "name_ko": "신청"
+    },
+    {
+      "id": "service_policy_info",
+      "kind": "service",
+      "name_ko": "정책 정보 확인"
+    }
+  ],
+  "section_krds_default_map": {
+    "masthead": [
+      "masthead"
+    ],
+    "header": [
+      "header",
+      "main_menu",
+      "skip_link",
+      "language_switcher"
+    ],
+    "footer": [
+      "footer",
+      "identifier"
+    ],
+    "skip_nav": [
+      "skip_link"
+    ],
+    "main_visual": [
+      "carousel",
+      "image"
+    ],
+    "main_search": [
+      "text_input",
+      "button"
+    ],
+    "quick_links": [
+      "link",
+      "image"
+    ],
+    "news_tabs": [
+      "tab",
+      "text_list"
+    ],
+    "calendar": [
+      "calendar"
+    ],
+    "banner_zone": [
+      "carousel",
+      "link"
+    ],
+    "popup_zone": [
+      "modal",
+      "carousel"
+    ],
+    "sub_visual": [
+      "image"
+    ],
+    "breadcrumb": [
+      "breadcrumb"
+    ],
+    "page_title": [
+      "button"
+    ],
+    "content_tabs": [
+      "tab"
+    ],
+    "lnb": [
+      "side_navigation"
+    ],
+    "board_list": [
+      "table",
+      "pagination",
+      "select",
+      "text_input"
+    ],
+    "board_view": [
+      "structured_list",
+      "link"
+    ],
+    "form": [
+      "step_indicator",
+      "text_input",
+      "checkbox",
+      "radio",
+      "file_upload",
+      "button"
+    ],
+    "org_chart": [
+      "table"
+    ],
+    "sitemap": [
+      "text_list"
+    ],
+    "satisfaction": [
+      "radio",
+      "button"
+    ],
+    "notice_box": [],
+    "news_ticker": [
+      "carousel"
+    ],
+    "stat_cards": [],
+    "floating_quick": []
+  },
+  "flows": [
+    {
+      "id": "civil_apply",
+      "name_ko": "민원 신청",
+      "krds_pattern": "service_apply",
+      "stop_at": "본인인증"
+    },
+    {
+      "id": "facility_reserve",
+      "name_ko": "공공시설 예약",
+      "krds_pattern": "service_apply",
+      "stop_at": "로그인"
+    },
+    {
+      "id": "signup",
+      "name_ko": "회원가입",
+      "krds_pattern": "service_login",
+      "stop_at": "본인인증"
+    },
+    {
+      "id": "search",
+      "name_ko": "통합검색",
+      "krds_pattern": "service_search",
+      "stop_at": null
+    },
+    {
+      "id": "info_request",
+      "name_ko": "정보공개 청구",
+      "krds_pattern": "service_apply",
+      "stop_at": "로그인"
+    },
+    {
+      "id": "visit",
+      "name_ko": "방문(메인→서브 탐색)",
+      "krds_pattern": "service_visit",
+      "stop_at": null
+    }
+  ],
+  "plans": [
+    {
+      "id": "free",
+      "name_ko": "Free",
+      "price_month": 0,
+      "price_year": 0,
+      "limits": {
+        "screens_per_site": 5,
+        "search_per_day": 30,
+        "collections": 1,
+        "mcp_keys": 0,
+        "mcp_calls_day": 0,
+        "download": false,
+        "pptx": false,
+        "design_data": "summary"
+      }
+    },
+    {
+      "id": "pro",
+      "name_ko": "Pro",
+      "price_month": 14000,
+      "price_year": 144000,
+      "limits": {
+        "screens_per_site": -1,
+        "search_per_day": -1,
+        "collections": -1,
+        "mcp_keys": 1,
+        "mcp_calls_day": 1000,
+        "download": true,
+        "pptx": false,
+        "design_data": "full"
+      }
+    },
+    {
+      "id": "team",
+      "name_ko": "Team",
+      "price_month": 29000,
+      "price_year": 288000,
+      "limits": {
+        "screens_per_site": -1,
+        "search_per_day": -1,
+        "collections": -1,
+        "mcp_keys": -1,
+        "mcp_calls_day": 5000,
+        "download": true,
+        "pptx": true,
+        "design_data": "full",
+        "min_seats": 5,
+        "tax_invoice": true
+      }
+    },
+    {
+      "id": "enterprise",
+      "name_ko": "Enterprise",
+      "price_month": -1,
+      "price_year": -1,
+      "limits": {
+        "screens_per_site": -1,
+        "search_per_day": -1,
+        "collections": -1,
+        "mcp_keys": -1,
+        "mcp_calls_day": -1,
+        "download": true,
+        "pptx": true,
+        "design_data": "full",
+        "api": true,
+        "vendor_badge": -1
+      }
+    }
+  ],
+  "assembly": {
+    "spec_version": "1.0",
+    "note": "docs/11 디자인 조립 모델. code = 조립 명세의 섹션 코드, section_types = 이 코드로 모이는 수집 섹션 유형(taxonomy id). section_types 가 빈 코드는 아직 수집·분해하지 않는 코드(collected=false)라 조립 후보가 없다. draft=true 는 docs/11 1차안 밖에서 추가한 코드(사용자 확정 대기). screen_types.required = 채택률과 무관하게 그 화면 유형을 정의하는 섹션(표본이 있으면 항상 넣는다).",
+    "screen_types": [
+      {
+        "code": "MAIN",
+        "name_ko": "메인(포털·대시보드 포함)",
+        "page_types": [
+          "main"
+        ],
+        "required": []
+      },
+      {
+        "code": "LIST",
+        "name_ko": "목록",
+        "page_types": [
+          "board_list",
+          "board_gallery"
+        ],
+        "required": [
+          "BREADCRUMB",
+          "PAGE_TITLE",
+          "RESULT_TABLE"
+        ]
+      },
+      {
+        "code": "DETAIL",
+        "name_ko": "상세",
+        "page_types": [
+          "board_view"
+        ],
+        "required": [
+          "BREADCRUMB",
+          "PAGE_TITLE",
+          "DETAIL_VIEW"
+        ]
+      },
+      {
+        "code": "FORM",
+        "name_ko": "등록·신청",
+        "page_types": [
+          "form"
+        ],
+        "required": [
+          "BREADCRUMB",
+          "PAGE_TITLE",
+          "FORM_STEP"
+        ]
+      },
+      {
+        "code": "STATS",
+        "name_ko": "통계",
+        "page_types": [],
+        "required": []
+      },
+      {
+        "code": "POPUP",
+        "name_ko": "팝업·모달",
+        "page_types": [],
+        "required": []
+      },
+      {
+        "code": "SEARCH",
+        "name_ko": "통합검색 결과",
+        "page_types": [
+          "search"
+        ],
+        "required": [
+          "PAGE_TITLE"
+        ]
+      },
+      {
+        "code": "SITEMAP",
+        "name_ko": "사이트맵·전체메뉴",
+        "page_types": [
+          "sitemap"
+        ],
+        "required": [
+          "PAGE_TITLE",
+          "SITEMAP_TREE"
+        ]
+      },
+      {
+        "code": "INFO",
+        "name_ko": "정적 안내(기관소개·찾아오시는 길 등)",
+        "page_types": [
+          "sub_visual",
+          "content",
+          "location",
+          "history",
+          "vision",
+          "symbol",
+          "procedure",
+          "org_chart",
+          "greeting",
+          "info_disclosure",
+          "faq"
+        ],
+        "required": [
+          "BREADCRUMB",
+          "PAGE_TITLE"
+        ]
+      }
+    ],
+    "section_codes": [
+      {
+        "code": "GNB",
+        "group": "global",
+        "name_ko": "상단 주메뉴",
+        "section_types": [
+          "header"
+        ],
+        "components": [
+          "MegaMenu",
+          "Link"
+        ]
+      },
+      {
+        "code": "LNB",
+        "group": "global",
+        "name_ko": "좌측 메뉴",
+        "section_types": [
+          "lnb"
+        ],
+        "components": [
+          "TreeNavigation"
+        ]
+      },
+      {
+        "code": "UTIL_BAR",
+        "group": "global",
+        "name_ko": "로그인·언어·글자크기",
+        "section_types": [],
+        "components": [
+          "LinkList",
+          "Toggle"
+        ]
+      },
+      {
+        "code": "GOV_BANNER",
+        "group": "global",
+        "name_ko": "정부 공식 사이트 표시 배너",
+        "section_types": [
+          "masthead"
+        ],
+        "components": [
+          "Banner"
+        ]
+      },
+      {
+        "code": "FOOTER",
+        "group": "global",
+        "name_ko": "푸터",
+        "section_types": [
+          "footer"
+        ],
+        "components": [
+          "LinkList",
+          "Select"
+        ]
+      },
+      {
+        "code": "HERO_VISUAL",
+        "group": "entry",
+        "name_ko": "메인 비주얼",
+        "section_types": [
+          "main_visual",
+          "sub_visual",
+          "hero"
+        ],
+        "components": [
+          "Carousel",
+          "Heading"
+        ]
+      },
+      {
+        "code": "MAIN_SEARCH",
+        "group": "entry",
+        "name_ko": "메인 검색",
+        "section_types": [
+          "main_search"
+        ],
+        "components": [
+          "SearchInput",
+          "KeywordChip"
+        ]
+      },
+      {
+        "code": "QUICK_MENU",
+        "group": "entry",
+        "name_ko": "자주 찾는 서비스",
+        "section_types": [
+          "quick_links",
+          "floating_quick"
+        ],
+        "components": [
+          "IconGrid"
+        ]
+      },
+      {
+        "code": "NOTICE_LIST",
+        "group": "info",
+        "name_ko": "공지·보도자료",
+        "section_types": [
+          "news_tabs",
+          "news_ticker"
+        ],
+        "components": [
+          "Tabs",
+          "List",
+          "Badge",
+          "MoreLink"
+        ]
+      },
+      {
+        "code": "NEWS_CARD",
+        "group": "info",
+        "name_ko": "카드형 소식",
+        "section_types": [
+          "tour_cards",
+          "sns_video"
+        ],
+        "components": [
+          "Card"
+        ]
+      },
+      {
+        "code": "BANNER_ROLL",
+        "group": "info",
+        "name_ko": "배너존",
+        "section_types": [
+          "banner_zone"
+        ],
+        "components": [
+          "Carousel"
+        ]
+      },
+      {
+        "code": "POPUP_ZONE",
+        "group": "info",
+        "name_ko": "팝업존",
+        "section_types": [
+          "popup_zone"
+        ],
+        "components": [
+          "Carousel",
+          "PaginationDot"
+        ]
+      },
+      {
+        "code": "KPI_SUMMARY",
+        "group": "work",
+        "name_ko": "요약 수치",
+        "section_types": [
+          "stats",
+          "stat_cards"
+        ],
+        "components": [
+          "SummaryCard"
+        ]
+      },
+      {
+        "code": "PROGRESS_STATUS",
+        "group": "work",
+        "name_ko": "진행 현황",
+        "section_types": [],
+        "components": [
+          "Stepper",
+          "Progress"
+        ]
+      },
+      {
+        "code": "TASK_TABLE",
+        "group": "work",
+        "name_ko": "업무 목록 표",
+        "section_types": [],
+        "components": [
+          "DataTable",
+          "StatusBadge"
+        ]
+      },
+      {
+        "code": "BREADCRUMB",
+        "group": "sub",
+        "name_ko": "경로",
+        "section_types": [
+          "breadcrumb"
+        ],
+        "components": [
+          "Breadcrumb"
+        ]
+      },
+      {
+        "code": "PAGE_TITLE",
+        "group": "sub",
+        "name_ko": "페이지 제목·유틸(인쇄·공유)",
+        "section_types": [
+          "page_title"
+        ],
+        "components": [
+          "Heading",
+          "IconButton"
+        ]
+      },
+      {
+        "code": "SEARCH_FILTER",
+        "group": "sub",
+        "name_ko": "검색 조건",
+        "section_types": [],
+        "components": [
+          "SearchToolbar",
+          "Select",
+          "DatePicker"
+        ]
+      },
+      {
+        "code": "RESULT_TABLE",
+        "group": "sub",
+        "name_ko": "결과 목록",
+        "section_types": [
+          "board_list"
+        ],
+        "components": [
+          "DataTable",
+          "Pagination"
+        ]
+      },
+      {
+        "code": "DETAIL_VIEW",
+        "group": "sub",
+        "name_ko": "게시물 상세",
+        "section_types": [
+          "board_view"
+        ],
+        "components": [
+          "DescriptionList",
+          "Attachment"
+        ]
+      },
+      {
+        "code": "FORM_STEP",
+        "group": "sub",
+        "name_ko": "단계형 신청",
+        "section_types": [
+          "form"
+        ],
+        "components": [
+          "Stepper",
+          "FormField"
+        ]
+      },
+      {
+        "code": "SATISFACTION",
+        "group": "sub",
+        "name_ko": "만족도 조사",
+        "section_types": [
+          "satisfaction"
+        ],
+        "components": [
+          "RadioGroup"
+        ]
+      },
+      {
+        "code": "CONTENT_TABS",
+        "group": "sub",
+        "name_ko": "콘텐츠 탭",
+        "section_types": [
+          "content_tabs"
+        ],
+        "components": [
+          "Tabs"
+        ],
+        "draft": true
+      },
+      {
+        "code": "GREETING",
+        "group": "info",
+        "name_ko": "인사말·비전",
+        "section_types": [
+          "greeting_vision"
+        ],
+        "components": [
+          "Image",
+          "Heading",
+          "Text"
+        ],
+        "draft": true
+      },
+      {
+        "code": "CALENDAR",
+        "group": "info",
+        "name_ko": "행사·일정",
+        "section_types": [
+          "calendar"
+        ],
+        "components": [
+          "Calendar",
+          "List"
+        ],
+        "draft": true
+      },
+      {
+        "code": "ORG_CHART",
+        "group": "sub",
+        "name_ko": "조직도·담당자",
+        "section_types": [
+          "org_chart"
+        ],
+        "components": [
+          "DataTable"
+        ],
+        "draft": true
+      },
+      {
+        "code": "SITEMAP_TREE",
+        "group": "sub",
+        "name_ko": "사이트맵",
+        "section_types": [
+          "sitemap"
+        ],
+        "components": [
+          "LinkList"
+        ],
+        "draft": true
+      },
+      {
+        "code": "NOTICE_BOX",
+        "group": "sub",
+        "name_ko": "안내 문구",
+        "section_types": [
+          "notice_box"
+        ],
+        "components": [
+          "Callout"
+        ],
+        "draft": true
+      },
+      {
+        "code": "TEXT_BAND",
+        "group": "info",
+        "name_ko": "안내 띠",
+        "section_types": [
+          "text_band"
+        ],
+        "components": [
+          "Banner"
+        ],
+        "draft": true
+      },
+      {
+        "code": "CHATBOT",
+        "group": "entry",
+        "name_ko": "AI 검색·챗봇",
+        "section_types": [
+          "ai_chatbot"
+        ],
+        "components": [
+          "SearchInput",
+          "Button"
+        ],
+        "draft": true
+      },
+      {
+        "code": "CONTENT_BLOCK",
+        "group": "sub",
+        "name_ko": "안내 블록",
+        "section_types": [
+          "content_block"
+        ],
+        "components": [
+          "Heading",
+          "Text"
+        ],
+        "draft": true
+      },
+      {
+        "code": "INFO_TABLE",
+        "group": "sub",
+        "name_ko": "안내 표",
+        "section_types": [
+          "info_table"
+        ],
+        "components": [
+          "Table"
+        ],
+        "draft": true
+      },
+      {
+        "code": "PHOTO_GALLERY",
+        "group": "sub",
+        "name_ko": "사진 모음",
+        "section_types": [
+          "photo_gallery"
+        ],
+        "components": [
+          "Card",
+          "Image"
+        ],
+        "draft": true
+      },
+      {
+        "code": "STEP_FLOW",
+        "group": "sub",
+        "name_ko": "절차·흐름",
+        "section_types": [
+          "step_flow"
+        ],
+        "components": [
+          "StepIndicator"
+        ],
+        "draft": true
+      },
+      {
+        "code": "CONTACT_BOX",
+        "group": "sub",
+        "name_ko": "담당·문의",
+        "section_types": [
+          "contact_info"
+        ],
+        "components": [
+          "Callout"
+        ],
+        "draft": true
+      },
+      {
+        "code": "FAQ_LIST",
+        "group": "sub",
+        "name_ko": "FAQ 목록",
+        "section_types": [
+          "faq_list"
+        ],
+        "components": [
+          "Accordion"
+        ],
+        "draft": true
+      },
+      {
+        "code": "LOCATION_MAP",
+        "group": "sub",
+        "name_ko": "오시는 길",
+        "section_types": [
+          "location_map"
+        ],
+        "components": [
+          "Map",
+          "Text"
+        ],
+        "draft": true
+      },
+      {
+        "code": "TIMELINE",
+        "group": "sub",
+        "name_ko": "연혁",
+        "section_types": [
+          "timeline"
+        ],
+        "components": [
+          "List"
+        ],
+        "draft": true
+      }
+    ]
+  }
+}

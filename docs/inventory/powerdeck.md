@@ -1,0 +1,37 @@
+# powerDeck 인벤토리 (D:\powerDeck, HEAD 71366db, 2026-10-06)
+## 구성
+PHP API 하나 `api/index.php`(217줄, 경로 끝부분 정규식 route() :37). 웹 React+Vite base `/powerDeck/api`. 엔진 Python worker 리눅스 VM systemd `powerdeck-worker`. CORS: hom2box.com, powerplus.solideos.com, localhost:5180.
+## 인증 api/src/Auth.php
+- 이메일 OTP 6자리 sha256, 60초 1회, 5회 틀리면 무효, TTL code_ttl_min(10). rejectReason :132 허용 도메인·메일. auth_debug 면 dev_code 반환.
+- 세션 Bearer random_bytes(32)→sessions sha256, session_ttl_days(30). 파일 라우트만 `?t=` 허용(allowQuery).
+- 관리자 realAdmin=config admin_emails, isAdmin 은 X-PD-Role 전환(dev_role_switch). 엔진 `worker_key` Bearer + X-Worker 헤더(hash_equals).
+## 라우트
+공개: GET /reference.zip(관리자+?t) · /logos{,/topics,/file?p=} · /health · POST /auth/request·verify · /auth/me · /auth/logout
+엔진 /worker/*: reference.info·zip · claim POST{light_only}→{job,engine_model,text_engine,image_provider} · jobs/{id}/usage·source·files/{kind}/{name} GET·docs·progress POST→{cancel}·ai POST(AiKeys::chatForJob)·files/{kind}?name=&slide= PUT·finish · wire/layout POST · ping
+파일(?t): GET /jobs/{id}/files/{kind}/{name} · /jobs/{id}/(plan.md|export.zip|script.html|script.md|practice.html) · 비로그인 GET /jobs/{id}(shared=3)
+로그인: /engine · GET /ai/settings·/ai/key/check · GET /admin/usage?days(관리자) · PUT /ai/budget·/ai/admin(관리자) · POST /uploads · GET /uploads/{24hex} · PUT /uploads/{id}/{n} · POST /uploads/{id}/complete · GET /jobs[?all] · POST /jobs/design · GET·PATCH·DELETE /jobs/{id} · /jobs/{id}/events?after · GET·POST comments · PATCH·DELETE comments/{c} · replies · POST /wire/tpl · POST /jobs/{id}/wire · POST·PUT /jobs/{id}/script · POST edits·cancel·start·approve·retry · PUT brand/(client|vendor|client_white|vendor_white) · DELETE docs/{docId} · POST slides/order
+죽은 웹 호출: openrouter.ts /ai/hf·/ai/key·/ai/models(서버 삭제됨).
+## 분할 업로드 Uploads.php
+CHUNK 8MB. create(doc 용도면 status open:doc:<jobId>). chunk :82-114 크기 정확 일치, c+b 열고 flock, fseek(n·chunk), received CSV FOR UPDATE. complete: 조각 수·크기·매직 PK 확인 → doc 이면 Jobs::addDoc, 아니면 Jobs::create(opts kind,budget,accent,slides,mockups,sample,front,style,purpose,font_*). 클라 web/src/api.ts:143-195(이어올리기 status→init→PUT→complete).
+## DB 13표 (api/schema.sql, Db::migrate 멱등 v14)
+auth_codes · sessions(token_hash PK) · uploads(id CHAR24,email,filename,size,chunk_size,chunks,received CSV,status) · jobs(id CHAR16, email,title,filename,size,slides,note,status hold|queued|running|review|done|failed|canceled, stage,progress, worker,claimed_at,heartbeat_at,started_at,finished_at, result_name,report,error,cancel_requested, phase pilot|full|plan|build|edit, pilot_slide,feedback, kind polish|design, source_kind, brief, budget_usd,spent_usd, plan MEDIUMTEXT JSON, review, theme, docs_purged_at, opts JSON, shared TINYINT 0~3) · job_events · job_files(job_id,kind source|result|before|after|extra|live|frames|draft|pilot|mockup|brand, slide,name,size UNIQUE(job,kind,name)) · workers(name PK,seen_at,info) · ai_settings(k,v: company_key_enc/hint, plan_model,image_model,digest_model,text_model,text_effort,engine_model,job_budget_usd,monthly_cap_usd) · ai_user_keys(미사용) · ai_usage(email,job_id,kind,model,cost_usd,tokens_in,tokens_out) · job_comments(slide,x,y 0~1,body,resolved,accepted,reply,target mockup|result) · job_comment_replies · job_docs · ai_tasks(미사용). 파일 dataDir/jobs/<id>/<kind>/. 기획은 jobs.plan JSON(장마다 wire, wire_alt{a,b}, wire_pick, wire_checks, wire_at).
+## 와이어 엔진 WireLayout.php
+상수 X0 2 X1 98 Y0 15 Y1 97 GAP 2 COLS 12 EM 2.322. cpl :24 need :31 build(rows 최대 4줄×6칸, 결론 띠 9~11%) :96 templates :157 applyTpl :245 fromAi :320 check :331.
+check 항목: 헤드라인 침범(y<12.5)·화면 밖·겹침 25%·글 넘침(need>h×1.12+1)·빈 상자·한 단어 상자·자리표시 말(Jobs::WIRE_PLACEHOLDER)·같은 크기 4개+·결론 띠 2+·기획 수치 누락. 최대 8개.
+상자 15종 panel card person image screen chart table flow map badge band text gantt phase kpi, 형식 {id,k,x,y,w,h,t,d?} 최대 60.
+틀 12종 wire_templates.json: c363 c363b c48 c84 c57 t3 t4 c444 c66 c525 full g22 (웹 Wireframe.tsx 도 같은 JSON import).
+WireAi.php: make(prompt_wire.md, AiKeys::ask(plan), BATCH 5) · learn(data/wire_feedback) · tpl · layout(엔진용). AI 출력 {slides:[{n,tpl,blocks}|{n,rows:[{h,cols:[{span,k,t,d}|{span,stack:[…]}]}]}]}.
+웹 Wireframe.tsx: WireBlock 좌표 본문 기준 %(HEAD 150/1600, FOOT 96/1600), WireCanvas·WireTools·autoWire·defaultWire. PlanSlide 필드 n section chapter title type layout content message scene keyword device + wire*. Plan={title,core,slides,front,front_edit,chapters}.
+## AiKeys.php
+OpenRouter 하나. 기본 글 meta/muse-spark-1.3-contributor, 이미지 openai/gpt-image-2.5-flare, 엔진 anthropic/claude-opus-5.5. mode()=company 고정, 키 AES-256-GCM(v1:, key_secret 없으면 worker_key 파생). fitModel :197(/models 6시간 캐시, 미지원 인자 제거, 생각 상한 minimal1024 low4096 medium12000 high24000 xhigh48000, 답 몫 min(max_tokens,cap/2)), send 400·422면 reasoning 제거 재시도. recommendedEffort: digest low, plan muse→xhigh, build muse→high. chatForJob·ask 는 budget_usd·월 상한 초과 402, ai_usage INSERT + Jobs::addSpend. SUBS_SQL(engine eplan edigest escript ewire hf) 환산액 따로. creditCheck /credits·/key 1분 캐시.
+## 엔진 worker/
+worker.py: req(Bearer worker_key, X-Worker, X-Worker-Info) · download · put_file · Job.push(progress, cancel) · process: edit→run_edit / design plan→design.run_plan_phase / design build→prepare_build→build_parallel·or_agent / polish→run_claude(Windows 전용 :844). 마무리 finalize→vcenter→frame→front_matter→upload_after→result→text_map→finish. main slots·heavy_slots.
+design.py: ai() → /worker/jobs/{id}/ai, make_plan, make_wires → /worker/wire/layout, wire_png, gen_image. or_agent.py OpenRouter 도구 호출 에이전트.
+서버: Jobs::claim(15분 무응답 회수, 사람별 공평) · progress · putFile · finish→finishPlan/finishPilot · workerUsage.
+setup_linux.sh: apt(python3-venv libreoffice-impress poppler-utils fontconfig 한글 서체) → venv pip(python-pptx lxml pillow pypdf python-docx openpyxl olefile) → config.json → --service systemd Restart=always. deploy_engine.sh: git archive HEAD:worker → scp → 진행 중 작업 대기 후 재시작.
+## 웹 화면 15 + App
+Login · JobList · Upload(767줄: 분할 업로드, /jobs/design, uploadDoc, brand, start, /logos) · UploadModal · Running(폴링, live·mockup·before·draft) · Review · MockupReview(1034줄: wire, PATCH slides·wire_pick·shared, comments, slides/order, approve, cancel) · MockupReviewPins · Result · ResultDetail · ResultFiles · ResultScript · TextEdit · Settings · Admin. 공통 App.tsx·Feedback.tsx·Wireframe.tsx·JobSettingsEdit.
+## 공유 권한 jobs.shared
+0 끔 · 1 로그인 의견 · 2 로그인 편집 · 3 링크 누구나 보기. view() :637 editable() :649 patch() :360(편집자는 slides·front_edit 만). own() :627 주인 전용 approve·start·cancel·retry·edits·script·brand·공유·budget. get() mine/share/can_edit/anon(익명은 comments·docs·events 빈값). send() 주인 아니면 mockup·before·after·live 만.
+## 최근 커밋 주제
+공유 권한 0~3 · 확정 장만 공유 · 과금 환산 SUBS_SQL · 중국 모델 제외 · wire_at 생성 시각 · 추론 강도 서버 추천 · reasoning.max_tokens 상한 · 맥락 자료 7일 삭제 · 리눅스 엔진 이전 + OpenRouter 통일(a7d477d) · 와이어 gantt·phase·kpi · design_spec · 시안 화풍.

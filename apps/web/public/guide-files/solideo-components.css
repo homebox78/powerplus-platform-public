@@ -1,0 +1,517 @@
+/* ==========================================================================
+   SOLIDEO Design System — 컴포넌트 (CSS only)
+
+   Tailwind · React 없이 순수 HTML 에서 쓰는 컴포넌트 라이브러리입니다.
+   JSP · Thymeleaf · 퍼블리싱 산출물 · 레거시 화면이 대상입니다.
+
+   사용법
+     <link rel="stylesheet" href="solideo-tokens.css">
+     <link rel="stylesheet" href="solideo-components.css">
+     <button class="sds-btn sds-btn--primary">신청서 제출</button>
+
+   규칙
+     - 이 파일은 토큰(var(--...))만 참조합니다. 색·간격을 직접 쓰지 않습니다.
+       tools/build-components-css.mjs 가 CI 에서 이를 검사합니다.
+     - 클래스 이름은 sds- 접두 + BEM 변형입니다.
+     - 상태는 :hover / :focus-visible / [disabled] / [aria-invalid] 로 표현합니다.
+       JS 로 상태 클래스를 붙이지 않아도 동작합니다.
+     - React 판(shadcn/ui)과 같은 마크업 계약 · 같은 시각 결과를 목표로 합니다.
+   ========================================================================== */
+
+/* ------------------------------------------------------------------ 기본값 */
+
+.sds-root {
+  font-family: var(--font-family-sans);
+  font-size: var(--font-size-body);
+  line-height: var(--line-height-normal);
+  color: var(--text-primary);
+  background: var(--bg-primary);
+}
+
+/* 키보드 포커스는 항상 보이게 (KWCAG 2.2) */
+.sds-root :focus-visible,
+[class^='sds-']:focus-visible,
+[class*=' sds-']:focus-visible {
+  outline: 2px solid var(--border-focus);
+  outline-offset: 2px;
+}
+
+/* 아이콘 — icons.svg 스프라이트를 <use> 로 참조합니다.
+ * 기본 크기는 주변 글자의 1.25배라 글자 크기 설정을 따라 커집니다.
+ * 장식이면 aria-hidden="true", 의미를 전달하면 role="img" + aria-label 을 붙이세요. */
+.sds-icon {
+  display: inline-block;
+  width: 1.25em;
+  height: 1.25em;
+  flex-shrink: 0;
+  vertical-align: middle;
+  fill: currentColor;
+}
+.sds-icon--sm { width: 1rem; height: 1rem; }
+.sds-icon--lg { width: 1.5rem; height: 1.5rem; }
+
+/* 화면에는 숨기고 스크린리더에는 읽히는 텍스트 */
+.sds-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+/* 포커스를 받으면 보이는 숨김 텍스트 — 건너뛰기 링크 */
+.sds-sr-only--focusable:focus,
+.sds-sr-only--focusable:focus-within {
+  position: static;
+  width: auto;
+  height: auto;
+  margin: 0;
+  overflow: visible;
+  clip: auto;
+  clip-path: none;
+  white-space: normal;
+}
+
+/* -------------------------------------------------------------------- 버튼 */
+
+.sds-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  height: var(--component-control-height-md);
+  padding: 0 var(--component-control-padding-x);
+  border: 1px solid transparent;
+  border-radius: var(--component-control-radius);
+  font-family: inherit;
+  font-size: var(--component-control-font-size);
+  font-weight: var(--component-button-font-weight);
+  line-height: 1;
+  white-space: nowrap;
+  cursor: pointer;
+  text-decoration: none;
+  transition: background-color var(--duration-fast) var(--easing-standard),
+    border-color var(--duration-fast) var(--easing-standard);
+}
+
+.sds-btn--primary {
+  background: var(--fill-accent);
+  color: var(--text-inverse);
+}
+.sds-btn--primary:hover { background: var(--fill-accent-hover); }
+.sds-btn--primary:active { background: var(--fill-accent-pressed); }
+
+.sds-btn--outline {
+  background: var(--bg-primary);
+  color: var(--text-accent);
+  border-color: var(--border-accent);
+}
+.sds-btn--outline:hover { background: var(--fill-accent-subtle); }
+
+.sds-btn--secondary {
+  background: var(--fill-secondary);
+  color: var(--text-primary);
+}
+.sds-btn--secondary:hover { background: var(--fill-disabled); }
+
+.sds-btn--ghost {
+  background: transparent;
+  color: var(--text-secondary);
+}
+.sds-btn--ghost:hover {
+  background: var(--fill-secondary);
+  color: var(--text-primary);
+}
+
+.sds-btn--destructive {
+  background: var(--fill-critical);
+  color: var(--text-inverse);
+}
+.sds-btn--destructive:hover { background: var(--red-600); }
+
+.sds-btn--sm { height: var(--component-control-height-sm); padding: 0 var(--space-3); font-size: var(--font-size-xs); }
+.sds-btn--lg { height: var(--component-control-height-lg); padding: 0 var(--space-6); font-size: var(--font-size-body); }
+.sds-btn--icon { width: var(--component-control-height-md); padding: 0; }
+.sds-btn--full { width: 100%; }
+
+.sds-btn[disabled],
+.sds-btn[aria-disabled='true'] {
+  background: var(--fill-disabled);
+  color: var(--text-disabled);
+  border-color: transparent;
+  cursor: not-allowed;
+}
+
+/* 플로팅 버튼 */
+.sds-fab {
+  position: fixed;
+  right: var(--space-6);
+  bottom: var(--space-6);
+  width: 56px;
+  height: 56px;
+  border: 0;
+  border-radius: var(--radius-full);
+  background: var(--fill-accent);
+  color: var(--text-inverse);
+  box-shadow: var(--shadow-3);
+  cursor: pointer;
+}
+
+/* -------------------------------------------------------------------- 링크 */
+
+.sds-link {
+  color: var(--text-accent);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.sds-link:hover { color: var(--crimson-700); }
+
+/* ------------------------------------------------------------ 폼 · 입력 */
+
+.sds-field {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.sds-label {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--text-primary);
+}
+.sds-label .sds-required {
+  margin-left: 2px;
+  color: var(--text-critical);
+}
+
+.sds-input,
+.sds-select,
+.sds-textarea {
+  width: 100%;
+  min-height: var(--component-control-height-md);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--component-control-radius);
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  font-family: inherit;
+  font-size: var(--font-size-sm);
+  transition: border-color var(--duration-fast) var(--easing-standard);
+}
+.sds-textarea { min-height: 88px; resize: vertical; }
+
+.sds-input::placeholder,
+.sds-textarea::placeholder { color: var(--text-disabled); }
+
+.sds-input:hover,
+.sds-select:hover,
+.sds-textarea:hover { border-color: var(--text-tertiary); }
+
+.sds-input[aria-invalid='true'],
+.sds-select[aria-invalid='true'],
+.sds-textarea[aria-invalid='true'] { border-color: var(--border-critical); }
+
+.sds-input[disabled],
+.sds-select[disabled],
+.sds-textarea[disabled] {
+  background: var(--fill-secondary);
+  color: var(--text-disabled);
+  cursor: not-allowed;
+}
+
+.sds-hint { font-size: var(--font-size-xs); color: var(--text-tertiary); }
+.sds-error { font-size: var(--font-size-xs); color: var(--text-critical); }
+
+/* 체크박스 · 라디오 — 네이티브 입력을 그대로 씁니다.
+   accent-color 로 브랜드 색을 입히면 접근성 트리가 온전히 유지됩니다. */
+.sds-choice {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--font-size-sm);
+}
+.sds-checkbox,
+.sds-radio {
+  /*
+   * 시각 크기는 18px 이지만 클릭 · 터치 대상은 최소 24px 이어야 합니다
+   * (WCAG 2.5.8 AA). outline 이 잘리지 않도록 여백이 아니라 패딩으로 넓힙니다.
+   * 레이블에 for 를 걸어 두면 실제 대상은 더 넓어집니다.
+   */
+  width: 18px;
+  height: 18px;
+  min-width: var(--component-control-target-min);
+  min-height: var(--component-control-target-min);
+  margin: 0;
+  accent-color: var(--fill-accent);
+  cursor: pointer;
+}
+
+/* 토글 스위치 */
+.sds-switch { display: inline-flex; align-items: center; gap: var(--space-3); cursor: pointer; }
+.sds-switch input {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+.sds-switch__track {
+  position: relative;
+  width: 44px;
+  height: 24px;
+  border-radius: var(--radius-full);
+  background: var(--border-strong);
+  transition: background-color var(--duration-fast) var(--easing-standard);
+}
+.sds-switch__track::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 20px;
+  height: 20px;
+  border-radius: var(--radius-full);
+  background: var(--static-white);
+  transition: transform var(--duration-fast) var(--easing-standard);
+}
+.sds-switch input:checked + .sds-switch__track { background: var(--fill-accent); }
+.sds-switch input:checked + .sds-switch__track::after { transform: translateX(20px); }
+.sds-switch input:focus-visible + .sds-switch__track {
+  outline: 2px solid var(--border-focus);
+  outline-offset: 2px;
+}
+
+/* ------------------------------------------------------------------ 배지 */
+
+.sds-badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--component-badge-height);
+  padding: 2px var(--component-badge-padding-x);
+  border-radius: var(--component-badge-radius);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
+  background: var(--fill-secondary);
+  color: var(--text-secondary);
+}
+.sds-badge--accent { background: var(--fill-accent-subtle); color: var(--text-accent); }
+.sds-badge--positive { background: var(--fill-positive-subtle); color: var(--text-positive); }
+.sds-badge--caution { background: var(--fill-caution-subtle); color: var(--text-caution); }
+.sds-badge--critical { background: var(--fill-critical-subtle); color: var(--text-critical); }
+
+/* ------------------------------------------------------------------ 알림 */
+
+.sds-alert {
+  display: flex;
+  gap: var(--space-3);
+  padding: var(--space-4) var(--space-5);
+  border-left: 4px solid var(--blue-500);
+  border-radius: var(--radius-md);
+  background: var(--fill-info-subtle);
+  font-size: var(--font-size-sm);
+}
+.sds-alert--positive { border-left-color: var(--green-500); background: var(--fill-positive-subtle); }
+.sds-alert--caution { border-left-color: var(--amber-500); background: var(--fill-caution-subtle); }
+.sds-alert--critical { border-left-color: var(--red-500); background: var(--fill-critical-subtle); }
+.sds-alert__title { font-weight: var(--font-weight-bold); }
+.sds-alert__body { margin-top: var(--space-1); color: var(--text-secondary); }
+
+/* 긴급 공지 */
+.sds-critical-alert {
+  display: flex;
+  gap: var(--space-3);
+  padding: var(--space-4) var(--space-5);
+  border-left: 4px solid var(--red-500);
+  background: var(--bg-secondary);
+}
+.sds-critical-alert--caution { border-left-color: var(--amber-500); }
+.sds-critical-alert--info { border-left-color: var(--blue-500); }
+
+/* -------------------------------------------------------------------- 카드 */
+
+.sds-card {
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-md);
+  background: var(--bg-primary);
+  padding: var(--space-5);
+}
+
+/* -------------------------------------------------------------------- 표 */
+
+/* 가로 스크롤이 생기면 키보드로도 스크롤할 수 있어야 합니다 (WCAG 2.1.1).
+   넘칠 때만 tabindex="0" 을 두는 것이 이상적이지만 CSS 만으로는 판단할 수 없으므로,
+   퍼블리싱 단계에서는 항상 붙이고 스크롤이 없으면 제거하도록 안내합니다. */
+.sds-table-wrap { width: 100%; overflow-x: auto; }
+
+.sds-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--font-size-sm);
+}
+.sds-table caption {
+  padding-bottom: var(--space-2);
+  text-align: left;
+  color: var(--text-secondary);
+}
+.sds-table th,
+.sds-table td {
+  padding: var(--space-3) var(--space-4);
+  text-align: left;
+  border-bottom: 1px solid var(--border-primary);
+  vertical-align: top;
+}
+.sds-table thead th {
+  background: var(--bg-tertiary);
+  font-weight: var(--font-weight-bold);
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+.sds-table .sds-num { text-align: right; font-variant-numeric: tabular-nums; }
+
+/* ------------------------------------------------------------------ 탐색 */
+
+.sds-breadcrumb { display: flex; flex-wrap: wrap; gap: var(--space-2); font-size: var(--font-size-sm); }
+.sds-breadcrumb a { color: var(--text-secondary); text-decoration: none; }
+.sds-breadcrumb a:hover { color: var(--text-primary); text-decoration: underline; }
+.sds-breadcrumb [aria-current='page'] { color: var(--text-primary); font-weight: var(--font-weight-medium); }
+.sds-breadcrumb__sep { color: var(--text-tertiary); }
+
+.sds-pagination { display: flex; gap: var(--space-1); list-style: none; padding: 0; margin: 0; }
+.sds-pagination a,
+.sds-pagination button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: var(--component-control-height-md);
+  height: var(--component-control-height-md);
+  padding: 0 var(--space-2);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-sm);
+  background: var(--bg-primary);
+  color: var(--text-secondary);
+  font-size: var(--font-size-sm);
+  text-decoration: none;
+  cursor: pointer;
+}
+.sds-pagination [aria-current='page'] {
+  background: var(--fill-accent);
+  border-color: var(--fill-accent);
+  color: var(--text-inverse);
+  font-weight: var(--font-weight-bold);
+}
+
+/* 탭 — JS 없이 CSS 만으로는 전환되지 않습니다.
+   ARIA 속성과 시각 스타일만 제공하고 전환은 각 프로젝트에서 구현합니다. */
+.sds-tabs { display: flex; gap: var(--space-5); border-bottom: 1px solid var(--border-primary); }
+.sds-tab {
+  padding: var(--space-3) 2px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: none;
+  font-family: inherit;
+  font-size: var(--font-size-sm);
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+.sds-tab[aria-selected='true'] {
+  color: var(--text-accent);
+  border-bottom-color: var(--border-accent);
+  font-weight: var(--font-weight-bold);
+}
+
+/* ------------------------------------------------------------ 구조화 목록 */
+
+.sds-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-md);
+}
+.sds-list > li + li { border-top: 1px solid var(--border-primary); }
+.sds-list__item {
+  display: flex;
+  gap: var(--space-3);
+  padding: var(--space-4) var(--space-5);
+  color: inherit;
+  text-decoration: none;
+}
+a.sds-list__item:hover { background: var(--bg-secondary); }
+.sds-list__title { font-weight: var(--font-weight-bold); }
+.sds-list__desc { margin-top: var(--space-1); font-size: var(--font-size-sm); color: var(--text-secondary); }
+.sds-list__meta { margin-top: var(--space-2); font-size: var(--font-size-xs); color: var(--text-tertiary); }
+
+/* ---------------------------------------------------------- 진행 · 상태 */
+
+.sds-progress {
+  width: 100%;
+  height: 8px;
+  border-radius: var(--radius-full);
+  background: var(--fill-secondary);
+  overflow: hidden;
+}
+.sds-progress__bar { height: 100%; background: var(--fill-accent); }
+
+.sds-spinner {
+  display: inline-block;
+  width: 20px;
+  height: 20px;
+  border: 2px solid var(--border-primary);
+  border-top-color: var(--fill-accent);
+  border-radius: var(--radius-full);
+  animation: sds-spin 800ms linear infinite;
+}
+@keyframes sds-spin { to { transform: rotate(360deg); } }
+
+/* 단계 표시기 */
+.sds-steps { display: flex; gap: var(--space-2); list-style: none; margin: 0; padding: 0; }
+.sds-steps > li { flex: 1; display: grid; gap: 6px; }
+.sds-steps__bar { height: 6px; border-radius: var(--radius-full); background: var(--fill-secondary); }
+.sds-steps > li[data-state='done'] .sds-steps__bar,
+.sds-steps > li[data-state='current'] .sds-steps__bar { background: var(--fill-accent); }
+.sds-steps__label { font-size: var(--font-size-xs); color: var(--text-secondary); }
+.sds-steps > li[data-state='current'] .sds-steps__label {
+  color: var(--text-accent);
+  font-weight: var(--font-weight-bold);
+}
+
+/* ------------------------------------------------------------------ 모달 */
+
+/* <dialog> 를 씁니다. 브라우저가 포커스 트랩 · Esc 닫기 · 비활성화를 처리합니다. */
+.sds-modal {
+  width: min(480px, calc(100vw - var(--space-8)));
+  padding: var(--space-6);
+  border: 0;
+  border-radius: var(--radius-lg);
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  box-shadow: var(--shadow-4);
+}
+.sds-modal::backdrop { background: var(--opacity-black-65); }
+.sds-modal__title { font-size: var(--font-size-h3); font-weight: var(--font-weight-bold); }
+.sds-modal__body { margin-top: var(--space-3); color: var(--text-secondary); font-size: var(--font-size-sm); }
+.sds-modal__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-2);
+  margin-top: var(--space-6);
+}
+
+/* ------------------------------------------------------------------ 기타 */
+
+.sds-divider { height: 1px; border: 0; margin: var(--space-6) 0; background: var(--border-primary); }
+
+.sds-empty { padding: var(--space-16) var(--space-5); text-align: center; }
+.sds-empty__title { font-size: var(--font-size-h3); font-weight: var(--font-weight-bold); }
+.sds-empty__desc { margin: var(--space-2) auto var(--space-6); max-width: 44ch; font-size: var(--font-size-sm); color: var(--text-secondary); }
+
+/* 움직임 최소화 설정을 존중합니다 */
+@media (prefers-reduced-motion: reduce) {
+  .sds-spinner { animation: none; }
+  [class^='sds-'],
+  [class*=' sds-'] {
+    transition-duration: 0.01ms !important;
+  }
+}

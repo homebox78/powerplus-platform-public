@@ -1,0 +1,9 @@
+# api/ — 소스·설정 직접 접근 차단. 공개 진입점은 public/index.php 뿐(루트 .htaccess 재작성으로 들어온다).
+# 출처: homebox-handoff api/.htaccess
+Options -Indexes
+<FilesMatch "\.php$">
+  Require all denied
+</FilesMatch>
+<Files "config.php">
+  Require all denied
+</Files>

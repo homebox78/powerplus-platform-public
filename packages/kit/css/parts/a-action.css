@@ -1,0 +1,227 @@
+/* A. 버튼·표시 — KRDS 에 없는 부품(shadcn 사용법) + KRDS 부품 보강
+   값은 KRDS 토큰, 단위 px. 클래스는 hb- 접두. */
+
+/* ── 버튼: 텍스트·링크 버튼은 inline-block 이라 gap 이 없다 → 아이콘과 글자 사이를 띄운다 */
+.krds-btn.text > .svg-icon[data-pos="end"],
+.krds-btn.link > .svg-icon[data-pos="end"] { margin-left: var(--krds-gap-2); }
+.krds-btn.text > .svg-icon[data-pos="start"],
+.krds-btn.link > .svg-icon[data-pos="start"] { margin-right: var(--krds-gap-2); }
+
+/* ── 스피너:글자 옆에 놓는 인라인형 + 움직임 줄이기 */
+.krds-spinner.hb-spinner-inline { display: inline-flex; width: auto; height: auto; vertical-align: middle; z-index: auto; }
+@media (prefers-reduced-motion: reduce) {
+  .krds-spinner::before { animation-duration: 2400ms; }
+}
+
+/* ── 스켈레톤 */
+.hb-skeleton {
+  display: block;
+  min-height: 16px;
+  border-radius: var(--krds-radius-medium1);
+  background-color: var(--krds-light-color-background-gray-subtle);
+  background-image: linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.6) 50%, transparent 100%);
+  background-size: 200% 100%;
+  background-repeat: no-repeat;
+  animation: hb-skeleton-shine 1600ms ease-in-out infinite;
+}
+.hb-skeleton.circle { border-radius: var(--krds-radius-max); }
+.hb-skeleton.text { height: 16px; }
+.hb-skeleton-lines { display: flex; flex-direction: column; gap: var(--krds-gap-3); }
+.hb-skeleton-lines > .hb-skeleton.text:last-child:not(:first-child) { width: 60%; }
+@keyframes hb-skeleton-shine { from { background-position: 150% 0; } to { background-position: -50% 0; } }
+@media (prefers-reduced-motion: reduce) {
+  .hb-skeleton { animation: none; background-image: none; }
+}
+
+/* ── 진행 막대 */
+.hb-progress-wrap { display: flex; flex-direction: column; gap: var(--krds-gap-2); width: 100%; }
+.hb-progress-head {
+  display: flex; justify-content: space-between; gap: var(--krds-gap-3);
+  font-size: var(--krds-pc-font-size-label-small); color: var(--krds-light-color-text-basic);
+}
+.hb-progress-value { font-weight: var(--krds-font-weight-bold); color: var(--krds-light-color-text-primary); }
+.hb-progress {
+  position: relative; overflow: hidden; width: 100%; height: 8px;
+  border-radius: var(--krds-radius-max);
+  background-color: var(--krds-light-color-background-gray-subtle);
+}
+.hb-progress.small { height: 4px; }
+.hb-progress.large { height: 12px; }
+.hb-progress-bar {
+  height: 100%; border-radius: inherit;
+  background-color: var(--krds-light-color-element-primary);
+  transition: width 300ms ease;
+}
+.hb-progress.success .hb-progress-bar { background-color: var(--krds-light-color-element-success); }
+.hb-progress.danger .hb-progress-bar { background-color: var(--krds-light-color-element-danger); }
+.hb-progress.indeterminate .hb-progress-bar { width: 40%; animation: hb-progress-move 1400ms ease-in-out infinite; }
+@keyframes hb-progress-move { from { transform: translateX(-100%); } to { transform: translateX(250%); } }
+@media (prefers-reduced-motion: reduce) {
+  .hb-progress-bar { transition: none; }
+  .hb-progress.indeterminate .hb-progress-bar { animation: none; width: 100%; opacity: 0.4; }
+}
+
+/* ── 구분선 */
+.hb-separator { flex-shrink: 0; background-color: var(--krds-light-color-border-gray-light); }
+.hb-separator.horizontal { width: 100%; height: 1px; }
+.hb-separator.vertical { width: 1px; height: auto; align-self: stretch; min-height: 16px; }
+
+/* ── 키보드 키 (본문 글꼴 그대로 — 모노스페이스 쓰지 않는다) */
+.hb-kbd {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 24px; height: 24px; padding: 0 var(--krds-padding-3);
+  font-family: inherit; font-size: var(--krds-pc-font-size-label-xsmall); font-weight: var(--krds-font-weight-regular);
+  line-height: 1; color: var(--krds-light-color-text-basic);
+  background-color: var(--krds-light-color-background-gray-subtler);
+  border: 1px solid var(--krds-light-color-border-gray);
+  border-bottom-width: 2px;
+  border-radius: var(--krds-radius-small2);
+  vertical-align: middle;
+}
+.hb-kbd-group { display: inline-flex; align-items: center; gap: var(--krds-gap-1); font-family: inherit; font-size: var(--krds-pc-font-size-label-small); color: var(--krds-light-color-text-subtle); vertical-align: middle; }
+
+/* ── 아바타 */
+.hb-avatar {
+  position: relative; display: inline-flex; flex-shrink: 0; align-items: center; justify-content: center; overflow: hidden;
+  width: 40px; height: 40px; border-radius: var(--krds-radius-max);
+  background-color: var(--krds-light-color-element-primary-lighter);
+  vertical-align: middle;
+}
+.hb-avatar.small { width: 32px; height: 32px; }
+.hb-avatar.large { width: 56px; height: 56px; }
+.hb-avatar.xlarge { width: 80px; height: 80px; }
+.hb-avatar.rounded { border-radius: var(--krds-radius-large1); }
+.hb-avatar-image { width: 100%; height: 100%; object-fit: cover; }
+.hb-avatar-fallback {
+  display: flex; align-items: center; justify-content: center; width: 100%; height: 100%;
+  font-size: var(--krds-pc-font-size-label-medium); font-weight: var(--krds-font-weight-bold);
+  color: var(--krds-light-color-text-primary);
+}
+.hb-avatar.small .hb-avatar-fallback { font-size: var(--krds-pc-font-size-label-small); }
+.hb-avatar.large .hb-avatar-fallback { font-size: var(--krds-pc-font-size-label-large); }
+.hb-avatar.xlarge .hb-avatar-fallback { font-size: var(--krds-pc-font-size-heading-small); }
+
+/* ── 비율 상자 */
+.hb-aspect-ratio { position: relative; width: 100%; overflow: hidden; border-radius: var(--krds-radius-large1); background-color: var(--krds-light-color-background-gray-subtler); }
+.hb-aspect-ratio > img,
+.hb-aspect-ratio > video,
+.hb-aspect-ratio > iframe { display: block; width: 100%; height: 100%; object-fit: cover; border: 0; }
+.hb-aspect-ratio.contain > img,
+.hb-aspect-ratio.contain > video { object-fit: contain; }
+
+/* ── 빈 상태 */
+.hb-empty {
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: var(--krds-gap-8);
+  padding: var(--krds-padding-10) var(--krds-padding-8); text-align: center;
+  border-radius: var(--krds-radius-large1);
+}
+.hb-empty.bordered { border: 1px dashed var(--krds-light-color-border-gray); }
+.hb-empty-header { display: flex; flex-direction: column; align-items: center; gap: var(--krds-gap-4); max-width: 480px; }
+.hb-empty-media { display: flex; align-items: center; justify-content: center; margin-bottom: var(--krds-gap-3); }
+.hb-empty-media.icon {
+  width: 64px; height: 64px; border-radius: var(--krds-radius-max);
+  background-color: var(--krds-light-color-background-gray-subtler);
+}
+.hb-empty-media.icon .svg-icon { width: 32px; height: 32px; background-color: var(--krds-light-color-text-subtle); }
+.hb-empty-title { font-size: var(--krds-pc-font-size-heading-small); font-weight: var(--krds-font-weight-bold); color: var(--krds-light-color-text-basic); }
+.hb-empty-description { font-size: var(--krds-pc-font-size-body-medium); color: var(--krds-light-color-text-subtle); }
+.hb-empty-content { display: flex; flex-wrap: wrap; justify-content: center; gap: var(--krds-gap-4); }
+
+/* ── 버튼 묶음: 붙여서 한 덩어리 */
+.hb-button-group { display: inline-flex; align-items: stretch; isolation: isolate; }
+.hb-button-group.vertical { flex-direction: column; }
+.hb-button-group > * { position: relative; }
+.hb-button-group > *:hover, .hb-button-group > *:focus-visible { z-index: 1; }
+.hb-button-group.horizontal > * + * { margin-left: -1px; }
+.hb-button-group.horizontal > *:not(:first-child) { border-top-left-radius: 0; border-bottom-left-radius: 0; }
+.hb-button-group.horizontal > *:not(:last-child) { border-top-right-radius: 0; border-bottom-right-radius: 0; }
+.hb-button-group.vertical > * + * { margin-top: -1px; }
+.hb-button-group.vertical > *:not(:first-child) { border-top-left-radius: 0; border-top-right-radius: 0; }
+.hb-button-group.vertical > *:not(:last-child) { border-bottom-left-radius: 0; border-bottom-right-radius: 0; }
+.hb-button-group-text {
+  display: inline-flex; align-items: center; height: var(--krds-size-height-7); padding: 0 var(--krds-padding-6);
+  font-size: var(--krds-pc-font-size-label-medium); color: var(--krds-light-color-text-basic); white-space: nowrap;
+  background-color: var(--krds-light-color-background-gray-subtler);
+  border: 1px solid var(--krds-light-color-border-gray-dark);
+  border-radius: var(--krds-radius-medium2);
+}
+.hb-button-group-text.xsmall { height: var(--krds-size-height-5); padding: 0 var(--krds-padding-4); font-size: var(--krds-pc-font-size-label-small); border-radius: var(--krds-radius-small3); }
+.hb-button-group-text.small { height: var(--krds-size-height-6); padding: 0 var(--krds-padding-5); font-size: var(--krds-pc-font-size-label-small); border-radius: var(--krds-radius-medium1); }
+.hb-button-group-text.large { height: var(--krds-size-height-8); padding: 0 var(--krds-padding-7); font-size: var(--krds-pc-font-size-label-large); border-radius: var(--krds-radius-medium3); }
+.hb-button-group-text.xlarge { height: var(--krds-size-height-9); padding: 0 var(--krds-padding-8); font-size: var(--krds-pc-font-size-label-large); border-radius: var(--krds-radius-medium4); }
+/* 아이콘 버튼(.icon)은 투명 사각이라 묶음 안에서는 테두리를 준다 */
+.hb-button-group > .krds-btn.icon {
+  width: var(--krds-size-height-7); height: var(--krds-size-height-7);
+  border: 1px solid var(--krds-light-color-border-gray-dark); border-radius: var(--krds-radius-medium2);
+  background-color: var(--krds-light-color-background-white);
+}
+.hb-button-group > .krds-btn.icon .svg-icon { width: 20px; height: 20px; }
+/* 위 아이콘 규칙이 둥근 모서리를 되살리지 않게 — 맞닿는 모서리는 다시 0 (민원 번호 + 검색이 떨어져 보였다, 2026-10-09) */
+.hb-button-group.horizontal > .krds-btn.icon:not(:first-child) { border-top-left-radius: 0; border-bottom-left-radius: 0; }
+.hb-button-group.horizontal > .krds-btn.icon:not(:last-child) { border-top-right-radius: 0; border-bottom-right-radius: 0; }
+.hb-button-group.vertical > .krds-btn.icon:not(:first-child) { border-top-left-radius: 0; border-top-right-radius: 0; }
+.hb-button-group.vertical > .krds-btn.icon:not(:last-child) { border-bottom-left-radius: 0; border-bottom-right-radius: 0; }
+
+/* ── 토글 · 토글 묶음 (크기는 KRDS 버튼과 같다) */
+.hb-toggle {
+  display: inline-flex; align-items: center; justify-content: center; gap: var(--krds-gap-2);
+  height: var(--krds-size-height-7); min-width: var(--krds-size-height-7); padding: 0 var(--krds-padding-6);
+  font-family: inherit; font-size: var(--krds-pc-font-size-label-medium); font-weight: var(--krds-font-weight-regular);
+  color: var(--krds-light-color-text-basic); white-space: nowrap; cursor: pointer;
+  background-color: transparent; border: 1px solid transparent; border-radius: var(--krds-radius-medium2);
+  transition: var(--krds-transition-base);
+}
+.hb-toggle.outline { border-color: var(--krds-light-color-border-gray-dark); background-color: var(--krds-light-color-background-white); }
+.hb-toggle:hover { background-color: var(--krds-light-color-button-tertiary-fill-hover); }
+.hb-toggle:active { background-color: var(--krds-light-color-button-tertiary-fill-pressed); }
+.hb-toggle:focus-visible { outline: none; box-shadow: var(--krds-box-shadow-outline); position: relative; z-index: 2; }
+.hb-toggle[data-state="on"] {
+  color: var(--krds-light-color-text-primary); font-weight: var(--krds-font-weight-bold);
+  background-color: var(--krds-light-color-button-secondary-fill);
+  border-color: var(--krds-light-color-button-secondary-border);
+}
+/* 켜짐을 색만으로 알리지 않게 체크 표시 */
+.hb-toggle[data-state="on"]::before {
+  content: ""; width: 12px; height: 7px; margin-top: -3px; flex-shrink: 0;
+  border-left: 2px solid currentColor; border-bottom: 2px solid currentColor; transform: rotate(-45deg);
+}
+.hb-toggle .svg-icon { width: 20px; height: 20px; background-color: currentColor; }
+.hb-toggle:disabled { cursor: default; color: var(--krds-light-color-text-disabled); background-color: transparent; }
+.hb-toggle.outline:disabled { background-color: var(--krds-light-color-button-disabled-fill); border-color: var(--krds-light-color-button-disabled-border); }
+.hb-toggle.xsmall { height: var(--krds-size-height-5); min-width: var(--krds-size-height-5); padding: 0 var(--krds-padding-4); font-size: var(--krds-pc-font-size-label-small); border-radius: var(--krds-radius-small3); }
+.hb-toggle.small { height: var(--krds-size-height-6); min-width: var(--krds-size-height-6); padding: 0 var(--krds-padding-5); font-size: var(--krds-pc-font-size-label-small); border-radius: var(--krds-radius-medium1); }
+.hb-toggle.large { height: var(--krds-size-height-8); min-width: var(--krds-size-height-8); padding: 0 var(--krds-padding-7); font-size: var(--krds-pc-font-size-label-large); border-radius: var(--krds-radius-medium3); }
+.hb-toggle.xlarge { height: var(--krds-size-height-9); min-width: var(--krds-size-height-9); padding: 0 var(--krds-padding-8); font-size: var(--krds-pc-font-size-label-large); border-radius: var(--krds-radius-medium4); }
+.hb-toggle.xsmall .svg-icon, .hb-toggle.small .svg-icon { width: 16px; height: 16px; }
+
+.hb-toggle-group { display: inline-flex; align-items: stretch; isolation: isolate; }
+.hb-toggle-group.vertical { flex-direction: column; }
+.hb-toggle-group.separate { gap: var(--krds-gap-2); flex-wrap: wrap; }
+.hb-toggle-group.attached > .hb-toggle { position: relative; }
+.hb-toggle-group.attached > .hb-toggle[data-state="on"] { z-index: 1; }
+.hb-toggle-group.attached.horizontal > .hb-toggle + .hb-toggle { margin-left: -1px; }
+.hb-toggle-group.attached.horizontal > .hb-toggle:not(:first-child) { border-top-left-radius: 0; border-bottom-left-radius: 0; }
+.hb-toggle-group.attached.horizontal > .hb-toggle:not(:last-child) { border-top-right-radius: 0; border-bottom-right-radius: 0; }
+.hb-toggle-group.attached.vertical > .hb-toggle + .hb-toggle { margin-top: -1px; }
+.hb-toggle-group.attached.vertical > .hb-toggle:not(:first-child) { border-top-left-radius: 0; border-top-right-radius: 0; }
+.hb-toggle-group.attached.vertical > .hb-toggle:not(:last-child) { border-bottom-left-radius: 0; border-bottom-right-radius: 0; }
+.hb-toggle-group.vertical > .hb-toggle { justify-content: flex-start; }
+
+/* 97·192 본문 안 링크 — 주변 글자 크기·줄을 그대로 따른다 (Link size="inherit") */
+.hb-kit .krds-btn.link.hb-link-inherit { display: inline; height: auto; min-height: 0; padding: 0; font-size: inherit; line-height: inherit; vertical-align: baseline; }
+
+/* ── 버튼 처리 중(loading) — aria-busy·aria-disabled, 두 번째 누름은 무시. 스피너는 글자색을 따른다 */
+.krds-btn.hb-btn-loading { cursor: progress; }
+.krds-btn.hb-btn-loading .hb-btn-spinner {
+  --krds-spinner--size: 1em;
+  --krds-spinner--color-border: transparent;
+  --krds-spinner--color-border-active: currentColor;
+  display: inline-flex;
+  width: auto;
+  height: auto;
+  z-index: auto;
+  flex-shrink: 0;
+}
+
+/* 첨부파일 링크 꼬리표 [pdf, 2.3MB] — 링크 글보다 한 단계 옅게, 밑줄 없음 */
+.hb-kit .krds-btn.link .hb-file-meta { text-decoration: none; color: var(--krds-light-color-text-subtle, #464c53); font-weight: 400; white-space: nowrap; }

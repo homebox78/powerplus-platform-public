@@ -1,0 +1,23 @@
+{
+  "name": "@pp/mcp",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "description": "powerMCP — powerPlus 플랫폼 MCP 하나(Streamable HTTP :3110 /mcp). 출처: homebox-handoff packages/mcp + powerPlus server/src/McpServer.php",
+  "scripts": {
+    "dev": "node --experimental-strip-types --no-warnings=ExperimentalWarning --watch src/index.ts",
+    "start": "node --experimental-strip-types --no-warnings=ExperimentalWarning src/index.ts",
+    "typecheck": "tsc"
+  },
+  "dependencies": {
+    "@pp/shared": "workspace:*",
+    "@modelcontextprotocol/sdk": "^1.30.0",
+    "playwright-core": "1.63.0",
+    "sharp": "^0.35.5",
+    "zod": "^4.6.5"
+  },
+  "devDependencies": {
+    "@types/node": "^24.10.0",
+    "typescript": "^5.9.3"
+  }
+}

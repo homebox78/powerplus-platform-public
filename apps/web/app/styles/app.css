@@ -1,0 +1,392 @@
+/* powerPlus 플랫폼 디자인 토큰 — 출처: homebox-handoff apps/web/app/styles/app.css (홈박스 docs/03 토큰 그대로, 기획 §0 디자인 베이스). 임의 색상·radius 금지. */
+@import "tailwindcss";
+@import "tw-animate-css";
+
+/* Pretendard Variable self-host (npm pretendard, dynamic subset) */
+@import "pretendard/dist/web/variable/pretendardvariable-dynamic-subset.css";
+/* powerDeck 옛 토큰 이름(ink2·muted·orange…) → 플랫폼 토큰 연결. 유틸리티는 주 CSS 테마에서만 만들어져 여기서 가져온다 */
+@import "../modules/deck/legacy/theme.css";
+
+/* 로고·모듈 제목 글꼴 = Momo Trust Display(Google Fonts, OFL) — 굵기는 400 하나뿐(외곽선으로 굵게 하면 뿌옇게 보여 쓰지 않는다). 영문 대소문자·숫자 전체를 담은 11KB 로컬 파일(옛 5KB 판은 MCP 의 C 가 빠져 있었다), CDN 없음 (2026-10-06 사용자 지정) */
+@font-face { font-family: "Momo Trust Display"; src: url("/fonts/momo-v2.woff2") format("woff2"); font-weight: 400; font-display: swap; }
+@utility pp-logo { font-family: "Momo Trust Display", var(--font-sans); font-weight: 400; letter-spacing: 0; line-height: 1; white-space: nowrap; }
+@utility pp-module-title { font-family: "Momo Trust Display", var(--font-sans); font-weight: 400; letter-spacing: 0; }
+
+/* shadcn 최신(Base UI 규약) ui 컴포넌트가 쓰는 data-checked/unchecked 변형을 Radix 의 data-state 로 연결 — 없으면 Switch 배경·Radio/Checkbox 체크 표시가 안 그려진다 (2026-09-23 요금제 스위치·결제 라디오 사고) */
+@custom-variant data-checked (&[data-state="checked"]);
+@custom-variant data-unchecked (&[data-state="unchecked"]);
+/* shadcn 최신 ui 파일은 Base UI 기준 boolean data 변형(data-active·data-open·data-horizontal …)을 쓰지만
+   Radix 는 data-state="active|open|closed"·data-orientation 으로 찍는다 → 여기서 한 번에 이어 준다.
+   (2026-09-23 상세 탭 활성 표시·다이얼로그 열림 애니메이션이 전부 죽어 있던 원인) */
+@custom-variant data-active (&[data-state="active"], &[data-active="true"]);
+@custom-variant data-open (&[data-state="open"], &[data-open="true"]);
+@custom-variant data-closed (&[data-state="closed"]);
+@custom-variant data-horizontal (&[data-orientation="horizontal"]);
+@custom-variant data-vertical (&[data-orientation="vertical"]);
+@custom-variant data-selected (&[data-selected="true"], &[aria-selected="true"]);
+
+@theme {
+  --font-sans: "Pretendard Variable", Pretendard, "Noto Sans KR", "Apple SD Gothic Neo", sans-serif;
+  --font-mono: var(--font-sans);   /* 모노스페이스 금지(사용자 규칙) — font-mono 유틸도 Pretendard. 숫자는 tabular-nums 로 */
+
+  --color-ink: #111111;      --color-ink-2: #333333; --color-ink-3: #555555; --color-ink-4: #767676;
+  --color-line: #E9E9E9;     --color-line-2: #F2F2F2; --color-line-3: #DCDCDC;
+  --color-ground: #FFFFFF;   --color-ground-2: #FAFAFA; --color-ground-3: #F4F4F4; --color-ground-4: #EFEFEF;
+  --color-dark: #161616;     --color-dark-2: #2C2C2C;
+  --color-ok: #1A7F37;       --color-ok-soft: #E8F5EC;
+  --color-warn: #B42318;     --color-warn-soft: #FCEBE9;
+  --color-mark: #FFF2A8;
+  /* 포인트 색 = 파워플러스 주황 (사용자 지시 2026-10-06 "파랑 포인트를 원래 파워플러스 강조색 주황으로, 중요한 곳에만").
+     point = 채움(주 버튼·알림 개수·진행 막대), point-ink = 글자·아이콘(흰 바탕 대비 AA). 선택 상태·보조 강조는 무채색으로 — 주황은 아껴 쓴다. 상태색 ok·warn 과 별개 */
+  --color-point: #E46B37;   --color-point-soft: #FDF0EA; --color-point-ink: #E46B37;
+  /* 차트 막대·선 = 중간 회색이 기본, 검정(ink)은 강조할 때만 (사용자 2026-10-08). chart-2 = 두 번째 계열(더 옅게) */
+  --color-chart: #A3A3A3;   --color-chart-2: #D4D4D4;
+
+  --text-xs: 12px; --text-sm: 13px; --text-base: 14px; --text-md: 15px; --text-lg: 16px;
+  --text-xl: 20px; --text-2xl: 22px; --text-3xl: 26px; --text-4xl: 32px; --text-5xl: 40px; --text-6xl: 44px; --text-7xl: 56px; --text-8xl: 64px;
+
+  /* 모서리 역할 체계(2026-10-12 GEN-015 통일): 3 작은 요소(md·sm) · 5 입력·버튼·썸네일(field·lg) · 8 카드(card·xl·2xl) · 10 패널·대화창(panel·3xl) · 16 큰 띠 배너(banner·4xl) · 18 채팅 말풍선(bubble) · 999 알약(chip). 임의값 rounded-[Npx] 금지. */
+  --radius-chip: 999px; --radius-card: 8px; --radius-card-lg: 8px; --radius-panel: 10px; --radius-thumb: 5px; --radius-ci: 10px; --radius-field: 5px; --radius-banner: 16px; --radius-bubble: 18px;   /* 2026-10-06 홈박스 원값 ×0.8 → 2026-10-08 사용자 "사이트 전체 라운드 절반" ×0.5 */
+  --radius-2xl: 8px; --radius-3xl: 10px; --radius-4xl: 16px;
+  --shadow-menu: 0 16px 40px rgba(0,0,0,.28);
+  --shadow-float: 0 12px 32px rgba(0,0,0,.08);
+  --shadow-modal: 0 30px 80px rgba(0,0,0,.4);
+
+  /* 레이아웃 (docs/03 §4): 컨테이너 1,360 = 1440 − 40×2 */
+  --container-hb: 1792px; /* 콘텐츠 1792 + 좌우 여백 128 = 최대 1920(관리자 포함 전 페이지) — 사용자 지시 2026-10-07 */
+  --spacing-header: 72px;
+  --breakpoint-2xl: 1440px;
+}
+
+/* shadcn/ui 매핑 (components.json: baseColor neutral, cssVariables true) */
+:root {
+  --background: var(--color-ground); --foreground: var(--color-ink);
+  --card: var(--color-ground); --card-foreground: var(--color-ink);
+  --popover: var(--color-dark); --popover-foreground: #ffffff;
+  --primary: var(--color-ink); --primary-foreground: #ffffff;
+  --secondary: var(--color-ground-3); --secondary-foreground: var(--color-ink);
+  --muted: var(--color-ground-3); --muted-foreground: var(--color-ink-4);
+  --accent: var(--color-ground-3); --accent-foreground: var(--color-ink);
+  --destructive: var(--color-warn);
+  --border: var(--color-line); --input: var(--color-line-3); --ring: var(--color-ink);
+  --radius: 5px;
+  --sidebar: var(--color-ground-2); --sidebar-foreground: var(--color-ink); --sidebar-primary: var(--color-ink); --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: var(--color-ground-3); --sidebar-accent-foreground: var(--color-ink); --sidebar-border: var(--color-line); --sidebar-ring: var(--color-ink);
+}
+
+/* ── 다크 모드 (사용자 지시 2026-09-26 "다크모드나 해당 옵션들도 동작하게") ──
+   계정 메뉴의 라이트·다크·시스템 = next-themes 가 <html class="dark"> 를 붙인다.
+   화면은 토큰(ink·ground·line)으로 칠하므로 토큰 값만 바꾸면 사이트 전체가 따라온다.
+   원래 어두운 패널(계정 메뉴·알림·셀렉트 목록, #2A2A2C·dark)은 그대로 두고 text-white 도 그대로다(--color-white 는 안 바꾼다). */
+@custom-variant dark (&:where(.dark, .dark *));
+.dark {
+  --color-ink: #F2F2F2;   --color-ink-2: #D6D6D6; --color-ink-3: #ABABAB; --color-ink-4: #8E8E8E;
+  --color-line: #2B2B2E;  --color-line-2: #232326; --color-line-3: #3A3A3E;
+  --color-ground: #111113; --color-ground-2: #17171A; --color-ground-3: #1F1F23; --color-ground-4: #27272B;
+  --color-dark: #1C1C1F;  --color-dark-2: #2C2C30;
+  --color-ok: #4ADE80;    --color-ok-soft: #12291B;
+  --color-warn: #F87171;  --color-warn-soft: #2E1614;
+  --color-mark: #5A4A00;
+  --color-point: #E46B37; --color-point-soft: #2E1C14; --color-point-ink: #E46B37;
+  --color-chart: #7A7A7A; --color-chart-2: #4A4A4E;
+  --primary-foreground: #111113; --sidebar-primary-foreground: #111113;
+  --shadow-float: 0 12px 32px rgba(0,0,0,.5);
+  color-scheme: dark;
+}
+/* 흰 면(bg-white 94곳)은 바탕색으로, 검은 채움(bg-ink)의 흰 글자는 반대로 — 토큰 밖에서 색을 직접 쓴 곳의 보정 */
+.dark .bg-white { background-color: var(--color-ground) !important; }
+.dark .bg-ink.text-white, .dark .bg-ink .text-white, .dark .bg-ink > svg { color: var(--color-ground) !important; }
+.dark img:not([src$=".svg"]) { color-scheme: light; }
+/* 선택된 토글(aria-checked:bg-ink + text-white): ink 가 밝아졌으니 글자는 바탕색으로 */
+.dark [aria-checked="true"][class*="aria-checked:bg-ink"],
+.dark [aria-pressed="true"][class*="aria-pressed:bg-ink"],
+.dark [data-state="on"][class*="data-[state=on]:bg-ink"] { color: var(--color-ground) !important; }
+/* 선택된 세그먼트(aria-checked:bg-white): 흰 면 대신 한 단계 밝은 면 */
+.dark [aria-checked="true"][class*="aria-checked:bg-white"],
+.dark [data-state="on"][class*="data-[state=on]:bg-white"] { background-color: var(--color-ground-4) !important; }
+
+@theme inline {
+  --color-background: var(--background); --color-foreground: var(--foreground);
+  --color-card: var(--card); --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover); --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary); --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary); --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted); --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent); --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border); --color-input: var(--input); --color-ring: var(--ring);
+  --color-sidebar: var(--sidebar); --color-sidebar-foreground: var(--sidebar-foreground); --color-sidebar-primary: var(--sidebar-primary); --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent); --color-sidebar-accent-foreground: var(--sidebar-accent-foreground); --color-sidebar-border: var(--sidebar-border); --color-sidebar-ring: var(--sidebar-ring);
+  --radius-sm: 3px; --radius-md: 3px; --radius-lg: var(--radius); --radius-xl: 8px;
+}
+
+@layer base {
+  * { @apply border-border outline-ring/50; }
+  html { color-scheme: light; }
+  html.dark { color-scheme: dark; }
+  body {
+    @apply bg-ground text-ink font-sans text-base antialiased;
+    letter-spacing: -0.01em;
+    /* 전 프로젝트 공통 규칙(사용자 지시 2026-09-24): 한글 단어가 중간에서 잘려 줄바꿈되면 안 된다("디/자인" 금지 → "디자인" 통째로 다음 줄).
+       keep-all = 어절 단위로만 줄바꿈. 띄어쓰기 없는 긴 URL·코드는 안 넘치게 overflow-wrap 으로 그때만 끊는다. */
+    word-break: keep-all;
+    overflow-wrap: break-word;
+  }
+  a { color: inherit; text-decoration: none; }
+  /* Tailwind v4 preflight 는 버튼 커서를 default 로 둔다 → 클릭 가능한 것은 전부 손 모양(사용자 지시 2026-09-24 "저장·데이터 복사 커서 핸드") */
+  button:not(:disabled), [role="button"]:not([aria-disabled="true"]), [role="tab"], [role="radio"], [role="menuitem"], [role="option"], label[for], summary { cursor: pointer; }
+  button:disabled { cursor: not-allowed; }
+  /* 접근성: 키보드 포커스 링 2px ink offset 2 (docs/03 §7) — 버튼·링크·커스텀 컨트롤에만.
+     텍스트 입력(input/textarea)은 링을 그리지 않는다(사용자 지시 2026-09-23: 클릭 시 아웃라인 X) —
+     필드 자체가 컨테이너(검색창 pill, 폼 필드 border)로 포커스 상태를 표현한다. Firefox는 마우스 클릭도 :focus-visible 로 잡으므로 여기서 걸러야 한다. */
+  :where(a, button, summary, [role="button"], [role="tab"], [role="menuitem"], [role="option"], [role="checkbox"], [role="switch"], [tabindex]:not(input):not(textarea):not(select)):focus-visible {
+    @apply outline-none ring-2 ring-ink ring-offset-2 ring-offset-ground;
+  }
+  /* 드롭다운 메뉴 항목은 배경 하이라이트가 곧 포커스 표시 — 링·오프셋(다크 패널에선 흰 테두리로 보임)은 끈다 (2026-09-23 사용자 지적) */
+  [role="menu"] [role="menuitem"]:focus-visible, [role="listbox"] [role="option"]:focus-visible { --tw-ring-shadow: 0 0 #0000; --tw-ring-offset-shadow: 0 0 #0000; box-shadow: none; outline: none; }
+  /* 메뉴·다이얼로그 컨테이너 자체(tabindex=-1)와 계정 아바타는 링을 그리지 않는다 — 열릴 때 포커스를 받아 검정·흰 이중 테두리로 보였다 (사용자 지적 2026-09-24) */
+  :is([role="menu"], [role="dialog"], [role="listbox"], .hb-avatar-btn):focus-visible { --tw-ring-shadow: 0 0 #0000; --tw-ring-offset-shadow: 0 0 #0000; outline: none; }
+  /* 다크 패널(계정 메뉴) 항목: 호버·포커스는 배경만 살짝, 글자·아이콘은 항상 흰색 — shadcn 기본(focus:**:text-accent-foreground)이 자식 svg 를 검정으로 덮는 것 차단 (사용자 지시 2026-09-23) */
+  /* 작은 모달 = 다크 패널 (필터 팔레트 톤, 사용자 지시 2026-09-24): 흰 모달은 요금제·상담 폼처럼 크고 긴 것만.
+     DialogContent 에 class="hb-dark-dialog" 하나로 안의 입력·버튼·설명까지 다크로 맞춘다 */
+  .hb-dark-dialog { background: #2A2A2C !important; color: #fff !important; border: 0 !important; box-shadow: 0 24px 80px rgba(0,0,0,.45) !important; }
+  .hb-dark-dialog [data-slot="dialog-description"], .hb-dark-dialog .text-ink-3, .hb-dark-dialog .text-ink-4 { color: rgba(255,255,255,.55) !important; }
+  .hb-dark-dialog [data-slot="label"] { color: rgba(255,255,255,.75) !important; }
+  .hb-dark-dialog .text-ink, .hb-dark-dialog .text-ink-2, .hb-dark-dialog [data-slot="dialog-title"] { color: #fff !important; }
+  .hb-dark-dialog .bg-white:not([data-slot="button"]) { background: rgba(255,255,255,.07) !important; }
+  .hb-dark-dialog [data-slot="input"], .hb-dark-dialog textarea { background: rgba(255,255,255,.08) !important; border-color: transparent !important; color: #fff !important; }
+  .hb-dark-dialog [data-slot="input"]::placeholder, .hb-dark-dialog textarea::placeholder { color: rgba(255,255,255,.4) !important; }
+  .hb-dark-dialog [data-slot="dialog-close"] { color: rgba(255,255,255,.6) !important; }
+  .hb-dark-dialog [data-slot="button"].bg-ink { background: #fff !important; border-color: #fff !important; color: #111 !important; }
+  .hb-dark-dialog [data-slot="button"].bg-white, .hb-dark-dialog [data-slot="button"].bg-transparent { background: transparent !important; border-color: rgba(255,255,255,.2) !important; color: #fff !important; }
+  .hb-dark-dialog [data-slot="button"].bg-white:hover, .hb-dark-dialog [data-slot="button"].bg-transparent:hover { background: rgba(255,255,255,.1) !important; }
+  .hb-dark-dialog .bg-ground-2, .hb-dark-dialog .bg-ground-3 { background: rgba(255,255,255,.07) !important; }
+  .hb-dark-dialog .border-line, .hb-dark-dialog .border-line-2 { border-color: rgba(255,255,255,.1) !important; }
+  /* shadcn DialogFooter 기본 = 밝은 면(bg-muted/50)·위 선·아래 모서리 — 다크 모달에선 모서리가 두 겹으로 보여 제거 (사용자 지적 2026-09-24) */
+  .hb-dark-dialog [data-slot="dialog-footer"] { background: transparent !important; border-top: 0 !important; border-radius: 0 !important; margin: 0 !important; padding: 8px 0 0 !important; }
+  /* 닫기 버튼 커서 — 모든 X 는 손가락 커서 (사용자 지시 2026-09-24) */
+  [aria-label="닫기"], [data-slot="dialog-close"], [data-slot="sheet-close"] { cursor: pointer; }
+  .hb-dark-item, .hb-dark-item * { color: #fff !important; }
+  .hb-dark-item svg { color: rgba(255,255,255,.85) !important; }
+  .hb-dark-item:hover, .hb-dark-item:focus, .hb-dark-item[data-highlighted] { background: #3D3D40 !important; box-shadow: none !important; outline: none !important; }
+  /* 다크 패널 스크롤바 (사용자 지적 2026-09-24: 흰 스크롤바가 검정 모달에서 튐) */
+  .hb-dark-scroll { scrollbar-color: rgba(255,255,255,.22) transparent; scrollbar-width: thin; }
+  .hb-dark-scroll::-webkit-scrollbar { width: 8px; background: transparent; }
+  .hb-dark-scroll::-webkit-scrollbar-thumb { background: rgba(255,255,255,.22); border-radius: 999px; }
+  /* 모노스페이스 금지(사용자 규칙 2026-09-24) — code·kbd 도 Pretendard. 브라우저 기본 monospace 가 영문만 튀어 보이던 것 */
+  code, kbd, samp, pre { font-family: var(--font-sans); }
+  .font-mono { font-variant-numeric: tabular-nums; letter-spacing: 0; }
+  input, textarea, select { @apply outline-none; }
+  input:focus, input:focus-visible, textarea:focus, textarea:focus-visible { outline: none; box-shadow: none; }
+  /* 사이트 공통 움직임(사용자 2026-10-07 "호버·탑·모달 등 부담스럽지 않게") — 짧고(150~220ms) 작게(1~2px) */
+  a, button, [role="button"], summary, input, textarea, select {
+    transition-property: color, background-color, border-color, box-shadow, opacity, transform, translate;
+    transition-duration: 160ms;
+    transition-timing-function: cubic-bezier(.2, .7, .2, 1);
+  }
+  button:not(:disabled):active, [role="button"]:active { transform: translateY(1px); }
+  /* 호버는 색·배경·테두리·그림자만 부드럽게 — 확대·떠오름은 쓰지 않는다(사용자 2026-10-08 "스케일업 같은 효과는 지양, 싫어함") */
+  a.rounded-panel.border, [role="button"].rounded-panel.border, a.rounded-xl.border { transition-duration: 220ms; }
+  a.rounded-panel.border:hover, [role="button"].rounded-panel.border:hover, a.rounded-xl.border:hover {
+    border-color: var(--color-line-3);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, .06);
+  }
+  .hb-thumb img { transition: opacity 220ms ease; }
+  .group:hover .hb-thumb img, .hb-thumb:hover img { opacity: .92; }
+  .hb-float:hover { box-shadow: 0 10px 24px rgba(0, 0, 0, .12); }
+  /* 메뉴·링크 글자색, 메뉴 배경 호버도 같은 속도로(shadcn 항목 포함) */
+  [data-slot$="-item"], [role="menuitem"], [role="option"], [role="tab"], nav a { transition: color 180ms ease, background-color 180ms ease; }
+  /* 레이어(드롭다운·셀렉트·팝오버·대화상자) 등장 = tw-animate 의 fade·zoom 을 쓰되 확대 폭은 최소로 */
+  [data-slot="dropdown-menu-content"], [data-slot="select-content"], [data-slot="popover-content"] { --tw-enter-scale: 1; --tw-exit-scale: 1; --tw-enter-translate-y: -4px; animation-duration: 180ms; }
+  [data-slot="dialog-content"] { --tw-enter-scale: .98; --tw-exit-scale: .98; animation-duration: 200ms; }
+  /* AI 도우미 창은 아래에서 살짝 올라오며 열린다 */
+  .hb-pop { animation: hb-rise 220ms cubic-bezier(.2, .7, .2, 1); transform-origin: bottom right; }
+  /* 접는 상자(details) 내용은 부드럽게 나타난다 */
+  details[open] > :not(summary) { animation: hb-rise 200ms cubic-bezier(.2, .7, .2, 1); }
+  /* 화면 이동 때 본문이 살짝 떠오르며 들어온다 */
+  main { animation: hb-fade 280ms cubic-bezier(.2, .7, .2, 1); }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
+    a.rounded-panel.border:hover, [role="button"].rounded-panel.border:hover, a.rounded-xl.border:hover { transform: none; }
+  }
+}
+
+@keyframes hb-rise { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+@keyframes hb-fade { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+
+@utility container-hb {
+  width: 100%;
+  max-width: calc(var(--container-hb) + 128px);
+  margin-inline: auto;
+  padding-inline: 64px;
+  @media (width < 1280px) { padding-inline: 40px; }
+  @media (width < 768px) { padding-inline: 16px; }
+}
+
+/* 커뮤니티·정책·문서·도움말·소개·powerMCP·계정·공지 — 콘텐츠 최대 1399 가운데 (사용자 지시 2026-10-07) */
+@utility container-page {
+  width: 100%;
+  max-width: calc(1399px + 128px);
+  margin-inline: auto;
+  padding-inline: 64px;
+  @media (width < 1280px) { padding-inline: 40px; }
+  @media (width < 768px) { padding-inline: 16px; }
+}
+
+/* 표 정렬 규칙(사용자 공통 규칙 2026-09-24): th 는 가운데. 셀 기본은 가운데, 가변 길이 텍스트 컬럼은 text-left, 비교 숫자 컬럼은 text-right 를 명시한다 */
+@layer base {
+  th { text-align: center; }
+  td { text-align: center; }
+  /* 경로(브레드크럼) 링크 — 줄 높이는 그대로 두고 누르는 자리만 위아래로 넓힌다(인라인 패딩, 2026-10-08 반응형 3차) */
+  nav[aria-label="경로"] a, nav[data-slot="breadcrumb"] a { padding: 6px; margin-inline: -6px; }
+}
+
+/* 로그인 콜라주 세로 흐름 (Mobbin 로그인, 2026-09-24). 목록을 두 번 이어 붙였으니 -50% 에서 처음과 같은 그림 → 무한 반복 */
+@keyframes hb-collage-up { from { transform: translateY(0); } to { transform: translateY(-50%); } }
+.hb-collage-col { animation: hb-collage-up 60s linear infinite; will-change: transform; }
+@media (prefers-reduced-motion: reduce) { .hb-collage-col { animation: none; } }
+
+/* 요금제 기관 파비콘 띠 (Mobbin "Used by", 2026-09-24): 목록을 두 번 이어 붙였으니 -50% 에서 이음매 없이 반복 */
+@keyframes hb-marquee { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+.hb-marquee { animation: hb-marquee 60s linear infinite; }
+@media (prefers-reduced-motion: reduce) { .hb-marquee { animation: none; } }
+
+/* 관리자 = 강조색 주황 하나(사용자 2026-10-06 "포인트 색은 파워플러스 강조색인 주황색 하나만").
+   빨강(warn·destructive)은 주황 글자색으로, 초록(ok)은 무채색으로, 형광(mark)은 주황 옅은 면으로. */
+html[data-area="admin"] {
+  --color-warn: var(--color-point-ink); --color-warn-soft: var(--color-point-soft);
+  --color-ok: var(--color-ink-3);        --color-ok-soft: var(--color-ground-3);
+  --color-mark: var(--color-point-soft);
+  --destructive: var(--color-point-ink);
+}
+html.dark[data-area="admin"] {
+  --color-warn: var(--color-point-ink); --color-warn-soft: var(--color-point-soft);
+  --color-ok: var(--color-ink-3);        --color-ok-soft: var(--color-ground-3);
+  --color-mark: var(--color-point-soft);
+  --destructive: var(--color-point-ink);
+}
+
+/* 고정 위치 기준 — 헤더가 스크롤로 숨으면 0, 보이면 헤더 높이(2026-10-06 "고정이 이상한 위치에서 됨").
+   sticky 요소는 top 을 이 값 기준으로 잡는다: top-[var(--hdr-offset)] · top-[calc(var(--hdr-offset)+N)] */
+:root { --hdr-offset: var(--spacing-header); }
+html[data-hdr="hidden"] { --hdr-offset: 0px; }
+.sticky-follow { transition: top 200ms ease; }
+
+/* 관리자 사이드 = 검정(사용자 2026-10-07). 사이드 안에서만 색 토큰을 뒤집어 글자·아이콘·선택 줄이 같이 따라온다.
+   펼친 메뉴(포털)는 사이드 밖이라 영향 없음. */
+.hb-admin-side, .hb-admin-side [data-sidebar="sidebar"] {
+  --sidebar: #111113; --sidebar-foreground: #E8E8EA;
+  --sidebar-accent: #26262A; --sidebar-accent-foreground: #FFFFFF;
+  --sidebar-border: #26262A; --sidebar-ring: #3A3A40;
+  --color-ink: #F4F4F5; --color-ink-2: #E4E4E7; --color-ink-3: #C4C4CA; --color-ink-4: #8E8E96;
+  --color-ground: #111113; --color-line: #26262A;
+  color-scheme: dark;
+}
+.hb-admin-side [data-sidebar="group-label"] { color: #8E8E96; }
+.hb-admin-side [data-active="true"] { background: #2E2E33; color: #FFFFFF; }
+/* 검정 사이드바 글자 — 링크·버튼이 전역 글자색(ink)을 직접 받아 어두운 면에 묻히던 것을 명시로 덮는다 */
+.hb-admin-side [data-sidebar="sidebar"], .hb-admin-side [data-sidebar="menu-button"], .hb-admin-side [data-sidebar="menu-sub-button"], .hb-admin-side [data-sidebar="menu-button"] svg, .hb-admin-side [data-sidebar="menu-sub-button"] svg { color: #E8E8EA; }
+.hb-admin-side .text-ink-4 { color: #8E8E96; }
+.hb-admin-side [data-sidebar="menu-button"]:hover, .hb-admin-side [data-sidebar="menu-sub-button"]:hover { background: #26262A; color: #fff; }
+.hb-admin-side [data-active="true"], .hb-admin-side [data-active="true"] svg { background: #2E2E33; color: #fff; }
+.hb-admin-side .pp-logo { color: #fff; }
+.hb-admin-side .bg-ink.text-ground { background: #fff; color: #111113; }
+.hb-admin-side .bg-ink.text-ground svg { color: #111113; }
+
+/* 넓게 보기(components/hb/work-space.tsx) — 토글이 그려진 화면에서만 html[data-wide="1"]. 레이어 밖이라 container-hb·page 유틸을 이긴다 */
+/* 넓게 보기 = 작업 영역이 화면을 꽉 채운다(사용자 2026-10-07 "헤더도 안 남고 좌우·상하 여백 0") — 사이트 머리·바닥·하단 탭도 숨긴다 */
+html[data-wide="1"] { --hdr-offset: 0px; }
+html[data-wide="1"] .wide-out { display: none !important; }
+html[data-wide="1"] #content { padding: 0 !important; }
+html[data-wide="1"] .work-wide { max-width: none !important; margin: 0 !important; padding: 0 !important; }
+html[data-wide="1"] .work-wide .pd-root { margin: 0 !important; border: 0; border-radius: 0; min-height: 100dvh; }
+
+/* 연결 상태 점 — 연결되면 초록 점이 은은하게 깜빡인다. 관리자의 "주황 하나" 규칙 예외(사용자 2026-10-07 지시)(components/hb/live-status.tsx). 관리자·프론트 공통 */
+@keyframes hb-live-blink { 0%, 100% { opacity: 1; box-shadow: 0 0 0 0 color-mix(in srgb, var(--live) 45%, transparent); } 50% { opacity: .45; box-shadow: 0 0 0 4px color-mix(in srgb, var(--live) 0%, transparent); } }
+.hb-live-dot { --live: #16A34A; display: inline-block; width: 8px; height: 8px; border-radius: 999px; flex: none; background: var(--color-ink-4); }
+.hb-live-pill[data-state="ok"] { background: color-mix(in srgb, #16A34A 12%, transparent); color: #15803D; }
+.dark .hb-live-pill[data-state="ok"] { color: #4ADE80; }
+/* 관리자 영역: 초록은 깜빡이는 점(#16A34A)만 예외 — 글자·바탕은 무채색(ADM-002) */
+html[data-area="admin"] .hb-live-pill[data-state="ok"] { background: var(--color-ground-3); color: var(--color-ink-2); }
+.hb-live-dot[data-state="ok"] { background: var(--live); animation: hb-live-blink 1.6s ease-in-out infinite; }
+.hb-live-dot[data-state="warn"] { background: var(--color-warn); }
+.hb-live-dot[data-state="wait"] { --live: var(--color-point); background: var(--live); animation: hb-live-blink 1.6s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) { .hb-live-dot { animation: none !important; } }
+/* 넓게 보기 공통(사용자 2026-10-07) — 켜면 화면 머리(경로·제목·메뉴 탭·화면 제목·설명)가 통째로 사라진다 */
+html[data-wide="1"] .wide-hide { display: none !important; }
+
+/* ── 태블릿·모바일 (2026-10-08 점검 docs/responsive-checklist.md) ─────────────
+ * 1) 입력칸 글자 16px — iOS 는 16px 미만 입력칸을 누르면 화면을 확대하고 되돌리지 않는다.
+ * 2) 작은 고르기 칸(체크박스·스위치)은 보이는 크기는 두고 누르는 자리만 44px 로 넓힌다. */
+@media (max-width: 1023px) {
+  input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=hidden]),
+  textarea, select, [contenteditable="true"] { font-size: 16px !important; }
+}
+@media (pointer: coarse) {
+  [role=checkbox], [role=switch], [role=radio], input[type=checkbox], input[type=radio] { position: relative; }
+  [role=checkbox]::after, [role=radio]::after, input[type=checkbox]::after, input[type=radio]::after {
+    content: ""; position: absolute; left: 50%; top: 50%; width: 44px; height: 44px; transform: translate(-50%, -50%);
+  }
+}
+
+/* powerDeck 작업 화면 — 1024 미만이면 여러 칸을 한 줄로 쌓고, 쪽 목록은 가로 띠로(2026-10-08 반응형 점검) */
+@media (max-width: 1023px) {
+  .pd-cols:not(.pd-mr) { grid-template-columns: minmax(0, 1fr) !important; }
+  .pd-cols:not(.pd-mr) > * { border-left-width: 0 !important; border-right-width: 0 !important; }
+  .pd-rail { flex-direction: row; overflow-x: auto; overflow-y: hidden; border-bottom: 1px solid var(--color-line); }
+  .pd-rail > button { width: 96px; }
+}
+
+/* 장표 시안 화면(.pd-mr) — 태블릿은 세 칸 그대로(왼쪽 좁게·오른쪽 기본 접힘, MockupReview), 모바일만 위아래로 쌓는다.
+ * 접힌 칸은 세로 쓰기 대신 아이콘+숫자(글자가 돌아가 보이던 것, 사용자 2026-10-08). 모바일에서 접힌 칸은 가로 한 줄 */
+@media (max-width: 767px) {
+  .pd-mr { grid-template-columns: minmax(0, 1fr) !important; }
+  .pd-mr > * { border-left-width: 0 !important; border-right-width: 0 !important; border-bottom: 1px solid var(--color-line); }
+  .pd-mr > .pd-fold { flex-direction: row; justify-content: flex-start; padding: 8px 16px; }
+  .pd-mr .pd-fold-l { flex-direction: row; gap: 6px; }
+  .pd-mr .head { flex-wrap: wrap; height: auto !important; min-height: 52px; row-gap: 8px; padding-block: 8px !important; overflow: visible !important; }
+}
+/* 작업 머리 줄 버튼 — 1280 미만은 아이콘만(글은 title·읽기 이름으로 남는다). 주 버튼(.btn-next)은 짧은 글을 쓴다 */
+@media (max-width: 1279px) {
+  .pd-acts > :is(button, a):has(> .ms):not(.btn-next) { font-size: 0 !important; gap: 0 !important; width: 38px; padding-inline: 0 !important; justify-content: center; }
+  .pd-acts > .pd-hint { display: none; }
+}
+
+/* 작은 버튼의 보이지 않는 누름 영역 — 모양·배치는 그대로 두고 둘레 8px 를 더 눌리게(2026-10-08 반응형 3차).
+   빽빽한 작업 화면(장표 도구 줄)에서 버튼을 키우면 줄이 깨지므로 이 방법을 쓴다. */
+.pp-hit::before { content: ""; position: absolute; inset: -8px; }
+.pp-hit:where(:not(.absolute)) { position: relative; }
+
+/* powerPlus AI 채팅 — 칸이 좁을 때(챗봇 창·모바일) 버튼·입력·색 견본·글자를 한 단계 작게.
+   .pp-chat 는 @container(inline-size) 를 가진 채팅 칸. 홈처럼 넓으면 원래 크기. */
+@container (width < 42rem) {
+  .pp-chat [data-slot="button"]:not([data-size^="icon"]):not([data-variant="link"]) { height: 2rem; padding-inline: 0.75rem; gap: 0.375rem; font-size: 13px; }
+  .pp-chat [data-slot="button"][data-size^="icon"] { width: 2rem; height: 2rem; }
+  .pp-chat [data-slot="button"] svg { width: 14px; height: 14px; }
+  .pp-chat [data-slot="input"] { height: 2rem; font-size: 13px; }
+  .pp-chat .pp-seg { height: 2rem; padding-inline: 0.75rem; font-size: 13px; }
+  .pp-chat .pp-swatch { width: 1.75rem; height: 1.75rem; }
+  .pp-chat .text-md { font-size: 14px; }
+  .pp-chat .pp-label { width: 5rem; font-size: 13px; }
+}
+
+/* powerPlus AI 채팅 안 작은 버튼·입력·선택 버튼 모서리 3px 통일(2026-10-08 사용자 "너무 라운드 심한 거 3px 로").
+   색 견본(원)과 말풍선·카드는 제외. */
+.pp-chat [data-slot="button"], .pp-chat [data-slot="input"], .pp-chat .pp-seg, .pp-chat textarea[data-slot="textarea"] { border-radius: var(--radius-md); }
+
+/* 헤더 검색칸을 펼치면 주 메뉴는 잠시 감춘다 — 둘 다 두면 PC·태블릿에서 가로로 넘친다(반응형 검수 2026-10-09) */
+header:has([data-search-open]) nav[aria-label="주 메뉴"] { display: none; }
+
+/* 모바일 캐러셀 줄(hb/mobile-carousel.tsx) — 가로 스크롤바는 숨기고 점·화살표로 넘긴다 */
+.pp-noscrollbar { scrollbar-width: none; }
+.pp-noscrollbar::-webkit-scrollbar { display: none; }
+
+/* 관리자 사이드바 = 고정 + 안쪽 스크롤 대신 흐름에 놓아 바깥 세로 스크롤 하나로(판정 GEN-001, 2026-10-10) */
+@media (min-width: 1024px) {
+  [data-slot="sidebar"]:has(> .hb-admin-side) > [data-slot="sidebar-gap"] { display: none; }
+  [data-slot="sidebar-container"].hb-admin-side { position: relative; inset: auto; height: 100%; min-height: 100svh; }
+  .hb-admin-side [data-slot="sidebar-content"] { overflow: visible; }
+}
+
+/* 꼬리 한 줄 방지(품질 판정 GEN-007) — Copy 가 문장마다 감싸는 칸. 두 줄로 넘치면 고르게 나눈다. 한 줄이면 아무 일도 없다 */
+.pp-sent { display: inline-block; max-width: 100%; text-wrap: balance; }

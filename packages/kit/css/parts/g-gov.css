@@ -1,0 +1,370 @@
+/* ─────────────────────────────────────────────────────────────
+   G 묶음 · 정부 서비스 공통 (masthead · identifier · header · footer ·
+   skip-link · language-switcher · resize · tts)
+   KRDS 원본 CSS 에 없는 것만: 드롭다운 열림 상태, 공식 배너 펼침, 로고 이미지·글자 자리,
+   관련 사이트 펼침, 건너뛰기 링크 미리보기, TTS(원본 SCSS 에만 있어 여기서 짓는다).
+   ───────────────────────────────────────────────────────────── */
+
+/* 드롭다운(krds-drop-wrap) 열림 — KRDS 는 style.display 로 여닫는다. 키트는 클래스로. */
+.krds-drop-wrap.hb-open > .drop-menu {
+  display: block;
+}
+.krds-drop-wrap .drop-btn .ico-toggle {
+  transition: transform 0.2s ease;
+}
+.krds-drop-wrap.hb-open > .drop-btn .ico-toggle {
+  transform: rotate(180deg);
+}
+@media (prefers-reduced-motion: reduce) {
+  .krds-drop-wrap .drop-btn .ico-toggle {
+    transition: none;
+  }
+}
+
+/* ── 로고 자리: KRDS 기본 로고(배경 그림)를 지우고 받은 이미지 또는 기관명 글자를 쓴다 */
+.hb-gov-logo {
+  background-image: none !important;
+}
+.hb-gov-logo img {
+  display: block;
+  height: 100%;
+  width: auto;
+  max-width: 100%;
+  object-fit: contain;
+}
+.hb-gov-logo-text {
+  display: inline-flex;
+  align-items: center;
+  height: 100%;
+  font-size: var(--krds-pc-font-size-heading-small);
+  font-weight: var(--krds-font-weight-bold);
+  color: var(--krds-light-color-text-basic);
+  white-space: nowrap;
+}
+
+/* ── 공식 배너(masthead) 펼침 */
+#krds-masthead .hb-masthead-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--krds-gap-1);
+  padding: 0 var(--krds-padding-2);
+  min-height: var(--krds-size-height-4);
+  border-radius: var(--krds-radius-small2);
+  font-size: var(--krds-masthead--pc-font-size);
+  color: var(--krds-light-color-text-secondary);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+#krds-masthead .hb-masthead-toggle:hover {
+  background-color: var(--krds-light-color-action-secondary-hover);
+}
+#krds-masthead .hb-masthead-toggle .svg-icon {
+  width: var(--krds-icon--size-small);
+  height: var(--krds-icon--size-small);
+  background-color: currentColor;
+  transition: transform 0.2s ease;
+}
+#krds-masthead .toggle-head.active .hb-masthead-toggle .svg-icon {
+  transform: rotate(180deg);
+}
+#krds-masthead .toggle-body.active {
+  height: auto;
+  overflow: visible;
+}
+#krds-masthead .hb-masthead-body {
+  display: grid;
+  width: 100%;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: var(--krds-gap-5);
+  padding: var(--krds-padding-5) 0 var(--krds-padding-6);
+  font-size: var(--krds-pc-font-size-body-small);
+}
+#krds-masthead .hb-masthead-body strong {
+  display: block;
+  margin-bottom: var(--krds-gap-1);
+  font-weight: var(--krds-font-weight-bold);
+  color: var(--krds-light-color-text-bolder);
+}
+#krds-masthead .hb-masthead-body p {
+  color: var(--krds-light-color-text-subtle);
+}
+@media (prefers-reduced-motion: reduce) {
+  #krds-masthead .hb-masthead-toggle .svg-icon {
+    transition: none;
+  }
+}
+
+/* ── 헤더 */
+#krds-header.hb-header--static {
+  position: relative;
+}
+#krds-header .header-container .logo.hb-gov-logo-box {
+  width: auto;
+  min-width: 0;
+}
+#krds-header .header-container .logo a.hb-gov-logo {
+  display: inline-flex;
+  align-items: center;
+  width: auto;
+}
+
+/* ── 푸터 */
+#krds-footer .f-logo.hb-gov-logo {
+  width: auto;
+  display: inline-flex;
+  align-items: center;
+}
+/* 열림 = 닫기 아이콘으로 바꿈. + 를 45도 돌리면 Chrome 이 돌린 칸의 가장자리를 가는 선(^)으로 그린다(사용자 2026-10-09 "활성화시 겹쳐서 나옴") */
+#krds-footer .foot-quick .inner .link[aria-expanded="true"]::after {
+  -webkit-mask-image: url(icons/ico_close.svg);
+  mask-image: url(icons/ico_close.svg);
+  -webkit-mask-size: 75%;
+  mask-size: 75%; /* 닫기 그림이 + 보다 꽉 차서 같은 크기로 보이게 */
+}
+#krds-footer .hb-foot-related {
+  border-bottom: 1px solid var(--krds-light-color-border-gray-light);
+  background-color: var(--krds-light-color-background-white);
+}
+#krds-footer .hb-foot-related .inner {
+  padding-top: var(--krds-padding-6);
+  padding-bottom: var(--krds-padding-6);
+}
+#krds-footer .hb-foot-related-title {
+  margin-bottom: var(--krds-gap-3);
+  font-size: var(--krds-pc-font-size-body-medium);
+  font-weight: var(--krds-font-weight-bold);
+}
+#krds-footer .hb-foot-related ul {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: var(--krds-gap-2) var(--krds-gap-5);
+}
+#krds-footer .hb-foot-related a {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--krds-gap-1);
+  min-height: var(--krds-size-height-5);
+  color: var(--krds-light-color-text-basic);
+  font-size: var(--krds-pc-font-size-body-small);
+}
+#krds-footer .hb-foot-related a:hover {
+  text-decoration: underline;
+}
+#krds-footer .hb-foot-related a .svg-icon {
+  width: var(--krds-icon--size-small);
+  height: var(--krds-icon--size-small);
+}
+
+/* ── 건너뛰기 링크: 페이지 흐름 안에 두기 / 늘 보이게(미리보기) */
+#krds-skip-link.hb-skip--inline {
+  position: relative;
+  z-index: auto;
+}
+#krds-skip-link.hb-skip--preview {
+  position: relative;
+  z-index: auto;
+}
+#krds-skip-link.hb-skip--preview a,
+#krds-skip-link.hb-skip--preview a:not(:focus) {
+  position: static !important;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100% !important;
+  height: var(--krds-size-height-5) !important;
+  margin: 0 auto !important;
+  clip: auto !important;
+  overflow: visible !important;
+  white-space: nowrap !important;
+  font-size: var(--krds-pc-font-size-body-small);
+  color: var(--krds-skip-link-color-text);
+}
+#krds-skip-link .hb-skip-list {
+  display: flex;
+  justify-content: center;
+}
+#krds-skip-link .hb-skip-list li {
+  flex: 1;
+}
+
+/* ── 언어 변경: 페이지형 새 창 아이콘 */
+.krds-drop-wrap.krds-language .drop-list .item-link .svg-icon.ico-go {
+  margin-left: auto;
+}
+
+/* ── TTS (KRDS _tts.scss 옮김) */
+.krds-tts {
+  --krds-tts--svg-icon-size-xsmall: var(--krds-size-height-2);
+  --krds-tts--container-size-xsmall: var(--krds-size-height-4);
+  --krds-tts--gap-xsmall: var(--krds-gap-1);
+  --krds-tts--font-size-xsmall: var(--krds-pc-font-size-label-small);
+  --krds-tts--svg-icon-size-small: var(--krds-size-height-3);
+  --krds-tts--container-size-small: var(--krds-size-height-5);
+  --krds-tts--gap-small: var(--krds-gap-1);
+  --krds-tts--font-size-small: var(--krds-pc-font-size-label-small);
+  --krds-tts--svg-icon-size-medium: var(--krds-size-height-4);
+  --krds-tts--container-size-medium: var(--krds-size-height-7);
+  --krds-tts--gap-medium: var(--krds-gap-2);
+  --krds-tts--font-size-medium: var(--krds-pc-font-size-label-medium);
+  --hb-tts-fill: var(--krds-light-color-background-white);
+  --hb-tts-fill-hover: var(--krds-color-light-primary-5);
+  --hb-tts-fill-pressed: var(--krds-color-light-primary-10);
+  --hb-tts-border: var(--krds-light-color-button-primary-fill);
+  --hb-tts-icon: var(--krds-light-color-button-primary-fill);
+  --hb-tts-text: var(--krds-light-color-text-bolder);
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: var(--krds-tts--gap-medium);
+  width: auto;
+  padding: 0;
+  border: 0;
+  background-color: transparent;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: var(--krds-transition-base);
+}
+.krds-tts.pause {
+  --hb-tts-fill: var(--krds-light-color-button-primary-fill);
+  --hb-tts-fill-hover: var(--krds-light-color-button-primary-fill-hover);
+  --hb-tts-fill-pressed: var(--krds-light-color-button-primary-fill-pressed);
+  --hb-tts-icon: var(--krds-light-color-text-inverse-static);
+}
+.krds-tts .krds-tts-icon {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--krds-tts--container-size-medium);
+  height: var(--krds-tts--container-size-medium);
+  border: 2px solid var(--hb-tts-border);
+  border-radius: var(--krds-radius-max);
+  background-color: var(--hb-tts-fill);
+  box-sizing: border-box;
+  transition: var(--krds-transition-base);
+}
+.krds-tts .krds-tts-icon .svg-icon {
+  width: var(--krds-tts--svg-icon-size-medium);
+  height: var(--krds-tts--svg-icon-size-medium);
+  background-color: var(--hb-tts-icon);
+}
+.krds-tts .krds-tts-text {
+  font-size: var(--krds-tts--font-size-medium);
+  font-weight: var(--krds-font-weight-regular);
+  line-height: var(--krds-line-height-base);
+  color: var(--hb-tts-text);
+}
+.krds-tts.small {
+  gap: var(--krds-tts--gap-small);
+}
+.krds-tts.small .krds-tts-icon {
+  width: var(--krds-tts--container-size-small);
+  height: var(--krds-tts--container-size-small);
+}
+.krds-tts.small .krds-tts-icon .svg-icon {
+  width: var(--krds-tts--svg-icon-size-small);
+  height: var(--krds-tts--svg-icon-size-small);
+}
+.krds-tts.small .krds-tts-text {
+  font-size: var(--krds-tts--font-size-small);
+}
+.krds-tts.xsmall {
+  gap: var(--krds-tts--gap-xsmall);
+}
+.krds-tts.xsmall .krds-tts-icon {
+  width: var(--krds-tts--container-size-xsmall);
+  height: var(--krds-tts--container-size-xsmall);
+}
+.krds-tts.xsmall .krds-tts-icon .svg-icon {
+  width: var(--krds-tts--svg-icon-size-xsmall);
+  height: var(--krds-tts--svg-icon-size-xsmall);
+}
+.krds-tts.xsmall .krds-tts-text {
+  font-size: var(--krds-tts--font-size-xsmall);
+}
+.krds-tts:hover .krds-tts-icon {
+  background-color: var(--hb-tts-fill-hover);
+}
+.krds-tts:active .krds-tts-icon {
+  background-color: var(--hb-tts-fill-pressed);
+}
+.krds-tts:focus-visible {
+  outline: 2px solid var(--krds-light-color-button-primary-fill);
+  outline-offset: 2px;
+  border-radius: var(--krds-radius-max);
+}
+.krds-tts[disabled],
+.krds-tts.disabled {
+  cursor: default;
+  pointer-events: none;
+}
+.krds-tts[disabled] .krds-tts-icon,
+.krds-tts.disabled .krds-tts-icon {
+  background-color: var(--krds-light-color-button-disabled-fill);
+  border-color: var(--krds-light-color-button-disabled-border);
+}
+.krds-tts[disabled] .krds-tts-icon .svg-icon,
+.krds-tts.disabled .krds-tts-icon .svg-icon {
+  background-color: var(--krds-light-color-text-disabled);
+}
+.krds-tts[disabled] .krds-tts-text,
+.krds-tts.disabled .krds-tts-text {
+  color: var(--krds-light-color-text-disabled);
+}
+.krds-tts .svg-icon.ico-volume,
+.krds-tts .svg-icon.ico-play,
+.krds-tts .svg-icon.ico-stop {
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  mask-position: center;
+  -webkit-mask-size: contain;
+  mask-size: contain;
+}
+.krds-tts .svg-icon.ico-volume {
+  -webkit-mask-image: url(icons/ico_volume.svg);
+  mask-image: url(icons/ico_volume.svg);
+}
+.krds-tts .svg-icon.ico-play {
+  -webkit-mask-image: url(icons/ico_play.svg);
+  mask-image: url(icons/ico_play.svg);
+}
+.krds-tts .svg-icon.ico-stop {
+  -webkit-mask-image: url(icons/ico_stop.svg);
+  mask-image: url(icons/ico_stop.svg);
+}
+.hb-tts-wrap {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--krds-gap-3);
+}
+.hb-tts-msg {
+  font-size: var(--krds-pc-font-size-body-small);
+  color: var(--krds-light-color-text-subtle);
+}
+@media (prefers-reduced-motion: reduce) {
+  .krds-tts,
+  .krds-tts .krds-tts-icon {
+    transition: none;
+  }
+}
+
+/* 푸터 정책 링크 강조(개인정보처리방침) — KRDS 예제 클래스(point)에 모양을 채운다 */
+#krds-footer .f-btm .f-menu a.point {
+  font-weight: var(--krds-font-weight-bold);
+  color: var(--krds-light-color-text-secondary);
+}
+
+/* 운영기관 식별자 — 로고 여러 개(순서 = 위계). 로고 사이는 KRDS 간격 토큰, 좁은 화면에서도 한 줄 */
+.hb-identifier-logos {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--krds-gap-3);
+  flex-shrink: 0;
+}
+.hb-identifier-logos .logo + .logo {
+  padding-left: var(--krds-gap-3);
+  border-left: 1px solid var(--krds-light-color-divider-gray-light);
+}

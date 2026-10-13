@@ -1,0 +1,288 @@
+{
+  "source": "packages/mcp/src/index.ts",
+  "count": 47,
+  "tools": [
+    {
+      "name": "mock_get_design_brief",
+      "module": "powerMock",
+      "title": "설계 브리프(가중 합성)",
+      "description": "기관 종류와 요청에 맞는 색·글꼴·배치 방향을 한 장으로 요약해 줍니다."
+    },
+    {
+      "name": "mock_get_section_pattern",
+      "module": "powerMock",
+      "title": "섹션 패턴(변형·치수·위치·크롭)",
+      "description": "섹션 한 종류의 흔한 모양·크기·위치와 예시 그림을 줍니다."
+    },
+    {
+      "name": "mock_get_page_pattern",
+      "module": "powerMock",
+      "title": "페이지 유형 패턴(서브페이지 합성)",
+      "description": "서브 페이지 한 종류의 구성 순서와 필수 섹션을 줍니다."
+    },
+    {
+      "name": "mock_recommend_references",
+      "module": "powerMock",
+      "title": "레퍼런스 추천(가중 순위 + 근거)",
+      "description": "요청에 맞는 참고 사이트를 순위와 고른 이유와 함께 추천합니다."
+    },
+    {
+      "name": "mock_search_sites",
+      "module": "powerMock",
+      "title": "참고 사이트 검색",
+      "description": "참고 사이트를 기관 종류·색·배치 조건으로 찾습니다."
+    },
+    {
+      "name": "mock_get_site",
+      "module": "powerMock",
+      "title": "기관 사이트 상세",
+      "description": "참고 사이트 한 곳의 화면·디자인 정보를 자세히 봅니다."
+    },
+    {
+      "name": "mock_get_design_system",
+      "module": "powerMock",
+      "title": "기관 디자인 시스템(KRDS 분류 + 토큰)",
+      "description": "참고 사이트의 색·글꼴·간격을 디자인 토큰으로 정리해 줍니다."
+    },
+    {
+      "name": "mock_search_sections",
+      "module": "powerMock",
+      "title": "섹션 검색(사이트 단위)",
+      "description": "섹션을 종류·조건으로 찾아 예시 그림과 함께 줍니다."
+    },
+    {
+      "name": "mock_get_screen",
+      "module": "powerMock",
+      "title": "화면 1장",
+      "description": "참고 화면 한 장의 섹션 구성을 봅니다."
+    },
+    {
+      "name": "mock_get_section_code",
+      "module": "powerMock",
+      "title": "섹션 코드(HTML·CSS)",
+      "description": "섹션 하나를 바로 쓸 수 있는 HTML·CSS 로 줍니다."
+    },
+    {
+      "name": "mock_get_page_code",
+      "module": "powerMock",
+      "title": "페이지 코드(한 장 조립)",
+      "description": "페이지 한 장을 HTML 로 조립해 줍니다."
+    },
+    {
+      "name": "mock_get_main_mockup",
+      "module": "powerMock",
+      "title": "메인 목업(조립형)",
+      "description": "기관 종류에 맞는 메인 화면 초안을 조립해 줍니다."
+    },
+    {
+      "name": "mock_build_homepage",
+      "module": "powerMock",
+      "title": "홈페이지 한 벌(메인+서브)",
+      "description": "메인과 서브를 같은 톤으로 맞춘 홈페이지 초안 한 벌을 만듭니다."
+    },
+    {
+      "name": "mock_get_replica_kit",
+      "module": "powerMock",
+      "title": "재현 묶음(실제 사이트 수준 시안을 직접 만들 재료)",
+      "description": "완성도 높은 시안을 직접 만들 재료(배치·색·이미지·동작)를 한 묶음으로 줍니다."
+    },
+    {
+      "name": "mock_publish_mockup",
+      "module": "powerMock",
+      "title": "시안 게시(미리보기 주소)",
+      "description": "판정을 통과한 시안을 공유 주소로 게시합니다."
+    },
+    {
+      "name": "mock_get_design_preferences",
+      "module": "powerMock",
+      "title": "디자이너 선호 규칙(A/B 투표)",
+      "description": "디자이너들이 더 선호한 선택(버튼·폼·목록 등)을 근거로 조언합니다."
+    },
+    {
+      "name": "mock_check_mockup",
+      "module": "powerMock",
+      "title": "시안 판정(보관·렌더·대조·고칠 목록)",
+      "description": "만든 시안을 실제로 그려 보고 점수와 고칠 목록을 돌려줍니다."
+    },
+    {
+      "name": "mock_get_behavior_kit",
+      "module": "powerMock",
+      "title": "동작 스크립트·규약",
+      "description": "캐러셀·탭·메뉴가 실제로 동작하게 하는 스크립트와 사용 규칙을 줍니다."
+    },
+    {
+      "name": "mock_assemble_screen",
+      "module": "powerMock",
+      "title": "디자인 조립 명세(Assembly Spec)",
+      "description": "화면 하나의 섹션 배치 명세와 React·Vue 코드를 만들어 줍니다."
+    },
+    {
+      "name": "mock_get_sample_images",
+      "module": "powerMock",
+      "title": "샘플 이미지(목업용 사진·배너)",
+      "description": "목업에 넣을 사진·배너·아이콘 샘플을 고릅니다."
+    },
+    {
+      "name": "mock_get_pattern_stats",
+      "module": "powerMock",
+      "title": "디자인 패턴 통계(단일 지표)",
+      "description": "섹션·배치가 얼마나 자주 쓰이는지 통계를 봅니다."
+    },
+    {
+      "name": "guide_krds",
+      "module": "powerGuide",
+      "title": "KRDS 컴포넌트 가이드",
+      "description": "KRDS 컴포넌트 지침과 공식 문서 링크를 찾아 줍니다."
+    },
+    {
+      "name": "assets_search",
+      "module": "powerAssets",
+      "title": "자산 검색",
+      "description": "powerAssets 자산(아이콘·사진·일러스트·다이어그램·장표·로고) 검색. 검색어는 이름·태그(국문·영문)에 낱말별로 일치. 결과의 thumb_url 은 미리보기, 원본은 assets_get. 키 소유자 플랜·등급에서 볼 수 있는 것만 나온다(meta.hidden = 등급 때문에 가려진 수)."
+    },
+    {
+      "name": "assets_get",
+      "module": "powerAssets",
+      "title": "자산 상세",
+      "description": "자산 상세(태그·세트·사용 횟수·파일 주소). id 하나 또는 ids(최대 20개)를 한 번에 — 여러 개를 볼 때는 ids 로 한 번만 부른다(호출 1건으로 셈). 볼 수 없는 자산은 {id, locked:true, reason} 으로 표시된다. preview=true 면 미리보기 그림을 함께 보여 준다(id 하나일 때만, 폭 축소 JPEG)."
+    },
+    {
+      "name": "assets_similar",
+      "module": "powerAssets",
+      "title": "비슷한 자산",
+      "description": "키워드 태그가 많이 겹치는 자산(같은 카테고리 우선). overlap = 겹친 태그 수."
+    },
+    {
+      "name": "assets_style_set",
+      "module": "powerAssets",
+      "title": "같은 스타일 세트",
+      "description": "같은 스타일로 만든 자산 묶음. id(자산) 를 주면 그 자산의 세트를, set_id 를 주면 그 세트를 보여 준다. 한 화면·한 장표 안 아이콘은 세트 하나로 맞춘다."
+    },
+    {
+      "name": "assets_list_categories",
+      "module": "powerAssets",
+      "title": "자산 카테고리",
+      "description": "카테고리별 자산 수(키 소유자가 볼 수 있는 수와 전체 수)."
+    },
+    {
+      "name": "assets_list_topics",
+      "module": "powerAssets",
+      "title": "자산 주제",
+      "description": "카테고리 안에서 많이 쓰인 주제 낱말(태그)과 세트. assets_search 의 topic 으로 쓴다."
+    },
+    {
+      "name": "assets_suggest_keywords",
+      "module": "powerAssets",
+      "title": "검색어 추천",
+      "description": "입력한 낱말로 시작·포함하는 등록 태그. 비우면 최근 30일 인기 검색어. 검색 결과가 0일 때 다른 표현을 찾는 데 쓴다. 낱말 여러 개는 words(최대 10)로 한 번에 — 낱말별 결과가 by_word 로 온다(호출 1건으로 셈)."
+    },
+    {
+      "name": "guide_tokens",
+      "module": "powerGuide",
+      "title": "디자인 토큰 파일",
+      "description": "powerGuide 가 배포하는 디자인 토큰 산출물(CSS·SCSS·JS·TS·Java·Tailwind·Figma 등). file 없이 부르면 목록, file 을 주면 그 파일 내용(텍스트, 최대 200KB)."
+    },
+    {
+      "name": "deck_jobs",
+      "module": "powerDeck",
+      "title": "내 장표 변환 작업",
+      "description": "powerDeck 에서 키 소유자가 맡긴 장표 변환 작업 목록(상태·진행률·결과). 변환 자체는 웹 화면(/deck)에서 한다."
+    },
+    {
+      "name": "deck_get_plan_kit",
+      "module": "powerDeck",
+      "title": "장표 기획 재료",
+      "description": "장표 기획을 직접 쓰기 위한 형식·규칙·분량·예시를 줍니다."
+    },
+    {
+      "name": "deck_check_plan",
+      "module": "powerDeck",
+      "title": "장표 기획 판정",
+      "description": "작성한 기획의 형식·분량·원자료 수치 누락을 판정하고 고칠 곳을 줍니다."
+    },
+    {
+      "name": "deck_get_wire_kit",
+      "module": "powerDeck",
+      "title": "와이어프레임 재료",
+      "description": "기획을 장마다 화면 배치로 옮기기 위한 상자 종류·틀·규칙을 줍니다."
+    },
+    {
+      "name": "deck_check_wireframe",
+      "module": "powerDeck",
+      "title": "와이어프레임 판정",
+      "description": "와이어프레임의 겹침·넘침·누락을 판정하고 장마다 미리보기를 그려 줍니다."
+    },
+    {
+      "name": "deck_get_script_kit",
+      "module": "powerDeck",
+      "title": "발표 대본 재료",
+      "description": "발표 대본을 쓰기 위한 형식·장당 분량·말투 규칙을 줍니다."
+    },
+    {
+      "name": "deck_check_script",
+      "module": "powerDeck",
+      "title": "발표 대본 판정",
+      "description": "대본의 장 수·분량·금지 표현·핵심어 포함을 판정하고 고칠 곳을 줍니다."
+    },
+    {
+      "name": "guide_list_components",
+      "module": "powerGuide",
+      "title": "부품 목록(KRDS 기반 키트)",
+      "description": "React·Vue 로 바로 쓰는 UI 부품 77종의 목록을 줍니다."
+    },
+    {
+      "name": "guide_get_component",
+      "module": "powerGuide",
+      "title": "부품 소스·설치·지침",
+      "description": "부품 하나의 소스 파일·설치 명령·사용 예·KRDS 지침을 줍니다."
+    },
+    {
+      "name": "guide_search_rules",
+      "module": "powerGuide",
+      "title": "KRDS 지침 검색",
+      "description": "KRDS 지침·패턴·검증 항목을 낱말로 찾아 줍니다."
+    },
+    {
+      "name": "guide_get_checklist",
+      "module": "powerGuide",
+      "title": "KRDS 검증 체크리스트",
+      "description": "KRDS 검증 체크리스트와 부품 판정 결과를 줍니다."
+    },
+    {
+      "name": "guide_check_code",
+      "module": "powerGuide",
+      "title": "코드 판정(결정적)",
+      "description": "만든 HTML 의 색·대체 텍스트·라벨·제목·대비를 검사해 고칠 곳을 줍니다."
+    },
+    {
+      "name": "powerplus_check_request",
+      "module": "공통",
+      "title": "요청 판정(할 수 있는 일인가)",
+      "description": "요청이 powerPlus 로 할 수 있는 일인지, 어느 서비스로 하면 되는지 판정합니다."
+    },
+    {
+      "name": "assets_pick",
+      "module": "powerAssets",
+      "title": "문맥에 맞는 자산 고르기",
+      "description": "슬라이드·화면 자리 옆 글(제목·라벨·설명)을 주면 그 문맥에 가장 맞는 powerAssets 자산 하나와 후보(최대 20개)를 준다. pick·by(ai|rule)·confidence·queries·candidates. 같은 자리에 여러 개를 고를 때는 exclude 로 이미 고른 id 를 빼고, 같은 톤은 set 으로 맞춘다."
+    },
+    {
+      "name": "powerplus_publish_report",
+      "module": "공통",
+      "title": "분석 보고서 게시",
+      "description": "추천·분석 답(자산 추천, 비교, 배치 제안 등)을 powerPlus 사이트 디자인의 보고서 페이지 한 장으로 게시하고 url 을 준다. 자산 칸은 id 만 주면 서버가 이름·썸네일·키워드를 채운다(지어낸 이름 금지 — 반드시 assets_search·assets_pick 으로 받은 id). 링크를 아는 누구나 로그인 없이 본다(검색 노출 없음, 180일 보관). 자산 3개 이상을 추천했거나 표·목록이 길면 답을 표로 늘어놓는 대신 이것으로 게시하고, 채팅에는 요약 2~3줄과 url 만 준다."
+    },
+    {
+      "name": "mock_get_wireframe",
+      "module": "powerMock",
+      "title": "홈페이지 기획 와이어프레임",
+      "description": "화면 종류와 요청 글로 홈페이지 기획 와이어프레임(줄·칸·섹션)을 만들어 줍니다."
+    },
+    {
+      "name": "mock_check_wireframe",
+      "module": "powerMock",
+      "title": "홈페이지 와이어프레임 판정",
+      "description": "와이어프레임의 필수 섹션·순서·칸 합계를 판정하고 고칠 곳을 알려 줍니다."
+    }
+  ]
+}

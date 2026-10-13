@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>powerPlus 카드 애니메이션</title>
+<style>
+/* 레이아웃: 위에 메인 카드 4장(16:9) 한 줄, 아래 서비스별 단계 카드(1:1) 묶음 */
+:root{--bg:#F6F5F3;--card:#FFFFFF;--line:#E6E3DF;--fg:#141414;--muted:#6E6862;--accent:#E2622B;
+ --font:"Pretendard","Apple SD Gothic Neo","Malgun Gothic",system-ui,sans-serif;--mono:ui-monospace,Consolas,monospace}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#181716;--card:#22201F;--line:#34312E;--fg:#F2EFEB;--muted:#A49D95;--accent:#F0773F;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#181716;--card:#22201F;--line:#34312E;--fg:#F2EFEB;--muted:#A49D95;--accent:#F0773F;color-scheme:dark}
+body{background:var(--bg);color:var(--fg);font-family:var(--font);padding-block:32px;padding-inline:16px}
+.wrap{max-width:1840px;margin:0 auto;display:grid;gap:40px}
+h1{margin:0;font-size:22px;font-weight:800;letter-spacing:-.02em}
+h2{margin:0 0 14px;font-size:18px;font-weight:800;letter-spacing:-.02em;text-wrap:balance}
+h2 span,.n span{color:var(--accent)}
+.main{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:20px}
+.mc{min-width:0;border:1px solid var(--line);border-radius:16px;overflow:hidden;background:var(--card)}
+.mc iframe{display:block;width:100%;max-width:100%;aspect-ratio:1200/670;border:0}
+.mc .b{padding:16px 20px;display:grid;gap:4px}
+.n{font-size:20px;font-weight:800;letter-spacing:-.03em}
+.f{font-size:12px;color:var(--muted);font-family:var(--mono)}
+.steps{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:14px}
+.sc{min-width:0;display:grid;grid-template-columns:140px 1fr;border:1px solid var(--line);border-radius:14px;overflow:hidden;background:var(--card)}
+.sc iframe{display:block;width:140px;max-width:100%;aspect-ratio:1/1;border:0}
+.sc .b{padding:14px 16px;display:grid;align-content:center;gap:6px;min-width:0}
+.sc .k{font:600 12px/1 var(--mono);color:var(--muted)}
+.sc .h{font-size:15px;font-weight:800;letter-spacing:-.02em}
+</style>
+</head>
+<body>
+<div class="wrap" id="w">
+ <h1>powerPlus 카드 애니메이션</h1>
+</div>
+<script>
+const M=[['assets','Assets'],['deck','Deck'],['mock','Mock'],['guide','Guide']];
+const S=[['assets','Assets','AI 가 자료를 골라 줍니다',['슬라이드에 맞는 자료를 골라 줍니다','검색어로 자료 종류를 먼저 고릅니다','장표도 같은 방식으로 찾습니다']],
+ ['deck','Deck','자료 정리부터 대본까지',['자료를 정리한다','기획을 세운다','와이어프레임을 잡는다','디자인 시안을 고른다','장표를 완성한다','대본까지 받는다']],
+ ['mock','Mock','사용 흐름',['연결','요청','판정','게시']],
+ ['guide','Guide','적용 순서',['토큰을 가져온다','부품을 고른다','KRDS 로 대조한다','접근성 결과를 본다']]];
+const w=document.getElementById('w');
+const sec=(h)=>{ const s=document.createElement('section'); s.innerHTML=h; w.appendChild(s); };
+sec(`<h2>메인 카드</h2><div class="main">${M.map(([f,n])=>`<div class="mc"><iframe src="main/${f}.html" title="power${n}"></iframe><div class="b"><div class="n">power<span>${n}</span></div><div class="f">main/${f}.html</div></div></div>`).join('')}</div>`);
+S.forEach(([f,n,t,items])=>sec(`<h2>power<span>${n}</span> · ${t}</h2><div class="steps">${items.map((h,i)=>`<div class="sc"><iframe src="steps/${f}-${i+1}.html" title="${h}"></iframe><div class="b"><div class="k">0${i+1}</div><div class="h">${h}</div><div class="f">steps/${f}-${i+1}.html</div></div></div>`).join('')}</div>`));
+</script>
+
+</body>
+</html>

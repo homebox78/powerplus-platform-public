@@ -1,0 +1,748 @@
+[
+ {
+  "name": "한국수출입은행",
+  "url": "https://www.koreaexim.go.kr/",
+  "host": "koreaexim.go.kr",
+  "have": "queued"
+ },
+ {
+  "name": "한국조폐공사",
+  "url": "https://www.komsco.com/",
+  "host": "komsco.com",
+  "have": "queued"
+ },
+ {
+  "name": "한국투자공사",
+  "url": "http://www.kic.kr/ko/",
+  "host": "kic.kr",
+  "have": "queued"
+ },
+ {
+  "name": "국토교통부",
+  "url": "http://www.molit.go.kr",
+  "host": "molit.go.kr",
+  "have": "draft"
+ },
+ {
+  "name": "대한건설기계안전관리원",
+  "url": "https://www.kcesi.or.kr/",
+  "host": "kcesi.or.kr",
+  "have": "queued"
+ },
+ {
+  "name": "에스알",
+  "url": "https://www.srail.or.kr/",
+  "host": "srail.or.kr",
+  "have": "queued"
+ },
+ {
+  "name": "공간정보품질관리원",
+  "url": "http://www.siqms.or.kr/",
+  "host": "siqms.or.kr",
+  "have": "queued"
+ },
+ {
+  "name": "국가철도공단",
+  "url": "https://www.kr.or.kr/",
+  "host": "kr.or.kr",
+  "have": "published"
+ },
+ {
+  "name": "국토교통과학기술진흥원",
+  "url": "https://www.kaia.re.kr/",
+  "host": "kaia.re.kr",
+  "have": "queued"
+ },
+ {
+  "name": "국토안전관리원",
+  "url": "https://www.kalis.or.kr/",
+  "host": "kalis.or.kr",
+  "have": "queued"
+ },
+ {
+  "name": "새만금개발공사",
+  "url": "https://sdco.or.kr/",
+  "host": "sdco.or.kr",
+  "have": "queued"
+ },
+ {
+  "name": "인천국제공항공사",
+  "url": "https://www.airport.kr/",
+  "host": "airport.kr",
+  "have": "queued"
+ },
+ {
+  "name": "재단법인건설기술교육원",
+  "url": "https://www.kicte.or.kr/",
+  "host": "kicte.or.kr",
+  "have": "queued"
+ },
+ {
+  "name": "주택관리공단",
+  "url": "https://www.kohom.or.kr/",
+  "host": "kohom.or.kr",
+  "have": "queued"
+ },
+ {
+  "name": "주택도시보증공사",
+  "url": "http://www.khug.or.kr/",
+  "host": "khug.or.kr",
+  "have": "queued"
+ },
+ {
+  "name": "코레일관광개발",
+  "url": "http://www.korailtravel.com/",
+  "host": "korailtravel.com",
+  "have": "queued"
+ },
+ {
+  "name": "코레일네트웍스",
+  "url": "https://www.korailnetworks.com/",
+  "host": "korailnetworks.com",
+  "have": "queued"
+ },
+ {
+  "name": "코레일로지스",
+  "url": "http://www.koraillogis.com/",
+  "host": "koraillogis.com",
+  "have": "queued"
+ },
+ {
+  "name": "코레일유통",
+  "url": "https://www.korailretail.com/",
+  "host": "korailretail.com",
+  "have": "queued"
+ },
+ {
+  "name": "국토안전관리원",
+  "url": "http://www.kotsa.or.kr/",
+  "host": "kotsa.or.kr",
+  "have": "queued"
+ },
+ {
+  "name": "한국도로공사",
+  "url": "https://www.ex.co.kr/",
+  "host": "ex.co.kr",
+  "have": "published"
+ },
+ {
+  "name": "한국도로공사서비스",
+  "url": "https://www.exservice.co.kr/",
+  "host": "exservice.co.kr",
+  "have": "queued"
+ },
+ {
+  "name": "한국부동산원",
+  "url": "http://www.reb.or.kr/",
+  "host": "reb.or.kr",
+  "have": "queued"
+ },
+ {
+  "name": "한국철도공사",
+  "url": "https://info.korail.com/",
+  "host": "info.korail.com",
+  "have": "queued"
+ },
+ {
+  "name": "한국토지주택공사",
+  "url": "https://www.lh.or.kr/",
+  "host": "lh.or.kr",
+  "have": "published"
+ },
+ {
+  "name": "한국해외인프라도시개발지원공사",
+  "url": "http://www.kindkorea.or.kr/",
+  "host": "kindkorea.or.kr",
+  "have": "queued"
+ },
+ {
+  "name": "항공안전기술원",
+  "url": "https://www.kiast.or.kr/kr/",
+  "host": "kiast.or.kr",
+  "have": "queued"
+ },
+ {
+  "name": "행정안전부",
+  "url": "https://www.mois.go.kr",
+  "host": "mois.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "민주화운동기념사업회",
+  "url": "https://www.kdemo.or.kr/",
+  "host": "kdemo.or.kr",
+  "have": "queued"
+ },
+ {
+  "name": "일제강제동원피해자지원재단",
+  "url": "https://www.fomo.or.kr/",
+  "host": "fomo.or.kr",
+  "have": "queued"
+ },
+ {
+  "name": "유관기관 더보기",
+  "url": "https://www.gov.kr/portal/orgInfo/1741000",
+  "host": "gov.kr",
+  "have": "draft"
+ },
+ {
+  "name": "교육부",
+  "url": "https://www.moe.go.kr/",
+  "host": "moe.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "강원대학교병원",
+  "url": "https://www.knuh.or.kr/",
+  "host": "knuh.or.kr",
+  "have": "queued"
+ },
+ {
+  "name": "경북대학교병원",
+  "url": "https://www.knuh.kr/",
+  "host": "knuh.kr",
+  "have": "queued"
+ },
+ {
+  "name": "과학기술정보통신부",
+  "url": "http://www.msit.go.kr",
+  "host": "msit.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "외교부",
+  "url": "http://www.mofa.go.kr",
+  "host": "mofa.go.kr",
+  "have": "draft"
+ },
+ {
+  "name": "한국국제교류재단",
+  "url": "https://www.kf.or.kr/",
+  "host": "kf.or.kr",
+  "have": "queued"
+ },
+ {
+  "name": "한국국제협력단",
+  "url": "https://www.koica.go.kr/",
+  "host": "koica.go.kr",
+  "have": "queued"
+ },
+ {
+  "name": "통일부",
+  "url": "http://www.unikorea.go.kr",
+  "host": "unikorea.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "남북교류협력지원협회",
+  "url": "https://sonosa.or.kr/",
+  "host": "sonosa.or.kr",
+  "have": "queued"
+ },
+ {
+  "name": "법무부",
+  "url": "http://www.moj.go.kr",
+  "host": "moj.go.kr",
+  "have": "draft"
+ },
+ {
+  "name": "대한법률구조공단",
+  "url": "https://www.klac.or.kr/",
+  "host": "klac.or.kr",
+  "have": "published"
+ },
+ {
+  "name": "정부법무공단",
+  "url": "https://www.kgls.or.kr/",
+  "host": "kgls.or.kr",
+  "have": "queued"
+ },
+ {
+  "name": "한국법무보호복지공단",
+  "url": "https://www.koreha.or.kr/",
+  "host": "koreha.or.kr",
+  "have": "queued"
+ },
+ {
+  "name": "국방부",
+  "url": "http://www.mnd.go.kr",
+  "host": "mnd.go.kr",
+  "have": "draft"
+ },
+ {
+  "name": "국방과학연구소",
+  "url": "https://www.add.re.kr/",
+  "host": "add.re.kr",
+  "have": "queued"
+ },
+ {
+  "name": "국방기술품질원",
+  "url": "https://www.dtaq.re.kr/",
+  "host": "dtaq.re.kr",
+  "have": "queued"
+ },
+ {
+  "name": "국방전직교육원",
+  "url": "https://www.moti.or.kr/",
+  "host": "moti.or.kr",
+  "have": "queued"
+ },
+ {
+  "name": "문화체육관광부",
+  "url": "http://www.mcst.go.kr",
+  "host": "mcst.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "한국저작권보호원",
+  "url": "https://www.kcopa.or.kr/",
+  "host": "kcopa.or.kr",
+  "have": "published"
+ },
+ {
+  "name": "게임물관리위원회",
+  "url": "https://www.grac.or.kr/",
+  "host": "grac.or.kr",
+  "have": "queued"
+ },
+ {
+  "name": "대한체육회",
+  "url": "https://www.sports.or.kr/",
+  "host": "sports.or.kr",
+  "have": "queued"
+ },
+ {
+  "name": "사행산업통합감독위원회",
+  "url": "https://www.ngcc.go.kr/",
+  "host": "ngcc.go.kr",
+  "have": "queued"
+ },
+ {
+  "name": "농림축산식품부",
+  "url": "http://www.mafra.go.kr",
+  "host": "mafra.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "가축위생방역지원본부",
+  "url": "https://www.lhca.or.kr/",
+  "host": "lhca.or.kr",
+  "have": "queued"
+ },
+ {
+  "name": "국제식물검역인증원",
+  "url": "https://www.ipab.or.kr/",
+  "host": "ipab.or.kr",
+  "have": "queued"
+ },
+ {
+  "name": "농림수산식품교육문화정보원",
+  "url": "https://www.epis.or.kr/",
+  "host": "epis.or.kr",
+  "have": "queued"
+ },
+ {
+  "name": "산업통상자원부",
+  "url": "http://www.motie.go.kr",
+  "host": "motie.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "강원랜드",
+  "url": "https://kangwonland.high1.com/",
+  "host": "kangwonland.high1.com",
+  "have": "queued"
+ },
+ {
+  "name": "대한석탄공사",
+  "url": "https://www.kocoal.or.kr/",
+  "host": "kocoal.or.kr",
+  "have": "queued"
+ },
+ {
+  "name": "보건복지부",
+  "url": "http://www.mohw.go.kr",
+  "host": "mohw.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "건강보험심사평가원",
+  "url": "https://www.hira.or.kr/main.do",
+  "host": "hira.or.kr",
+  "have": "queued"
+ },
+ {
+  "name": "국립암센터",
+  "url": "https://ncc.re.kr/",
+  "host": "ncc.re.kr",
+  "have": "queued"
+ },
+ {
+  "name": "국립중앙의료원",
+  "url": "https://www.nmc.or.kr/",
+  "host": "nmc.or.kr",
+  "have": "queued"
+ },
+ {
+  "name": "국민건강보험공단",
+  "url": "https://www.nhis.or.kr/",
+  "host": "nhis.or.kr",
+  "have": "published"
+ },
+ {
+  "name": "환경부",
+  "url": "http://www.me.go.kr",
+  "host": "me.go.kr",
+  "have": "draft"
+ },
+ {
+  "name": "고용노동부",
+  "url": "http://www.moel.go.kr",
+  "host": "moel.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "노사발전재단",
+  "url": "https://www.nosa.or.kr/",
+  "host": "nosa.or.kr",
+  "have": "queued"
+ },
+ {
+  "name": "학교법인한국폴리텍",
+  "url": "https://www.kopo.ac.kr/",
+  "host": "kopo.ac.kr",
+  "have": "queued"
+ },
+ {
+  "name": "여성가족부",
+  "url": "http://www.mogef.go.kr/",
+  "host": "mogef.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "한국여성인권진흥원",
+  "url": "https://www.stop.or.kr/",
+  "host": "stop.or.kr",
+  "have": "queued"
+ },
+ {
+  "name": "한국건강가정진흥원",
+  "url": "http://www.kihf.or.kr/",
+  "host": "kihf.or.kr",
+  "have": "queued"
+ },
+ {
+  "name": "한국양성평등교육진흥원",
+  "url": "https://www.kigepe.or.kr/",
+  "host": "kigepe.or.kr",
+  "have": "queued"
+ },
+ {
+  "name": "한국청소년상담복지개발원",
+  "url": "https://www.kyci.or.kr/",
+  "host": "kyci.or.kr",
+  "have": "queued"
+ },
+ {
+  "name": "해양수산부",
+  "url": "http://www.mof.go.kr",
+  "host": "mof.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "국립해양과학관",
+  "url": "https://www.kosm.or.kr/",
+  "host": "kosm.or.kr",
+  "have": "queued"
+ },
+ {
+  "name": "국립해양생물자원관",
+  "url": "https://www.mabik.re.kr/",
+  "host": "mabik.re.kr",
+  "have": "queued"
+ },
+ {
+  "name": "부산항만공사",
+  "url": "https://www.busanpa.com/",
+  "host": "busanpa.com",
+  "have": "queued"
+ },
+ {
+  "name": "중소벤처기업부",
+  "url": "http://www.mss.go.kr",
+  "host": "mss.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "장애인기업종합지원센터",
+  "url": "https://debc.or.kr/",
+  "host": "debc.or.kr",
+  "have": "queued"
+ },
+ {
+  "name": "기술보증기금",
+  "url": "https://www.kibo.or.kr/",
+  "host": "kibo.or.kr",
+  "have": "queued"
+ },
+ {
+  "name": "국토연구원",
+  "url": "http://www.krihs.re.kr/",
+  "host": "krihs.re.kr",
+  "have": "queued"
+ },
+ {
+  "name": "한국개발연구원",
+  "url": "http://www.kdi.re.kr/",
+  "host": "kdi.re.kr",
+  "have": "queued"
+ },
+ {
+  "name": "국토지리정보원",
+  "url": "https://www.ngii.go.kr/",
+  "host": "ngii.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "새주소소개",
+  "url": "http://www.juso.go.kr/",
+  "host": "juso.go.kr",
+  "have": "queued"
+ },
+ {
+  "name": "국가보훈처",
+  "url": "https://www.mpva.go.kr/",
+  "host": "mpva.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "국민연금공단",
+  "url": "http://www.nps.or.kr/",
+  "host": "nps.or.kr",
+  "have": "published"
+ },
+ {
+  "name": "한국재정정보원",
+  "url": "https://www.kpfis.or.kr/",
+  "host": "kpfis.or.kr",
+  "final": "",
+  "state": "접속 실패(ERR_TLS_CERT_ALTNAME_INVALID)",
+  "robots": "robots 없음"
+ },
+ {
+  "name": "국립항공박물관",
+  "url": "https://www.aviation.or.kr/",
+  "host": "aviation.or.kr",
+  "final": "https://www.aviation.or.kr/",
+  "state": "수집 가능",
+  "robots": "허용"
+ },
+ {
+  "name": "지방공기업평가원",
+  "url": "https://www.erc.re.kr/",
+  "host": "erc.re.kr",
+  "final": "",
+  "state": "접속 실패(UNABLE_TO_VERIFY_LEAF_SIGNATURE)",
+  "robots": "robots 없음"
+ },
+ {
+  "name": "강릉원주대학교치과병원",
+  "url": "https://www.gwnudh.or.kr/",
+  "host": "gwnudh.or.kr",
+  "final": "",
+  "state": "접속 실패(UNABLE_TO_VERIFY_LEAF_SIGNATURE)",
+  "robots": "robots 없음"
+ },
+ {
+  "name": "대한지방행정공제회",
+  "url": "https://www.poba.or.kr/",
+  "host": "poba.or.kr",
+  "final": "https://www.poba.or.kr/",
+  "state": "수집 가능",
+  "robots": "robots 없음"
+ },
+ {
+  "name": "IOM이민정책연구원",
+  "url": "https://www.mrtc.re.kr/",
+  "host": "mrtc.re.kr",
+  "final": "",
+  "state": "접속 실패(ERR_SSL_DH_KEY_TOO_SMALL)",
+  "robots": "robots 없음"
+ },
+ {
+  "name": "한아프리카재단",
+  "url": "https://www.k-af.or.kr/",
+  "host": "k-af.or.kr",
+  "final": "https://www.k-af.or.kr/",
+  "state": "수집 가능",
+  "robots": "허용"
+ },
+ {
+  "name": "한국공항공사",
+  "url": "https://www.airport.co.kr/",
+  "host": "airport.co.kr",
+  "final": "https://www.airport.co.kr/www/index.do",
+  "state": "robots 차단",
+  "robots": "전체 차단"
+ },
+ {
+  "name": "재정경제부",
+  "url": "http://www.mofe.go.kr",
+  "host": "mofe.go.kr",
+  "final": "https://www.mofe.go.kr/",
+  "state": "수집 가능",
+  "robots": "robots 없음"
+ },
+ {
+  "name": "제주국제자유도시개발센터",
+  "url": "https://www.jdcenter.com/",
+  "host": "jdcenter.com",
+  "final": "https://www.jdcenter.com/",
+  "state": "robots 차단",
+  "robots": "전체 차단"
+ },
+ {
+  "name": "한국가스기술공사",
+  "url": "https://www.kogas-tech.co.kr/",
+  "host": "kogas-tech.co.kr",
+  "final": "https://www.kogas-tech.co.kr/",
+  "state": "수집 가능",
+  "robots": "허용"
+ },
+ {
+  "name": "근로복지공단",
+  "url": "https://www.kcomwel.or.kr/",
+  "host": "kcomwel.or.kr",
+  "final": "https://www.comwel.or.kr/comwel/index.jsp",
+  "state": "이미 있음(comwel.or.kr)",
+  "robots": "부분 허용"
+ },
+ {
+  "name": "군인공제회",
+  "url": "http://www.mmaa.or.kr/",
+  "host": "mmaa.or.kr",
+  "final": "https://www.mmaa.or.kr/",
+  "state": "수집 가능",
+  "robots": "허용"
+ },
+ {
+  "name": "농림식품기술기획평가원",
+  "url": "https://www.ipet.re.kr/",
+  "host": "ipet.re.kr",
+  "final": "https://www.ipet.re.kr/",
+  "state": "robots 차단",
+  "robots": "전체 차단"
+ },
+ {
+  "name": "중소기업유통센터",
+  "url": "https://www.sbdc.or.kr/",
+  "host": "sbdc.or.kr",
+  "final": "",
+  "state": "접속 실패(ERR_TLS_CERT_ALTNAME_INVALID)",
+  "robots": "robots 없음"
+ },
+ {
+  "name": "건설근로자공제회",
+  "url": "https://www.cw.or.kr/",
+  "host": "cw.or.kr",
+  "final": "https://www.cw.or.kr/index.do",
+  "state": "robots 차단",
+  "robots": "전체 차단"
+ },
+ {
+  "name": "대한민국전자포털",
+  "url": "http://www.korea.go.kr/",
+  "host": "korea.go.kr",
+  "final": "https://www.service.go.kr/",
+  "state": "수집 가능",
+  "robots": "robots 없음"
+ },
+ {
+  "name": "한국청년기업가정신재단",
+  "url": "http://www.koef.or.kr/",
+  "host": "koef.or.kr",
+  "final": "https://www.koef.or.kr/",
+  "state": "수집 가능",
+  "robots": "robots 없음"
+ },
+ {
+  "name": "국민건강보험공단 건강iN",
+  "url": "http://hi.nhic.or.kr/",
+  "host": "hi.nhic.or.kr",
+  "final": "https://www.nhis.or.kr/",
+  "state": "이미 있음(nhis.or.kr)",
+  "robots": "robots 없음"
+ },
+ {
+  "name": "국민건강보험공단",
+  "url": "http://www.nhic.or.kr/index.html",
+  "host": "nhic.or.kr",
+  "final": "https://www.nhis.or.kr/",
+  "state": "이미 있음(nhis.or.kr)",
+  "robots": "robots 없음"
+ },
+ {
+  "name": "중소기업기술마켓",
+  "url": "https://www.techmarket.kr",
+  "host": "techmarket.kr",
+  "final": "https://www.techmarket.kr/",
+  "state": "수집 가능",
+  "robots": "허용"
+ },
+ {
+  "name": "국토정보교육원",
+  "url": "http://www.lxcti.or.kr/",
+  "host": "lxcti.or.kr",
+  "final": "https://www.lxcti.or.kr/",
+  "state": "수집 가능",
+  "robots": "허용"
+ },
+ {
+  "name": "바른땅",
+  "url": "http://www.newjijuk.go.kr/main.do",
+  "host": "newjijuk.go.kr",
+  "final": "https://www.newjijuk.go.kr/main.do",
+  "state": "수집 가능",
+  "robots": "허용"
+ },
+ {
+  "name": "재외동포청",
+  "url": "https://www.okf.or.kr/",
+  "host": "okf.or.kr",
+  "final": "https://www.okocc.or.kr/homepage/index.do",
+  "state": "이미 있음(okocc.or.kr)",
+  "robots": "허용"
+ },
+ {
+  "name": "코레일테크",
+  "url": "https://www.korailtech.kr/",
+  "host": "korailtech.kr",
+  "final": "https://www.korailtech.kr/",
+  "state": "수집 가능",
+  "robots": "허용"
+ },
+ {
+  "name": "국립해양박물관",
+  "url": "https://www.knmm.or.kr/",
+  "host": "knmm.or.kr",
+  "final": "https://knmm.or.kr/",
+  "state": "수집 가능",
+  "robots": "허용"
+ },
+ {
+  "name": "경북대학교치과병원",
+  "url": "https://www.knudh.kr:7452/",
+  "host": "knudh.kr",
+  "final": "",
+  "state": "접속 실패(UND_ERR_CONNECT_TIMEOUT)",
+  "robots": "robots 없음"
+ },
+ {
+  "name": "공간정보연구원",
+  "url": "http://lxsiri.re.kr",
+  "host": "lxsiri.re.kr",
+  "final": "",
+  "state": "접속 실패(UND_ERR_CONNECT_TIMEOUT)",
+  "robots": "robots 없음"
+ }
+]

@@ -1,0 +1,35 @@
+# powerMCP — powerPlus 플랫폼 MCP 하나(Streamable HTTP :3110 /mcp). 출처: homebox-handoff scripts/deploy-mcp.sh 의 homebox-mcp.service 를 옮김.
+# 설치(서버, Node 22):
+#   /var/www/platform-mcp/current 에 저장소 묶음(packages/mcp + packages/shared + apps/web/public/guide-files + pnpm-workspace.yaml + package.json + pnpm-lock.yaml)을 풀고
+#   pnpm install --prod --filter @pp/mcp... → (cd packages/mcp && pnpm exec playwright-core install chromium-headless-shell)
+#   처음 한 번: sudo node packages/mcp/node_modules/playwright-core/cli.js install-deps chromium
+#   sudo cp scripts/powermcp.service /etc/systemd/system/ && 아래 User·LEGACY_HOMEBOX_KEY 를 서버 값으로 채운 뒤
+#   sudo systemctl daemon-reload && sudo systemctl enable --now powermcp
+#   확인: curl -s http://127.0.0.1:3110/mcp/health
+[Unit]
+Description=powerMCP (powerPlus platform MCP, Streamable HTTP :3110)
+After=network.target apache2.service
+
+[Service]
+Type=simple
+User=deploy
+WorkingDirectory=/var/www/platform-mcp/current/packages/mcp
+Environment=NODE_ENV=production
+Environment=MCP_PORT=3110
+# 새 플랫폼 REST v1 — 키 검증(/keys/verify)·자산·시안 보관·게시·장표
+Environment=PP_API=https://powerplus.hom2box.com/api/v1
+Environment=PP_PUBLIC_ORIGIN=https://powerplus.hom2box.com
+# 레퍼런스·재현 묶음·조립(mock_*) = 플랫폼 안 레퍼런스 엔진(services/mockref-api, /mockref/api) — Pro 이상 서비스 키(hb_live_…)
+Environment=LEGACY_HOMEBOX_API=https://powerplus.hom2box.com/mockref/api
+Environment=LEGACY_HOMEBOX_WEB=https://powerplus.hom2box.com/mockref
+Environment=HOMEBOX_PUBLIC_ORIGIN=https://powerplus.hom2box.com
+# 키 값은 이 파일에 적지 않는다 — EnvironmentFile(600, 소유자 User)에 LEGACY_HOMEBOX_KEY=hb_live_… 한 줄
+EnvironmentFile=-/var/www/platform_conf/powermcp.env
+Environment=GUIDE_FILES_DIR=/var/www/platform-mcp/current/apps/web/public/guide-files
+Environment=MCP_BROWSER=chromium
+ExecStart=/usr/bin/node --experimental-strip-types --no-warnings=ExperimentalWarning src/index.ts
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target

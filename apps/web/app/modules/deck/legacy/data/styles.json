@@ -1,0 +1,378 @@
+{
+  "_doc": "디자인 타입 — 새 변환에서 고른다(opts.style). image = 시안 이미지 모델 지시(영문), front = 표지·목차·간지 지시, frame = 코드가 입히는 머리 띠·바닥, build = 장표 제작 엔진 규칙(한국어). 샘플 썸네일은 web/public/styles/<id>/, 참고 그림은 reference/styles/<id>/refs/ body_refs = 본문 시안에 화풍 기준으로 넘길 refs 그림 번호(표지·간지·목차가 아닌 본문 장), plan = 기획 단계에 주는 타입 지침(장면·구성을 그 타입답게), scene = 시안 이미지에 주는 '장면을 이 타입의 언어로 옮기는 법'. catalog = 그 타입의 본문 참고 장 목록(n = refs 번호) — 기획이 장마다 하나를 고르면(sref) 시안이 그 그림을 배치·화풍 기준으로 쓴다. 타입 전체 문법은 <id>/guide.md. front_rules = 표지·목차·간지 규칙(cover/toc/div 마다 text 글 배치·logo 로고 자리·image 그림·bg 배경, logos = 표지 로고를 엔진이 넣는 모서리 tl/tr/bl/br). front_refs = 그 타입 refs 가운데 표지·목차·간지 참고 그림 번호. front_engine = 표지·목차·간지를 만드는 이미지 모델(main 기본 시안 모델 | nb2 나노바나나 2 로 통째 | both 배경 그림은 나노바나나 2, 글 얹기는 기본 모델). nb2_model = 나노바나나 2 의 OpenRouter 모델 이름. accent_main = 강조색이 곧 주조색인 타입(색 면·띠가 모두 강조색). front_set = 이 타입의 표지·목차·간지가 따르는 템플릿 한 벌(reference/front/templates.json 의 sets id). [2026-10-04 재정리] 타입 A~F 는 표지 컨셉(템플릿 한 벌 front_set)으로 나뉜다. 본문(bg·image·frame·build)은 A 타입 공통이고 body_point(기획·제작용)·body_point_en(시안용)의 작은 포인트만 타입마다 다르다. front_engine: both = 실사 배경은 나노바나나 2 + 글은 기본 모델, main = 일러스트·3D 를 기본 모델로. body_photo = 본문 그림의 실사 정도(subtle 반실사 · strong 실사 사진) — 클레이 화풍 견본을 붙이지 않는다.",
+  "styles": [
+    {
+      "id": "a",
+      "name": "플랫 일러스트",
+      "desc": "흰 바탕에 옅은 보라·하늘 대각 면, 가는 선 플랫 일러스트 표지 · 남색 간지",
+      "fits": "공공 SI 제안서·제안설명회",
+      "bg": "a clean white (or very light blue-white) background",
+      "head_color": "#0B2E6B",
+      "image": "Match the visual system of the reference body area(s): same card/panel system, same soft flat painted icon and character style, same spacing and text density. Do NOT copy the reference's content; only its grammar.\n\nPEOPLE / ILLUSTRATION STYLE (strict — the company's illustration style): soft FLAT 2D illustration with gentle painted (airbrush / light watercolor) shading, like a clean Korean public-sector proposal illustration — NOT 3D, NOT clay, NOT photoreal, no thick black outlines (edges are soft, a slightly darker tone of the same color). PALETTE inside pictures: cobalt/royal blue #2F5BD3, navy #24356E, periwinkle #A9BEF0, pale blue #DCE6FB and white, plus ONE fresh green #3DBE8B used only for checkmarks, OK/success states, a highlighted item, ties, lanyards or scarves; warm peach skin with a soft pink blush. PEOPLE: young KOREAN office workers, civil servants and field staff in their late 20s–30s, realistic adult proportions (slim, head about 1/7 of the body). FACES: small solid dark oval dot eyes (no eye whites, no highlights), thin short dark eyebrows, a tiny nose line, a small gentle closed smile (or a small open smile with pink), pink cheek blush; calm, friendly, confident — no exaggerated expressions. Some wear thin round glasses. HAIR: dark navy-black with soft blue sheen — neat short hair for men, long straight, low ponytail or bob for women. CLOTHES: navy suits with a green tie, cobalt shirts with rolled sleeves, light periwinkle blouses, navy work uniforms with epaulettes, a white ID card on a blue or green lanyard. COMPOSITION: 1–3 people on the LEFT turned toward the subject on the RIGHT (a monitor, laptop, server rack, cabinet, board or a floating panel), doing a real task (typing, pointing, presenting, checking, carrying). Floating UI panels are pale frosted white-blue rounded rectangles with a thin light-blue border, holding simple abstract UI: rounded bars, dot rows, database cylinders, document icons, flow arrows and a green check circle — NO readable text inside pictures, only placeholder bars. Devices are simplified with soft gradients (silver-lavender laptops, cobalt monitors with light screens). No scene background: the picture sits on white, objects rest on a pale blue rounded desk or floor shape that fades out at the edges. Objects and icons use the same soft flat painted style in cobalt/periwinkle with the green accent.\n\nColors: main Cobalt Blue #3B82F6, Sky Blue #DBEAFE cards, Deep cobalt #1E40AF for subtitles/numbers, body text Dark Gray #1F2937, caption #6B7280. ACCENT color {accent}: use it for the headline keyword, callout labels given in the content, and ONE emphasis spot — nowhere else. White rounded cards with light gray border, soft flat painted icons (cobalt/periwinkle, green for OK/check), characters exactly as in PEOPLE / ILLUSTRATION STYLE above (no chibi), no heavy shadows, never white text on white.",
+      "front": "Colors: white, deep navy #0B2E6B text, cobalt #1D4ED8, a soft lavender-to-sky diagonal plane; accent {accent} for the tail label only. Pictures on cover / contents / divider pages: a flat vector illustration with thin outlines and small figures at work (limited palette of navy, sky blue, mustard, coral). no big cartoon faces, no speech bubbles. Contents and divider pages follow the reference set of the same deck (see the rules below).",
+      "frame": {
+        "head": "band",
+        "fill": [
+          "1D4ED8",
+          "3B82F6"
+        ],
+        "title": "FFFFFF",
+        "small": "BFDBFE",
+        "project": "DBEAFE",
+        "foot_line": "E5E7EB",
+        "page": "6B7280"
+      },
+      "build": "밝은 코발트 계열(#3B82F6·#1E40AF·#DBEAFE), 흰 둥근 카드 + 옅은 회색 테두리, 패널 머리는 코발트로 꽉 찬 띠, 아래 결론 띠는 네이비. 강조색은 헤드라인 강조어·질문 콜아웃·한 곳만.",
+      "people": true,
+      "front_rules": {
+        "cover": {
+          "text": "왼쪽 45~55%, 세로 가운데. 위에서부터 ① 작은 슬로건 한 줄(있을 때) ② 사업명 2줄(가장 크게, 굵은 남색 또는 흰색) ③ '제안설명회'·날짜(작게, 강조색). 왼쪽 정렬, 글 시작선은 왼쪽에서 6%.",
+          "logo": "로고를 그리지 않는다 — 엔진이 넣는다(자리만 비운다).",
+          "image": "오른쪽 아래 45% 에 가는 선의 플랫 벡터 일러스트 — 건물·기기 위에서 일하는 작은 인물 여럿(사업의 현장을 한 장면으로). 본문의 3D 클레이 캐릭터·큰 얼굴은 쓰지 않는다.",
+          "bg": "흰 바탕. 오른쪽 위에서 아래로 내려오는 옅은 보라~하늘색 대각 면(화면의 40%)과 그 안의 아주 옅은 톱니·원 무늬."
+        },
+        "toc": {
+          "text": "공통 뼈대 + 아래 '이 덱의 한 벌' 안내의 글 자리·글자 색을 따른다.",
+          "logo": "로고를 그리지 않는다 — 엔진이 넣는다(자리만 비운다).",
+          "image": "표지와 같은 화풍·색으로 **새 그림**을 만든다 — 사업 전체를 보여 주는 다른 장면으로. 표지 그림을 다시 쓰지 않는다. 한 벌 안내대로 흐리게·덮어서 글이 주인공이 되게.",
+          "bg": "한 벌 안내의 배경을 따른다."
+        },
+        "div": {
+          "text": "공통 뼈대 + 아래 '이 덱의 한 벌' 안내의 글 자리·글자 색을 따른다.",
+          "logo": "로고를 그리지 않는다 — 엔진이 넣는다(자리만 비운다).",
+          "image": "표지와 같은 화풍·색으로 **새 그림**을 만든다 — 이 장(章)의 내용에 맞는 주제로. 간지마다 그림이 다르다. 표지 그림을 다시 쓰지 않는다. 한 벌 안내대로 흐리게·덮어서 글이 주인공이 되게.",
+          "bg": "한 벌 안내의 배경을 따른다."
+        }
+      },
+      "front_engine": {
+        "cover": "main",
+        "toc": "main",
+        "div": "main"
+      },
+      "front_set": "flat"
+    },
+    {
+      "id": "b",
+      "name": "데이터 실사 합성",
+      "samples": 4,
+      "desc": "실사 장면에 빛나는 데이터 그래픽을 합성한 표지 · 딥 블루 에디토리얼 목차·간지",
+      "fits": "공공 SI 제안서·제안설명회",
+      "bg": "a clean white (or very light blue-white) background",
+      "head_color": "#0B2E6B",
+      "image": "Match the visual system of the reference body area(s): same card/panel system, same 3D clay icon and character style, same spacing and text density. Do NOT copy the reference's content; only its grammar.\n\nPEOPLE / ILLUSTRATION STYLE (strict — copy it from the reference images, especially the small character sample): soft 3D clay-render characters like a Korean public-sector proposal deck (matte clay material, NOT a Disney/Pixar animation look). Characters are young KOREAN (East Asian) office workers and civil servants in their late 20s to 30s, black or dark-brown hair, realistic adult head-to-body proportions (normal head size). FACES: small natural almond-shaped eyes with dark pupils, simple small nose and mouth, calm composed expressions — NO big round glossy eyes, no large irises or eye highlights, no raised cartoon eyebrows, no exaggerated surprise or grin; navy or cobalt business suits, white shirts. NOT photorealistic, NOT photographs, NOT Western/Caucasian, NOT elderly, no wrinkles, no beards, no realistic skin texture. Objects and icons are the same soft 3D clay style in cobalt/sky-blue tones.\n\nColors: main Cobalt Blue #3B82F6, Sky Blue #DBEAFE cards, Deep cobalt #1E40AF for subtitles/numbers, body text Dark Gray #1F2937, caption #6B7280. ACCENT color {accent}: use it for the headline keyword, callout labels given in the content, and ONE emphasis spot — nowhere else. White rounded cards with light gray border, 90% soft 3D clay icons + 10% flat icons, characters exactly as in PEOPLE / ILLUSTRATION STYLE above (no chibi), no heavy shadows, never white text on white.",
+      "front": "PHOTOREAL DATA COMPOSITE, editorial magazine quality (nano banana): a bright, crisp, high-resolution real photograph of THIS project's own field (aerial view of a Korean city intersection or district, a white 3D relief map of Korea on a table, a control room, Korean citizens or professionals in real places — seen from behind, from the side or at a distance) with glowing CYAN / electric-blue holographic data graphics composited naturally into the scene: concentric data rings on the ground, light flow lines along roads, floating translucent chart panels, 3D light-bar columns rising from a map, small HUD tags with abstract numbers. Cinematic natural light, deep clean blues, sharp detail, 300dpi print look. Typography: very big bold Korean title (white on dark areas, deep navy on light areas) with the key words in cyan or the accent {accent}; small English micro-labels are allowed only as decoration (no readable claims). Contents and divider pages use the DEEP BLUE EDITORIAL layout of the same deck: solid deep blue (#0B3A8C–#1D4ED8) panels, white text, thin white line icons, numbered 01–04 items, and one or two real photo panels with light cyan data lines. No 3D characters, no clay, no illustration.",
+      "frame": {
+        "head": "band",
+        "fill": [
+          "1D4ED8",
+          "3B82F6"
+        ],
+        "title": "FFFFFF",
+        "small": "BFDBFE",
+        "project": "DBEAFE",
+        "foot_line": "E5E7EB",
+        "page": "6B7280"
+      },
+      "build": "밝은 코발트 계열(#3B82F6·#1E40AF·#DBEAFE), 흰 둥근 카드 + 옅은 회색 테두리, 패널 머리는 코발트로 꽉 찬 띠, 아래 결론 띠는 네이비. 강조색은 헤드라인 강조어·질문 콜아웃·한 곳만.",
+      "people": true,
+      "front_rules": {
+        "cover": {
+          "text": "공통 뼈대: 왼쪽 위 작은 한 줄 → 아주 큰 굵은 사업명 2줄(핵심어는 시안·강조색) → 꼬리 글·날짜. 글은 사진의 어두운 하늘·바닥이나 딥 블루 그라데이션 위에 흰 글.",
+          "logo": "로고를 그리지 않는다 — 엔진이 넣는다(자리만 비운다). 어두운 바탕이면 흰 로고.",
+          "image": "이 사업 현장의 실사 사진(도시 교차로 항공 사진·3D 지형 지도·관제실·현장의 한국인 뒷모습) 위에 시안 홀로그램 데이터(바닥의 동심 데이터 고리, 도로를 따라 흐르는 빛 선, 떠 있는 반투명 차트, 지도에서 솟는 빛 막대, 작은 HUD 태그)를 자연스럽게 합성. 화면 가득(풀 블리드). 글자·로고 없는 사진.",
+          "bg": "사진이 페이지 전체. 글 자리는 하늘·바닥처럼 차분하거나, 왼쪽에서 오른쪽으로 옅어지는 딥 블루(#0B3A8C) 그라데이션을 깐다."
+        },
+        "toc": {
+          "text": "왼쪽 45% 딥 블루 면에 '목차'와 01~04 장 이름(흰 굵은 글, 번호는 시안). 장 이름만.",
+          "logo": "로고를 그리지 않는다 — 엔진이 넣는다. 딥 블루 면 위는 흰 로고.",
+          "image": "오른쪽 55% 에 실내 장면의 실사 사진 패널 — 통합관제실의 대형 벽면 화면 앞 요원 뒷모습, 서버 랙, CCTV·센서 장비 접사 가운데 하나. 위에 옅은 시안 데이터 선.",
+          "bg": "딥 블루(#0B3A8C~#1D4ED8) 단색 면 + 오른쪽 사진 패널. 가는 흰 선 아이콘 몇 개는 허용."
+        },
+        "div": {
+          "text": "PART 번호(아주 크게)·장 이름(크게, 흰 글)·한 줄 설명. 왼쪽 정렬.",
+          "logo": "로고를 그리지 않는다 — 엔진이 넣는다. 흰 로고.",
+          "image": "이 장 주제의 실사 사진 한 장(관제실 요원 뒷모습·장비 접사 등, 표지·목차와 다른 장면)에 옅은 시안 데이터 선. 사진이 프레임을 꽉 채운다.",
+          "bg": "딥 블루 단색(#0B3A8C~#1D4ED8)에 아주 옅은 그라데이션. 무늬·아이콘 흩뿌리지 않는다."
+        }
+      },
+      "front_engine": {
+        "cover": "both",
+        "toc": "both",
+        "div": "both"
+      },
+      "front_set": "bio",
+      "body_point": "본문 그림은 실사 사진에 빛나는 시안 데이터 그래픽(고리·흐름 선·떠 있는 차트·빛 막대)을 합성한 장면 — 일러스트·클레이 없음. 사람은 뒷모습·옆모습. 그림은 보조(본문의 35% 이하), 카드·숫자·결론 띠가 주인공. 레이아웃·카드·글은 A 와 같게.",
+      "body_point_en": "render every picture as a REAL PHOTOGRAPH of the project's field with glowing cyan holographic data graphics composited into it (data rings, light flow lines, small floating chart panels, light-bar columns), like the deck's cover; no illustration, no clay. People from behind or from the side. Pictures stay inside their blocks (about 35% of the body); keep the layout, cards and text of the base design.",
+      "front_free": true,
+      "front_refs": {},
+      "body_photo": "strong",
+      "body_nb2": true,
+      "body_style_en": "REAL PHOTOGRAPHS of the project's field (crisp, cinematic, deep clean blues) with glowing CYAN holographic data graphics composited into them (data rings, light flow lines, small floating chart panels, light-bar columns), like the deck's cover; people are real Korean professionals seen from behind or from the side — no illustration, no clay, no 3D characters",
+      "body_tone_en": "white cards like the base design, deep navy (#0B3A8C) headers and bands, crisp deep-blue photos with glowing cyan data lines; no beige, no warm tones",
+      "front_draw": {
+        "panel": {
+          "toc": "#0B3A8C",
+          "div": "#0B3A8C"
+        },
+        "key_dark": "#22D3EE",
+        "title": "#0B2E6B",
+        "key": "#1D4ED8"
+      }
+    },
+    {
+      "id": "c",
+      "name": "헥사곤 포토",
+      "samples": 4,
+      "desc": "육각형으로 자른 실사 사진 묶음 표지 · 밝은 바탕에 육각 사진과 오른쪽 글의 목차·간지",
+      "fits": "공공 SI 제안서·제안설명회",
+      "bg": "a clean white (or very light blue-white) background",
+      "head_color": "#0B2E6B",
+      "image": "Match the visual system of the reference body area(s): same card/panel system, same 3D clay icon and character style, same spacing and text density. Do NOT copy the reference's content; only its grammar.\n\nPEOPLE / ILLUSTRATION STYLE (strict — copy it from the reference images, especially the small character sample): soft 3D clay-render characters like a Korean public-sector proposal deck (matte clay material, NOT a Disney/Pixar animation look). Characters are young KOREAN (East Asian) office workers and civil servants in their late 20s to 30s, black or dark-brown hair, realistic adult head-to-body proportions (normal head size). FACES: small natural almond-shaped eyes with dark pupils, simple small nose and mouth, calm composed expressions — NO big round glossy eyes, no large irises or eye highlights, no raised cartoon eyebrows, no exaggerated surprise or grin; navy or cobalt business suits, white shirts. NOT photorealistic, NOT photographs, NOT Western/Caucasian, NOT elderly, no wrinkles, no beards, no realistic skin texture. Objects and icons are the same soft 3D clay style in cobalt/sky-blue tones.\n\nColors: main Cobalt Blue #3B82F6, Sky Blue #DBEAFE cards, Deep cobalt #1E40AF for subtitles/numbers, body text Dark Gray #1F2937, caption #6B7280. ACCENT color {accent}: use it for the headline keyword, callout labels given in the content, and ONE emphasis spot — nowhere else. White rounded cards with light gray border, 90% soft 3D clay icons + 10% flat icons, characters exactly as in PEOPLE / ILLUSTRATION STYLE above (no chibi), no heavy shadows, never white text on white.",
+      "front": "Light hexagon-photo concept: a very pale sky-blue-to-white background with a faint dotted network. On the right a honeycomb cluster of 3-4 HEXAGON-masked real photographs (city, data globe, people at work) with 2-3 small round / hexagon icon badges between them. Title in deep navy (first line thin, the rest bold), a small spaced-out date above, the tail label in the accent {accent}. No 3D clay characters. Contents and divider pages follow the reference set of the same deck (see the rules below).",
+      "frame": {
+        "head": "band",
+        "fill": [
+          "1D4ED8",
+          "3B82F6"
+        ],
+        "title": "FFFFFF",
+        "small": "BFDBFE",
+        "project": "DBEAFE",
+        "foot_line": "E5E7EB",
+        "page": "6B7280"
+      },
+      "build": "밝은 코발트 계열(#3B82F6·#1E40AF·#DBEAFE), 흰 둥근 카드 + 옅은 회색 테두리, 패널 머리는 코발트로 꽉 찬 띠, 아래 결론 띠는 네이비. 강조색은 헤드라인 강조어·질문 콜아웃·한 곳만.",
+      "people": true,
+      "front_rules": {
+        "cover": {
+          "text": "공통 뼈대(왼쪽). 맨 위 자간 넓은 작은 날짜, 사업명 3줄 — 첫 줄은 가늘게, 나머지는 굵은 짙은 남색. 꼬리 글은 강조색.",
+          "logo": "로고를 그리지 않는다 — 엔진이 넣는다(자리만 비운다).",
+          "image": "오른쪽 45% 에 육각형으로 자른 실사 사진 3~4장이 벌집처럼 맞물린 묶음(도시·데이터 지구본·일하는 사람), 사이사이 작은 원·육각 아이콘 배지 2~3개.",
+          "bg": "아주 옅은 하늘색~흰색에 옅은 점과 선의 네트워크."
+        },
+        "toc": {
+          "text": "공통 뼈대 + 아래 '이 덱의 한 벌' 안내의 글 자리·글자 색을 따른다.",
+          "logo": "로고를 그리지 않는다 — 엔진이 넣는다(자리만 비운다).",
+          "image": "왼쪽 절반에 육각형으로 자른 실사 사진 4~6개를 벌집처럼 모은다(사각 사진 없음, 육각형이 가장자리에서 잘리지 않게). 오른쪽 절반은 밝은 흰~옅은 코발트 면.",
+          "bg": "사진 없는 밝은 흰~옅은 코발트 단색 면(육각형 사진 뒤에 다른 사진을 깔지 않는다)."
+        },
+        "div": {
+          "text": "공통 뼈대 + 아래 '이 덱의 한 벌' 안내의 글 자리·글자 색을 따른다.",
+          "logo": "로고를 그리지 않는다 — 엔진이 넣는다(자리만 비운다).",
+          "image": "왼쪽 아래에 육각형 실사 사진 2개만, 작게. 나머지는 밝은 면.",
+          "bg": "밝은 흰~옅은 코발트 그라데이션(어두운 남색 아님)."
+        }
+      },
+      "front_engine": {
+        "cover": "both",
+        "toc": "both",
+        "div": "both"
+      },
+      "front_set": "hex",
+      "body_point": "본문 그림을 **실사 사진**으로 — 표지처럼 육각형으로 자른 실사 사진(관제실·도시 야경·현장·기기 화면 접사)과 육각 아이콘 배지. 일러스트·클레이를 쓰지 않는다. 사람은 뒷모습·옆모습·손 위주. 레이아웃·카드·글은 A 와 같게.",
+      "body_point_en": "render every scene picture as a REAL PHOTOGRAPH cropped into HEXAGON frames (control rooms, city at night, sites, close-ups of screens and devices), exactly like the deck's cover, plus small hexagon icon badges; no illustration, no clay, no cartoon. People are shown from behind or from the side. Keep the layout, cards and text of the base design.",
+      "body_photo": "strong",
+      "body_nb2": true,
+      "front_draw": {
+        "title": "#0B2E6B",
+        "key": "#1D4ED8",
+        "key_dark": "#7DD3FC",
+        "layout": {
+          "toc": "right",
+          "div": "right"
+        }
+      }
+    },
+    {
+      "id": "d",
+      "name": "스튜디오 포토",
+      "samples": 4,
+      "desc": "옅은 페리윙클 스튜디오 실사 — 흰 책상 위 사업 모형·기기와 젖빛 유리 패널, 같은 톤의 목차·간지",
+      "fits": "공공 SI 제안서·제안설명회",
+      "bg": "a clean white (or very light blue-white) background",
+      "head_color": "#0B2E6B",
+      "image": "Match the visual system of the reference body area(s): same card/panel system, same 3D clay icon and character style, same spacing and text density. Do NOT copy the reference's content; only its grammar.\n\nPEOPLE / ILLUSTRATION STYLE (strict — copy it from the reference images, especially the small character sample): soft 3D clay-render characters like a Korean public-sector proposal deck (matte clay material, NOT a Disney/Pixar animation look). Characters are young KOREAN (East Asian) office workers and civil servants in their late 20s to 30s, black or dark-brown hair, realistic adult head-to-body proportions (normal head size). FACES: small natural almond-shaped eyes with dark pupils, simple small nose and mouth, calm composed expressions — NO big round glossy eyes, no large irises or eye highlights, no raised cartoon eyebrows, no exaggerated surprise or grin; navy or cobalt business suits, white shirts. NOT photorealistic, NOT photographs, NOT Western/Caucasian, NOT elderly, no wrinkles, no beards, no realistic skin texture. Objects and icons are the same soft 3D clay style in cobalt/sky-blue tones.\n\nColors: main Cobalt Blue #3B82F6, Sky Blue #DBEAFE cards, Deep cobalt #1E40AF for subtitles/numbers, body text Dark Gray #1F2937, caption #6B7280. ACCENT color {accent}: use it for the headline keyword, callout labels given in the content, and ONE emphasis spot — nowhere else. White rounded cards with light gray border, 90% soft 3D clay icons + 10% flat icons, characters exactly as in PEOPLE / ILLUSTRATION STYLE above (no chibi), no heavy shadows, never white text on white.",
+      "front": "SOFT STUDIO PHOTOGRAPH, premium editorial still-life (nano banana): a calm pale periwinkle / blue-gray studio (#E6EBF7 → #C9D3EA) with soft window light casting long diagonal shadows across a clean white desk. On the desk a crisp WHITE MINIATURE MODEL of THIS project's subject (buildings, a control center, a city block, servers, CCTV poles) on a light platform or tablet, with real props of the work (tablet, monitor, documents, a pen, a small device) and one or two FROSTED-GLASS UI panels floating beside it (translucent white glass cards with a simple chart, a gauge or a checklist shape — abstract, no readable claims). Optionally one Korean professional at work seen from behind or from the side, softly out of focus. Typography: bold deep navy (#1E2A5A) Korean title, key words in periwinkle blue (#4F6BD8) or the accent {accent}, light gray subtitle. Monochrome soft blue-gray palette, no beige, no warm tones, no dark tint, no illustration, no clay.",
+      "frame": {
+        "head": "band",
+        "fill": [
+          "3B4F9E",
+          "5B7FE0"
+        ],
+        "title": "FFFFFF",
+        "small": "DCE3F7",
+        "project": "E6EBF7",
+        "foot_line": "E5E7EB",
+        "page": "6B7280"
+      },
+      "build": "옅은 페리윙클·블루그레이 톤(#E6EBF7·#C9D3EA), 제목 짙은 남색 #1E2A5A, 포인트 페리윙클 파랑 #4F6BD8, 흰 카드에 젖빛 유리 느낌(옅은 테두리·부드러운 그림자), 아래 결론 띠는 짙은 남색. 강조색은 헤드라인 강조어·한 곳만.",
+      "people": true,
+      "front_rules": {
+        "cover": {
+          "text": "공통 뼈대: 굵은 짙은 남색 사업명 2~3줄(핵심어 페리윙클 파랑·강조색) → 꼬리 글·날짜(회색). 글은 오른쪽 위 또는 왼쪽의 고른 벽·젖빛 유리 패널 위. 사업명 위 작은 한 줄은 그 글이 주어졌을 때만.",
+          "logo": "로고를 그리지 않는다 — 엔진이 넣는다(자리만 비운다).",
+          "image": "옅은 페리윙클 스튜디오의 흰 책상 위에 이 사업의 흰 미니어처 모형(건물·관제센터·도시 블록·서버·CCTV)과 실제 소품(태블릿·모니터·문서·펜), 옆에 떠 있는 젖빛 유리 UI 패널(그래프·게이지 모양만). 창빛 사선 그림자. 사람은 있으면 뒷모습·옆모습으로 흐리게.",
+          "bg": "사진이 페이지 전체(풀 블리드). 옅은 페리윙클~블루그레이 벽과 흰 책상, 부드러운 창빛. 어두운 틴트·베이지 없음."
+        },
+        "toc": {
+          "text": "젖빛 유리 패널(또는 고른 벽) 위에 '목차'와 01~04 장 이름(짙은 남색 굵은 글, 번호는 페리윙클 파랑). 장 이름만.",
+          "logo": "로고를 그리지 않는다 — 엔진이 넣는다.",
+          "image": "표지와 같은 스튜디오·톤의 다른 정물: 책상 위 펼친 폴더·노트북·문서와 작은 흰 모형 하나(표지 모형과 다른 것). 표지 장면을 다시 쓰지 않는다.",
+          "bg": "같은 옅은 페리윙클 스튜디오, 창빛 그림자. 글 자리는 고르고 밝게."
+        },
+        "div": {
+          "text": "PART 번호(크게, 페리윙클 파랑)·장 이름(크게, 짙은 남색)·한 줄 설명. 핵심어 뒤에 단색 파랑 띠(글보다 크게, 흰 글). 왼쪽 정렬.",
+          "logo": "로고를 그리지 않는다 — 엔진이 넣는다.",
+          "image": "조용하게: 오른쪽 아래에 이 장 주제의 작은 흰 모형이나 소품 하나(창빛 그림자와 함께), 페이지의 20% 이하.",
+          "bg": "옅은 페리윙클 벽 한 면(거의 단색) + 사선 창빛 그림자. 나머지는 비운다."
+        }
+      },
+      "front_engine": {
+        "cover": "nb2",
+        "toc": "nb2",
+        "div": "nb2"
+      },
+      "front_set": "photo",
+      "body_point": "본문 그림은 표지와 같은 스튜디오 실사 — 옅은 페리윙클 빛, 흰 책상 위 사업 모형·기기와 젖빛 유리 UI 카드. 카드도 젖빛 유리처럼 옅게. 그림은 보조(본문의 35% 이하), 카드·숫자·결론 띠가 주인공. 레이아웃·글은 A 와 같게.",
+      "body_point_en": "render every picture as a soft studio photograph like the cover (white miniature models and real props on a white desk, pale periwinkle light, frosted-glass UI cards); cards may have a light frosted-glass feel. Pictures stay inside their blocks (about 35% of the body); keep the layout and text of the base design.",
+      "body_photo": "strong",
+      "body_nb2": true,
+      "front_free": true,
+      "front_refs": {},
+      "body_style_en": "SOFT STUDIO PHOTOGRAPHS like the deck's cover: pale periwinkle / blue-gray studio light with soft window shadows, white desk, crisp WHITE MINIATURE MODELS of the subject (buildings, control room, servers, CCTV, vehicles) with real props (tablet, monitor, documents) and small frosted-glass UI cards; people are real Korean professionals seen from behind or from the side, softly lit — no illustration, no clay, no 3D characters, no beige or warm tones",
+      "body_tone_en": "soft monochrome blue-gray like the cover: white cards on a very pale periwinkle tint (#EEF1F9), deep navy (#1E2A5A) titles, periwinkle blue (#4F6BD8) accents, frosted-glass card feel, soft shadows",
+      "front_draw": {
+        "title": "#1E2A5A",
+        "key": "#4F6BD8",
+        "band": "#4F6BD8",
+        "key_dark": "#C7D2FE",
+        "card": {
+          "toc": true,
+          "div": true
+        }
+      }
+    },
+    {
+      "id": "e",
+      "name": "아이소메트릭 3D",
+      "samples": 4,
+      "desc": "흰 광택 받침 위 빛나는 파랑 미니어처 — 옅은 하늘빛 3D 표지 · 같은 세계의 목차·간지",
+      "fits": "공공 SI 제안서·제안설명회",
+      "bg": "a clean white (or very light blue-white) background",
+      "head_color": "#0B2E6B",
+      "image": "Match the visual system of the reference body area(s): same card/panel system, same 3D clay icon and character style, same spacing and text density. Do NOT copy the reference's content; only its grammar.\n\nPEOPLE / ILLUSTRATION STYLE (strict — copy it from the reference images, especially the small character sample): soft 3D clay-render characters like a Korean public-sector proposal deck (matte clay material, NOT a Disney/Pixar animation look). Characters are young KOREAN (East Asian) office workers and civil servants in their late 20s to 30s, black or dark-brown hair, realistic adult head-to-body proportions (normal head size). FACES: small natural almond-shaped eyes with dark pupils, simple small nose and mouth, calm composed expressions — NO big round glossy eyes, no large irises or eye highlights, no raised cartoon eyebrows, no exaggerated surprise or grin; navy or cobalt business suits, white shirts. NOT photorealistic, NOT photographs, NOT Western/Caucasian, NOT elderly, no wrinkles, no beards, no realistic skin texture. Objects and icons are the same soft 3D clay style in cobalt/sky-blue tones.\n\nColors: main Cobalt Blue #3B82F6, Sky Blue #DBEAFE cards, Deep cobalt #1E40AF for subtitles/numbers, body text Dark Gray #1F2937, caption #6B7280. ACCENT color {accent}: use it for the headline keyword, callout labels given in the content, and ONE emphasis spot — nowhere else. White rounded cards with light gray border, 90% soft 3D clay icons + 10% flat icons, characters exactly as in PEOPLE / ILLUSTRATION STYLE above (no chibi), no heavy shadows, never white text on white.",
+      "front": "ISOMETRIC 3D MINIATURE WORLD, premium product-render quality (nano banana): glossy white rounded platforms and tiles floating on a soft pale sky-blue to periwinkle gradient (#EAF2FF → #C9D8FF), each carrying a clean miniature of THIS project's own elements (buildings, control room, servers, sensors, CCTV poles, vehicles, a white 3D map of Korea, small human figures) with glowing electric-blue accents (#1D4ED8–#3B82F6) — light lines connecting the platforms, glowing chips and screens, soft ambient occlusion, gentle reflections, clean studio lighting, no clutter. Small labels on the platforms are blue pill tags. Typography: very big extra-bold Korean title in vivid royal blue (#1D4ED8) with key words in the accent {accent}, small gray subtitle. No photographs, no flat illustration, no clay characters with big heads.",
+      "frame": {
+        "head": "band",
+        "fill": [
+          "1D4ED8",
+          "3B82F6"
+        ],
+        "title": "FFFFFF",
+        "small": "BFDBFE",
+        "project": "DBEAFE",
+        "foot_line": "E5E7EB",
+        "page": "6B7280"
+      },
+      "build": "밝은 코발트 계열(#3B82F6·#1E40AF·#DBEAFE), 흰 둥근 카드 + 옅은 회색 테두리, 패널 머리는 코발트로 꽉 찬 띠, 아래 결론 띠는 네이비. 강조색은 헤드라인 강조어·질문 콜아웃·한 곳만.",
+      "people": true,
+      "front_rules": {
+        "cover": {
+          "text": "공통 뼈대: 위(또는 왼쪽 위)에 작은 한 줄 → 아주 큰 굵은 사업명 2줄(진한 로열 블루, 핵심어 강조색) → 꼬리 글·날짜(회색).",
+          "logo": "로고를 그리지 않는다 — 엔진이 넣는다(자리만 비운다).",
+          "image": "아래·오른쪽 60% 에 아이소메트릭 3D 미니어처: 흰 광택 받침 2~4개 위에 이 사업의 요소(건물·관제실·서버·CCTV·차량·한국 지도)를 작게, 받침끼리는 빛나는 파랑 선으로 연결, 작은 파랑 알약 라벨(글자 없는 모양만). 사람은 작은 3D 인물.",
+          "bg": "옅은 하늘색~라벤더 그라데이션(#EAF2FF→#C9D8FF), 아래에 부드러운 그림자. 흰 여백이 넉넉하다."
+        },
+        "toc": {
+          "text": "왼쪽에 '목차'와 01~04 장 이름(로열 블루 굵은 글, 번호는 파랑 원). 장 이름만.",
+          "logo": "로고를 그리지 않는다 — 엔진이 넣는다.",
+          "image": "오른쪽에 표지와 다른 아이소메트릭 장면 — 장 수만큼의 흰 받침이 계단·퍼즐처럼 이어진 미니어처(각 받침 위에 그 장의 상징 하나). 표지 그림을 다시 쓰지 않는다. 색은 흰색·옅은 하늘색·파랑만(초록 지붕·태양광 패널 없음). 받침이 가장자리에서 잘리지 않게 여백을 둔다.",
+          "bg": "표지와 같은 옅은 하늘색~라벤더 그라데이션."
+        },
+        "div": {
+          "text": "PART 번호(아주 크게, 로열 블루)·장 이름(크게)·한 줄 설명(회색). 왼쪽 정렬.",
+          "logo": "로고를 그리지 않는다 — 엔진이 넣는다.",
+          "image": "조용하게: 오른쪽 아래에 흰 받침 하나 위의 작은 아이소메트릭 미니어처 하나(이 장의 상징). 페이지의 20% 이하.",
+          "bg": "옅은 하늘색 단색에 가까운 아주 옅은 그라데이션, 나머지는 비운다."
+        }
+      },
+      "front_engine": {
+        "cover": "nb2",
+        "toc": "nb2",
+        "div": "nb2"
+      },
+      "front_set": "part",
+      "body_point": "본문 그림을 아이소메트릭 3D 미니어처로 — 흰 광택 받침 위에 이 사업의 요소를 작게, 빛나는 파랑 선으로 연결. 사진·플랫 일러스트·큰머리 클레이 없음. 그림은 보조(본문의 35% 이하), 카드·숫자·결론 띠가 주인공. 레이아웃·카드·글은 A 와 같게.",
+      "body_point_en": "render every picture as an ISOMETRIC 3D MINIATURE on glossy white platforms with glowing blue light lines, like the deck's cover. Pictures stay inside their blocks (about 35% of the body); keep the layout, cards and text of the base design.",
+      "body_render": "iso3d",
+      "front_free": true,
+      "front_refs": {},
+      "body_style_en": "ISOMETRIC 3D MINIATURE RENDER like the deck's cover: glossy white rounded platforms carrying small clean miniatures (buildings, servers, screens, devices, vehicles, map pieces) with glowing electric-blue accents and light lines, soft studio lighting and soft shadows; people are small neat 3D figures (normal proportions, tiny simple faces) — no photographs, no flat illustration, no big-head clay characters; each picture block holds ONE small isometric object group on its own small platform inside that block — the slide is NOT one big diorama, cards and panels stay flat white with readable text, and the conclusion band is a solid full-width deep-navy bar",
+      "body_tone_en": "light and clean like the cover: white cards on a very pale sky/periwinkle tint, royal blue (#1D4ED8) and cobalt accents, soft studio light",
+      "front_draw": {
+        "title": "#1D4ED8",
+        "key": "#1D4ED8",
+        "key_dark": "#93C5FD",
+        "layout": {
+          "toc": "center",
+          "div": "center"
+        }
+      }
+    },
+    {
+      "id": "f",
+      "name": "딥 컬러 선화",
+      "samples": 4,
+      "desc": "짙은 단색 바탕에 가는 선 일러스트 표지·간지 · 차분한 흰 목차",
+      "fits": "공공 SI 제안서·제안설명회",
+      "bg": "a clean white (or very light blue-white) background",
+      "head_color": "#0B2E6B",
+      "image": "Match the visual system of the reference body area(s): same card/panel system, same 3D clay icon and character style, same spacing and text density. Do NOT copy the reference's content; only its grammar.\n\nPEOPLE / ILLUSTRATION STYLE (strict — copy it from the reference images, especially the small character sample): soft 3D clay-render characters like a Korean public-sector proposal deck (matte clay material, NOT a Disney/Pixar animation look). Characters are young KOREAN (East Asian) office workers and civil servants in their late 20s to 30s, black or dark-brown hair, realistic adult head-to-body proportions (normal head size). FACES: small natural almond-shaped eyes with dark pupils, simple small nose and mouth, calm composed expressions — NO big round glossy eyes, no large irises or eye highlights, no raised cartoon eyebrows, no exaggerated surprise or grin; navy or cobalt business suits, white shirts. NOT photorealistic, NOT photographs, NOT Western/Caucasian, NOT elderly, no wrinkles, no beards, no realistic skin texture. Objects and icons are the same soft 3D clay style in cobalt/sky-blue tones.\n\nColors: main Cobalt Blue #3B82F6, Sky Blue #DBEAFE cards, Deep cobalt #1E40AF for subtitles/numbers, body text Dark Gray #1F2937, caption #6B7280. ACCENT color {accent}: use it for the headline keyword, callout labels given in the content, and ONE emphasis spot — nowhere else. White rounded cards with light gray border, 90% soft 3D clay icons + 10% flat icons, characters exactly as in PEOPLE / ILLUSTRATION STYLE above (no chibi), no heavy shadows, never white text on white.",
+      "front": "Solid color block: the user's accent {accent} IS the background of the COVER and the CHAPTER DIVIDERS — full-bleed solid {accent} with a very faint dotted wave at the edges, white bold title on the left, and on the right a thin-outline flat vector illustration (2-3 white panels with small figures at work, limited palette). The TABLE OF CONTENTS is a calm white page: near-black title and chapter names, only the numbers in {accent}. No photographs, no 3D, no second vivid hue. Contents and divider pages follow the reference set of the same deck (see the rules below).",
+      "frame": {
+        "head": "band",
+        "fill": [
+          "1D4ED8",
+          "3B82F6"
+        ],
+        "title": "FFFFFF",
+        "small": "BFDBFE",
+        "project": "DBEAFE",
+        "foot_line": "E5E7EB",
+        "page": "6B7280"
+      },
+      "build": "밝은 코발트 계열(#3B82F6·#1E40AF·#DBEAFE), 흰 둥근 카드 + 옅은 회색 테두리, 패널 머리는 코발트로 꽉 찬 띠, 아래 결론 띠는 네이비. 강조색은 헤드라인 강조어·질문 콜아웃·한 곳만.",
+      "people": true,
+      "front_rules": {
+        "cover": {
+          "text": "공통 뼈대(왼쪽), 전부 흰 글자: 작은 슬로건 한 줄(있을 때), 사업명 2줄 굵게, 꼬리 글은 흰색 작은 글.",
+          "logo": "로고를 그리지 않는다 — 엔진이 넣는다(자리만 비운다).",
+          "image": "오른쪽 45% 에 가는 선의 플랫 벡터 일러스트 — 흰 면 패널 2~3개 안에서 일하는 작은 인물들(사업 현장의 장면). 사진·3D·누끼 이미지 없음.",
+          "bg": "전면 강조색 단색 — 사용자가 고른 강조색이 곧 배경색이다. 가장자리에 아주 옅은 점 물결 무늬."
+        },
+        "toc": {
+          "text": "공통 뼈대 + 아래 '이 덱의 한 벌' 안내의 글 자리·글자 색을 따른다.",
+          "logo": "로고를 그리지 않는다 — 엔진이 넣는다(자리만 비운다).",
+          "image": "표지와 같은 화풍·색으로 **새 그림**을 만든다 — 사업 전체를 보여 주는 다른 장면으로. 표지 그림을 다시 쓰지 않는다. 한 벌 안내대로 흐리게·덮어서 글이 주인공이 되게.",
+          "bg": "한 벌 안내의 배경을 따른다."
+        },
+        "div": {
+          "text": "공통 뼈대 + 아래 '이 덱의 한 벌' 안내의 글 자리·글자 색을 따른다.",
+          "logo": "로고를 그리지 않는다 — 엔진이 넣는다(자리만 비운다).",
+          "image": "표지와 같은 화풍·색으로 **새 그림**을 만든다 — 이 장(章)의 내용에 맞는 주제로. 간지마다 그림이 다르다. 표지 그림을 다시 쓰지 않는다. 한 벌 안내대로 흐리게·덮어서 글이 주인공이 되게.",
+          "bg": "한 벌 안내의 배경을 따른다."
+        }
+      },
+      "front_engine": {
+        "cover": "main",
+        "toc": "main",
+        "div": "main"
+      },
+      "front_set": "navy",
+      "body_point": "본문 그림·인물·아이콘을 표지·간지·목차와 같은 **가는 선의 플랫 벡터 일러스트**로(얇은 외곽선, 제한된 색 2~3가지 — 강조색·남색·옅은 하늘). 3D 클레이·사진을 쓰지 않는다. 결론 띠와 강조 카드 한 곳은 짙은 단색(강조색).",
+      "body_point_en": "draw every picture, person and icon as a THIN-OUTLINE FLAT VECTOR ILLUSTRATION, exactly the style of the deck's cover and dividers (thin dark outlines, limited palette of 2-3 colors: the accent, navy and pale sky blue, small figures at work); no 3D clay, no photographs. Fill the conclusion bar and one highlighted card with the deep solid accent color.",
+      "body_render": "line_flat"
+    }
+  ],
+  "nb2_model": "google/gemini-3.1-flash-image"
+}

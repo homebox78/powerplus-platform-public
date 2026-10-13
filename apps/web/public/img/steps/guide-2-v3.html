@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>guide-2</title>
+<style>
+html,body{margin:0;height:100%;overflow:hidden;background:#ECEBE8}
+.wrap{position:relative;width:100%;height:100%;overflow:hidden;background:radial-gradient(120% 95% at 48% 38%,#FAF9F7 0%,#EDEBE8 62%,#E3E1DD 100%)}
+.stage{position:absolute;left:50%;top:50%;width:400px;height:400px;transform-origin:50% 50%;perspective:2600px;perspective-origin:50% 42%}
+.scene{position:absolute;left:200px;top:198px;transform-style:preserve-3d;transform:rotateX(55deg) rotateZ(-40deg) scale3d(.98,.98,.98)}
+.blk{position:absolute;width:0;height:0;transform-style:preserve-3d}
+.lift{position:absolute;transform-style:preserve-3d}
+.blk i,.blk b{position:absolute;left:calc(var(--w)/-2);top:calc(var(--h)/-2);width:var(--w);height:var(--h);border-radius:var(--r)}
+.blk i{background:var(--side)}
+.blk b{background:var(--top);overflow:hidden;box-shadow:inset 0 2px 0 rgba(255,255,255,.6),inset 0 -4px 8px rgba(0,0,0,.06)}
+.sh{position:absolute;left:calc(var(--w)/-2 - 20px);top:calc(var(--h)/-2 - 20px);width:calc(var(--w) + 40px);height:calc(var(--h) + 40px);border-radius:calc(var(--r) + 14px);background:radial-gradient(closest-side,rgba(70,55,40,.26),rgba(70,55,40,0));transform:translate3d(14px,16px,0)}
+.l{--top:linear-gradient(140deg,#FFFFFF,#ECE9E4);--side:#D3CFC8}
+.g{--top:linear-gradient(140deg,#D2CFC9,#B8B4AE);--side:#9A968F}
+.d{--top:linear-gradient(140deg,#3E3C3A,#222120);--side:#121110}
+.o{--top:linear-gradient(140deg,#F2803F,#D9561C);--side:#A9421A}
+.p{position:absolute;border-radius:6px}
+.t{position:absolute;white-space:nowrap;font-family:"Pretendard","Apple SD Gothic Neo","Malgun Gothic",sans-serif;font-weight:700;letter-spacing:-.02em}
+.ly{position:absolute;inset:0}
+
+</style>
+</head>
+<body>
+<div class="wrap"><div class="stage" id="st"><div class="scene" id="sc"></div></div></div>
+<script>
+const sc=document.getElementById('sc');
+// 두께 있는 블록 하나: x,y(바닥 평면), w,h, r(둥글기), d(두께), k(색), top(윗면 내용)
+function blk(o){ const k=document.createElement('div'); k.className='blk '+(o.k||'l');
+  k.style.cssText=`left:${o.x}px;top:${o.y}px;--w:${o.w}px;--h:${o.h}px;--r:${o.r??16}px`;
+  let L=''; for(let z=0;z<o.d-2;z+=4) L+=`<i style="transform:translateZ(${z}px)"></i>`;
+  k.innerHTML=(o.noShadow?'':'<div class="sh"></div>')+`<div class="lift">${L}<b style="transform:translateZ(${o.d}px)">${o.top||''}</b></div>`;
+  (o.parent||sc).appendChild(k); k.lift=k.querySelector('.lift'); k.sh=k.querySelector('.sh'); k.top=k.querySelector('b'); return k; }
+const bar=(x,y,w,h,c,r)=>`<div class="p" style="left:${x}px;top:${y}px;width:${w}px;height:${h}px;background:${c};border-radius:${r??Math.min(h/2,8)}px"></div>`;
+const lab=(x,y,t,sz,c,w)=>`<div class="t" style="left:${x}px;top:${y}px;font-size:${sz}px;color:${c};font-weight:${w||700}">${t}</div>`;
+const pop=(el,a,b,T,e)=>anim(el,[{offset:0,transform:'scale(0)'},{offset:a,transform:'scale(0)',easing:e||'cubic-bezier(.3,1.5,.5,1)'},{offset:Math.min(a+.06,b),transform:'scale(1)'},{offset:b,transform:'scale(1)',easing:'ease-in'},{offset:Math.min(b+.05,1),transform:'scale(0)'},{offset:1,transform:'scale(0)'}],T);
+const fade=(el,a,b,T)=>anim(el,[{offset:0,opacity:0},{offset:a,opacity:0},{offset:Math.min(a+.04,b),opacity:1},{offset:b,opacity:1},{offset:Math.min(b+.04,1),opacity:0},{offset:1,opacity:0}],T);
+const anim=(el,frames,dur,opt={})=>el&&el.animate(frames,Object.assign({duration:dur*1000,iterations:Infinity},opt));
+  // 부품을 고른다: 부품 판에서 하나를 집어 든다
+const T=6;
+blk({x:0,y:10,w:240,h:180,r:24,d:16,k:'g',top:bar(20,22,90,40,'#D9D5CF',10)+bar(124,22,96,18,'#D9D5CF',9)+bar(124,48,70,14,'#D9D5CF',7)+bar(20,80,200,16,'#D9D5CF',8)+bar(20,110,140,16,'#D9D5CF',8)});
+const pc=blk({x:40,y:-50,w:80,h:30,r:15,d:12,k:'o',noShadow:true});
+anim(pc.lift,[{offset:0,transform:'translateZ(16px)'},{offset:.24,transform:'translateZ(16px)',easing:'cubic-bezier(.3,0,.2,1)'},{offset:.44,transform:'translateZ(90px)'},{offset:.74,transform:'translateZ(90px)',easing:'cubic-bezier(.5,0,.6,1)'},{offset:.9,transform:'translateZ(16px)'},{offset:1,transform:'translateZ(16px)'}],T);
+
+const st=document.getElementById('st');
+function fit(){const s=Math.max(innerWidth/400,innerHeight/400);st.style.transform=`translate(-50%,-50%) scale(${s})`;}
+addEventListener('resize',fit); fit();
+</script>
+</body>
+</html>

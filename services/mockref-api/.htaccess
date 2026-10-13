@@ -1,0 +1,8 @@
+# api/ 루트: 소스·설정 직접 접근 차단. 공개 진입점은 public/ 뿐.
+Options -Indexes
+<FilesMatch "\.(php|example\.php)$">
+  Require all denied
+</FilesMatch>
+<Files "config.php">
+  Require all denied
+</Files>

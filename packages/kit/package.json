@@ -1,0 +1,33 @@
+{
+  "name": "@pp/kit",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "출처: homebox-handoff packages/kit — 홈박스 컴포넌트 키트 — KRDS 기준 React·Vue 부품 + 공통 CSS + 서버 없는 미리보기",
+  "scripts": {
+    "gen": "node scripts/gen-index.mjs",
+    "build:css": "node scripts/build-css.mjs",
+    "build:preview": "node scripts/gen-index.mjs && node scripts/build-preview.mjs",
+    "build": "node scripts/gen-index.mjs && node scripts/build-css.mjs && node scripts/build-preview.mjs && node scripts/build-download.mjs && node scripts/publish-web.mjs",
+    "check": "node scripts/gen-index.mjs && tsc -p tsconfig.json && vue-tsc -p tsconfig.vue.json",
+    "publish:web": "node scripts/publish-web.mjs",
+    "check:ssr": "node scripts/check-ssr.mjs && node scripts/check-ssr-vue.mjs",
+    "check:report": "node scripts/build-report.mjs"
+  },
+  "dependencies": {
+    "radix-ui": "^1.6.7",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0",
+    "reka-ui": "^2.6.0",
+    "vue": "^3.5.0"
+  },
+  "devDependencies": {
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "axe-core": "^4.13.0",
+    "esbuild": "^0.25.0",
+    "postcss": "^8.5.28",
+    "typescript": "^5.9.0",
+    "vue-tsc": "^3.3.11"
+  }
+}

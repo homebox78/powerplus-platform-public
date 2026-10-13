@@ -1,0 +1,98 @@
+/* SOLIDEO Design System — 다크 모드 (1.3.2)
+   자동 생성 파일입니다. 직접 수정하지 마세요. (원본: tokens/build.mjs 의 DARK)
+
+   Primitive 는 그대로 두고 Semantic 매핑만 뒤집습니다.
+   컴포넌트 코드는 손댈 필요가 없습니다.
+
+   사용
+     <html data-theme="dark">   또는  <html class="dark">
+   시스템 설정을 따르려면 prefers-color-scheme 블록도 함께 씁니다. */
+
+[data-theme='dark'],
+.dark {
+  --text-primary: var(--gray-25);
+  --text-secondary: var(--gray-200);
+  --text-tertiary: var(--gray-300);
+  --text-disabled: var(--gray-500);
+  --text-inverse: var(--gray-900);
+  --text-accent: var(--crimson-300);
+  --text-critical: var(--red-300);
+  --text-positive: var(--green-300);
+  --text-caution: var(--amber-300);
+  --text-info: var(--blue-300);
+  --bg-primary: var(--gray-900);
+  --bg-secondary: var(--gray-850);
+  --bg-tertiary: var(--gray-800);
+  --bg-inverse: var(--gray-25);
+  --fill-primary: var(--gray-25);
+  --fill-secondary: var(--gray-750);
+  --fill-tertiary: var(--gray-800);
+  --fill-accent: var(--crimson-400);
+  --fill-accent-hover: var(--crimson-300);
+  --fill-accent-pressed: var(--crimson-200);
+  --fill-accent-subtle: var(--crimson-800);
+  --fill-disabled: var(--gray-750);
+  --fill-critical: var(--red-400);
+  --fill-critical-subtle: var(--red-800);
+  --fill-positive-subtle: var(--green-800);
+  --fill-caution-subtle: var(--amber-800);
+  --fill-info-subtle: var(--blue-800);
+  --border-primary: var(--gray-700);
+  --border-secondary: var(--gray-750);
+  --border-strong: var(--gray-500);
+  --border-accent: var(--crimson-400);
+  --border-critical: var(--red-400);
+  --border-focus: var(--blue-300);
+  --icon-primary: var(--gray-25);
+  --icon-secondary: var(--gray-200);
+  --icon-tertiary: var(--gray-400);
+  --icon-accent: var(--crimson-300);
+  --icon-inverse: var(--gray-900);
+  --accent-primary: var(--crimson-400);
+  --accent-secondary: var(--ink-200);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --text-primary: var(--gray-25);
+    --text-secondary: var(--gray-200);
+    --text-tertiary: var(--gray-300);
+    --text-disabled: var(--gray-500);
+    --text-inverse: var(--gray-900);
+    --text-accent: var(--crimson-300);
+    --text-critical: var(--red-300);
+    --text-positive: var(--green-300);
+    --text-caution: var(--amber-300);
+    --text-info: var(--blue-300);
+    --bg-primary: var(--gray-900);
+    --bg-secondary: var(--gray-850);
+    --bg-tertiary: var(--gray-800);
+    --bg-inverse: var(--gray-25);
+    --fill-primary: var(--gray-25);
+    --fill-secondary: var(--gray-750);
+    --fill-tertiary: var(--gray-800);
+    --fill-accent: var(--crimson-400);
+    --fill-accent-hover: var(--crimson-300);
+    --fill-accent-pressed: var(--crimson-200);
+    --fill-accent-subtle: var(--crimson-800);
+    --fill-disabled: var(--gray-750);
+    --fill-critical: var(--red-400);
+    --fill-critical-subtle: var(--red-800);
+    --fill-positive-subtle: var(--green-800);
+    --fill-caution-subtle: var(--amber-800);
+    --fill-info-subtle: var(--blue-800);
+    --border-primary: var(--gray-700);
+    --border-secondary: var(--gray-750);
+    --border-strong: var(--gray-500);
+    --border-accent: var(--crimson-400);
+    --border-critical: var(--red-400);
+    --border-focus: var(--blue-300);
+    --icon-primary: var(--gray-25);
+    --icon-secondary: var(--gray-200);
+    --icon-tertiary: var(--gray-400);
+    --icon-accent: var(--crimson-300);
+    --icon-inverse: var(--gray-900);
+    --accent-primary: var(--crimson-400);
+    --accent-secondary: var(--ink-200);
+  }
+}

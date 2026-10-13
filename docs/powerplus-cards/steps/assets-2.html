@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>assets-2</title>
+<style>
+html,body{margin:0;height:100%;overflow:hidden;background:#ECEBE8}
+.wrap{position:relative;width:100%;height:100%;overflow:hidden;background:radial-gradient(120% 95% at 48% 38%,#FAF9F7 0%,#EDEBE8 62%,#E3E1DD 100%)}
+.stage{position:absolute;left:50%;top:50%;width:400px;height:400px;transform-origin:50% 50%;perspective:2600px;perspective-origin:50% 42%}
+.scene{position:absolute;left:200px;top:198px;transform-style:preserve-3d;transform:rotateX(55deg) rotateZ(-40deg) scale3d(.98,.98,.98)}
+.blk{position:absolute;width:0;height:0;transform-style:preserve-3d}
+.lift{position:absolute;transform-style:preserve-3d}
+.blk i,.blk b{position:absolute;left:calc(var(--w)/-2);top:calc(var(--h)/-2);width:var(--w);height:var(--h);border-radius:var(--r)}
+.blk i{background:var(--side)}
+.blk b{background:var(--top);overflow:hidden;box-shadow:inset 0 2px 0 rgba(255,255,255,.6),inset 0 -4px 8px rgba(0,0,0,.06)}
+.sh{position:absolute;left:calc(var(--w)/-2 - 20px);top:calc(var(--h)/-2 - 20px);width:calc(var(--w) + 40px);height:calc(var(--h) + 40px);border-radius:calc(var(--r) + 14px);background:radial-gradient(closest-side,rgba(70,55,40,.26),rgba(70,55,40,0));transform:translate3d(14px,16px,0)}
+.l{--top:linear-gradient(140deg,#FFFFFF,#ECE9E4);--side:#D3CFC8}
+.g{--top:linear-gradient(140deg,#D2CFC9,#B8B4AE);--side:#9A968F}
+.d{--top:linear-gradient(140deg,#3E3C3A,#222120);--side:#121110}
+.o{--top:linear-gradient(140deg,#F2803F,#D9561C);--side:#A9421A}
+.p{position:absolute;border-radius:6px}
+.t{position:absolute;white-space:nowrap;font-family:"Pretendard","Apple SD Gothic Neo","Malgun Gothic",sans-serif;font-weight:700;letter-spacing:-.02em}
+.ly{position:absolute;inset:0}
+
+</style>
+</head>
+<body>
+<div class="wrap"><div class="stage" id="st"><div class="scene" id="sc"></div></div></div>
+<script>
+const sc=document.getElementById('sc');
+// 두께 있는 블록 하나: x,y(바닥 평면), w,h, r(둥글기), d(두께), k(색), top(윗면 내용)
+function blk(o){ const k=document.createElement('div'); k.className='blk '+(o.k||'l');
+  k.style.cssText=`left:${o.x}px;top:${o.y}px;--w:${o.w}px;--h:${o.h}px;--r:${o.r??16}px`;
+  let L=''; for(let z=0;z<o.d-2;z+=4) L+=`<i style="transform:translateZ(${z}px)"></i>`;
+  k.innerHTML=(o.noShadow?'':'<div class="sh"></div>')+`<div class="lift">${L}<b style="transform:translateZ(${o.d}px)">${o.top||''}</b></div>`;
+  (o.parent||sc).appendChild(k); k.lift=k.querySelector('.lift'); k.sh=k.querySelector('.sh'); k.top=k.querySelector('b'); return k; }
+const bar=(x,y,w,h,c,r)=>`<div class="p" style="left:${x}px;top:${y}px;width:${w}px;height:${h}px;background:${c};border-radius:${r??Math.min(h/2,8)}px"></div>`;
+const lab=(x,y,t,sz,c,w)=>`<div class="t" style="left:${x}px;top:${y}px;font-size:${sz}px;color:${c};font-weight:${w||700}">${t}</div>`;
+const pop=(el,a,b,T,e)=>anim(el,[{offset:0,transform:'scale(0)'},{offset:a,transform:'scale(0)',easing:e||'cubic-bezier(.3,1.5,.5,1)'},{offset:Math.min(a+.06,b),transform:'scale(1)'},{offset:b,transform:'scale(1)',easing:'ease-in'},{offset:Math.min(b+.05,1),transform:'scale(0)'},{offset:1,transform:'scale(0)'}],T);
+const fade=(el,a,b,T)=>anim(el,[{offset:0,opacity:0},{offset:a,opacity:0},{offset:Math.min(a+.04,b),opacity:1},{offset:b,opacity:1},{offset:Math.min(b+.04,1),opacity:0},{offset:1,opacity:0}],T);
+const anim=(el,frames,dur,opt={})=>el&&el.animate(frames,Object.assign({duration:dur*1000,iterations:Infinity},opt));
+  // 검색어로 자료 종류를 먼저 고릅니다: 세 종류 키 중 하나가 눌려 골라짐
+const T=6;
+const K=[[-110,'l','<div class="p" style="left:22px;top:24px;width:40px;height:32px;border-radius:6px;border:4px solid #8F8A83;box-sizing:border-box"></div>'],
+ [0,'l','<div class="p" style="left:22px;top:46px;width:8px;height:14px;background:#8F8A83;border-radius:2px"></div><div class="p" style="left:36px;top:34px;width:8px;height:26px;background:#8F8A83;border-radius:2px"></div><div class="p" style="left:50px;top:24px;width:8px;height:36px;background:#8F8A83;border-radius:2px"></div>'],
+ [110,'d','<div class="p" style="left:24px;top:38px;width:34px;height:6px;border-radius:3px;background:#EEEBE6"></div><div class="p" style="left:44px;top:30px;width:16px;height:16px;border-top:5px solid #EEEBE6;border-right:5px solid #EEEBE6;transform:rotate(45deg);box-sizing:border-box"></div>']];
+const ks=K.map(([x,k,t])=>blk({x,y:0,w:84,h:84,r:20,d:18,k,top:t}));
+// 가운데(차트)가 골라짐: 눌렸다 주황으로
+const o=document.createElement('div'); o.className='p'; o.style.cssText='inset:0;border-radius:20px;background:linear-gradient(140deg,#F2803F,#D9561C);opacity:0'; ks[1].top.prepend(o);
+anim(o,[{offset:0,opacity:0},{offset:.3,opacity:0},{offset:.34,opacity:1},{offset:.86,opacity:1},{offset:.92,opacity:0},{offset:1,opacity:0}],T);
+anim(ks[1].lift,[{offset:0,transform:'translateZ(0px)'},{offset:.26,transform:'translateZ(0px)'},{offset:.3,transform:'translateZ(-10px)'},{offset:.38,transform:'translateZ(14px)'},{offset:.86,transform:'translateZ(14px)'},{offset:.94,transform:'translateZ(0px)'},{offset:1,transform:'translateZ(0px)'}],T);
+ks[1].top.querySelectorAll('.p').forEach((p,i)=>{ if(i) anim(p,[{offset:0,background:'#8F8A83'},{offset:.3,background:'#8F8A83'},{offset:.34,background:'#FFFFFF'},{offset:.86,background:'#FFFFFF'},{offset:.92,background:'#8F8A83'},{offset:1,background:'#8F8A83'}],T); });
+
+const st=document.getElementById('st');
+function fit(){const s=Math.max(innerWidth/400,innerHeight/400);st.style.transform=`translate(-50%,-50%) scale(${s})`;}
+addEventListener('resize',fit); fit();
+</script>
+</body>
+</html>

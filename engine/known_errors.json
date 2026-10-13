@@ -1,0 +1,173 @@
+{
+  "_": "powerDeck 장표 작업에서 한 번 나온 오류의 단일 원천. 여기 한 줄이 ① 다듬기 지침의 '기본 규칙'({{BASE_RULES}}) ② 관리자 개선 체크리스트의 'known:' 줄(scripts/known-errors-sql.cjs 로 마이그레이션 생성 — 0036) ③ 회귀 시험(engine/tests/test_known.py — test 값이 그 함수 이름) 세 곳이 된다. 새 오류를 고치면 여기에 한 줄 추가하고 시험을 붙인다. 고친 줄을 지우지 않는다.",
+  "items": [
+    {
+      "slug": "font-shrink",
+      "area": "type",
+      "title": "다듬기에서 본문 글자를 원본보다 작게 줄임",
+      "symptom": "12pt 본문이 7~8pt 가 되어 카드가 휑하고 읽기 어렵다",
+      "cause": "AI 가 '크기 통일'을 가장 작은 쪽으로 맞추고, 칸을 맞출 때 글을 줄였다",
+      "rule": "글자 크기는 원본보다 작게 내리지 않는다. 통일은 원본에서 가장 많이 쓴 크기로, 줄이는 건 칸을 넘칠 때만 0.25pt 씩. 빈 공간은 카드·도식 크기로 맞춘다.",
+      "gate": "sizeguard.py — 결과를 원본과 견줘 줄어든 글자를 원본 크기로 되돌림(넘치면 0.25pt 씩, AI 값 아래로는 안 내림)",
+      "test": "test_font_shrink_restored",
+      "since": "2026-10-12",
+      "commit": "6ad008e"
+    },
+    {
+      "slug": "autofit-scale",
+      "area": "type",
+      "title": "자동 맞춤 비율(fontScale)로 글자를 몰래 줄임",
+      "symptom": "글자 크기 값은 그대로인데 화면에서는 작게 보인다",
+      "cause": "normAutofit fontScale 을 낮춰 칸에 억지로 맞췄다",
+      "rule": "자동 맞춤 비율로 글을 줄이지 않는다. 넘치면 문장을 나누거나 칸을 키운다.",
+      "gate": "sizeguard.py — 원본보다 작아진 fontScale 을 원본 비율로 되돌림",
+      "test": "test_autofit_scale_restored",
+      "since": "2026-10-12",
+      "commit": "6ad008e"
+    },
+    {
+      "slug": "memo-changed",
+      "area": "plan",
+      "title": "기획 메모·말풍선 도형을 고침",
+      "symptom": "노란 메모 상자의 서체·크기·문구가 바뀌었다",
+      "cause": "서체·크기 통일을 메모 도형에도 일괄 적용했다",
+      "rule": "기획 메모·말풍선(노란 상자, 이름에 '메모', 장 밖 도형)은 서체·크기·문구·위치를 그대로 둔다.",
+      "gate": "sizeguard.py — 메모 도형은 원본 그대로 되돌림",
+      "test": "test_memo_restored",
+      "since": "2026-10-12",
+      "commit": "6ad008e"
+    },
+    {
+      "slug": "inherited-size-enlarge",
+      "area": "type",
+      "title": "줄바꿈 도구가 물려받은 글자 크기를 키움",
+      "symptom": "마스터에서 물려받은 10pt 글이 줄바꿈 정리 뒤 18pt 가 되어 카드 글이 겹친다",
+      "cause": "textlines fix 가 크기를 모르는 런을 기본값 18pt 로 보고 그 값을 박았다",
+      "rule": "크기를 알 수 없는 글은 크기를 건드리지 않고 줄바꿈만 고친다.",
+      "gate": "textlines.py _size_known — 크기를 모르면 크기를 바꾸지 않음",
+      "test": "test_unknown_size_untouched",
+      "since": "2026-10-12",
+      "commit": "3bec193"
+    },
+    {
+      "slug": "card-empty-space",
+      "area": "wire",
+      "title": "카드 안 글 아래 큰 빈 공간",
+      "symptom": "카드는 큰데 글은 위 3분의 1에만 있다",
+      "cause": "원본 카드 높이를 그대로 두고 글만 정리했다",
+      "rule": "카드 안 빈 공간은 cardfit fit 으로 형제 카드를 같이 줄이고 남는 공간은 내용을 세로 가운데로 둔다.",
+      "gate": "cardfit.py fit — 형제 카드 묶음을 같은 높이로 줄임",
+      "test": "test_card_fit_shrinks_siblings",
+      "since": "2026-10-12",
+      "commit": "d512cba"
+    },
+    {
+      "slug": "card-overshrink",
+      "area": "wire",
+      "title": "카드를 너무 많이 줄여 장 아래가 빔",
+      "symptom": "카드가 글 높이만큼 쪼그라들고 장 아래 절반이 비었다",
+      "cause": "cardfit fit 이 빈 공간을 전부 잘라냈다",
+      "rule": "카드 높이는 원래의 60% 아래로 줄이지 않는다. 남는 공간은 내용을 세로 가운데로 나눈다.",
+      "gate": "cardfit.py fit keep=0.6 + 세로 가운데",
+      "test": "test_card_fit_keeps_60",
+      "since": "2026-10-12",
+      "commit": "3d48e3c"
+    },
+    {
+      "slug": "double-space",
+      "area": "type",
+      "title": "글 안 이중 공백",
+      "symptom": "'AI  가'처럼 띄어쓰기가 두 칸이다",
+      "cause": "원문 공백을 그대로 옮겼다",
+      "rule": "마감 전 cardfit spaces 로 이중 공백을 한 칸으로. 문구는 바꾸지 않는다.",
+      "gate": "cardfit.py spaces",
+      "test": "test_double_space",
+      "since": "2026-10-12",
+      "commit": "d512cba"
+    },
+    {
+      "slug": "bottom-empty",
+      "area": "wire",
+      "title": "장 아래쪽이 크게 비어 있음",
+      "symptom": "내용이 장 위쪽에만 몰려 있다",
+      "cause": "글·카드를 줄인 뒤 배치를 다시 펼치지 않았다",
+      "rule": "끝나기 전에 장마다 내용이 아래 띠 위까지 차는지 렌더로 본다. 25% 넘게 비면 카드·도식을 키우거나 아래로 펼친다.",
+      "gate": "sizeguard.py — 25% 넘게 비면 확인 목록에 안내",
+      "test": "test_bottom_empty_warned",
+      "since": "2026-10-12",
+      "commit": "6ad008e"
+    },
+    {
+      "slug": "icon-style-mixed",
+      "area": "assets",
+      "title": "한 장에 아이콘 스타일이 섞임(선화·3D)",
+      "symptom": "카드마다 아이콘 질감이 다르다",
+      "cause": "엔진의 아이콘 고르기(/assets/pick)가 401 로 막혀 일반 검색으로 떨어졌다",
+      "rule": "아이콘은 pick 으로 고르고, 한 장의 두 번째 아이콘부터는 첫 아이콘 세트(--set)로만 고른다.",
+      "gate": "api assets/pick 라우트가 엔진 요청을 받음 + asset_find.py pick --set",
+      "test": "",
+      "since": "2026-10-12",
+      "commit": "3bec193"
+    },
+    {
+      "slug": "binary-eol",
+      "area": "engine",
+      "title": "줄끝 규칙이 그림·글꼴 파일을 깨뜨림",
+      "symptom": "스킬 참고 그림 jpg 가 서버에서 열리지 않는다",
+      "cause": "engine/** text eol=lf 가 바이너리에도 적용됐다",
+      "rule": "폴더 단위 줄끝 규칙에는 그림·글꼴 binary 예외를 같이 둔다.",
+      "gate": ".gitattributes 바이너리 예외",
+      "test": "test_binary_attrs",
+      "since": "2026-10-12",
+      "commit": "99baa05"
+    },
+    {
+      "slug": "guide-missing",
+      "area": "engine",
+      "title": "엔진 디자인 지침 파일이 서버에 없음",
+      "symptom": "기획 프롬프트에 공용 디자인 가이드가 안 들어간다",
+      "cause": "서버 이전 때 ~/powerDeck/reference/guide 가 빠졌다",
+      "rule": "엔진이 읽는 지침·참고 파일은 저장소(engine/reference-guide)에 두고 deploy-engine.sh 로만 올린다.",
+      "gate": "deploy-engine.sh 가 reference-guide 를 함께 올림",
+      "test": "test_reference_guide_present",
+      "since": "2026-10-12",
+      "commit": "39a7f8a"
+    },
+    {
+      "slug": "json-inner-quote",
+      "area": "engine",
+      "title": "AI 가 쓴 기획 JSON 의 글 속 따옴표·빠진 쉼표로 파싱 실패",
+      "symptom": "긴 개요(40장)가 다시 요청까지 두 번 다 'Expecting , delimiter' 로 실패해 변환이 멈춘다",
+      "cause": "글 속 큰따옴표를 이스케이프하지 않고, 항목 사이 쉼표를 빠뜨렸다",
+      "rule": "AI 응답 JSON 은 parse_json 이 글 속 따옴표·빠진 쉼표를 고쳐 읽고, 다시 요청할 때는 따옴표 대신 「」를 쓰라고 지시한다.",
+      "gate": "design.parse_json → _repair_quotes",
+      "test": "test_json_quote_repair",
+      "since": "2026-10-13",
+      "commit": "cdff7e0"
+    },
+    {
+      "slug": "json-extra-data",
+      "area": "engine",
+      "title": "와이어프레임 B안 JSON 뒤에 객체가 더 붙어 묶음이 통째로 버려짐",
+      "symptom": "작업 기록에 'B안 한 묶음을 짜지 못했습니다 — Extra data' 경고가 나고 그 장들은 A안만 남는다",
+      "cause": "AI 가 묶음을 장마다 따로 낸 객체 여러 개로 이어 써서 완성된 객체 뒤에 글이 남았다",
+      "rule": "parse_json 은 이어진 JSON 객체를 모두 읽어 slides 를 합치고, 그래도 깨지면 B안을 한 번 더 요청한다.",
+      "gate": "design.parse_json → _loads, make_wires B안 재요청",
+      "test": "test_json_quote_repair",
+      "since": "2026-10-13",
+      "commit": "148c991"
+    },
+    {
+      "slug": "divider-memo-tone",
+      "area": "engine",
+      "title": "간지 문구가 기획 메모 말투(…을 보인다·…을 못 박는다)로 찍힘",
+      "symptom": "장 이름 아래 한 줄이 '…로 실행 확신을 준다', '…를 못 박는다' 처럼 기획자가 자기에게 쓴 메모로 나온다",
+      "cause": "간지 설명에 개요의 goal(위원에게 남길 인상 — 내부 메모)을 그대로 썼고, 표지·간지 학습 문서의 '약속 한 줄' 문법이 글 쓰는 단계에 안 들어갔다",
+      "rule": "개요가 장마다 promise(제안사 1인칭 약속 한 줄, ~습니다!·~하겠습니다, 핵심어 하나 강조)를 따로 쓰고, 간지는 promise → 메모 말투가 아닌 goal → 장 첫 키메시지 순으로 쓴다. 메모 말투는 화면에 찍지 않는다.",
+      "gate": "design.OUTLINE_SYSTEM promise, divider_line, MEMO_TONE(옛 기획 desc 도 거름)",
+      "test": "test_divider_memo_tone",
+      "since": "2026-10-13",
+      "commit": "033d293"
+    }
+  ]
+}

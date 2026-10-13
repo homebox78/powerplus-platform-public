@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>powerMock</title>
+<style>
+html,body{margin:0;height:100%;overflow:hidden;background:#ECEBE8}
+.wrap{position:relative;width:100%;height:100%;overflow:hidden;background:radial-gradient(120% 95% at 48% 38%,#FAF9F7 0%,#EDEBE8 62%,#E3E1DD 100%)}
+.stage{position:absolute;left:50%;top:50%;width:1200px;height:670px;transform-origin:50% 50%;perspective:2600px;perspective-origin:50% 42%}
+.scene{position:absolute;left:622px;top:318px;transform-style:preserve-3d;transform:rotateX(55deg) rotateZ(-40deg) scale3d(.98,.98,.98)}
+.blk{position:absolute;width:0;height:0;transform-style:preserve-3d}
+.lift{position:absolute;transform-style:preserve-3d}
+.blk i,.blk b{position:absolute;left:calc(var(--w)/-2);top:calc(var(--h)/-2);width:var(--w);height:var(--h);border-radius:var(--r)}
+.blk i{background:var(--side)}
+.blk b{background:var(--top);overflow:hidden;box-shadow:inset 0 2px 0 rgba(255,255,255,.6),inset 0 -4px 8px rgba(0,0,0,.06)}
+.sh{position:absolute;left:calc(var(--w)/-2 - 20px);top:calc(var(--h)/-2 - 20px);width:calc(var(--w) + 40px);height:calc(var(--h) + 40px);border-radius:calc(var(--r) + 14px);background:radial-gradient(closest-side,rgba(70,55,40,.26),rgba(70,55,40,0));transform:translate3d(14px,16px,0)}
+.l{--top:linear-gradient(140deg,#FFFFFF,#ECE9E4);--side:#D3CFC8}
+.g{--top:linear-gradient(140deg,#D2CFC9,#B8B4AE);--side:#9A968F}
+.d{--top:linear-gradient(140deg,#3E3C3A,#222120);--side:#121110}
+.o{--top:linear-gradient(140deg,#F2803F,#D9561C);--side:#A9421A}
+.p{position:absolute;border-radius:6px}
+.t{position:absolute;white-space:nowrap;font-family:"Pretendard","Apple SD Gothic Neo","Malgun Gothic",sans-serif;font-weight:700;letter-spacing:-.02em}
+.ly{position:absolute;inset:0}
+
+</style>
+</head>
+<body>
+<div class="wrap"><div class="stage" id="st"><div class="scene" id="sc"></div></div></div>
+<script>
+const sc=document.getElementById('sc');
+// 두께 있는 블록 하나: x,y(바닥 평면), w,h, r(둥글기), d(두께), k(색), top(윗면 내용)
+function blk(o){ const k=document.createElement('div'); k.className='blk '+(o.k||'l');
+  k.style.cssText=`left:${o.x}px;top:${o.y}px;--w:${o.w}px;--h:${o.h}px;--r:${o.r??16}px`;
+  let L=''; for(let z=0;z<o.d-2;z+=4) L+=`<i style="transform:translateZ(${z}px)"></i>`;
+  k.innerHTML=(o.noShadow?'':'<div class="sh"></div>')+`<div class="lift">${L}<b style="transform:translateZ(${o.d}px)">${o.top||''}</b></div>`;
+  (o.parent||sc).appendChild(k); k.lift=k.querySelector('.lift'); k.sh=k.querySelector('.sh'); k.top=k.querySelector('b'); return k; }
+const bar=(x,y,w,h,c,r)=>`<div class="p" style="left:${x}px;top:${y}px;width:${w}px;height:${h}px;background:${c};border-radius:${r??Math.min(h/2,8)}px"></div>`;
+const lab=(x,y,t,sz,c,w)=>`<div class="t" style="left:${x}px;top:${y}px;font-size:${sz}px;color:${c};font-weight:${w||700}">${t}</div>`;
+const pop=(el,a,b,T,e)=>anim(el,[{offset:0,transform:'scale(0)'},{offset:a,transform:'scale(0)',easing:e||'cubic-bezier(.3,1.5,.5,1)'},{offset:Math.min(a+.06,b),transform:'scale(1)'},{offset:b,transform:'scale(1)',easing:'ease-in'},{offset:Math.min(b+.05,1),transform:'scale(0)'},{offset:1,transform:'scale(0)'}],T);
+const fade=(el,a,b,T)=>anim(el,[{offset:0,opacity:0},{offset:a,opacity:0},{offset:Math.min(a+.04,b),opacity:1},{offset:b,opacity:1},{offset:Math.min(b+.04,1),opacity:0},{offset:1,opacity:0}],T);
+const anim=(el,frames,dur,opt={})=>el&&el.animate(frames,Object.assign({duration:dur*1000,iterations:Infinity},opt));
+
+const T=9, C=3, LN='#D3CEC6';
+const on=(o,base)=>{ const b=blk(Object.assign({noShadow:true},o)); b.lift.style.transform=`translateZ(${base}px)`; return b; };
+const bounce=(b,base,t)=>anim(b.lift,[{offset:0,transform:`translateZ(${base}px)`},{offset:t,transform:`translateZ(${base}px)`},{offset:t+.06,transform:`translateZ(${base+24}px)`},{offset:t+.14,transform:`translateZ(${base}px)`},{offset:1,transform:`translateZ(${base}px)`}],C);
+for(let x=-300;x<300;x+=40) blk({x,y:0,w:22,h:8,r:4,d:4,k:'g',noShadow:true});
+// AI 도구
+const ai=blk({x:-390,y:0,w:160,h:160,r:38,d:30,k:'d',top:'<svg viewBox="0 0 24 24" style="position:absolute;left:46px;top:46px;width:68px;height:68px"><path d="M12 2l2.2 6.6L21 11l-6.8 2.4L12 20l-2.2-6.6L3 11l6.8-2.4z" fill="#EEEBE6"/></svg>'});
+bounce(ai,0,0);
+// 신호
+const pulse=blk({x:-300,y:0,w:34,h:34,r:17,d:14,k:'o',noShadow:true});
+anim(pulse,[{offset:0,transform:'translate(0px,0)'},{offset:.62,transform:'translate(600px,0)'},{offset:1,transform:'translate(600px,0)'}],C,{easing:'cubic-bezier(.45,0,.55,1)'});
+anim(pulse.lift,[{offset:0,transform:'translateZ(6px) scale(0)'},{offset:.06,transform:'translateZ(6px) scale(1)'},{offset:.58,transform:'translateZ(6px) scale(1)'},{offset:.64,transform:'translateZ(6px) scale(0)'},{offset:1,transform:'translateZ(6px) scale(0)'}],C);
+// 기획 판: 칸 잡기
+const WX=-150, wf=blk({x:WX,y:0,w:210,h:280,r:24,d:26,k:'l'});
+const wp=[[0,-90,170,30],[0,-28,170,70],[-44,66,82,100],[44,66,82,100]].map(([x,y,w,h])=>on({x:WX+x,y,w,h,r:10,d:10,k:'g'},26));
+bounce(wf,0,.18); wp.forEach(p=>bounce(p,26,.18));
+// 목업 판: 관공서 · 대학 · 일반 — 세 가지 배치가 차례로 (색 대신 배치가 달라진다)
+const MX=110, mk=blk({x:MX,y:0,w:210,h:280,r:24,d:26,k:'l'});
+const lay=[
+ [[0,-100,170,24,'d'],[0,-38,170,80,'g'],[-44,62,82,70,'l'],[44,62,82,70,'l']],
+ [[-44,-90,82,44,'d'],[44,-90,82,44,'g'],[0,-10,170,90,'g'],[0,84,170,40,'l']],
+ [[0,-100,170,24,'d'],[-44,-24,82,110,'g'],[44,-48,82,60,'l'],[44,26,82,60,'l']]];
+const mp=[0,1,2,3].map(i=>on({x:MX,y:0,w:10,h:10,r:10,d:10,k:'g'},26));
+mp.forEach((b,i)=>{ const fr=[]; lay.forEach((L,j)=>{ const [x,y,w,h]=L[i]; const tf=`translate(${x}px,${y}px)`; fr.push({offset:j/3,transform:tf,easing:'cubic-bezier(.5,0,.2,1)'},{offset:j/3+.25,transform:tf}); });
+  fr.push({offset:1,transform:`translate(${lay[0][i][0]}px,${lay[0][i][1]}px)`}); anim(b,fr,T);
+  const sz=[]; lay.forEach((L,j)=>{ const [, , w,h,k]=L[i]; sz.push({offset:j/3,width:w+'px',height:h+'px',left:-w/2+'px',top:-h/2+'px',easing:'cubic-bezier(.5,0,.2,1)'},{offset:j/3+.25,width:w+'px',height:h+'px',left:-w/2+'px',top:-h/2+'px'}); });
+  sz.push({offset:1,width:lay[0][i][2]+'px',height:lay[0][i][3]+'px',left:-lay[0][i][2]/2+'px',top:-lay[0][i][3]/2+'px'});
+  b.querySelectorAll('i,b').forEach(e=>anim(e,sz,T));
+  if(i===0) b.className='blk d'; });
+bounce(mk,0,.38); mp.forEach(p=>bounce(p,26,.38));
+// 컴포넌트: 버튼 · 카드 · 입력칸
+const PX=380;
+const parts=[blk({x:PX,y:-80,w:170,h:60,r:30,d:22,k:'d',top:bar(50,24,70,12,'#EEEBE6')}),
+ blk({x:PX,y:20,w:170,h:104,r:20,d:22,k:'l',top:bar(18,18,134,36,'#ECE9E4',8)+bar(18,64,96,9,'#CFCAC2')+bar(18,80,64,9,'#E2DED8')}),
+ blk({x:PX,y:118,w:170,h:56,r:16,d:18,k:'l',top:`<div class="p" style="left:12px;top:11px;width:146px;height:34px;border:2px solid #D6D1CA;border-radius:10px"></div>`})];
+parts.forEach((p,i)=>bounce(p,0,.6+i*.05));
+
+const st=document.getElementById('st');
+function fit(){const s=Math.max(innerWidth/1200,innerHeight/670);st.style.transform=`translate(-50%,-50%) scale(${s})`;}
+addEventListener('resize',fit); fit();
+</script>
+</body>
+</html>

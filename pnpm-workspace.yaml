@@ -1,0 +1,9 @@
+packages:
+  - apps/*
+  - packages/*
+allowBuilds:
+  '@azure/msal-node-extensions': false
+  '@microsoft/m365agentstoolkit-cli': false
+  esbuild: true
+  keytar: false
+  vue-demi: true

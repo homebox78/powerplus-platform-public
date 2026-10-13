@@ -1,0 +1,121 @@
+/* 홈박스 시안 기본 CSS (2026-10-03) — 토큰과 틀. 시안은 이 클래스를 쓰고, 값은 :root 변수만 바꾼다(묶음의 base.root).
+   간격은 두 단계뿐이다: 구역 사이 --hb-row, 한 묶음 안 칸 사이 --hb-gap(가로·세로 같은 값). 주색(--hb-primary)은 포인트에만. */
+:root{--hb-primary:#1F5FBF;--hb-secondary:color-mix(in srgb,var(--hb-primary) 10%,#fff);--hb-bg:#FFFFFF;--hb-soft:#F5F6F8;--hb-line:#E3E5E8;--hb-text:#1F2328;--hb-sub:#5B626B;--hb-dark:#1F2328;
+  --hb-w:1400px;--hb-gap:24px;--hb-row:80px;--hb-radius:12px;--hb-h1:56px;--hb-h2:32px;--hb-font:Pretendard,"Noto Sans KR","Apple SD Gothic Neo","Malgun Gothic",sans-serif}
+*,*::before,*::after{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{font-family:var(--hb-font);color:var(--hb-text);background:var(--hb-bg);font-size:17px;line-height:1.6;word-break:keep-all;overflow-wrap:break-word}
+img{max-width:100%;display:block}
+a{color:inherit;text-decoration:none}
+ul,ol{margin:0;padding:0;list-style:none}
+h1,h2,h3,h4,p{margin:0}
+button{font:inherit;cursor:pointer}
+
+/* 틀: 모든 구역의 내용은 .hb-wrap 안에 — 같은 왼쪽 선, 같은 폭 */
+.hb-wrap{width:min(var(--hb-w),calc(100% - 48px));margin:0 auto}
+.hb-sec{margin-top:var(--hb-row)}
+.hb-band{margin-top:var(--hb-row);padding:56px 0;background:var(--hb-soft)}
+.hb-band+.hb-band{margin-top:0}
+.hb-band--dark{background:var(--hb-dark);color:#fff}
+main>:last-child{margin-bottom:0}
+/* 마지막 내용과 바닥글 사이 80px(모바일 48) — 내 시안 58건 중 30건이 0~4px 로 붙었다(2026-10-13). 줄여도 40 아래, 늘려도 120 위로 두지 않는다 */
+:where(body>footer,.hb-footer){margin-top:var(--hb-foot,80px)}
+/* 고정 높이 카드·목록 상자는 글·단추를 잘라 먹거나 아래를 비운다 — 같은 줄 높이는 stretch 로 */
+:where(.hb-card,.hb-grid>*){height:auto}
+/* 메가 메뉴 판은 히어로·캐러셀 위로 */
+:where([data-hb-mega]){z-index:100}
+/* 기울임 금지(이 프로젝트) · 그림 아래 흰 띠 금지 · 구역 간격 한 값(2026-10-13 점검 7-9·7-10) */
+:where(em,i,cite,address){font-style:normal}
+:where(.hb-card img,.hb-photo img,figure img){display:block}
+:root{--hb-section-gap:96px}
+
+/* 한 묶음: 가로·세로 칸 사이는 전부 --hb-gap */
+.hb-grid{display:grid;gap:var(--hb-gap)}
+.hb-c2{grid-template-columns:repeat(2,minmax(0,1fr))}
+.hb-c3{grid-template-columns:repeat(3,minmax(0,1fr))}
+.hb-c4{grid-template-columns:repeat(4,minmax(0,1fr))}
+.hb-c5{grid-template-columns:repeat(5,minmax(0,1fr))}
+.hb-c6{grid-template-columns:repeat(6,minmax(0,1fr))}
+.hb-c8{grid-template-columns:repeat(8,minmax(0,1fr))}
+.hb-row{display:flex;gap:var(--hb-gap);align-items:stretch}
+.hb-row>*{min-width:0}
+.hb-stack{display:flex;flex-direction:column;gap:var(--hb-gap)}
+.hb-grow{flex:1 1 0}
+
+/* 글자 */
+.hb-hero-title{font-size:clamp(30px,3.1vw,var(--hb-h1));font-weight:800;line-height:1.25;letter-spacing:-.02em}
+.hb-title{font-size:var(--hb-h2);font-weight:700;line-height:1.3;letter-spacing:-.01em;margin-bottom:24px}
+.hb-head{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:24px}
+.hb-head .hb-title{margin-bottom:0}
+.hb-lead{font-size:18px;color:var(--hb-sub)}
+.hb-meta{font-size:14px;color:var(--hb-sub)}
+.hb-point{color:var(--hb-primary)}
+
+/* 면: 카드는 흰색이나 옅은 회색. 주색 면은 단추·이름표처럼 작은 것만 */
+.hb-card{background:#fff;border:1px solid var(--hb-line);border-radius:var(--hb-radius);padding:24px;transition:transform .3s ease,box-shadow .3s ease,border-color .3s ease}
+.hb-card--soft{background:var(--hb-soft);border-color:transparent}
+a.hb-card:hover,a.hb-card:focus-visible,.hb-card--lift:hover{transform:translateY(-4px);box-shadow:0 12px 28px rgba(0,0,0,.08);border-color:var(--hb-primary)}
+.hb-photo{display:block;position:relative;overflow:hidden;border-radius:var(--hb-radius);background:var(--hb-soft)}
+.hb-photo img{width:100%;height:100%;object-fit:cover;transition:transform .4s ease}
+.hb-photo:hover img,.hb-photo:focus-visible img{transform:scale(1.06)}
+.hb-photo .hb-cap{position:absolute;left:0;right:0;bottom:0;padding:48px 24px 20px;color:#fff;background:linear-gradient(transparent,rgba(0,0,0,.7))}
+.hb-btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;height:48px;padding:0 24px;border:1px solid var(--hb-primary);border-radius:999px;background:var(--hb-primary);color:#fff;font-weight:600;font-size:16px;transition:transform .25s ease,box-shadow .25s ease}
+.hb-btn:hover,.hb-btn:focus-visible{transform:translateY(-2px);box-shadow:0 8px 18px rgba(0,0,0,.14)}
+.hb-btn--line{background:#fff;color:var(--hb-text);border-color:var(--hb-line)}
+.hb-btn--white{background:#fff;color:var(--hb-text);border-color:#fff}
+.hb-chip{display:inline-flex;align-items:center;height:26px;padding:0 10px;border-radius:999px;background:var(--hb-secondary);color:var(--hb-primary);font-size:13px;font-weight:600}
+.hb-more{display:inline-flex;align-items:center;justify-content:center;width:36px;height:36px;border:1px solid var(--hb-line);border-radius:50%;background:#fff;transition:transform .3s ease}
+.hb-more:hover,.hb-more:focus-visible{transform:rotate(90deg)}
+.hb-list>li>a{display:flex;align-items:center;justify-content:space-between;gap:16px;min-height:52px;border-bottom:1px solid var(--hb-line)}
+.hb-list>li>a>span:first-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;background:linear-gradient(currentColor,currentColor) left bottom/0 1px no-repeat;transition:background-size .3s ease}
+.hb-list>li>a:hover>span:first-child{background-size:100% 1px}
+.hb-ico{width:24px;height:24px;flex:none;fill:currentColor;vertical-align:middle}
+
+/* 서브 공통 틀: 서브 비주얼 220 + 왼쪽 옆 메뉴 260 + 본문. 모든 서브 페이지가 이 마크업을 그대로 쓴다 */
+.hb-subvisual{position:relative;display:flex;align-items:center;height:220px;background:var(--hb-dark) center/cover no-repeat;color:#fff}
+.hb-subvisual::before{content:"";position:absolute;inset:0;background:rgba(0,0,0,.45)}
+.hb-subvisual .hb-wrap{position:relative}
+.hb-subvisual h1{font-size:40px;font-weight:700;line-height:1.3}
+.hb-path{display:flex;align-items:center;gap:8px;margin-top:10px;font-size:14px;opacity:.9}
+.hb-path a+a::before,.hb-path a+span::before,.hb-path span+span::before{content:"";display:inline-block;width:6px;height:6px;margin-right:10px;border-top:1px solid currentColor;border-right:1px solid currentColor;transform:rotate(45deg) translateY(-2px)}
+.hb-sub{display:grid;grid-template-columns:260px minmax(0,1fr);gap:60px;align-items:start;margin-top:60px;margin-bottom:var(--hb-row)}
+.hb-lnb h2{padding-bottom:16px;border-bottom:2px solid var(--hb-text);font-size:22px;font-weight:700}
+.hb-lnb a{display:flex;align-items:center;min-height:52px;padding:0 12px;border-bottom:1px solid var(--hb-line);border-left:3px solid transparent;color:var(--hb-sub);transition:color .25s ease,padding-left .25s ease}
+.hb-lnb a:hover,.hb-lnb a:focus-visible{color:var(--hb-text);padding-left:16px}
+.hb-lnb a[aria-current=page]{color:var(--hb-primary);font-weight:700;border-left-color:var(--hb-primary)}
+.hb-content>*+*{margin-top:40px}
+.hb-content h2{font-size:28px;font-weight:700;line-height:1.35}
+.hb-content h3{font-size:21px;font-weight:700;line-height:1.4}
+.hb-table{width:100%;border-collapse:collapse;border-top:2px solid var(--hb-text);font-size:16px}
+.hb-table th,.hb-table td{padding:14px 15px;border-bottom:1px solid var(--hb-line);text-align:center}
+.hb-table th{background:var(--hb-soft);font-weight:600}
+.hb-table td.hb-left{text-align:left}
+
+/* 반응형 */
+@media (max-width:1280px){
+  :root{--hb-row:64px}
+  .hb-c5,.hb-c6,.hb-c8{grid-template-columns:repeat(4,minmax(0,1fr))}
+  .hb-sub{grid-template-columns:220px minmax(0,1fr);gap:40px}
+}
+@media (max-width:768px){
+  :root{--hb-row:48px;--hb-gap:16px;--hb-h2:24px;--hb-foot:48px;--hb-section-gap:56px}
+  body{font-size:16px}
+  .hb-wrap{width:calc(100% - 32px)}
+  .hb-row{flex-direction:column}
+  .hb-c3,.hb-c4,.hb-c5,.hb-c6,.hb-c8{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .hb-subvisual{height:160px}
+  .hb-subvisual h1{font-size:28px}
+  .hb-sub{grid-template-columns:minmax(0,1fr);gap:24px;margin-top:32px}
+  .hb-lnb,.hb-sub>*{min-width:0} /* 그리드 칸의 min-width:auto 가 칩 줄 전체 폭이 돼 390 폭을 넘겼다(2026-10-05 R3·R5) */
+  .hb-table{display:block;overflow-x:auto;white-space:nowrap} /* 표 최소 폭이 문서를 넓혔다(2026-10-05 R6) */
+  .hb-lnb h2{display:none}
+  .hb-lnb ul{display:flex;gap:8px;overflow-x:auto}
+  .hb-lnb a{min-height:40px;padding:0 14px;border:1px solid var(--hb-line);border-radius:999px;white-space:nowrap;font-size:14px}
+  .hb-lnb a[aria-current=page]{border-color:var(--hb-primary)}
+  .hb-table{font-size:14px}
+}
+@media (max-width:480px){
+  .hb-c2,.hb-c3{grid-template-columns:minmax(0,1fr)}
+  .hb-card{padding:18px}
+}
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{transition:none!important;animation:none!important}}

@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>powerGuide</title>
+<style>
+html,body{margin:0;height:100%;overflow:hidden;background:#ECEBE8}
+.wrap{position:relative;width:100%;height:100%;overflow:hidden;background:radial-gradient(120% 95% at 48% 38%,#FAF9F7 0%,#EDEBE8 62%,#E3E1DD 100%)}
+.stage{position:absolute;left:50%;top:50%;width:1200px;height:670px;transform-origin:50% 50%;perspective:2600px;perspective-origin:50% 42%}
+.scene{position:absolute;left:624px;top:305px;transform-style:preserve-3d;transform:rotateX(55deg) rotateZ(-40deg) scale3d(1.0,1.0,1.0)}
+.blk{position:absolute;width:0;height:0;transform-style:preserve-3d}
+.lift{position:absolute;transform-style:preserve-3d}
+.blk i,.blk b{position:absolute;left:calc(var(--w)/-2);top:calc(var(--h)/-2);width:var(--w);height:var(--h);border-radius:var(--r)}
+.blk i{background:var(--side)}
+.blk b{background:var(--top);overflow:hidden;box-shadow:inset 0 2px 0 rgba(255,255,255,.6),inset 0 -4px 8px rgba(0,0,0,.06)}
+.sh{position:absolute;left:calc(var(--w)/-2 - 20px);top:calc(var(--h)/-2 - 20px);width:calc(var(--w) + 40px);height:calc(var(--h) + 40px);border-radius:calc(var(--r) + 14px);background:radial-gradient(closest-side,rgba(70,55,40,.26),rgba(70,55,40,0));transform:translate3d(14px,16px,0)}
+.l{--top:linear-gradient(140deg,#FFFFFF,#ECE9E4);--side:#D3CFC8}
+.g{--top:linear-gradient(140deg,#D2CFC9,#B8B4AE);--side:#9A968F}
+.d{--top:linear-gradient(140deg,#3E3C3A,#222120);--side:#121110}
+.o{--top:linear-gradient(140deg,#F2803F,#D9561C);--side:#A9421A}
+.p{position:absolute;border-radius:6px}
+.t{position:absolute;white-space:nowrap;font-family:"Pretendard","Apple SD Gothic Neo","Malgun Gothic",sans-serif;font-weight:700;letter-spacing:-.02em}
+.ly{position:absolute;inset:0}
+
+</style>
+</head>
+<body>
+<div class="wrap"><div class="stage" id="st"><div class="scene" id="sc"></div></div></div>
+<script>
+const sc=document.getElementById('sc');
+// 두께 있는 블록 하나: x,y(바닥 평면), w,h, r(둥글기), d(두께), k(색), top(윗면 내용)
+function blk(o){ const k=document.createElement('div'); k.className='blk '+(o.k||'l');
+  k.style.cssText=`left:${o.x}px;top:${o.y}px;--w:${o.w}px;--h:${o.h}px;--r:${o.r??16}px`;
+  let L=''; for(let z=0;z<o.d-2;z+=4) L+=`<i style="transform:translateZ(${z}px)"></i>`;
+  k.innerHTML=(o.noShadow?'':'<div class="sh"></div>')+`<div class="lift">${L}<b style="transform:translateZ(${o.d}px)">${o.top||''}</b></div>`;
+  (o.parent||sc).appendChild(k); k.lift=k.querySelector('.lift'); k.sh=k.querySelector('.sh'); k.top=k.querySelector('b'); return k; }
+const bar=(x,y,w,h,c,r)=>`<div class="p" style="left:${x}px;top:${y}px;width:${w}px;height:${h}px;background:${c};border-radius:${r??Math.min(h/2,8)}px"></div>`;
+const lab=(x,y,t,sz,c,w)=>`<div class="t" style="left:${x}px;top:${y}px;font-size:${sz}px;color:${c};font-weight:${w||700}">${t}</div>`;
+const pop=(el,a,b,T,e)=>anim(el,[{offset:0,transform:'scale(0)'},{offset:a,transform:'scale(0)',easing:e||'cubic-bezier(.3,1.5,.5,1)'},{offset:Math.min(a+.06,b),transform:'scale(1)'},{offset:b,transform:'scale(1)',easing:'ease-in'},{offset:Math.min(b+.05,1),transform:'scale(0)'},{offset:1,transform:'scale(0)'}],T);
+const fade=(el,a,b,T)=>anim(el,[{offset:0,opacity:0},{offset:a,opacity:0},{offset:Math.min(a+.04,b),opacity:1},{offset:b,opacity:1},{offset:Math.min(b+.04,1),opacity:0},{offset:1,opacity:0}],T);
+const anim=(el,frames,dur,opt={})=>el&&el.animate(frames,Object.assign({duration:dur*1000,iterations:Infinity},opt));
+
+const T=8, DK='#2B2A28', LN='#D3CEC6';
+const TK=[['#F4F2EE','#D3CFC8'],['#CFCBC5','#A9A49D'],['#F2803F','#A9421A'],['#6E6A65','#4A4744'],['#2E2C2B','#141312']];
+TK.forEach(([c,s],i)=>{ const k=blk({x:-200+i*100,y:-230,w:82,h:82,r:20,d:18,k:'l'}); k.style.setProperty('--top',`linear-gradient(140deg,${c},${c})`); k.style.setProperty('--side',s);
+  anim(k.lift,[{transform:'translateZ(0px)'},{transform:'translateZ(14px)'},{transform:'translateZ(0px)'}],3.2,{easing:'ease-in-out',delay:-i*240}); });
+// 같은 토큰이 디자인 판과 코드 판으로 동시에
+[[-250,0],[250,0]].forEach(([tx,ty])=>{ const c=blk({x:0,y:-230,w:40,h:40,r:20,d:12,k:'o',noShadow:true});
+  anim(c,[{offset:0,transform:'translate(0px,0px) scale(0)'},{offset:.12,transform:'translate(0px,0px) scale(0)'},{offset:.16,transform:'translate(0px,0px) scale(1)',easing:'cubic-bezier(.5,0,.3,1)'},{offset:.36,transform:`translate(${tx}px,${ty+230}px) scale(1)`},{offset:.4,transform:`translate(${tx}px,${ty+230}px) scale(0)`},{offset:1,transform:`translate(${tx}px,${ty+230}px) scale(0)`}],T);
+  anim(c.lift,[{offset:0,transform:'translateZ(30px)'},{offset:.16,transform:'translateZ(30px)'},{offset:.26,transform:'translateZ(130px)'},{offset:.36,transform:'translateZ(30px)'},{offset:1,transform:'translateZ(30px)'}],T); });
+const ds=blk({x:-250,y:0,w:280,h:210,r:22,d:18,k:'l',top:bar(20,30,200,14,DK)+bar(20,56,240,8,LN)+bar(20,72,180,8,LN)+'<div class="p bt" style="left:20px;top:120px;width:150px;height:48px;border-radius:24px;background:#C9C5BF"></div>'});
+anim(ds.top.querySelector('.bt'),[{offset:0,background:'#C9C5BF'},{offset:.37,background:'#C9C5BF'},{offset:.41,background:'#E2622B'},{offset:.9,background:'#E2622B'},{offset:.95,background:'#C9C5BF'},{offset:1,background:'#C9C5BF'}],T);
+const cd=blk({x:250,y:0,w:280,h:210,r:22,d:18,k:'d',top:bar(20,30,120,9,'#6E6A65')+bar(36,50,180,9,'#6E6A65')+'<div class="p ln" style="left:36px;top:70px;width:200px;height:9px;border-radius:5px;background:#6E6A65"></div>'+bar(36,90,150,9,'#6E6A65')+bar(20,110,60,9,'#6E6A65')+bar(20,140,170,9,'#4E4A46')});
+anim(cd.top.querySelector('.ln'),[{offset:0,background:'#6E6A65'},{offset:.37,background:'#6E6A65'},{offset:.41,background:'#F2803F'},{offset:.9,background:'#F2803F'},{offset:.95,background:'#6E6A65'},{offset:1,background:'#6E6A65'}],T);
+[ds,cd].forEach(b=>anim(b.lift,[{offset:0,transform:'translateZ(0px)'},{offset:.37,transform:'translateZ(0px)'},{offset:.42,transform:'translateZ(18px)'},{offset:.5,transform:'translateZ(0px)'},{offset:1,transform:'translateZ(0px)'}],T));
+// 접근성 체크 (검정 체크)
+const A=blk({x:-120,y:230,w:250,h:150,r:20,d:16,k:'l',top:[0,1,2].map(r=>`<div class="p" style="left:20px;top:${28+r*36}px;width:24px;height:24px;border-radius:6px;border:2px solid #CFCAC2;box-sizing:border-box"></div><svg viewBox="0 0 24 24" style="position:absolute;left:21px;top:${29+r*36}px;width:22px;height:22px"><path class="c" d="M5 12l5 5 9-10" fill="none" stroke="#2B2A28" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="24" stroke-dashoffset="24"/></svg>`+bar(58,36+r*36,[150,120,140][r],8,LN)).join('')});
+[...A.top.querySelectorAll('.c')].forEach((p,i)=>anim(p,[{offset:0,strokeDashoffset:24},{offset:.52+i*.07,strokeDashoffset:24},{offset:.57+i*.07,strokeDashoffset:0},{offset:.9,strokeDashoffset:0},{offset:.95,strokeDashoffset:24},{offset:1,strokeDashoffset:24}],T));
+// KRDS 대응표 (검정 연결선)
+const K=blk({x:170,y:230,w:250,h:150,r:20,d:16,k:'l',top:[0,1,2].map(r=>bar(20,30+r*36,70,14,'#E6E3DE',6)+`<div class="p rw" style="left:98px;top:${35+r*36}px;width:44px;height:4px;border-radius:2px;background:#2B2A28;transform-origin:0 50%"></div>`+bar(150,30+r*36,78,14,'#E6E3DE',6)).join('')});
+[...K.top.querySelectorAll('.rw')].forEach((el,i)=>anim(el,[{offset:0,transform:'scaleX(0)'},{offset:.6+i*.07,transform:'scaleX(0)'},{offset:.65+i*.07,transform:'scaleX(1)'},{offset:.9,transform:'scaleX(1)'},{offset:.95,transform:'scaleX(0)'},{offset:1,transform:'scaleX(0)'}],T));
+
+const st=document.getElementById('st');
+function fit(){const s=Math.max(innerWidth/1200,innerHeight/670);st.style.transform=`translate(-50%,-50%) scale(${s})`;}
+addEventListener('resize',fit); fit();
+</script>
+</body>
+</html>

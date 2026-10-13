@@ -1,0 +1,89 @@
+<?php
+declare(strict_types=1);
+
+namespace Homebox;
+
+/**
+ * 섹션 구조(sections.structure JSON) 를 API 응답용으로 정리 (2026-09-23).
+ * 워커가 {flags:{tablist,carousel,table,form,pagination,breadcrumb,skip}, text} 를 저장하는데
+ *  - text 에 <style> 잔재("… .banner { height: unset }")가 6% 섞여 있어 CSS 규칙 모양을 걷어낸다
+ *  - flags 는 그대로 노출 — MCP 가 크롭을 열지 않고도 "탭형·슬라이드형·표 포함" 을 판단하는 근거
+ */
+final class SectionShape
+{
+    /** @param mixed $raw  @return array<string,mixed>|null */
+    public static function structure($raw): ?array
+    {
+        if ($raw === null) {
+            return null;
+        }
+        $s = is_string($raw) ? json_decode($raw, true) : $raw;
+        if (!is_array($s)) {
+            return null;
+        }
+        $flags = [];
+        foreach ((array) ($s['flags'] ?? []) as $k => $v) {
+            $flags[(string) $k] = (bool) $v;
+        }
+        $out = ['flags' => $flags, 'text' => self::cleanText($s['text'] ?? null)];
+        // 구성 서술(2026-09-24 restructure) — 크롭 없이 섹션을 다시 그릴 근거: 제목·소제목·링크·이미지·목록 수·열·색·글꼴
+        // name·evidence (2026-09-29 titled) — 캡처 안 섹션 제목과 "무엇을 보고 이 유형으로 정했는지"
+        foreach (['name', 'evidence', 'title', 'headings', 'links', 'images', 'items', 'cols', 'colors', 'font', 'style'] as $k) {
+            if (array_key_exists($k, $s)) {
+                $out[$k] = $s[$k];
+            }
+        }
+        if (isset($out['title']) && is_string($out['title'])) {
+            $out['title'] = self::cleanText($out['title']);
+        }
+        return $out;
+    }
+
+    /** CSS 규칙(`.x { … }`, `prop: value;`) 과 선택자 조각을 걷어낸 텍스트. 남는 게 없으면 null */
+    public static function cleanText(?string $t): ?string
+    {
+        if ($t === null) {
+            return null;
+        }
+        $t = preg_replace('/[^{}]*\{[^}]*\}/u', ' ', $t) ?? $t;          // .a .b { … }
+        $t = preg_replace('/[\w-]+\s*:\s*[^;{}]+;/u', ' ', $t) ?? $t;      // color: #fff;
+        $t = preg_replace('/(^|\s)[.#][\w-]+(\s*[.#][\w-]+)*/u', ' ', $t) ?? $t; // .header-banner .type
+        $t = trim(preg_replace('/\s+/u', ' ', $t) ?? $t);
+        return $t === '' ? null : mb_substr($t, 0, 300);
+    }
+
+    /**
+     * 디자인 표현(structure.style) 합성 (2026-09-24) — "이 유형 섹션은 보통 어떻게 보이는가".
+     * 사진 배치 분포·사진 위 글자·어두운 바탕·겹침·그림자·아이콘 메뉴·여러 색 제목 비율, 모서리 반경·카드 수·제목 배율 중앙값.
+     * @param list<array<string,mixed>> $styles  @return array<string,mixed>|null
+     */
+    public static function styleSummary(array $styles): ?array
+    {
+        $styles = array_values(array_filter($styles, 'is_array'));
+        $n = count($styles);
+        if ($n === 0) {
+            return null;
+        }
+        $pct = static fn (int $v): float => round($v / $n * 100, 1);
+        $med = static function (array $a): ?float { $a = array_values(array_filter($a, static fn ($v) => $v !== null)); if (!$a) { return null; } sort($a); $m = intdiv(count($a), 2); return round(count($a) % 2 ? (float) $a[$m] : ((float) $a[$m - 1] + (float) $a[$m]) / 2, 2); };
+        $photo = []; $align = [];
+        $c = ['text_on_photo' => 0, 'dark' => 0, 'shadow' => 0, 'overlap_prev' => 0, 'icon_menu' => 0, 'multicolor_heading' => 0];
+        foreach ($styles as $s) {
+            $p = (string) ($s['photo'] ?? 'none'); $photo[$p] = ($photo[$p] ?? 0) + 1;
+            if (!empty($s['align'])) { $align[(string) $s['align']] = ($align[(string) $s['align']] ?? 0) + 1; }
+            foreach ($c as $k => $_) { if (!empty($s[$k])) { $c[$k]++; } }
+        }
+        arsort($photo); arsort($align);
+        return [
+            'n' => $n,
+            'photo_pct' => array_map($pct, $photo),
+            'text_on_photo_pct' => $pct($c['text_on_photo']), 'dark_pct' => $pct($c['dark']), 'shadow_pct' => $pct($c['shadow']),
+            'overlap_prev_pct' => $pct($c['overlap_prev']), 'icon_menu_pct' => $pct($c['icon_menu']), 'multicolor_heading_pct' => $pct($c['multicolor_heading']),
+            'align_pct' => array_map($pct, $align),
+            'radius_px_median' => $med(array_map(static fn ($s) => $s['radius_px'] ?? null, $styles)),
+            'cards_median' => $med(array_map(static fn ($s) => $s['cards'] ?? null, $styles)),
+            'title_scale_median' => $med(array_map(static fn ($s) => $s['title_scale'] ?? null, $styles)),
+            'note' => 'photo: full_bleed=섹션 폭 가득 사진 · split_left/right=좌우 분할 · inline=본문 속 사진. overlap_prev=윗 섹션 위로 겹쳐 올라온 블록.',
+        ];
+    }
+}

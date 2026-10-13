@@ -1,0 +1,29 @@
+node_modules/
+dist/
+build/
+.react-router/
+api/config.php
+api/config.php.*
+.env
+storage/
+*.log
+
+# 로컬 dev 로그
+.dev.log
+*.dev.log
+packages/kit/.gen-check/
+apps/web/public/kit-files/
+db/migrate-legacy/out/
+api/data/guide/
+
+# 설치 마법사 빌드 중간물(결과는 apps/addin/release 에 남긴다)
+apps/addin/installer/bin/
+apps/addin/installer/obj/
+apps/addin/installer/app-256.png
+
+# 엔진 — 서버 설정·캐시는 올리지 않는다
+engine/config.json
+engine/config.json.*
+__pycache__/
+services/mockref-api/config.php
+engine/fonts/

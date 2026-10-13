@@ -1,0 +1,2020 @@
+[
+  {
+    "name": "서울특별시",
+    "type": "광역",
+    "url": "https://www.seoul.go.kr"
+  },
+  {
+    "name": "부산광역시",
+    "type": "광역",
+    "url": "https://www.busan.go.kr"
+  },
+  {
+    "name": "대구광역시",
+    "type": "광역",
+    "url": "https://www.daegu.go.kr"
+  },
+  {
+    "name": "인천광역시",
+    "type": "광역",
+    "url": "https://www.incheon.go.kr"
+  },
+  {
+    "name": "광주광역시",
+    "type": "광역",
+    "url": "https://www.gwangju.go.kr"
+  },
+  {
+    "name": "대전광역시",
+    "type": "광역",
+    "url": "https://www.daejeon.go.kr"
+  },
+  {
+    "name": "울산광역시",
+    "type": "광역",
+    "url": "https://www.ulsan.go.kr"
+  },
+  {
+    "name": "세종특별자치시",
+    "type": "광역",
+    "url": "https://www.sejong.go.kr"
+  },
+  {
+    "name": "경기도",
+    "type": "광역",
+    "url": "https://www.gg.go.kr"
+  },
+  {
+    "name": "강원특별자치도",
+    "type": "광역",
+    "url": "https://state.gwd.go.kr"
+  },
+  {
+    "name": "충청북도",
+    "type": "광역",
+    "url": "https://www.chungbuk.go.kr"
+  },
+  {
+    "name": "충청남도",
+    "type": "광역",
+    "url": "https://www.chungnam.go.kr"
+  },
+  {
+    "name": "전북특별자치도",
+    "type": "광역",
+    "url": "https://www.jeonbuk.go.kr"
+  },
+  {
+    "name": "전라남도",
+    "type": "광역",
+    "url": "https://www.jeonnam.go.kr"
+  },
+  {
+    "name": "경상북도",
+    "type": "광역",
+    "url": "https://www.gb.go.kr"
+  },
+  {
+    "name": "경상남도",
+    "type": "광역",
+    "url": "https://www.gyeongnam.go.kr"
+  },
+  {
+    "name": "제주특별자치도",
+    "type": "광역",
+    "url": "https://www.jeju.go.kr"
+  },
+  {
+    "name": "종로구",
+    "type": "기초",
+    "region": "서울",
+    "url": "https://www.jongno.go.kr"
+  },
+  {
+    "name": "중구(서울)",
+    "type": "기초",
+    "region": "서울",
+    "url": "https://www.junggu.seoul.kr"
+  },
+  {
+    "name": "용산구",
+    "type": "기초",
+    "region": "서울",
+    "url": "https://www.yongsan.go.kr"
+  },
+  {
+    "name": "성동구",
+    "type": "기초",
+    "region": "서울",
+    "url": "https://www.sd.go.kr"
+  },
+  {
+    "name": "광진구",
+    "type": "기초",
+    "region": "서울",
+    "url": "https://www.gwangjin.go.kr"
+  },
+  {
+    "name": "동대문구",
+    "type": "기초",
+    "region": "서울",
+    "url": "https://www.ddm.go.kr"
+  },
+  {
+    "name": "중랑구",
+    "type": "기초",
+    "region": "서울",
+    "url": "https://www.jungnang.go.kr"
+  },
+  {
+    "name": "성북구",
+    "type": "기초",
+    "region": "서울",
+    "url": "https://www.sb.go.kr"
+  },
+  {
+    "name": "강북구",
+    "type": "기초",
+    "region": "서울",
+    "url": "https://www.gangbuk.go.kr"
+  },
+  {
+    "name": "도봉구",
+    "type": "기초",
+    "region": "서울",
+    "url": "https://www.dobong.go.kr"
+  },
+  {
+    "name": "노원구",
+    "type": "기초",
+    "region": "서울",
+    "url": "https://www.nowon.kr"
+  },
+  {
+    "name": "은평구",
+    "type": "기초",
+    "region": "서울",
+    "url": "https://www.ep.go.kr"
+  },
+  {
+    "name": "서대문구",
+    "type": "기초",
+    "region": "서울",
+    "url": "https://www.sdm.go.kr"
+  },
+  {
+    "name": "마포구",
+    "type": "기초",
+    "region": "서울",
+    "url": "https://www.mapo.go.kr"
+  },
+  {
+    "name": "양천구",
+    "type": "기초",
+    "region": "서울",
+    "url": "https://www.yangcheon.go.kr"
+  },
+  {
+    "name": "강서구(서울)",
+    "type": "기초",
+    "region": "서울",
+    "url": "https://www.gangseo.seoul.kr"
+  },
+  {
+    "name": "구로구",
+    "type": "기초",
+    "region": "서울",
+    "url": "https://www.guro.go.kr"
+  },
+  {
+    "name": "금천구",
+    "type": "기초",
+    "region": "서울",
+    "url": "https://www.geumcheon.go.kr"
+  },
+  {
+    "name": "영등포구",
+    "type": "기초",
+    "region": "서울",
+    "url": "https://www.ydp.go.kr"
+  },
+  {
+    "name": "동작구",
+    "type": "기초",
+    "region": "서울",
+    "url": "https://www.dongjak.go.kr"
+  },
+  {
+    "name": "관악구",
+    "type": "기초",
+    "region": "서울",
+    "url": "https://www.gwanak.go.kr"
+  },
+  {
+    "name": "서초구",
+    "type": "기초",
+    "region": "서울",
+    "url": "https://www.seocho.go.kr"
+  },
+  {
+    "name": "강남구",
+    "type": "기초",
+    "region": "서울",
+    "url": "https://www.gangnam.go.kr"
+  },
+  {
+    "name": "송파구",
+    "type": "기초",
+    "region": "서울",
+    "url": "https://www.songpa.go.kr"
+  },
+  {
+    "name": "강동구",
+    "type": "기초",
+    "region": "서울",
+    "url": "https://www.gangdong.go.kr"
+  },
+  {
+    "name": "중구(부산)",
+    "type": "기초",
+    "region": "부산",
+    "url": "https://www.bsjunggu.go.kr"
+  },
+  {
+    "name": "서구(부산)",
+    "type": "기초",
+    "region": "부산",
+    "url": "https://www.bsseogu.go.kr"
+  },
+  {
+    "name": "동구(부산)",
+    "type": "기초",
+    "region": "부산",
+    "url": "https://www.bsdonggu.go.kr"
+  },
+  {
+    "name": "영도구",
+    "type": "기초",
+    "region": "부산",
+    "url": "https://www.yeongdo.go.kr"
+  },
+  {
+    "name": "부산진구",
+    "type": "기초",
+    "region": "부산",
+    "url": "https://www.busanjin.go.kr"
+  },
+  {
+    "name": "동래구",
+    "type": "기초",
+    "region": "부산",
+    "url": "https://www.dongnae.go.kr"
+  },
+  {
+    "name": "남구(부산)",
+    "type": "기초",
+    "region": "부산",
+    "url": "https://www.bsnamgu.go.kr"
+  },
+  {
+    "name": "북구(부산)",
+    "type": "기초",
+    "region": "부산",
+    "url": "https://www.bsbukgu.go.kr"
+  },
+  {
+    "name": "해운대구",
+    "type": "기초",
+    "region": "부산",
+    "url": "https://www.haeundae.go.kr"
+  },
+  {
+    "name": "사하구",
+    "type": "기초",
+    "region": "부산",
+    "url": "https://www.saha.go.kr"
+  },
+  {
+    "name": "금정구",
+    "type": "기초",
+    "region": "부산",
+    "url": "https://www.geumjeong.go.kr"
+  },
+  {
+    "name": "강서구(부산)",
+    "type": "기초",
+    "region": "부산",
+    "url": "https://www.bsgangseo.go.kr"
+  },
+  {
+    "name": "연제구",
+    "type": "기초",
+    "region": "부산",
+    "url": "https://www.yeonje.go.kr"
+  },
+  {
+    "name": "수영구",
+    "type": "기초",
+    "region": "부산",
+    "url": "https://www.suyeong.go.kr"
+  },
+  {
+    "name": "사상구",
+    "type": "기초",
+    "region": "부산",
+    "url": "https://www.sasang.go.kr"
+  },
+  {
+    "name": "기장군",
+    "type": "기초",
+    "region": "부산",
+    "url": "https://www.gijang.go.kr"
+  },
+  {
+    "name": "중구(대구)",
+    "type": "기초",
+    "region": "대구",
+    "url": "https://www.jung.daegu.kr"
+  },
+  {
+    "name": "동구(대구)",
+    "type": "기초",
+    "region": "대구",
+    "url": "https://www.dong.daegu.kr"
+  },
+  {
+    "name": "서구(대구)",
+    "type": "기초",
+    "region": "대구",
+    "url": "https://www.dgs.go.kr"
+  },
+  {
+    "name": "남구(대구)",
+    "type": "기초",
+    "region": "대구",
+    "url": "https://www.nam.daegu.kr"
+  },
+  {
+    "name": "북구(대구)",
+    "type": "기초",
+    "region": "대구",
+    "url": "https://www.buk.daegu.kr"
+  },
+  {
+    "name": "수성구",
+    "type": "기초",
+    "region": "대구",
+    "url": "https://www.suseong.kr"
+  },
+  {
+    "name": "달서구",
+    "type": "기초",
+    "region": "대구",
+    "url": "https://www.dalseo.daegu.kr"
+  },
+  {
+    "name": "달성군",
+    "type": "기초",
+    "region": "대구",
+    "url": "https://www.dalseong.daegu.kr"
+  },
+  {
+    "name": "군위군",
+    "type": "기초",
+    "region": "대구",
+    "url": "https://www.gunwi.go.kr"
+  },
+  {
+    "name": "중구(인천)",
+    "type": "기초",
+    "region": "인천",
+    "url": "https://www.icjg.go.kr"
+  },
+  {
+    "name": "동구(인천)",
+    "type": "기초",
+    "region": "인천",
+    "url": "https://www.icdonggu.go.kr"
+  },
+  {
+    "name": "미추홀구",
+    "type": "기초",
+    "region": "인천",
+    "url": "https://www.michuhol.go.kr"
+  },
+  {
+    "name": "연수구",
+    "type": "기초",
+    "region": "인천",
+    "url": "https://www.yeonsu.go.kr"
+  },
+  {
+    "name": "남동구",
+    "type": "기초",
+    "region": "인천",
+    "url": "https://www.namdong.go.kr"
+  },
+  {
+    "name": "부평구",
+    "type": "기초",
+    "region": "인천",
+    "url": "https://www.icbp.go.kr"
+  },
+  {
+    "name": "계양구",
+    "type": "기초",
+    "region": "인천",
+    "url": "https://www.gyeyang.go.kr"
+  },
+  {
+    "name": "서구(인천)",
+    "type": "기초",
+    "region": "인천",
+    "url": "https://www.seo.incheon.kr"
+  },
+  {
+    "name": "강화군",
+    "type": "기초",
+    "region": "인천",
+    "url": "https://www.ganghwa.go.kr"
+  },
+  {
+    "name": "옹진군",
+    "type": "기초",
+    "region": "인천",
+    "url": "https://www.ongjin.go.kr"
+  },
+  {
+    "name": "동구(광주)",
+    "type": "기초",
+    "region": "광주",
+    "url": "https://www.donggu.kr"
+  },
+  {
+    "name": "서구(광주)",
+    "type": "기초",
+    "region": "광주",
+    "url": "https://www.seogu.gwangju.kr"
+  },
+  {
+    "name": "남구(광주)",
+    "type": "기초",
+    "region": "광주",
+    "url": "https://www.namgu.gwangju.kr"
+  },
+  {
+    "name": "북구(광주)",
+    "type": "기초",
+    "region": "광주",
+    "url": "https://bukgu.gwangju.kr"
+  },
+  {
+    "name": "광산구",
+    "type": "기초",
+    "region": "광주",
+    "url": "https://www.gwangsan.go.kr"
+  },
+  {
+    "name": "동구(대전)",
+    "type": "기초",
+    "region": "대전",
+    "url": "https://www.donggu.go.kr"
+  },
+  {
+    "name": "중구(대전)",
+    "type": "기초",
+    "region": "대전",
+    "url": "https://www.djjunggu.go.kr"
+  },
+  {
+    "name": "서구(대전)",
+    "type": "기초",
+    "region": "대전",
+    "url": "https://www.seogu.go.kr"
+  },
+  {
+    "name": "유성구",
+    "type": "기초",
+    "region": "대전",
+    "url": "https://www.yuseong.go.kr"
+  },
+  {
+    "name": "대덕구",
+    "type": "기초",
+    "region": "대전",
+    "url": "https://www.daedeok.go.kr"
+  },
+  {
+    "name": "중구(울산)",
+    "type": "기초",
+    "region": "울산",
+    "url": "https://www.junggu.ulsan.kr"
+  },
+  {
+    "name": "남구(울산)",
+    "type": "기초",
+    "region": "울산",
+    "url": "https://www.ulsannamgu.go.kr"
+  },
+  {
+    "name": "동구(울산)",
+    "type": "기초",
+    "region": "울산",
+    "url": "https://www.donggu.ulsan.kr"
+  },
+  {
+    "name": "북구(울산)",
+    "type": "기초",
+    "region": "울산",
+    "url": "https://www.bukgu.ulsan.kr"
+  },
+  {
+    "name": "울주군",
+    "type": "기초",
+    "region": "울산",
+    "url": "https://www.ulju.ulsan.kr"
+  },
+  {
+    "name": "수원시",
+    "type": "기초",
+    "region": "경기",
+    "url": "https://www.suwon.go.kr"
+  },
+  {
+    "name": "성남시",
+    "type": "기초",
+    "region": "경기",
+    "url": "https://www.seongnam.go.kr"
+  },
+  {
+    "name": "고양시",
+    "type": "기초",
+    "region": "경기",
+    "url": "https://www.goyang.go.kr"
+  },
+  {
+    "name": "용인시",
+    "type": "기초",
+    "region": "경기",
+    "url": "https://www.yongin.go.kr"
+  },
+  {
+    "name": "부천시",
+    "type": "기초",
+    "region": "경기",
+    "url": "https://www.bucheon.go.kr"
+  },
+  {
+    "name": "안산시",
+    "type": "기초",
+    "region": "경기",
+    "url": "https://www.ansan.go.kr"
+  },
+  {
+    "name": "안양시",
+    "type": "기초",
+    "region": "경기",
+    "url": "https://www.anyang.go.kr"
+  },
+  {
+    "name": "남양주시",
+    "type": "기초",
+    "region": "경기",
+    "url": "https://www.nyj.go.kr"
+  },
+  {
+    "name": "화성시",
+    "type": "기초",
+    "region": "경기",
+    "url": "https://www.hscity.go.kr"
+  },
+  {
+    "name": "평택시",
+    "type": "기초",
+    "region": "경기",
+    "url": "https://www.pyeongtaek.go.kr"
+  },
+  {
+    "name": "의정부시",
+    "type": "기초",
+    "region": "경기",
+    "url": "https://www.ui4u.go.kr"
+  },
+  {
+    "name": "시흥시",
+    "type": "기초",
+    "region": "경기",
+    "url": "https://www.siheung.go.kr"
+  },
+  {
+    "name": "파주시",
+    "type": "기초",
+    "region": "경기",
+    "url": "https://www.paju.go.kr"
+  },
+  {
+    "name": "김포시",
+    "type": "기초",
+    "region": "경기",
+    "url": "https://www.gimpo.go.kr"
+  },
+  {
+    "name": "광명시",
+    "type": "기초",
+    "region": "경기",
+    "url": "https://www.gm.go.kr"
+  },
+  {
+    "name": "광주시(경기)",
+    "type": "기초",
+    "region": "경기",
+    "url": "https://www.gjcity.go.kr"
+  },
+  {
+    "name": "군포시",
+    "type": "기초",
+    "region": "경기",
+    "url": "https://www.gunpo.go.kr"
+  },
+  {
+    "name": "하남시",
+    "type": "기초",
+    "region": "경기",
+    "url": "https://www.hanam.go.kr"
+  },
+  {
+    "name": "오산시",
+    "type": "기초",
+    "region": "경기",
+    "url": "https://www.osan.go.kr"
+  },
+  {
+    "name": "이천시",
+    "type": "기초",
+    "region": "경기",
+    "url": "https://www.icheon.go.kr"
+  },
+  {
+    "name": "양주시",
+    "type": "기초",
+    "region": "경기",
+    "url": "https://www.yangju.go.kr"
+  },
+  {
+    "name": "구리시",
+    "type": "기초",
+    "region": "경기",
+    "url": "https://www.guri.go.kr"
+  },
+  {
+    "name": "안성시",
+    "type": "기초",
+    "region": "경기",
+    "url": "https://www.anseong.go.kr"
+  },
+  {
+    "name": "포천시",
+    "type": "기초",
+    "region": "경기",
+    "url": "https://www.pocheon.go.kr"
+  },
+  {
+    "name": "의왕시",
+    "type": "기초",
+    "region": "경기",
+    "url": "https://www.uiwang.go.kr"
+  },
+  {
+    "name": "여주시",
+    "type": "기초",
+    "region": "경기",
+    "url": "https://www.yeoju.go.kr"
+  },
+  {
+    "name": "양평군",
+    "type": "기초",
+    "region": "경기",
+    "url": "https://www.yp21.go.kr"
+  },
+  {
+    "name": "동두천시",
+    "type": "기초",
+    "region": "경기",
+    "url": "https://www.ddc.go.kr"
+  },
+  {
+    "name": "과천시",
+    "type": "기초",
+    "region": "경기",
+    "url": "https://www.gccity.go.kr"
+  },
+  {
+    "name": "가평군",
+    "type": "기초",
+    "region": "경기",
+    "url": "https://www.gp.go.kr"
+  },
+  {
+    "name": "연천군",
+    "type": "기초",
+    "region": "경기",
+    "url": "https://www.yeoncheon.go.kr"
+  },
+  {
+    "name": "춘천시",
+    "type": "기초",
+    "region": "강원",
+    "url": "https://www.chuncheon.go.kr"
+  },
+  {
+    "name": "원주시",
+    "type": "기초",
+    "region": "강원",
+    "url": "https://www.wonju.go.kr"
+  },
+  {
+    "name": "강릉시",
+    "type": "기초",
+    "region": "강원",
+    "url": "https://www.gn.go.kr"
+  },
+  {
+    "name": "동해시",
+    "type": "기초",
+    "region": "강원",
+    "url": "https://www.dh.go.kr"
+  },
+  {
+    "name": "태백시",
+    "type": "기초",
+    "region": "강원",
+    "url": "https://www.taebaek.go.kr"
+  },
+  {
+    "name": "속초시",
+    "type": "기초",
+    "region": "강원",
+    "url": "https://www.sokcho.go.kr"
+  },
+  {
+    "name": "삼척시",
+    "type": "기초",
+    "region": "강원",
+    "url": "https://www.samcheok.go.kr"
+  },
+  {
+    "name": "홍천군",
+    "type": "기초",
+    "region": "강원",
+    "url": "https://www.hongcheon.go.kr"
+  },
+  {
+    "name": "횡성군",
+    "type": "기초",
+    "region": "강원",
+    "url": "https://www.hsg.go.kr"
+  },
+  {
+    "name": "영월군",
+    "type": "기초",
+    "region": "강원",
+    "url": "https://www.yw.go.kr"
+  },
+  {
+    "name": "평창군",
+    "type": "기초",
+    "region": "강원",
+    "url": "https://www.pc.go.kr"
+  },
+  {
+    "name": "정선군",
+    "type": "기초",
+    "region": "강원",
+    "url": "https://www.jeongseon.go.kr"
+  },
+  {
+    "name": "철원군",
+    "type": "기초",
+    "region": "강원",
+    "url": "https://www.cwg.go.kr"
+  },
+  {
+    "name": "화천군",
+    "type": "기초",
+    "region": "강원",
+    "url": "https://www.ihc.go.kr"
+  },
+  {
+    "name": "양구군",
+    "type": "기초",
+    "region": "강원",
+    "url": "https://www.yanggu.go.kr"
+  },
+  {
+    "name": "인제군",
+    "type": "기초",
+    "region": "강원",
+    "url": "https://www.inje.go.kr"
+  },
+  {
+    "name": "고성군(강원)",
+    "type": "기초",
+    "region": "강원",
+    "url": "https://www.gwgs.go.kr"
+  },
+  {
+    "name": "양양군",
+    "type": "기초",
+    "region": "강원",
+    "url": "https://www.yangyang.go.kr"
+  },
+  {
+    "name": "청주시",
+    "type": "기초",
+    "region": "충북",
+    "url": "https://www.cheongju.go.kr"
+  },
+  {
+    "name": "충주시",
+    "type": "기초",
+    "region": "충북",
+    "url": "https://www.chungju.go.kr"
+  },
+  {
+    "name": "제천시",
+    "type": "기초",
+    "region": "충북",
+    "url": "https://www.jecheon.go.kr"
+  },
+  {
+    "name": "보은군",
+    "type": "기초",
+    "region": "충북",
+    "url": "https://www.boeun.go.kr"
+  },
+  {
+    "name": "옥천군",
+    "type": "기초",
+    "region": "충북",
+    "url": "https://www.oc.go.kr"
+  },
+  {
+    "name": "영동군",
+    "type": "기초",
+    "region": "충북",
+    "url": "https://www.yd21.go.kr"
+  },
+  {
+    "name": "증평군",
+    "type": "기초",
+    "region": "충북",
+    "url": "https://www.jp.go.kr"
+  },
+  {
+    "name": "진천군",
+    "type": "기초",
+    "region": "충북",
+    "url": "https://www.jincheon.go.kr"
+  },
+  {
+    "name": "괴산군",
+    "type": "기초",
+    "region": "충북",
+    "url": "https://www.goesan.go.kr"
+  },
+  {
+    "name": "음성군",
+    "type": "기초",
+    "region": "충북",
+    "url": "https://www.eumseong.go.kr"
+  },
+  {
+    "name": "단양군",
+    "type": "기초",
+    "region": "충북",
+    "url": "https://www.danyang.go.kr"
+  },
+  {
+    "name": "천안시",
+    "type": "기초",
+    "region": "충남",
+    "url": "https://www.cheonan.go.kr"
+  },
+  {
+    "name": "공주시",
+    "type": "기초",
+    "region": "충남",
+    "url": "https://www.gongju.go.kr"
+  },
+  {
+    "name": "보령시",
+    "type": "기초",
+    "region": "충남",
+    "url": "https://www.brcn.go.kr"
+  },
+  {
+    "name": "아산시",
+    "type": "기초",
+    "region": "충남",
+    "url": "https://www.asan.go.kr"
+  },
+  {
+    "name": "서산시",
+    "type": "기초",
+    "region": "충남",
+    "url": "https://www.seosan.go.kr"
+  },
+  {
+    "name": "논산시",
+    "type": "기초",
+    "region": "충남",
+    "url": "https://www.nonsan.go.kr"
+  },
+  {
+    "name": "계룡시",
+    "type": "기초",
+    "region": "충남",
+    "url": "https://www.gyeryong.go.kr"
+  },
+  {
+    "name": "당진시",
+    "type": "기초",
+    "region": "충남",
+    "url": "https://www.dangjin.go.kr"
+  },
+  {
+    "name": "금산군",
+    "type": "기초",
+    "region": "충남",
+    "url": "https://www.geumsan.go.kr"
+  },
+  {
+    "name": "부여군",
+    "type": "기초",
+    "region": "충남",
+    "url": "https://www.buyeo.go.kr"
+  },
+  {
+    "name": "서천군",
+    "type": "기초",
+    "region": "충남",
+    "url": "https://www.seocheon.go.kr"
+  },
+  {
+    "name": "청양군",
+    "type": "기초",
+    "region": "충남",
+    "url": "https://www.cheongyang.go.kr"
+  },
+  {
+    "name": "홍성군",
+    "type": "기초",
+    "region": "충남",
+    "url": "https://www.hongseong.go.kr"
+  },
+  {
+    "name": "예산군",
+    "type": "기초",
+    "region": "충남",
+    "url": "https://www.yesan.go.kr"
+  },
+  {
+    "name": "태안군",
+    "type": "기초",
+    "region": "충남",
+    "url": "https://www.taean.go.kr"
+  },
+  {
+    "name": "전주시",
+    "type": "기초",
+    "region": "전북",
+    "url": "https://www.jeonju.go.kr"
+  },
+  {
+    "name": "군산시",
+    "type": "기초",
+    "region": "전북",
+    "url": "https://www.gunsan.go.kr"
+  },
+  {
+    "name": "익산시",
+    "type": "기초",
+    "region": "전북",
+    "url": "https://www.iksan.go.kr"
+  },
+  {
+    "name": "정읍시",
+    "type": "기초",
+    "region": "전북",
+    "url": "https://www.jeongeup.go.kr"
+  },
+  {
+    "name": "남원시",
+    "type": "기초",
+    "region": "전북",
+    "url": "https://www.namwon.go.kr"
+  },
+  {
+    "name": "김제시",
+    "type": "기초",
+    "region": "전북",
+    "url": "https://www.gimje.go.kr"
+  },
+  {
+    "name": "완주군",
+    "type": "기초",
+    "region": "전북",
+    "url": "https://www.wanju.go.kr"
+  },
+  {
+    "name": "진안군",
+    "type": "기초",
+    "region": "전북",
+    "url": "https://www.jinan.go.kr"
+  },
+  {
+    "name": "무주군",
+    "type": "기초",
+    "region": "전북",
+    "url": "https://www.muju.go.kr"
+  },
+  {
+    "name": "장수군",
+    "type": "기초",
+    "region": "전북",
+    "url": "https://www.jangsu.go.kr"
+  },
+  {
+    "name": "임실군",
+    "type": "기초",
+    "region": "전북",
+    "url": "https://www.imsil.go.kr"
+  },
+  {
+    "name": "순창군",
+    "type": "기초",
+    "region": "전북",
+    "url": "https://www.sunchang.go.kr"
+  },
+  {
+    "name": "고창군",
+    "type": "기초",
+    "region": "전북",
+    "url": "https://www.gochang.go.kr"
+  },
+  {
+    "name": "부안군",
+    "type": "기초",
+    "region": "전북",
+    "url": "https://www.buan.go.kr"
+  },
+  {
+    "name": "목포시",
+    "type": "기초",
+    "region": "전남",
+    "url": "https://www.mokpo.go.kr"
+  },
+  {
+    "name": "여수시",
+    "type": "기초",
+    "region": "전남",
+    "url": "https://www.yeosu.go.kr"
+  },
+  {
+    "name": "순천시",
+    "type": "기초",
+    "region": "전남",
+    "url": "https://www.suncheon.go.kr"
+  },
+  {
+    "name": "나주시",
+    "type": "기초",
+    "region": "전남",
+    "url": "https://www.naju.go.kr"
+  },
+  {
+    "name": "광양시",
+    "type": "기초",
+    "region": "전남",
+    "url": "https://www.gwangyang.go.kr"
+  },
+  {
+    "name": "담양군",
+    "type": "기초",
+    "region": "전남",
+    "url": "https://www.damyang.go.kr"
+  },
+  {
+    "name": "곡성군",
+    "type": "기초",
+    "region": "전남",
+    "url": "https://www.gokseong.go.kr"
+  },
+  {
+    "name": "구례군",
+    "type": "기초",
+    "region": "전남",
+    "url": "https://www.gurye.go.kr"
+  },
+  {
+    "name": "고흥군",
+    "type": "기초",
+    "region": "전남",
+    "url": "https://www.goheung.go.kr"
+  },
+  {
+    "name": "보성군",
+    "type": "기초",
+    "region": "전남",
+    "url": "https://www.boseong.go.kr"
+  },
+  {
+    "name": "화순군",
+    "type": "기초",
+    "region": "전남",
+    "url": "https://www.hwasun.go.kr"
+  },
+  {
+    "name": "장흥군",
+    "type": "기초",
+    "region": "전남",
+    "url": "https://www.jangheung.go.kr"
+  },
+  {
+    "name": "강진군",
+    "type": "기초",
+    "region": "전남",
+    "url": "https://www.gangjin.go.kr"
+  },
+  {
+    "name": "해남군",
+    "type": "기초",
+    "region": "전남",
+    "url": "https://www.haenam.go.kr"
+  },
+  {
+    "name": "영암군",
+    "type": "기초",
+    "region": "전남",
+    "url": "https://www.yeongam.go.kr"
+  },
+  {
+    "name": "무안군",
+    "type": "기초",
+    "region": "전남",
+    "url": "https://www.muan.go.kr"
+  },
+  {
+    "name": "함평군",
+    "type": "기초",
+    "region": "전남",
+    "url": "https://www.hampyeong.go.kr"
+  },
+  {
+    "name": "영광군",
+    "type": "기초",
+    "region": "전남",
+    "url": "https://www.yeonggwang.go.kr"
+  },
+  {
+    "name": "장성군",
+    "type": "기초",
+    "region": "전남",
+    "url": "https://www.jangseong.go.kr"
+  },
+  {
+    "name": "완도군",
+    "type": "기초",
+    "region": "전남",
+    "url": "https://www.wando.go.kr"
+  },
+  {
+    "name": "진도군",
+    "type": "기초",
+    "region": "전남",
+    "url": "https://www.jindo.go.kr"
+  },
+  {
+    "name": "신안군",
+    "type": "기초",
+    "region": "전남",
+    "url": "https://www.shinan.go.kr"
+  },
+  {
+    "name": "포항시",
+    "type": "기초",
+    "region": "경북",
+    "url": "https://www.pohang.go.kr"
+  },
+  {
+    "name": "경주시",
+    "type": "기초",
+    "region": "경북",
+    "url": "https://www.gyeongju.go.kr"
+  },
+  {
+    "name": "김천시",
+    "type": "기초",
+    "region": "경북",
+    "url": "https://www.gc.go.kr"
+  },
+  {
+    "name": "안동시",
+    "type": "기초",
+    "region": "경북",
+    "url": "https://www.andong.go.kr"
+  },
+  {
+    "name": "구미시",
+    "type": "기초",
+    "region": "경북",
+    "url": "https://www.gumi.go.kr"
+  },
+  {
+    "name": "영주시",
+    "type": "기초",
+    "region": "경북",
+    "url": "https://www.yeongju.go.kr"
+  },
+  {
+    "name": "영천시",
+    "type": "기초",
+    "region": "경북",
+    "url": "https://www.yc.go.kr"
+  },
+  {
+    "name": "상주시",
+    "type": "기초",
+    "region": "경북",
+    "url": "https://www.sangju.go.kr"
+  },
+  {
+    "name": "문경시",
+    "type": "기초",
+    "region": "경북",
+    "url": "https://www.gbmg.go.kr"
+  },
+  {
+    "name": "경산시",
+    "type": "기초",
+    "region": "경북",
+    "url": "https://www.gbgs.go.kr"
+  },
+  {
+    "name": "의성군",
+    "type": "기초",
+    "region": "경북",
+    "url": "https://www.usc.go.kr"
+  },
+  {
+    "name": "청송군",
+    "type": "기초",
+    "region": "경북",
+    "url": "https://www.cs.go.kr"
+  },
+  {
+    "name": "영양군",
+    "type": "기초",
+    "region": "경북",
+    "url": "https://www.yyg.go.kr"
+  },
+  {
+    "name": "영덕군",
+    "type": "기초",
+    "region": "경북",
+    "url": "https://www.yd.go.kr"
+  },
+  {
+    "name": "청도군",
+    "type": "기초",
+    "region": "경북",
+    "url": "https://www.cheongdo.go.kr"
+  },
+  {
+    "name": "고령군",
+    "type": "기초",
+    "region": "경북",
+    "url": "https://www.goryeong.go.kr"
+  },
+  {
+    "name": "성주군",
+    "type": "기초",
+    "region": "경북",
+    "url": "https://www.sj.go.kr"
+  },
+  {
+    "name": "칠곡군",
+    "type": "기초",
+    "region": "경북",
+    "url": "https://www.chilgok.go.kr"
+  },
+  {
+    "name": "예천군",
+    "type": "기초",
+    "region": "경북",
+    "url": "https://www.ycg.kr"
+  },
+  {
+    "name": "봉화군",
+    "type": "기초",
+    "region": "경북",
+    "url": "https://www.bonghwa.go.kr"
+  },
+  {
+    "name": "울진군",
+    "type": "기초",
+    "region": "경북",
+    "url": "https://www.uljin.go.kr"
+  },
+  {
+    "name": "울릉군",
+    "type": "기초",
+    "region": "경북",
+    "url": "https://www.ulleung.go.kr"
+  },
+  {
+    "name": "창원시",
+    "type": "기초",
+    "region": "경남",
+    "url": "https://www.changwon.go.kr"
+  },
+  {
+    "name": "진주시",
+    "type": "기초",
+    "region": "경남",
+    "url": "https://www.jinju.go.kr"
+  },
+  {
+    "name": "통영시",
+    "type": "기초",
+    "region": "경남",
+    "url": "https://www.tongyeong.go.kr"
+  },
+  {
+    "name": "사천시",
+    "type": "기초",
+    "region": "경남",
+    "url": "https://www.sacheon.go.kr"
+  },
+  {
+    "name": "김해시",
+    "type": "기초",
+    "region": "경남",
+    "url": "https://www.gimhae.go.kr"
+  },
+  {
+    "name": "밀양시",
+    "type": "기초",
+    "region": "경남",
+    "url": "https://www.miryang.go.kr"
+  },
+  {
+    "name": "거제시",
+    "type": "기초",
+    "region": "경남",
+    "url": "https://www.geoje.go.kr"
+  },
+  {
+    "name": "양산시",
+    "type": "기초",
+    "region": "경남",
+    "url": "https://www.yangsan.go.kr"
+  },
+  {
+    "name": "의령군",
+    "type": "기초",
+    "region": "경남",
+    "url": "https://www.uiryeong.go.kr"
+  },
+  {
+    "name": "함안군",
+    "type": "기초",
+    "region": "경남",
+    "url": "https://www.haman.go.kr"
+  },
+  {
+    "name": "창녕군",
+    "type": "기초",
+    "region": "경남",
+    "url": "https://www.cng.go.kr"
+  },
+  {
+    "name": "고성군(경남)",
+    "type": "기초",
+    "region": "경남",
+    "url": "https://www.goseong.go.kr"
+  },
+  {
+    "name": "남해군",
+    "type": "기초",
+    "region": "경남",
+    "url": "https://www.namhae.go.kr"
+  },
+  {
+    "name": "하동군",
+    "type": "기초",
+    "region": "경남",
+    "url": "https://www.hadong.go.kr"
+  },
+  {
+    "name": "산청군",
+    "type": "기초",
+    "region": "경남",
+    "url": "https://www.sancheong.go.kr"
+  },
+  {
+    "name": "함양군",
+    "type": "기초",
+    "region": "경남",
+    "url": "https://www.hygn.go.kr"
+  },
+  {
+    "name": "거창군",
+    "type": "기초",
+    "region": "경남",
+    "url": "https://www.geochang.go.kr"
+  },
+  {
+    "name": "합천군",
+    "type": "기초",
+    "region": "경남",
+    "url": "https://www.hc.go.kr"
+  },
+  {
+    "name": "제주시",
+    "type": "기초",
+    "region": "제주",
+    "url": "https://www.jejusi.go.kr"
+  },
+  {
+    "name": "서귀포시",
+    "type": "기초",
+    "region": "제주",
+    "url": "https://www.seogwipo.go.kr"
+  },
+  {
+    "name": "기획재정부",
+    "type": "중앙",
+    "url": "https://www.moef.go.kr"
+  },
+  {
+    "name": "교육부",
+    "type": "중앙",
+    "url": "https://www.moe.go.kr"
+  },
+  {
+    "name": "과학기술정보통신부",
+    "type": "중앙",
+    "url": "https://www.msit.go.kr"
+  },
+  {
+    "name": "외교부",
+    "type": "중앙",
+    "url": "https://www.mofa.go.kr"
+  },
+  {
+    "name": "통일부",
+    "type": "중앙",
+    "url": "https://www.unikorea.go.kr"
+  },
+  {
+    "name": "법무부",
+    "type": "중앙",
+    "url": "https://www.moj.go.kr"
+  },
+  {
+    "name": "국방부",
+    "type": "중앙",
+    "url": "https://www.mnd.go.kr"
+  },
+  {
+    "name": "행정안전부",
+    "type": "중앙",
+    "url": "https://www.mois.go.kr"
+  },
+  {
+    "name": "국가보훈부",
+    "type": "중앙",
+    "url": "https://www.mpva.go.kr"
+  },
+  {
+    "name": "문화체육관광부",
+    "type": "중앙",
+    "url": "https://www.mcst.go.kr"
+  },
+  {
+    "name": "농림축산식품부",
+    "type": "중앙",
+    "url": "https://www.mafra.go.kr"
+  },
+  {
+    "name": "산업통상자원부",
+    "type": "중앙",
+    "url": "https://www.motie.go.kr"
+  },
+  {
+    "name": "보건복지부",
+    "type": "중앙",
+    "url": "https://www.mohw.go.kr"
+  },
+  {
+    "name": "환경부",
+    "type": "중앙",
+    "url": "https://www.me.go.kr"
+  },
+  {
+    "name": "고용노동부",
+    "type": "중앙",
+    "url": "https://www.moel.go.kr"
+  },
+  {
+    "name": "여성가족부",
+    "type": "중앙",
+    "url": "https://www.mogef.go.kr"
+  },
+  {
+    "name": "국토교통부",
+    "type": "중앙",
+    "url": "https://www.molit.go.kr"
+  },
+  {
+    "name": "해양수산부",
+    "type": "중앙",
+    "url": "https://www.mof.go.kr"
+  },
+  {
+    "name": "중소벤처기업부",
+    "type": "중앙",
+    "url": "https://www.mss.go.kr"
+  },
+  {
+    "name": "국세청",
+    "type": "중앙",
+    "url": "https://www.nts.go.kr"
+  },
+  {
+    "name": "관세청",
+    "type": "중앙",
+    "url": "https://www.customs.go.kr"
+  },
+  {
+    "name": "조달청",
+    "type": "중앙",
+    "url": "https://www.pps.go.kr"
+  },
+  {
+    "name": "통계청",
+    "type": "중앙",
+    "url": "https://www.kostat.go.kr"
+  },
+  {
+    "name": "병무청",
+    "type": "중앙",
+    "url": "https://www.mma.go.kr"
+  },
+  {
+    "name": "경찰청",
+    "type": "중앙",
+    "url": "https://www.police.go.kr"
+  },
+  {
+    "name": "소방청",
+    "type": "중앙",
+    "url": "https://www.nfa.go.kr"
+  },
+  {
+    "name": "문화재청(국가유산청)",
+    "type": "중앙",
+    "url": "https://www.khs.go.kr"
+  },
+  {
+    "name": "기상청",
+    "type": "중앙",
+    "url": "https://www.kma.go.kr"
+  },
+  {
+    "name": "특허청",
+    "type": "중앙",
+    "url": "https://www.kipo.go.kr"
+  },
+  {
+    "name": "식품의약품안전처",
+    "type": "중앙",
+    "url": "https://www.mfds.go.kr"
+  },
+  {
+    "name": "법제처",
+    "type": "중앙",
+    "url": "https://www.moleg.go.kr"
+  },
+  {
+    "name": "인사혁신처",
+    "type": "중앙",
+    "url": "https://www.mpm.go.kr"
+  },
+  {
+    "name": "공정거래위원회",
+    "type": "중앙",
+    "url": "https://www.ftc.go.kr"
+  },
+  {
+    "name": "금융위원회",
+    "type": "중앙",
+    "url": "https://www.fsc.go.kr"
+  },
+  {
+    "name": "국민권익위원회",
+    "type": "중앙",
+    "url": "https://www.acrc.go.kr"
+  },
+  {
+    "name": "개인정보보호위원회",
+    "type": "중앙",
+    "url": "https://www.pipc.go.kr"
+  },
+  {
+    "name": "정부24",
+    "type": "중앙",
+    "url": "https://www.gov.kr"
+  },
+  {
+    "name": "대한민국 정책브리핑",
+    "type": "중앙",
+    "url": "https://www.korea.kr"
+  },
+  {
+    "name": "한국콘텐츠진흥원",
+    "type": "공공",
+    "url": "https://www.kocca.kr"
+  },
+  {
+    "name": "예술의전당",
+    "type": "공공",
+    "url": "https://www.sac.or.kr"
+  },
+  {
+    "name": "한국관광공사",
+    "type": "공공",
+    "url": "https://www.visitkorea.or.kr"
+  },
+  {
+    "name": "국민연금공단",
+    "type": "공공",
+    "url": "https://www.nps.or.kr"
+  },
+  {
+    "name": "국민건강보험공단",
+    "type": "공공",
+    "url": "https://www.nhis.or.kr"
+  },
+  {
+    "name": "근로복지공단",
+    "type": "공공",
+    "url": "https://www.comwel.or.kr"
+  },
+  {
+    "name": "한국전력공사",
+    "type": "공공",
+    "url": "https://home.kepco.co.kr"
+  },
+  {
+    "name": "한국도로공사",
+    "type": "공공",
+    "url": "https://www.ex.co.kr"
+  },
+  {
+    "name": "한국토지주택공사",
+    "type": "공공",
+    "url": "https://www.lh.or.kr"
+  },
+  {
+    "name": "한국철도공사",
+    "type": "공공",
+    "url": "https://info.korail.com"
+  },
+  {
+    "name": "한국수자원공사",
+    "type": "공공",
+    "url": "https://www.kwater.or.kr"
+  },
+  {
+    "name": "한국지능정보사회진흥원",
+    "type": "공공",
+    "url": "https://www.nia.or.kr"
+  },
+  {
+    "name": "한국인터넷진흥원",
+    "type": "공공",
+    "url": "https://www.kisa.or.kr"
+  },
+  {
+    "name": "한국장학재단",
+    "type": "공공",
+    "url": "https://www.kosaf.go.kr"
+  },
+  {
+    "name": "국립중앙도서관",
+    "type": "공공",
+    "url": "https://www.nl.go.kr"
+  },
+  {
+    "name": "국립중앙박물관",
+    "type": "공공",
+    "url": "https://www.museum.go.kr"
+  },
+  {
+    "name": "국립현대미술관",
+    "type": "공공",
+    "url": "https://www.mmca.go.kr"
+  },
+  {
+    "name": "세종문화회관",
+    "type": "공공",
+    "url": "https://www.sejongpac.or.kr"
+  },
+  {
+    "name": "한국문화예술위원회",
+    "type": "공공",
+    "url": "https://www.arko.or.kr"
+  },
+  {
+    "name": "서울교통공사",
+    "type": "공공",
+    "url": "https://www.seoulmetro.co.kr"
+  },
+  {
+    "name": "서울시설공단",
+    "type": "공공",
+    "url": "https://www.sisul.or.kr"
+  },
+  {
+    "name": "경기관광공사",
+    "type": "공공",
+    "url": "https://www.ggtour.or.kr"
+  },
+  {
+    "name": "한국환경공단",
+    "type": "공공",
+    "url": "https://www.keco.or.kr"
+  },
+  {
+    "name": "한국산업인력공단",
+    "type": "공공",
+    "url": "https://www.hrdkorea.or.kr"
+  },
+  {
+    "name": "소상공인시장진흥공단",
+    "type": "공공",
+    "url": "https://www.semas.or.kr"
+  },
+  {
+    "name": "중소벤처기업진흥공단",
+    "type": "공공",
+    "url": "https://www.kosmes.or.kr"
+  },
+  {
+    "name": "한국무역보험공사",
+    "type": "공공",
+    "url": "https://www.ksure.or.kr"
+  },
+  {
+    "name": "한국소비자원",
+    "type": "공공",
+    "url": "https://www.kca.go.kr"
+  },
+  {
+    "name": "한국교육학술정보원",
+    "type": "공공",
+    "url": "https://www.keris.or.kr"
+  },
+  {
+    "name": "한국연구재단",
+    "type": "공공",
+    "url": "https://www.nrf.re.kr"
+  },
+  {
+    "name": "서울특별시교육청",
+    "type": "교육",
+    "url": "https://www.sen.go.kr"
+  },
+  {
+    "name": "부산광역시교육청",
+    "type": "교육",
+    "url": "https://www.pen.go.kr"
+  },
+  {
+    "name": "대구광역시교육청",
+    "type": "교육",
+    "url": "https://www.dge.go.kr"
+  },
+  {
+    "name": "인천광역시교육청",
+    "type": "교육",
+    "url": "https://www.ice.go.kr"
+  },
+  {
+    "name": "광주광역시교육청",
+    "type": "교육",
+    "url": "https://www.gen.go.kr"
+  },
+  {
+    "name": "대전광역시교육청",
+    "type": "교육",
+    "url": "https://www.dje.go.kr"
+  },
+  {
+    "name": "울산광역시교육청",
+    "type": "교육",
+    "url": "https://www.use.go.kr"
+  },
+  {
+    "name": "세종특별자치시교육청",
+    "type": "교육",
+    "url": "https://www.sje.go.kr"
+  },
+  {
+    "name": "경기도교육청",
+    "type": "교육",
+    "url": "https://www.goe.go.kr"
+  },
+  {
+    "name": "강원특별자치도교육청",
+    "type": "교육",
+    "url": "https://www.gwe.go.kr"
+  },
+  {
+    "name": "충청북도교육청",
+    "type": "교육",
+    "url": "https://www.cbe.go.kr"
+  },
+  {
+    "name": "충청남도교육청",
+    "type": "교육",
+    "url": "https://www.cne.go.kr"
+  },
+  {
+    "name": "전북특별자치도교육청",
+    "type": "교육",
+    "url": "https://www.jbe.go.kr"
+  },
+  {
+    "name": "전라남도교육청",
+    "type": "교육",
+    "url": "https://www.jne.go.kr"
+  },
+  {
+    "name": "경상북도교육청",
+    "type": "교육",
+    "url": "https://www.gbe.kr"
+  },
+  {
+    "name": "경상남도교육청",
+    "type": "교육",
+    "url": "https://www.gne.go.kr"
+  },
+  {
+    "name": "제주특별자치도교육청",
+    "type": "교육",
+    "url": "https://www.jje.go.kr"
+  },
+  {
+    "name": "국회",
+    "type": "의회",
+    "url": "https://www.assembly.go.kr"
+  },
+  {
+    "name": "서울특별시의회",
+    "type": "의회",
+    "url": "https://www.smc.seoul.kr"
+  },
+  {
+    "name": "경기도의회",
+    "type": "의회",
+    "url": "https://www.ggc.go.kr"
+  },
+  {
+    "name": "부산광역시의회",
+    "type": "의회",
+    "url": "https://council.busan.go.kr"
+  },
+  {
+    "name": "인천광역시의회",
+    "type": "의회",
+    "url": "https://www.icouncil.go.kr"
+  },
+  {
+    "name": "대구광역시의회",
+    "type": "의회",
+    "url": "https://council.daegu.go.kr"
+  },
+  {
+    "name": "수원시의회",
+    "type": "의회",
+    "url": "https://council.suwon.go.kr"
+  },
+  {
+    "name": "성남시의회",
+    "type": "의회",
+    "url": "https://www.sncouncil.go.kr"
+  },
+  {
+    "name": "공무원연금공단",
+    "type": "공공",
+    "url": "https://www.geps.or.kr"
+  },
+  {
+    "name": "사립학교교직원연금공단",
+    "type": "공공",
+    "url": "https://www.tp.or.kr"
+  },
+  {
+    "name": "한국산업안전보건공단",
+    "type": "공공",
+    "url": "https://www.kosha.or.kr"
+  },
+  {
+    "name": "한국장애인고용공단",
+    "type": "공공",
+    "url": "https://www.kead.or.kr"
+  },
+  {
+    "name": "국가철도공단",
+    "type": "공공",
+    "url": "https://www.kr.or.kr"
+  },
+  {
+    "name": "한국교통안전공단",
+    "type": "공공",
+    "url": "https://www.kotsa.or.kr"
+  },
+  {
+    "name": "가덕도신공항건설공단",
+    "type": "공공",
+    "url": "https://www.gadeokairport.or.kr"
+  },
+  {
+    "name": "한국도로교통공단",
+    "type": "공공",
+    "url": "https://www.koroad.or.kr"
+  },
+  {
+    "name": "국립공원공단",
+    "type": "공공",
+    "url": "https://www.knps.or.kr"
+  },
+  {
+    "name": "한국에너지공단",
+    "type": "공공",
+    "url": "https://www.energy.or.kr"
+  },
+  {
+    "name": "한국원자력환경공단",
+    "type": "공공",
+    "url": "https://www.korad.or.kr"
+  },
+  {
+    "name": "한국산업단지공단",
+    "type": "공공",
+    "url": "https://www.kicox.or.kr"
+  },
+  {
+    "name": "한국광해광업공단",
+    "type": "공공",
+    "url": "https://www.komir.or.kr"
+  },
+  {
+    "name": "대한법률구조공단",
+    "type": "공공",
+    "url": "https://www.klac.or.kr"
+  },
+  {
+    "name": "한국법무보호복지공단",
+    "type": "공공",
+    "url": "https://www.koreapas.or.kr"
+  },
+  {
+    "name": "정부법무공단",
+    "type": "공공",
+    "url": "https://www.klc.or.kr"
+  },
+  {
+    "name": "한국해양교통안전공단",
+    "type": "공공",
+    "url": "https://www.komsa.or.kr"
+  },
+  {
+    "name": "소상공인시장진흥공단 소상공인24",
+    "type": "공공",
+    "url": "https://www.sbiz24.kr"
+  },
+  {
+    "name": "소상공인시장진흥공단 경영안정 바우처 지원시스템",
+    "type": "공공",
+    "url": "https://voucher.sbiz24.kr"
+  },
+  {
+    "name": "소상공인시장진흥공단 빅데이터 플랫폼",
+    "type": "공공",
+    "url": "https://bigdata.sbiz.or.kr"
+  }
+]

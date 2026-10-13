@@ -1,0 +1,6282 @@
+[
+ {
+  "name": "감사원",
+  "url": "https://www.bai.go.kr",
+  "host": "bai.go.kr",
+  "have": "queued"
+ },
+ {
+  "name": "개인정보보호위원회",
+  "url": "https://www.pipc.go.kr/",
+  "host": "pipc.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "대검찰청",
+  "url": "https://www.spo.go.kr",
+  "host": "spo.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "경찰청 대표 누리집",
+  "url": "http://www.police.go.kr",
+  "host": "police.go.kr",
+  "have": "draft"
+ },
+ {
+  "name": "경찰대학",
+  "url": "http://www.police.ac.kr",
+  "host": "police.ac.kr",
+  "have": "published"
+ },
+ {
+  "name": "중앙경찰학교",
+  "url": "http://www.cpa.go.kr",
+  "host": "cpa.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "경찰병원",
+  "url": "http://www.nph.go.kr",
+  "host": "nph.go.kr",
+  "have": "draft"
+ },
+ {
+  "name": "경찰수사연수원",
+  "url": "http://www.kpia.go.kr",
+  "host": "kpia.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "경찰인재개발원",
+  "url": "https://www.phrdi.go.kr",
+  "host": "phrdi.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "고용노동부",
+  "url": "https://www.moel.go.kr",
+  "host": "moel.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "중앙노동위원회",
+  "url": "http://www.nlrc.go.kr",
+  "host": "nlrc.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "최저임금위원회",
+  "url": "https://www.minimumwage.go.kr",
+  "host": "minimumwage.go.kr",
+  "have": "queued"
+ },
+ {
+  "name": "산업재해보상보험 재심사위원회",
+  "url": "http://www.iaciac.go.kr",
+  "host": "iaciac.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "고용노동부고객상담센터",
+  "url": "http://1350.moel.go.kr/home/",
+  "host": "1350.moel.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "고위공직자범죄수사처",
+  "url": "https://cio.go.kr",
+  "host": "cio.go.kr",
+  "have": "queued"
+ },
+ {
+  "name": "공정거래위원회",
+  "url": "https://www.ftc.go.kr",
+  "host": "ftc.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "과학기술정보통신부",
+  "url": "http://www.msit.go.kr",
+  "host": "msit.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "과학기술정보통신부 국립중앙과학관",
+  "url": "https://www.science.go.kr",
+  "host": "science.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "국립과천과학관",
+  "url": "https://www.sciencecenter.go.kr",
+  "host": "sciencecenter.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "국립전파연구원",
+  "url": "https://www.rra.go.kr",
+  "host": "rra.go.kr",
+  "have": "draft"
+ },
+ {
+  "name": "과학기술정보통신부 중앙전파관리소",
+  "url": "https://www.crms.go.kr",
+  "host": "crms.go.kr",
+  "have": "queued"
+ },
+ {
+  "name": "우정사업본부",
+  "url": "https://www.koreapost.go.kr",
+  "host": "koreapost.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "관세청",
+  "url": "https://www.customs.go.kr",
+  "host": "customs.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "관세국경인재개발원",
+  "url": "http://hrd.customs.go.kr",
+  "host": "hrd.customs.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "교육부",
+  "url": "http://www.moe.go.kr",
+  "host": "moe.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "국사편찬위원회",
+  "url": "http://www.history.go.kr",
+  "host": "history.go.kr",
+  "have": "draft"
+ },
+ {
+  "name": "국립특수교육원",
+  "url": "https://www.nise.go.kr",
+  "host": "nise.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "교원소청심사위원회",
+  "url": "http://www.ace.go.kr",
+  "host": "ace.go.kr",
+  "have": "draft"
+ },
+ {
+  "name": "교육부 중앙교육연수원",
+  "url": "http://www.neti.go.kr",
+  "host": "neti.go.kr",
+  "have": "queued"
+ },
+ {
+  "name": "국립국제교육원",
+  "url": "https://www.niied.go.kr",
+  "host": "niied.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "국가보훈부",
+  "url": "https://www.mpva.go.kr",
+  "host": "mpva.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "국립대한민국임시정부기념관",
+  "url": "https://www.nmkpg.go.kr",
+  "host": "nmkpg.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "국립대전현충원",
+  "url": "https://www.dnc.go.kr",
+  "host": "dnc.go.kr",
+  "have": "queued"
+ },
+ {
+  "name": "보훈심사위원회",
+  "url": "https://simsa.mpva.go.kr",
+  "host": "simsa.mpva.go.kr",
+  "have": "draft"
+ },
+ {
+  "name": "국립서울현충원",
+  "url": "https://www.mpva.go.kr/snmb/www/index.do",
+  "host": "mpva.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "국가유산청",
+  "url": "https://www.khs.go.kr",
+  "host": "khs.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "국립고궁박물관",
+  "url": "https://www.gogung.go.kr",
+  "host": "gogung.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "현충사관리소",
+  "url": "https://hcs.khs.go.kr",
+  "host": "hcs.khs.go.kr",
+  "have": "queued"
+ },
+ {
+  "name": "국가유산청 칠백의총관리소",
+  "url": "https://700.khs.go.kr",
+  "host": "700.khs.go.kr",
+  "have": "queued"
+ },
+ {
+  "name": "국립무형유산원",
+  "url": "https://www.nihc.go.kr",
+  "host": "nihc.go.kr",
+  "have": "draft"
+ },
+ {
+  "name": "국립문화유산연구원",
+  "url": "https://www.nrich.go.kr",
+  "host": "nrich.go.kr",
+  "have": "queued"
+ },
+ {
+  "name": "국립해양유산연구소",
+  "url": "https://www.seamuse.go.kr",
+  "host": "seamuse.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "궁능유적본부",
+  "url": "https://royal.khs.go.kr",
+  "host": "royal.khs.go.kr",
+  "have": "queued"
+ },
+ {
+  "name": "국가인권위원회",
+  "url": "http://www.humanrights.go.kr",
+  "host": "humanrights.go.kr",
+  "have": "queued"
+ },
+ {
+  "name": "국가정보원",
+  "url": "https://www.nis.go.kr",
+  "host": "nis.go.kr",
+  "have": "draft"
+ },
+ {
+  "name": "국무조정실·국무총리비서실",
+  "url": "https://www.opm.go.kr",
+  "host": "opm.go.kr",
+  "have": "queued"
+ },
+ {
+  "name": "국민권익위원회",
+  "url": "https://www.acrc.go.kr",
+  "host": "acrc.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "정부합동민원센터",
+  "url": "http://counseling.go.kr",
+  "host": "counseling.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "국민권익위원회 청렴연수원",
+  "url": "http://edu.acrc.go.kr",
+  "host": "edu.acrc.go.kr",
+  "have": "draft"
+ },
+ {
+  "name": "대한민국 국방부",
+  "url": "https://www.mnd.go.kr",
+  "host": "mnd.go.kr",
+  "have": "draft"
+ },
+ {
+  "name": "국방부 국방홍보원",
+  "url": "http://www.dema.mil.kr",
+  "host": "dema.mil.kr",
+  "have": "published"
+ },
+ {
+  "name": "국방전산정보원",
+  "url": "http://ndisc.mnd.go.kr",
+  "host": "ndisc.mnd.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "국방대학교",
+  "url": "https://www.kndu.ac.kr",
+  "host": "kndu.ac.kr",
+  "have": "draft"
+ },
+ {
+  "name": "합동군사대학교",
+  "url": "http://jfmu.mnd.go.kr",
+  "host": "jfmu.mnd.go.kr",
+  "have": "draft"
+ },
+ {
+  "name": "국세청",
+  "url": "https://www.nts.go.kr",
+  "host": "nts.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "서울지방국세청",
+  "url": "https://s.nts.go.kr",
+  "host": "s.nts.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "중부지방국세청",
+  "url": "https://j.nts.go.kr",
+  "host": "j.nts.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "대전지방국세청",
+  "url": "https://d.nts.go.kr",
+  "host": "d.nts.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "광주지방국세청",
+  "url": "https://g.nts.go.kr",
+  "host": "g.nts.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "대구지방국세청",
+  "url": "https://t.nts.go.kr",
+  "host": "t.nts.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "부산지방국세청",
+  "url": "https://b.nts.go.kr",
+  "host": "b.nts.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "국세공무원교육원",
+  "url": "https://i.nts.go.kr/taxstudy/main.do",
+  "host": "i.nts.go.kr",
+  "have": "draft"
+ },
+ {
+  "name": "국세청주류면허지원센터",
+  "url": "https://i.nts.go.kr/llsc/main.do",
+  "host": "i.nts.go.kr",
+  "have": "draft"
+ },
+ {
+  "name": "인천지방국세청",
+  "url": "http://in.nts.go.kr",
+  "host": "in.nts.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "국토교통부",
+  "url": "http://www.molit.go.kr",
+  "host": "molit.go.kr",
+  "have": "draft"
+ },
+ {
+  "name": "국토교통부 국토교통인재개발원",
+  "url": "http://tilit.molit.go.kr",
+  "host": "tilit.molit.go.kr",
+  "have": "draft"
+ },
+ {
+  "name": "국토교통부 철도특별사법경찰대",
+  "url": "http://police.molit.go.kr",
+  "host": "police.molit.go.kr",
+  "have": "draft"
+ },
+ {
+  "name": "항공철도사고조사위원회",
+  "url": "http://araib.molit.go.kr",
+  "host": "araib.molit.go.kr",
+  "have": "draft"
+ },
+ {
+  "name": "중앙토지수용위원회",
+  "url": "http://oclt.molit.go.kr",
+  "host": "oclt.molit.go.kr",
+  "have": "draft"
+ },
+ {
+  "name": "국토교통부 국토지리정보원",
+  "url": "https://www.ngii.go.kr",
+  "host": "ngii.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "대도시권광역교통위원회",
+  "url": "https://www.molit.go.kr/mtc/intro.do",
+  "host": "molit.go.kr",
+  "have": "draft"
+ },
+ {
+  "name": "금융위원회",
+  "url": "https://www.fsc.go.kr",
+  "host": "fsc.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "금융정보분석원",
+  "url": "https://www.kofiu.go.kr",
+  "host": "kofiu.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "기상청",
+  "url": "https://www.kma.go.kr/kma/",
+  "host": "kma.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "국가기상위성센터",
+  "url": "https://nmsc.kma.go.kr",
+  "host": "nmsc.kma.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "기상레이더센터",
+  "url": "https://radar.kma.go.kr",
+  "host": "radar.kma.go.kr",
+  "have": "queued"
+ },
+ {
+  "name": "기상청 국립기상과학원",
+  "url": "http://www.nims.go.kr",
+  "host": "nims.go.kr",
+  "have": "queued"
+ },
+ {
+  "name": "국립환경과학원",
+  "url": "https://www.nier.go.kr",
+  "host": "nier.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "온실가스종합정보센터",
+  "url": "http://www.gir.go.kr",
+  "host": "gir.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "국가미세먼지정보센터",
+  "url": "https://air.go.kr",
+  "host": "air.go.kr",
+  "have": "draft"
+ },
+ {
+  "name": "한강홍수통제소",
+  "url": "http://www.hrfco.go.kr",
+  "host": "hrfco.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "낙동강홍수통제소",
+  "url": "http://www.nakdongriver.go.kr",
+  "host": "nakdongriver.go.kr",
+  "have": "draft"
+ },
+ {
+  "name": "금강홍수통제소",
+  "url": "http://www.geumriver.go.kr",
+  "host": "geumriver.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "영산강홍수통제소",
+  "url": "http://www.yeongsanriver.go.kr",
+  "host": "yeongsanriver.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "전기위원회",
+  "url": "http://www.korec.go.kr",
+  "host": "korec.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "국립생물자원관",
+  "url": "https://www.nibr.go.kr",
+  "host": "nibr.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "농림축산식품부",
+  "url": "https://www.mafra.go.kr",
+  "host": "mafra.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "농림축산검역본부",
+  "url": "https://www.qia.go.kr",
+  "host": "qia.go.kr",
+  "have": "draft"
+ },
+ {
+  "name": "국립농산물품질관리원",
+  "url": "http://www.naqs.go.kr",
+  "host": "naqs.go.kr",
+  "have": "draft"
+ },
+ {
+  "name": "국립종자원",
+  "url": "http://www.seed.go.kr",
+  "host": "seed.go.kr",
+  "have": "draft"
+ },
+ {
+  "name": "농촌진흥청",
+  "url": "https://www.rda.go.kr",
+  "host": "rda.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "농촌진흥청 국립농업과학원",
+  "url": "https://www.naas.go.kr",
+  "host": "naas.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "농촌진흥청 국립식량과학원",
+  "url": "https://www.nics.go.kr",
+  "host": "nics.go.kr",
+  "have": "draft"
+ },
+ {
+  "name": "농촌진흥청 국립원예특작과학원",
+  "url": "https://www.nihhs.go.kr",
+  "host": "nihhs.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "농촌진흥청 국립축산과학원",
+  "url": "https://www.nias.go.kr",
+  "host": "nias.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "농촌진흥청 농촌인적자원개발센터",
+  "url": "https://hrd.rda.go.kr",
+  "host": "hrd.rda.go.kr",
+  "have": "draft"
+ },
+ {
+  "name": "대한민국 대통령실",
+  "url": "https://www.president.go.kr/",
+  "host": "president.go.kr",
+  "have": "queued"
+ },
+ {
+  "name": "문화체육관광부",
+  "url": "http://www.mcst.go.kr",
+  "host": "mcst.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "예술의전당",
+  "url": "https://www.sac.or.kr",
+  "host": "sac.or.kr",
+  "have": "published"
+ },
+ {
+  "name": "아리랑국제방송 재단소개 누리집",
+  "url": "http://company.arirang.com",
+  "host": "company.arirang.com",
+  "have": "published"
+ },
+ {
+  "name": "태권도진흥재단",
+  "url": "https://www.tpf.or.kr/tpf/main/index.do",
+  "host": "tpf.or.kr",
+  "have": "queued"
+ },
+ {
+  "name": "한국언론진흥재단",
+  "url": "http://www.kpf.or.kr",
+  "host": "kpf.or.kr",
+  "have": "queued"
+ },
+ {
+  "name": "한국공예디자인문화진흥원",
+  "url": "https://www.kcdf.or.kr",
+  "host": "kcdf.or.kr",
+  "have": "published"
+ },
+ {
+  "name": "세종학당재단",
+  "url": "https://www.ksif.or.kr/index.do?lang=kor",
+  "host": "ksif.or.kr",
+  "have": "queued"
+ },
+ {
+  "name": "재단법인스포츠윤리센터",
+  "url": "https://www.k-sec.or.kr",
+  "host": "k-sec.or.kr",
+  "have": "queued"
+ },
+ {
+  "name": "대한민국예술원",
+  "url": "https://www.naa.go.kr",
+  "host": "naa.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "국립중앙박물관",
+  "url": "https://www.museum.go.kr",
+  "host": "museum.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "국립국어원",
+  "url": "https://www.korean.go.kr",
+  "host": "korean.go.kr",
+  "have": "queued"
+ },
+ {
+  "name": "국립중앙도서관",
+  "url": "https://www.nl.go.kr",
+  "host": "nl.go.kr",
+  "have": "draft"
+ },
+ {
+  "name": "국립극장",
+  "url": "https://www.ntok.go.kr",
+  "host": "ntok.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "국립현대미술관",
+  "url": "https://www.mmca.go.kr",
+  "host": "mmca.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "국립국악원",
+  "url": "http://www.gugak.go.kr",
+  "host": "gugak.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "국립민속박물관",
+  "url": "http://www.nfm.go.kr",
+  "host": "nfm.go.kr",
+  "have": "queued"
+ },
+ {
+  "name": "KTV국민방송",
+  "url": "https://www.ktv.go.kr",
+  "host": "ktv.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "사행산업통합감독위원회",
+  "url": "https://www.ngcc.go.kr",
+  "host": "ngcc.go.kr",
+  "have": "queued"
+ },
+ {
+  "name": "한국예술종합학교",
+  "url": "http://www.karts.ac.kr",
+  "host": "karts.ac.kr",
+  "have": "published"
+ },
+ {
+  "name": "대한민국역사박물관",
+  "url": "https://www.much.go.kr",
+  "host": "much.go.kr",
+  "have": "draft"
+ },
+ {
+  "name": "국립한글박물관",
+  "url": "https://www.hangeul.go.kr",
+  "host": "hangeul.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "국립아시아문화전당",
+  "url": "http://www.acc.go.kr",
+  "host": "acc.go.kr",
+  "have": "draft"
+ },
+ {
+  "name": "국립장애인도서관",
+  "url": "https://nld.go.kr",
+  "host": "nld.go.kr",
+  "have": "draft"
+ },
+ {
+  "name": "국가도서관위원회",
+  "url": "http://www.clip.go.kr",
+  "host": "clip.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "한국문화진흥주식회사",
+  "url": "http://www.newseoulgolf.co.kr",
+  "host": "newseoulgolf.co.kr",
+  "have": "queued"
+ },
+ {
+  "name": "영화진흥위원회",
+  "url": "https://www.kofic.or.kr",
+  "host": "kofic.or.kr",
+  "have": "queued"
+ },
+ {
+  "name": "영상물등급위원회",
+  "url": "https://www.kmrb.or.kr",
+  "host": "kmrb.or.kr",
+  "have": "published"
+ },
+ {
+  "name": "한국영상자료원",
+  "url": "https://www.koreafilm.or.kr",
+  "host": "koreafilm.or.kr",
+  "have": "draft"
+ },
+ {
+  "name": "한국관광공사",
+  "url": "https://knto.or.kr",
+  "host": "knto.or.kr",
+  "have": "published"
+ },
+ {
+  "name": "대한체육회",
+  "url": "http://www.sports.or.kr",
+  "host": "sports.or.kr",
+  "have": "queued"
+ },
+ {
+  "name": "서울올림픽기념국민체육진흥공단",
+  "url": "https://www.kspo.or.kr",
+  "host": "kspo.or.kr",
+  "have": "queued"
+ },
+ {
+  "name": "문화예술교육진흥원",
+  "url": "http://www.arte.or.kr",
+  "host": "arte.or.kr",
+  "have": "draft"
+ },
+ {
+  "name": "한국문화예술위원회",
+  "url": "https://arko.or.kr/",
+  "host": "arko.or.kr",
+  "have": "published"
+ },
+ {
+  "name": "대한장애인체육회",
+  "url": "https://www.koreanpc.kr",
+  "host": "koreanpc.kr",
+  "have": "draft"
+ },
+ {
+  "name": "한국체육산업개발주식회사",
+  "url": "https://www.ksponco.or.kr",
+  "host": "ksponco.or.kr",
+  "have": "queued"
+ },
+ {
+  "name": "한국문학번역원",
+  "url": "https://www.ltikorea.or.kr/",
+  "host": "ltikorea.or.kr",
+  "have": "published"
+ },
+ {
+  "name": "한국저작권위원회",
+  "url": "https://www.copyright.or.kr",
+  "host": "copyright.or.kr",
+  "have": "published"
+ },
+ {
+  "name": "한국콘텐츠진흥원",
+  "url": "https://www.kocca.kr",
+  "host": "kocca.kr",
+  "have": "published"
+ },
+ {
+  "name": "국립박물관문화재단 대표 누리집",
+  "url": "https://www.nmf.or.kr",
+  "host": "nmf.or.kr",
+  "have": "draft"
+ },
+ {
+  "name": "예술경영지원센터",
+  "url": "http://www.gokams.or.kr",
+  "host": "gokams.or.kr",
+  "have": "published"
+ },
+ {
+  "name": "한국출판문화산업진흥원",
+  "url": "https://kpipa.or.kr",
+  "host": "kpipa.or.kr",
+  "have": "queued"
+ },
+ {
+  "name": "한국예술인복지재단 홈페이지",
+  "url": "https://www.kawf.kr",
+  "host": "kawf.kr",
+  "have": "published"
+ },
+ {
+  "name": "게임물관리위원회",
+  "url": "https://www.grac.or.kr",
+  "host": "grac.or.kr",
+  "have": "queued"
+ },
+ {
+  "name": "한국문화정보원",
+  "url": "https://www.kcisa.kr",
+  "host": "kcisa.kr",
+  "have": "published"
+ },
+ {
+  "name": "(재)한국저작권보호원",
+  "url": "https://www.kcopa.or.kr",
+  "host": "kcopa.or.kr",
+  "have": "published"
+ },
+ {
+  "name": "한국도박문제예방치유원",
+  "url": "https://www.kcgp.or.kr",
+  "host": "kcgp.or.kr",
+  "have": "queued"
+ },
+ {
+  "name": "국악방송",
+  "url": "https://www.igbf.kr",
+  "host": "igbf.kr",
+  "have": "published"
+ },
+ {
+  "name": "시청자미디어재단",
+  "url": "https://kcmf.or.kr",
+  "host": "kcmf.or.kr",
+  "have": "queued"
+ },
+ {
+  "name": "방위사업청",
+  "url": "https://www.dapa.go.kr",
+  "host": "dapa.go.kr",
+  "have": "queued"
+ },
+ {
+  "name": "국방신속획득기술연구원",
+  "url": "https://www.add.re.kr/dratri",
+  "host": "add.re.kr",
+  "have": "queued"
+ },
+ {
+  "name": "법무부",
+  "url": "http://www.moj.go.kr",
+  "host": "moj.go.kr",
+  "have": "draft"
+ },
+ {
+  "name": "법무연수원",
+  "url": "https://www.ioj.go.kr",
+  "host": "ioj.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "법무부 출입국‧외국인정책본부",
+  "url": "http://www.immigration.go.kr",
+  "host": "immigration.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "병무청",
+  "url": "https://www.mma.go.kr",
+  "host": "mma.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "보건복지부",
+  "url": "http://www.mohw.go.kr",
+  "host": "mohw.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "국립장기조직혈액관리원",
+  "url": "https://www.konos.go.kr",
+  "host": "konos.go.kr",
+  "have": "draft"
+ },
+ {
+  "name": "국립나주병원",
+  "url": "https://www.najumh.go.kr",
+  "host": "najumh.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "국립부곡병원",
+  "url": "https://www.bgnmh.go.kr",
+  "host": "bgnmh.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "국립춘천병원",
+  "url": "https://www.cnmh.go.kr",
+  "host": "cnmh.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "국립공주병원 누리집",
+  "url": "http://www.knmh.go.kr",
+  "host": "knmh.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "국립재활원",
+  "url": "http://www.nrc.go.kr",
+  "host": "nrc.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "국립소록도병원",
+  "url": "http://www.sorokdo.go.kr",
+  "host": "sorokdo.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "오송생명과학단지지원센터 대표누리집",
+  "url": "http://osong.mohw.go.kr",
+  "host": "osong.mohw.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "국립망향의동산 대표누리집",
+  "url": "http://www.nmhc.go.kr",
+  "host": "nmhc.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "국립정신건강센터 대표누리집",
+  "url": "http://www.ncmh.go.kr",
+  "host": "ncmh.go.kr",
+  "have": "queued"
+ },
+ {
+  "name": "건강보험분쟁조정위원회 대표 누리집",
+  "url": "http://hi.simpan.go.kr",
+  "host": "hi.simpan.go.kr",
+  "have": "draft"
+ },
+ {
+  "name": "첨단재생의료포털",
+  "url": "http://k-arm.go.kr",
+  "host": "k-arm.go.kr",
+  "have": "queued"
+ },
+ {
+  "name": "산림청",
+  "url": "https://www.forest.go.kr",
+  "host": "forest.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "국립수목원",
+  "url": "https://kna.forest.go.kr",
+  "host": "kna.forest.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "국립산림과학원",
+  "url": "https://nifos.forest.go.kr",
+  "host": "nifos.forest.go.kr",
+  "have": "queued"
+ },
+ {
+  "name": "국립자연휴양림관리소",
+  "url": "https://huyang.forest.go.kr",
+  "host": "huyang.forest.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "북부지방산림청",
+  "url": "https://north.forest.go.kr",
+  "host": "north.forest.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "동부지방산림청",
+  "url": "https://east.forest.go.kr",
+  "host": "east.forest.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "남부지방산림청",
+  "url": "https://south.forest.go.kr",
+  "host": "south.forest.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "중부지방산림청",
+  "url": "https://center.forest.go.kr",
+  "host": "center.forest.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "서부지방산림청",
+  "url": "https://west.forest.go.kr",
+  "host": "west.forest.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "국립산림품종관리센터",
+  "url": "https://nfsv.forest.go.kr",
+  "host": "nfsv.forest.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "산림항공본부",
+  "url": "https://fao.forest.go.kr",
+  "host": "fao.forest.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "산림교육원",
+  "url": "https://fotilms.forest.go.kr",
+  "host": "fotilms.forest.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "경제자유구역기획단",
+  "url": "http://fez.go.kr",
+  "host": "fez.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "광업등록사무소",
+  "url": "https://branch.motie.go.kr",
+  "host": "branch.motie.go.kr",
+  "have": "draft"
+ },
+ {
+  "name": "무역위원회",
+  "url": "http://www.ktc.go.kr",
+  "host": "ktc.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "국가기술표준원",
+  "url": "http://www.kats.go.kr",
+  "host": "kats.go.kr",
+  "have": "queued"
+ },
+ {
+  "name": "새만금개발청",
+  "url": "http://www.saemangeum.go.kr",
+  "host": "saemangeum.go.kr",
+  "have": "queued"
+ },
+ {
+  "name": "성평등가족부",
+  "url": "https://www.mogef.go.kr",
+  "host": "mogef.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "소방청",
+  "url": "http://www.nfa.go.kr",
+  "host": "nfa.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "중앙소방학교",
+  "url": "https://www.nfsa.go.kr/nfsa/",
+  "host": "nfsa.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "중앙119구조본부",
+  "url": "http://www.rescue.go.kr",
+  "host": "rescue.go.kr",
+  "have": "draft"
+ },
+ {
+  "name": "국립소방연구원",
+  "url": "http://nfire.go.kr",
+  "host": "nfire.go.kr",
+  "have": "draft"
+ },
+ {
+  "name": "식품의약품안전처",
+  "url": "https://www.mfds.go.kr",
+  "host": "mfds.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "식품의약품안전평가원",
+  "url": "http://www.nifds.go.kr",
+  "host": "nifds.go.kr",
+  "have": "queued"
+ },
+ {
+  "name": "외교부",
+  "url": "http://www.mofa.go.kr",
+  "host": "mofa.go.kr",
+  "have": "draft"
+ },
+ {
+  "name": "국립외교원",
+  "url": "https://www.knda.go.kr",
+  "host": "knda.go.kr",
+  "have": "draft"
+ },
+ {
+  "name": "우주항공청",
+  "url": "https://www.kasa.go.kr",
+  "host": "kasa.go.kr",
+  "have": "queued"
+ },
+ {
+  "name": "우주환경센터",
+  "url": "https://spaceweather.kasa.go.kr",
+  "host": "spaceweather.kasa.go.kr",
+  "have": "queued"
+ },
+ {
+  "name": "원자력안전위원회",
+  "url": "https://www.nssc.go.kr",
+  "host": "nssc.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "인사혁신처",
+  "url": "http://www.mpm.go.kr",
+  "host": "mpm.go.kr",
+  "have": "draft"
+ },
+ {
+  "name": "국가공무원인재개발원",
+  "url": "https://www.nhi.go.kr",
+  "host": "nhi.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "재외동포청",
+  "url": "http://www.oka.go.kr",
+  "host": "oka.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "재정경제부",
+  "url": "https://www.moef.go.kr",
+  "host": "moef.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "조달청",
+  "url": "https://www.pps.go.kr",
+  "host": "pps.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "중소벤처기업부 대표 누리집",
+  "url": "http://www.mss.go.kr",
+  "host": "mss.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "구미전자공업고등학교",
+  "url": "https://school.gyo6.net/gnet",
+  "host": "school.gyo6.net",
+  "have": "draft"
+ },
+ {
+  "name": "부산기계공업고등학교",
+  "url": "https://school.busanedu.net/bmt-h",
+  "host": "school.busanedu.net",
+  "have": "draft"
+ },
+ {
+  "name": "질병관리청",
+  "url": "http://www.kdca.go.kr",
+  "host": "kdca.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "국립마산병원",
+  "url": "http://www.mnth.go.kr",
+  "host": "mnth.go.kr",
+  "have": "draft"
+ },
+ {
+  "name": "국립목포병원 대표누리집",
+  "url": "http://www.tbmokpo.go.kr",
+  "host": "tbmokpo.go.kr",
+  "have": "queued"
+ },
+ {
+  "name": "통일부",
+  "url": "http://www.unikorea.go.kr",
+  "host": "unikorea.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "남북회담본부",
+  "url": "http://dialogue.unikorea.go.kr",
+  "host": "dialogue.unikorea.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "국립평화통일민주교육원",
+  "url": "http://www.uniedu.go.kr",
+  "host": "uniedu.go.kr",
+  "have": "queued"
+ },
+ {
+  "name": "한반도통일미래센터",
+  "url": "http://unifuture.unikorea.go.kr",
+  "host": "unifuture.unikorea.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "해양경찰청",
+  "url": "http://www.kcg.go.kr",
+  "host": "kcg.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "해양경찰교육원",
+  "url": "https://edu.kcga.go.kr",
+  "host": "edu.kcga.go.kr",
+  "have": "queued"
+ },
+ {
+  "name": "해양수산부 대표누리집",
+  "url": "https://www.mof.go.kr",
+  "host": "mof.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "국립부산해사고등학교",
+  "url": "https://school.busanedu.net/maritime-h",
+  "host": "school.busanedu.net",
+  "have": "draft"
+ },
+ {
+  "name": "인천해사고등학교",
+  "url": "http://inm.icehs.kr",
+  "host": "inm.icehs.kr",
+  "have": "published"
+ },
+ {
+  "name": "해양수산부 해양수산인재개발원",
+  "url": "https://www.ofhi.go.kr",
+  "host": "ofhi.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "국립수산물품질관리원",
+  "url": "https://www.nfqs.go.kr",
+  "host": "nfqs.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "동해어업관리단",
+  "url": "https://eastship.mof.go.kr",
+  "host": "eastship.mof.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "서해어업관리단",
+  "url": "https://westship.mof.go.kr",
+  "host": "westship.mof.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "국립해양조사원",
+  "url": "https://www.khoa.go.kr",
+  "host": "khoa.go.kr",
+  "have": "draft"
+ },
+ {
+  "name": "중앙해양안전심판원",
+  "url": "https://www.kmst.go.kr",
+  "host": "kmst.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "국립수산과학원",
+  "url": "https://www.nifs.go.kr",
+  "host": "nifs.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "해양수산부 인천지방해양수산청",
+  "url": "https://incheon.mof.go.kr",
+  "host": "incheon.mof.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "해양수산부 여수지방해양수산청",
+  "url": "https://yeosu.mof.go.kr",
+  "host": "yeosu.mof.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "해양수산부 마산지방해양수산청",
+  "url": "https://masan.mof.go.kr",
+  "host": "masan.mof.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "해양수산부 동해지방해양수산청",
+  "url": "https://donghae.mof.go.kr",
+  "host": "donghae.mof.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "군산지방해양수산청",
+  "url": "https://gunsan.mof.go.kr",
+  "host": "gunsan.mof.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "해양수산부 목포지방해양수산청",
+  "url": "https://mokpo.mof.go.kr",
+  "host": "mokpo.mof.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "해양수산부 포항지방해양수산청",
+  "url": "https://pohang.mof.go.kr",
+  "host": "pohang.mof.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "해양수산부 평택지방해양수산청",
+  "url": "https://pyeongtaek.mof.go.kr",
+  "host": "pyeongtaek.mof.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "해양수산부 울산지방해양수산청",
+  "url": "https://ulsan.mof.go.kr",
+  "host": "ulsan.mof.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "해양수산부 대산지방해양수산청",
+  "url": "https://daesan.mof.go.kr",
+  "host": "daesan.mof.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "국립해양측위정보원",
+  "url": "https://www.nmpnt.go.kr",
+  "host": "nmpnt.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "남해어업관리단",
+  "url": "https://southship.mof.go.kr",
+  "host": "southship.mof.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "인천항만공사",
+  "url": "https://www.icpa.or.kr",
+  "host": "icpa.or.kr",
+  "have": "queued"
+ },
+ {
+  "name": "행정안전부대표누리집",
+  "url": "https://www.mois.go.kr",
+  "host": "mois.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "행정안전부 지방자치인재개발원",
+  "url": "https://www.logodi.go.kr",
+  "host": "logodi.go.kr",
+  "have": "draft"
+ },
+ {
+  "name": "행정안전부 정부청사관리본부",
+  "url": "https://gbmo.go.kr",
+  "host": "gbmo.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "국가기록원",
+  "url": "http://www.archives.go.kr",
+  "host": "archives.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "행정안전부 이북5도 위원회",
+  "url": "http://www.ibuk5do.go.kr",
+  "host": "ibuk5do.go.kr",
+  "have": "draft"
+ },
+ {
+  "name": "국립과학수사연구원",
+  "url": "http://www.nfs.go.kr",
+  "host": "nfs.go.kr",
+  "have": "draft"
+ },
+ {
+  "name": "국가정보자원관리원",
+  "url": "http://www.nirs.go.kr",
+  "host": "nirs.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "국립재난안전연구원",
+  "url": "https://www.ndmi.go.kr",
+  "host": "ndmi.go.kr",
+  "have": "draft"
+ },
+ {
+  "name": "주민등록번호변경위원회 누리집",
+  "url": "http://www.rrncc.go.kr",
+  "host": "rrncc.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "대통령기록관",
+  "url": "http://www.pa.go.kr",
+  "host": "pa.go.kr",
+  "have": "queued"
+ },
+ {
+  "name": "국가재난안전교육원",
+  "url": "http://www.ndti.go.kr",
+  "host": "ndti.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "행정중심복합도시건설청",
+  "url": "https://www.naacc.go.kr",
+  "host": "naacc.go.kr",
+  "have": "queued"
+ },
+ {
+  "name": "서울특별시",
+  "url": "https://www.seoul.go.kr",
+  "host": "seoul.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "서울특별시 종로구청",
+  "url": "https://www.jongno.go.kr",
+  "host": "jongno.go.kr",
+  "have": "draft"
+ },
+ {
+  "name": "서울특별시 중구청",
+  "url": "https://www.junggu.seoul.kr",
+  "host": "junggu.seoul.kr",
+  "have": "published"
+ },
+ {
+  "name": "서울특별시 용산구청",
+  "url": "https://www.yongsan.go.kr",
+  "host": "yongsan.go.kr",
+  "have": "draft"
+ },
+ {
+  "name": "서울특별시 성동구청",
+  "url": "https://www.sd.go.kr",
+  "host": "sd.go.kr",
+  "have": "draft"
+ },
+ {
+  "name": "서울특별시 광진구",
+  "url": "https://www.gwangjin.go.kr",
+  "host": "gwangjin.go.kr",
+  "have": "draft"
+ },
+ {
+  "name": "서울특별시 동대문구",
+  "url": "https://www.ddm.go.kr",
+  "host": "ddm.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "서울특별시 중랑구",
+  "url": "https://www.jungnang.go.kr",
+  "host": "jungnang.go.kr",
+  "have": "draft"
+ },
+ {
+  "name": "서울특별시 성북구청",
+  "url": "https://www.sb.go.kr",
+  "host": "sb.go.kr",
+  "have": "draft"
+ },
+ {
+  "name": "서울특별시 강북구",
+  "url": "https://www.gangbuk.go.kr",
+  "host": "gangbuk.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "서울특별시 도봉구",
+  "url": "https://www.dobong.go.kr",
+  "host": "dobong.go.kr",
+  "have": "draft"
+ },
+ {
+  "name": "서울특별시 노원구",
+  "url": "https://www.nowon.kr",
+  "host": "nowon.kr",
+  "have": "published"
+ },
+ {
+  "name": "서울특별시 은평구",
+  "url": "https://www.ep.go.kr",
+  "host": "ep.go.kr",
+  "have": "draft"
+ },
+ {
+  "name": "서울특별시 서대문구",
+  "url": "https://www.sdm.go.kr",
+  "host": "sdm.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "서울특별시 마포구청",
+  "url": "https://www.mapo.go.kr",
+  "host": "mapo.go.kr",
+  "have": "draft"
+ },
+ {
+  "name": "서울특별시 양천구",
+  "url": "https://www.yangcheon.go.kr",
+  "host": "yangcheon.go.kr",
+  "have": "draft"
+ },
+ {
+  "name": "서울특별시 강서구",
+  "url": "https://www.gangseo.seoul.kr",
+  "host": "gangseo.seoul.kr",
+  "have": "draft"
+ },
+ {
+  "name": "서울특별시 구로구",
+  "url": "https://www.guro.go.kr",
+  "host": "guro.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "서울특별시 금천구",
+  "url": "https://www.geumcheon.go.kr",
+  "host": "geumcheon.go.kr",
+  "have": "draft"
+ },
+ {
+  "name": "서울특별시 영등포구",
+  "url": "https://www.ydp.go.kr",
+  "host": "ydp.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "서울특별시 동작구청",
+  "url": "https://www.dongjak.go.kr",
+  "host": "dongjak.go.kr",
+  "have": "draft"
+ },
+ {
+  "name": "서울특별시 관악구",
+  "url": "https://www.gwanak.go.kr",
+  "host": "gwanak.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "서울특별시 서초구",
+  "url": "https://www.seocho.go.kr",
+  "host": "seocho.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "서울특별시 강남구",
+  "url": "https://www.gangnam.go.kr",
+  "host": "gangnam.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "서울특별시 송파구",
+  "url": "https://www.songpa.go.kr",
+  "host": "songpa.go.kr",
+  "have": "draft"
+ },
+ {
+  "name": "서울특별시 강동구",
+  "url": "https://www.gangdong.go.kr",
+  "host": "gangdong.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "부산광역시",
+  "url": "https://www.busan.go.kr",
+  "host": "busan.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "부산광역시 중구",
+  "url": "http://www.bsjunggu.go.kr",
+  "host": "bsjunggu.go.kr",
+  "have": "draft"
+ },
+ {
+  "name": "부산광역시 서구",
+  "url": "http://www.bsseogu.go.kr",
+  "host": "bsseogu.go.kr",
+  "have": "draft"
+ },
+ {
+  "name": "부산광역시 동구",
+  "url": "http://www.bsdonggu.go.kr",
+  "host": "bsdonggu.go.kr",
+  "have": "draft"
+ },
+ {
+  "name": "부산광역시 영도구",
+  "url": "http://www.yeongdo.go.kr",
+  "host": "yeongdo.go.kr",
+  "have": "draft"
+ },
+ {
+  "name": "부산광역시 부산진구",
+  "url": "http://www.busanjin.go.kr",
+  "host": "busanjin.go.kr",
+  "have": "draft"
+ },
+ {
+  "name": "부산광역시 동래구",
+  "url": "http://www.dongnae.go.kr",
+  "host": "dongnae.go.kr",
+  "have": "draft"
+ },
+ {
+  "name": "부산광역시 남구",
+  "url": "http://www.bsnamgu.go.kr",
+  "host": "bsnamgu.go.kr",
+  "have": "draft"
+ },
+ {
+  "name": "부산광역시 북구",
+  "url": "http://www.bsbukgu.go.kr",
+  "host": "bsbukgu.go.kr",
+  "have": "draft"
+ },
+ {
+  "name": "부산광역시 해운대구",
+  "url": "http://www.haeundae.go.kr",
+  "host": "haeundae.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "부산광역시 사하구",
+  "url": "http://www.saha.go.kr",
+  "host": "saha.go.kr",
+  "have": "draft"
+ },
+ {
+  "name": "부산광역시 금정구",
+  "url": "http://www.geumjeong.go.kr",
+  "host": "geumjeong.go.kr",
+  "have": "draft"
+ },
+ {
+  "name": "부산광역시 강서구",
+  "url": "https://www.bsgangseo.go.kr",
+  "host": "bsgangseo.go.kr",
+  "have": "draft"
+ },
+ {
+  "name": "부산광역시 연제구",
+  "url": "http://www.yeonje.go.kr",
+  "host": "yeonje.go.kr",
+  "have": "draft"
+ },
+ {
+  "name": "부산광역시 수영구",
+  "url": "http://www.suyeong.go.kr",
+  "host": "suyeong.go.kr",
+  "have": "draft"
+ },
+ {
+  "name": "부산광역시 사상구",
+  "url": "http://www.sasang.go.kr",
+  "host": "sasang.go.kr",
+  "have": "draft"
+ },
+ {
+  "name": "부산광역시 기장군",
+  "url": "http://www.gijang.go.kr",
+  "host": "gijang.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "인천광역시청",
+  "url": "https://www.incheon.go.kr",
+  "host": "incheon.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "인천광역시 중구청",
+  "url": "http://www.icjg.go.kr",
+  "host": "icjg.go.kr",
+  "have": "draft"
+ },
+ {
+  "name": "인천광역시 미추홀구청",
+  "url": "https://www.michuhol.go.kr",
+  "host": "michuhol.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "인천광역시 연수구청",
+  "url": "http://www.yeonsu.go.kr",
+  "host": "yeonsu.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "인천광역시 남동구청",
+  "url": "https://www.namdong.go.kr",
+  "host": "namdong.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "인천광역시 부평구청",
+  "url": "https://www.icbp.go.kr",
+  "host": "icbp.go.kr",
+  "have": "draft"
+ },
+ {
+  "name": "인천광역시 계양구청",
+  "url": "http://www.gyeyang.go.kr",
+  "host": "gyeyang.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "인천광역시 강화군청",
+  "url": "http://www.ganghwa.go.kr",
+  "host": "ganghwa.go.kr",
+  "have": "draft"
+ },
+ {
+  "name": "인천광역시 옹진군청",
+  "url": "http://www.ongjin.go.kr",
+  "host": "ongjin.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "대구광역시",
+  "url": "http://www.daegu.go.kr",
+  "host": "daegu.go.kr",
+  "have": "draft"
+ },
+ {
+  "name": "대구광역시 중구청",
+  "url": "http://www.jung.daegu.kr",
+  "host": "jung.daegu.kr",
+  "have": "draft"
+ },
+ {
+  "name": "대구광역시동구청",
+  "url": "http://www.dong.daegu.kr",
+  "host": "dong.daegu.kr",
+  "have": "published"
+ },
+ {
+  "name": "대구광역시 서구청",
+  "url": "http://www.dgs.go.kr",
+  "host": "dgs.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "대구광역시 남구",
+  "url": "http://www.nam.daegu.kr",
+  "host": "nam.daegu.kr",
+  "have": "draft"
+ },
+ {
+  "name": "대구광역시 북구",
+  "url": "http://www.buk.daegu.kr",
+  "host": "buk.daegu.kr",
+  "have": "published"
+ },
+ {
+  "name": "대구광역시 수성구",
+  "url": "http://www.suseong.kr",
+  "host": "suseong.kr",
+  "have": "published"
+ },
+ {
+  "name": "대구광역시 달서구",
+  "url": "http://www.dalseo.daegu.kr",
+  "host": "dalseo.daegu.kr",
+  "have": "draft"
+ },
+ {
+  "name": "대구광역시 달성군청",
+  "url": "http://dalseong.daegu.kr",
+  "host": "dalseong.daegu.kr",
+  "have": "published"
+ },
+ {
+  "name": "대구광역시 군위군청",
+  "url": "https://www.gunwi.go.kr",
+  "host": "gunwi.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "재단법인대구문화예술진흥원",
+  "url": "https://dgfca.or.kr/main",
+  "host": "dgfca.or.kr",
+  "have": "published"
+ },
+ {
+  "name": "재단법인대구디지털혁신진흥원",
+  "url": "https://www.dip.or.kr",
+  "host": "dip.or.kr",
+  "have": "queued"
+ },
+ {
+  "name": "대전광역시 대표 누리집",
+  "url": "https://www.daejeon.go.kr",
+  "host": "daejeon.go.kr",
+  "have": "draft"
+ },
+ {
+  "name": "대전시립청소년합창단",
+  "url": "https://www.daejeon.go.kr/fvu/FvuContentsHtmlView.do?menuSeq=721",
+  "host": "daejeon.go.kr",
+  "have": "draft"
+ },
+ {
+  "name": "대전시립교향악단",
+  "url": "https://www.daejeon.go.kr/fvu/FvuContentsHtmlView.do?menuSeq=718",
+  "host": "daejeon.go.kr",
+  "have": "draft"
+ },
+ {
+  "name": "대전시립무용단",
+  "url": "https://www.daejeon.go.kr/fvu/FvuContentsHtmlView.do?menuSeq=720",
+  "host": "daejeon.go.kr",
+  "have": "draft"
+ },
+ {
+  "name": "대전시립합창단",
+  "url": "https://www.daejeon.go.kr/fvu/FvuContentsHtmlView.do?menuSeq=719",
+  "host": "daejeon.go.kr",
+  "have": "draft"
+ },
+ {
+  "name": "대전광역시 동구",
+  "url": "https://www.donggu.go.kr",
+  "host": "donggu.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "대전광역시 중구청",
+  "url": "https://www.djjunggu.go.kr",
+  "host": "djjunggu.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "대전광역시 서구",
+  "url": "https://www.seogu.go.kr",
+  "host": "seogu.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "대전광역시 유성구",
+  "url": "https://www.yuseong.go.kr",
+  "host": "yuseong.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "대전광역시 대덕구청",
+  "url": "https://www.daedeok.go.kr",
+  "host": "daedeok.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "울산광역시",
+  "url": "http://www.ulsan.go.kr",
+  "host": "ulsan.go.kr",
+  "have": "draft"
+ },
+ {
+  "name": "울산광역시 중구 대표누리집",
+  "url": "http://www.junggu.ulsan.kr",
+  "host": "junggu.ulsan.kr",
+  "have": "draft"
+ },
+ {
+  "name": "울산광역시 남구 대표누리집",
+  "url": "http://www.ulsannamgu.go.kr",
+  "host": "ulsannamgu.go.kr",
+  "have": "draft"
+ },
+ {
+  "name": "울산광역시 동구",
+  "url": "http://www.donggu.ulsan.kr",
+  "host": "donggu.ulsan.kr",
+  "have": "draft"
+ },
+ {
+  "name": "울산광역시 북구청",
+  "url": "http://www.bukgu.ulsan.kr",
+  "host": "bukgu.ulsan.kr",
+  "have": "draft"
+ },
+ {
+  "name": "울산광역시 울주군 대표 누리집",
+  "url": "http://www.ulju.ulsan.kr",
+  "host": "ulju.ulsan.kr",
+  "have": "draft"
+ },
+ {
+  "name": "세종특별자치시",
+  "url": "http://www.sejong.go.kr",
+  "host": "sejong.go.kr",
+  "have": "draft"
+ },
+ {
+  "name": "세종특별자치시시설관리공단",
+  "url": "https://www.sjfmc.or.kr",
+  "host": "sjfmc.or.kr",
+  "have": "draft"
+ },
+ {
+  "name": "재단법인 세종시문화관광재단",
+  "url": "http://www.sjcf.or.kr",
+  "host": "sjcf.or.kr",
+  "have": "queued"
+ },
+ {
+  "name": "세종도시교통공사",
+  "url": "https://www.sctc.kr/index/",
+  "host": "sctc.kr",
+  "have": "queued"
+ },
+ {
+  "name": "경기도청",
+  "url": "https://www.gg.go.kr",
+  "host": "gg.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "경기도 수원시청",
+  "url": "https://www.suwon.go.kr",
+  "host": "suwon.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "경기도 성남시청",
+  "url": "https://www.seongnam.go.kr",
+  "host": "seongnam.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "경기도 의정부시청",
+  "url": "https://www.ui4u.go.kr",
+  "host": "ui4u.go.kr",
+  "have": "draft"
+ },
+ {
+  "name": "경기도 안양시청",
+  "url": "https://www.anyang.go.kr",
+  "host": "anyang.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "경기도 부천시청",
+  "url": "https://www.bucheon.go.kr",
+  "host": "bucheon.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "경기도 광명시청",
+  "url": "https://www.gm.go.kr",
+  "host": "gm.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "경기도 평택시청",
+  "url": "https://www.pyeongtaek.go.kr",
+  "host": "pyeongtaek.go.kr",
+  "have": "draft"
+ },
+ {
+  "name": "경기도 동두천시청",
+  "url": "https://www.ddc.go.kr",
+  "host": "ddc.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "경기도 안산시청",
+  "url": "https://www.ansan.go.kr",
+  "host": "ansan.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "고양특례시",
+  "url": "https://www.goyang.go.kr",
+  "host": "goyang.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "경기도 과천시청",
+  "url": "https://www.gccity.go.kr",
+  "host": "gccity.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "경기도 구리시청",
+  "url": "https://www.guri.go.kr",
+  "host": "guri.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "경기도 남양주시청",
+  "url": "https://www.nyj.go.kr",
+  "host": "nyj.go.kr",
+  "have": "draft"
+ },
+ {
+  "name": "경기도 오산시청",
+  "url": "https://www.osan.go.kr",
+  "host": "osan.go.kr",
+  "have": "draft"
+ },
+ {
+  "name": "경기도 시흥시청",
+  "url": "https://www.siheung.go.kr",
+  "host": "siheung.go.kr",
+  "have": "draft"
+ },
+ {
+  "name": "경기도 군포시청",
+  "url": "https://www.gunpo.go.kr",
+  "host": "gunpo.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "경기도 의왕시청",
+  "url": "https://www.uiwang.go.kr",
+  "host": "uiwang.go.kr",
+  "have": "draft"
+ },
+ {
+  "name": "경기도 하남시청",
+  "url": "https://www.hanam.go.kr",
+  "host": "hanam.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "용인르네상스",
+  "url": "https://www.yongin.go.kr",
+  "host": "yongin.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "경기도 파주시청",
+  "url": "https://www.paju.go.kr",
+  "host": "paju.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "경기도 이천시청",
+  "url": "https://www.icheon.go.kr",
+  "host": "icheon.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "경기도 안성시청",
+  "url": "https://www.anseong.go.kr",
+  "host": "anseong.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "경기도 김포시청",
+  "url": "https://www.gimpo.go.kr",
+  "host": "gimpo.go.kr",
+  "have": "draft"
+ },
+ {
+  "name": "경기도 연천군청",
+  "url": "https://www.yeoncheon.go.kr",
+  "host": "yeoncheon.go.kr",
+  "have": "draft"
+ },
+ {
+  "name": "경기도 가평군청",
+  "url": "https://www.gp.go.kr",
+  "host": "gp.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "경기도 양평군청",
+  "url": "https://www.yp21.go.kr",
+  "host": "yp21.go.kr",
+  "have": "draft"
+ },
+ {
+  "name": "화성특례시청",
+  "url": "https://www.hscity.go.kr",
+  "host": "hscity.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "경기도 광주시청",
+  "url": "https://www.gjcity.go.kr",
+  "host": "gjcity.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "경기도 양주시",
+  "url": "https://www.yangju.go.kr",
+  "host": "yangju.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "경기도 포천시청",
+  "url": "https://www.pocheon.go.kr",
+  "host": "pocheon.go.kr",
+  "have": "draft"
+ },
+ {
+  "name": "경기도 여주시청",
+  "url": "https://www.yeoju.go.kr",
+  "host": "yeoju.go.kr",
+  "have": "draft"
+ },
+ {
+  "name": "경기도 의회",
+  "url": "https://www.ggc.go.kr/site/main/home",
+  "host": "ggc.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "경기콘텐츠진흥원",
+  "url": "https://www.gcon.or.kr/",
+  "host": "gcon.or.kr",
+  "have": "queued"
+ },
+ {
+  "name": "강원특별자치도",
+  "url": "https://state.gwd.go.kr/portal",
+  "host": "state.gwd.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "강원 춘천시",
+  "url": "https://www.chuncheon.go.kr",
+  "host": "chuncheon.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "강원특별자치도 원주시청",
+  "url": "http://www.wonju.go.kr",
+  "host": "wonju.go.kr",
+  "have": "draft"
+ },
+ {
+  "name": "강릉시",
+  "url": "http://www.gangneung.go.kr",
+  "host": "gangneung.go.kr",
+  "have": "queued"
+ },
+ {
+  "name": "강원 동해시",
+  "url": "https://www.dh.go.kr",
+  "host": "dh.go.kr",
+  "have": "draft"
+ },
+ {
+  "name": "강원특별자치도 태백시",
+  "url": "http://www.taebaek.go.kr",
+  "host": "taebaek.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "강원 속초시",
+  "url": "https://www.sokcho.go.kr",
+  "host": "sokcho.go.kr",
+  "have": "draft"
+ },
+ {
+  "name": "강원 삼척시",
+  "url": "https://www.samcheok.go.kr",
+  "host": "samcheok.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "강원특별자치도 홍천군청",
+  "url": "https://www.hongcheon.go.kr",
+  "host": "hongcheon.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "강원 횡성군",
+  "url": "https://www.hsg.go.kr",
+  "host": "hsg.go.kr",
+  "have": "draft"
+ },
+ {
+  "name": "YoungWorld 영월",
+  "url": "https://www.yw.go.kr",
+  "host": "yw.go.kr",
+  "have": "draft"
+ },
+ {
+  "name": "평창군",
+  "url": "http://www.pc.go.kr",
+  "host": "pc.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "강원 정선군",
+  "url": "https://www.jeongseon.go.kr",
+  "host": "jeongseon.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "강원 철원군",
+  "url": "https://www.cwg.go.kr",
+  "host": "cwg.go.kr",
+  "have": "draft"
+ },
+ {
+  "name": "강원특별자치도 화천군",
+  "url": "https://www.ihc.go.kr",
+  "host": "ihc.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "강원 양구군",
+  "url": "https://www.yanggu.go.kr",
+  "host": "yanggu.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "인제군",
+  "url": "http://www.inje.go.kr",
+  "host": "inje.go.kr",
+  "have": "draft"
+ },
+ {
+  "name": "강원 고성군",
+  "url": "https://www.gwgs.go.kr",
+  "host": "gwgs.go.kr",
+  "have": "draft"
+ },
+ {
+  "name": "강원특별자치도 양양군",
+  "url": "https://www.yangyang.go.kr",
+  "host": "yangyang.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "강원특별자치도 의회사무처",
+  "url": "https://council.gangwon.kr/",
+  "host": "council.gangwon.kr",
+  "have": "queued"
+ },
+ {
+  "name": "충청북도",
+  "url": "https://www.chungbuk.go.kr",
+  "host": "chungbuk.go.kr",
+  "have": "draft"
+ },
+ {
+  "name": "충청북도 충주시청",
+  "url": "https://www.chungju.go.kr",
+  "host": "chungju.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "충청북도 제천시청",
+  "url": "https://www.jecheon.go.kr",
+  "host": "jecheon.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "충청북도 보은군청",
+  "url": "https://www.boeun.go.kr",
+  "host": "boeun.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "충청북도 옥천군청",
+  "url": "https://www.oc.go.kr",
+  "host": "oc.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "충청북도 영동군청",
+  "url": "https://www.yd21.go.kr",
+  "host": "yd21.go.kr",
+  "have": "draft"
+ },
+ {
+  "name": "충청북도 진천군",
+  "url": "https://www.jincheon.go.kr",
+  "host": "jincheon.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "충청북도 괴산군",
+  "url": "https://www.goesan.go.kr",
+  "host": "goesan.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "충청북도 음성군청",
+  "url": "https://www.eumseong.go.kr",
+  "host": "eumseong.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "충청북도 단양군",
+  "url": "https://www.danyang.go.kr",
+  "host": "danyang.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "충청북도 증평군청",
+  "url": "https://www.jp.go.kr",
+  "host": "jp.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "충청북도 청주시청",
+  "url": "https://intro.cheongju.go.kr",
+  "host": "intro.cheongju.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "충청남도",
+  "url": "http://www.chungnam.go.kr",
+  "host": "chungnam.go.kr",
+  "have": "draft"
+ },
+ {
+  "name": "충청남도 천안시",
+  "url": "http://www.cheonan.go.kr",
+  "host": "cheonan.go.kr",
+  "have": "draft"
+ },
+ {
+  "name": "충청남도 공주시",
+  "url": "http://www.gongju.go.kr",
+  "host": "gongju.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "충청남도 보령시청",
+  "url": "https://www.brcn.go.kr",
+  "host": "brcn.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "충청남도 아산시청",
+  "url": "http://www.asan.go.kr",
+  "host": "asan.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "충청남도 서산시청",
+  "url": "http://www.seosan.go.kr",
+  "host": "seosan.go.kr",
+  "have": "draft"
+ },
+ {
+  "name": "충청남도 논산시",
+  "url": "http://www.nonsan.go.kr",
+  "host": "nonsan.go.kr",
+  "have": "draft"
+ },
+ {
+  "name": "충청남도 금산군",
+  "url": "https://www.geumsan.go.kr",
+  "host": "geumsan.go.kr",
+  "have": "draft"
+ },
+ {
+  "name": "충청남도 부여군청",
+  "url": "http://www.buyeo.go.kr",
+  "host": "buyeo.go.kr",
+  "have": "draft"
+ },
+ {
+  "name": "충청남도 서천군",
+  "url": "http://www.seocheon.go.kr",
+  "host": "seocheon.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "충청남도 청양군청",
+  "url": "http://www.cheongyang.go.kr",
+  "host": "cheongyang.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "충청남도 홍성군청",
+  "url": "http://www.hongseong.go.kr",
+  "host": "hongseong.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "충청남도 예산군",
+  "url": "http://www.yesan.go.kr",
+  "host": "yesan.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "충청남도 태안군청",
+  "url": "http://www.taean.go.kr",
+  "host": "taean.go.kr",
+  "have": "draft"
+ },
+ {
+  "name": "충청남도 계룡시",
+  "url": "http://www.gyeryong.go.kr",
+  "host": "gyeryong.go.kr",
+  "have": "draft"
+ },
+ {
+  "name": "충청남도 당진시청",
+  "url": "http://www.dangjin.go.kr",
+  "host": "dangjin.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "농업기술원",
+  "url": "https://cnnongup.chungnam.go.kr/main.cs",
+  "host": "cnnongup.chungnam.go.kr",
+  "have": "queued"
+ },
+ {
+  "name": "충청남도의회",
+  "url": "https://council.chungnam.go.kr/",
+  "host": "council.chungnam.go.kr",
+  "have": "draft"
+ },
+ {
+  "name": "보건환경연구원",
+  "url": "https://www.chungnam.go.kr/healthenv.do",
+  "host": "chungnam.go.kr",
+  "have": "draft"
+ },
+ {
+  "name": "공주소방서",
+  "url": "https://www.cn119.go.kr/gongju/",
+  "host": "cn119.go.kr",
+  "have": "draft"
+ },
+ {
+  "name": "보령소방서",
+  "url": "https://www.cn119.go.kr/boryung/",
+  "host": "cn119.go.kr",
+  "have": "draft"
+ },
+ {
+  "name": "아산소방서",
+  "url": "https://www.cn119.go.kr/asan/",
+  "host": "cn119.go.kr",
+  "have": "draft"
+ },
+ {
+  "name": "서산소방서",
+  "url": "https://www.cn119.go.kr/seosan/",
+  "host": "cn119.go.kr",
+  "have": "draft"
+ },
+ {
+  "name": "논산소방서",
+  "url": "https://www.cn119.go.kr/nonsan/",
+  "host": "cn119.go.kr",
+  "have": "draft"
+ },
+ {
+  "name": "홍성소방서",
+  "url": "https://www.cn119.go.kr/hongseong/",
+  "host": "cn119.go.kr",
+  "have": "draft"
+ },
+ {
+  "name": "예산소방서",
+  "url": "https://www.cn119.go.kr/yesan/",
+  "host": "cn119.go.kr",
+  "have": "draft"
+ },
+ {
+  "name": "당진소방서",
+  "url": "https://www.cn119.go.kr/dangjin/",
+  "host": "cn119.go.kr",
+  "have": "draft"
+ },
+ {
+  "name": "부여소방서",
+  "url": "https://www.cn119.go.kr/buyeo/",
+  "host": "cn119.go.kr",
+  "have": "draft"
+ },
+ {
+  "name": "축산기술연구소",
+  "url": "https://www.chungnam.go.kr/liveStock.do",
+  "host": "chungnam.go.kr",
+  "have": "draft"
+ },
+ {
+  "name": "금산소방서",
+  "url": "https://www.cn119.go.kr/geumsan/",
+  "host": "cn119.go.kr",
+  "have": "draft"
+ },
+ {
+  "name": "서천소방서",
+  "url": "https://www.cn119.go.kr/seocheon/",
+  "host": "cn119.go.kr",
+  "have": "draft"
+ },
+ {
+  "name": "천안동남소방서",
+  "url": "https://www.cn119.go.kr/dongnam/",
+  "host": "cn119.go.kr",
+  "have": "draft"
+ },
+ {
+  "name": "천안서북소방서",
+  "url": "https://www.cn119.go.kr/seobuk/",
+  "host": "cn119.go.kr",
+  "have": "draft"
+ },
+ {
+  "name": "태안소방서",
+  "url": "https://www.cn119.go.kr/taean/",
+  "host": "cn119.go.kr",
+  "have": "draft"
+ },
+ {
+  "name": "동물위생시험소",
+  "url": "https://www.chungnam.go.kr/cnvri.do",
+  "host": "chungnam.go.kr",
+  "have": "draft"
+ },
+ {
+  "name": "산림자원연구소",
+  "url": "https://keumkang.chungnam.go.kr:452/",
+  "host": "keumkang.chungnam.go.kr",
+  "have": "draft"
+ },
+ {
+  "name": "충청남도 건설본부",
+  "url": "https://www.chungnam.go.kr/construction.do",
+  "host": "chungnam.go.kr",
+  "have": "draft"
+ },
+ {
+  "name": "경상북도",
+  "url": "https://www.gb.go.kr",
+  "host": "gb.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "경상북도 포항시 대표누리집",
+  "url": "http://www.pohang.go.kr",
+  "host": "pohang.go.kr",
+  "have": "draft"
+ },
+ {
+  "name": "경상북도 경주시",
+  "url": "http://www.gyeongju.go.kr",
+  "host": "gyeongju.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "경상북도 김천시",
+  "url": "https://gc.go.kr",
+  "host": "gc.go.kr",
+  "have": "draft"
+ },
+ {
+  "name": "경상북도 안동시청",
+  "url": "https://www.andong.go.kr",
+  "host": "andong.go.kr",
+  "have": "draft"
+ },
+ {
+  "name": "경상북도 구미시청",
+  "url": "http://www.gumi.go.kr",
+  "host": "gumi.go.kr",
+  "have": "draft"
+ },
+ {
+  "name": "경상북도 영주시",
+  "url": "http://www.yeongju.go.kr",
+  "host": "yeongju.go.kr",
+  "have": "draft"
+ },
+ {
+  "name": "경상북도 영천시",
+  "url": "http://www.yc.go.kr",
+  "host": "yc.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "경상북도 상주시청",
+  "url": "http://www.sangju.go.kr",
+  "host": "sangju.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "경상북도 문경시청",
+  "url": "https://www.gbmg.go.kr",
+  "host": "gbmg.go.kr",
+  "have": "draft"
+ },
+ {
+  "name": "경상북도 경산시",
+  "url": "http://gbgs.go.kr",
+  "host": "gbgs.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "경상북도 의성군청",
+  "url": "http://www.usc.go.kr",
+  "host": "usc.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "청송군청",
+  "url": "http://www.cs.go.kr",
+  "host": "cs.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "경상북도 영양군",
+  "url": "http://www.yyg.go.kr",
+  "host": "yyg.go.kr",
+  "have": "draft"
+ },
+ {
+  "name": "경상북도 영덕군",
+  "url": "http://www.yd.go.kr",
+  "host": "yd.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "경상북도 청도군",
+  "url": "https://www.cheongdo.go.kr",
+  "host": "cheongdo.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "경상북도 고령군",
+  "url": "http://www.goryeong.go.kr",
+  "host": "goryeong.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "경상북도 성주군",
+  "url": "http://www.sj.go.kr",
+  "host": "sj.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "경상북도 칠곡군청",
+  "url": "http://www.chilgok.go.kr",
+  "host": "chilgok.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "경상북도 예천군",
+  "url": "http://www.ycg.kr",
+  "host": "ycg.kr",
+  "have": "published"
+ },
+ {
+  "name": "경상북도 봉화군",
+  "url": "https://www.bonghwa.go.kr",
+  "host": "bonghwa.go.kr",
+  "have": "draft"
+ },
+ {
+  "name": "경상북도 울진군",
+  "url": "http://www.uljin.go.kr",
+  "host": "uljin.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "경상북도 울릉군",
+  "url": "http://www.ulleung.go.kr",
+  "host": "ulleung.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "소방본부",
+  "url": "https://gb119.go.kr/",
+  "host": "gb119.go.kr",
+  "have": "queued"
+ },
+ {
+  "name": "경북소방학교",
+  "url": "https://gb119.go.kr/gfa/MainPage.do",
+  "host": "gb119.go.kr",
+  "have": "queued"
+ },
+ {
+  "name": "경상남도 대표누리집",
+  "url": "https://www.gyeongnam.go.kr",
+  "host": "gyeongnam.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "진주시 대표 누리집",
+  "url": "http://www.jinju.go.kr",
+  "host": "jinju.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "통영시 대표누리집",
+  "url": "http://www.tongyeong.go.kr",
+  "host": "tongyeong.go.kr",
+  "have": "draft"
+ },
+ {
+  "name": "사천시 대표누리집",
+  "url": "http://sacheon.go.kr",
+  "host": "sacheon.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "김해시 대표 누리집",
+  "url": "http://www.gimhae.go.kr",
+  "host": "gimhae.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "밀양시 대표 누리집",
+  "url": "http://miryang.go.kr",
+  "host": "miryang.go.kr",
+  "have": "draft"
+ },
+ {
+  "name": "거제시 대표 누리집",
+  "url": "https://www.geoje.go.kr",
+  "host": "geoje.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "양산시 대표 누리집",
+  "url": "http://www.yangsan.go.kr",
+  "host": "yangsan.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "의령군 대표 누리집",
+  "url": "http://www.uiryeong.go.kr",
+  "host": "uiryeong.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "함안군 대표누리집",
+  "url": "http://www.haman.go.kr",
+  "host": "haman.go.kr",
+  "have": "draft"
+ },
+ {
+  "name": "창녕군 대표누리집",
+  "url": "http://www.cng.go.kr",
+  "host": "cng.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "경상남도 고성군",
+  "url": "https://www.goseong.go.kr",
+  "host": "goseong.go.kr",
+  "have": "draft"
+ },
+ {
+  "name": "남해군 대표 누리집",
+  "url": "https://www.namhae.go.kr",
+  "host": "namhae.go.kr",
+  "have": "draft"
+ },
+ {
+  "name": "하동군 대표 누리집",
+  "url": "http://www.hadong.go.kr",
+  "host": "hadong.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "산청군 대표 누리집",
+  "url": "http://www.sancheong.go.kr",
+  "host": "sancheong.go.kr",
+  "have": "draft"
+ },
+ {
+  "name": "함양군 대표누리집",
+  "url": "http://www.hygn.go.kr",
+  "host": "hygn.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "거창군청 대표 누리집",
+  "url": "https://www.geochang.go.kr",
+  "host": "geochang.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "합천군 대표 누리집",
+  "url": "http://www.hc.go.kr",
+  "host": "hc.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "창원시 대표 누리집",
+  "url": "https://www.changwon.go.kr",
+  "host": "changwon.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "전북특별자치도 대표누리집",
+  "url": "https://www.jeonbuk.go.kr",
+  "host": "jeonbuk.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "전북특별자치도 전주시",
+  "url": "https://www.jeonju.go.kr",
+  "host": "jeonju.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "전북특별자치도 군산시청",
+  "url": "http://www.gunsan.go.kr",
+  "host": "gunsan.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "전북특별자치도 익산시",
+  "url": "http://www.iksan.go.kr",
+  "host": "iksan.go.kr",
+  "have": "draft"
+ },
+ {
+  "name": "전북특별자치도 정읍시",
+  "url": "http://www.jeongeup.go.kr",
+  "host": "jeongeup.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "전북특별자치도 남원시 대표",
+  "url": "http://www.namwon.go.kr",
+  "host": "namwon.go.kr",
+  "have": "draft"
+ },
+ {
+  "name": "전북특별자치도 김제시",
+  "url": "http://www.gimje.go.kr",
+  "host": "gimje.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "전북특별자치도 완주군청",
+  "url": "http://www.wanju.go.kr",
+  "host": "wanju.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "전북특별자치도 진안군청",
+  "url": "http://jinan.go.kr",
+  "host": "jinan.go.kr",
+  "have": "queued"
+ },
+ {
+  "name": "전북특별자치도 무주군",
+  "url": "https://www.muju.go.kr",
+  "host": "muju.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "전북특별자치도 장수군",
+  "url": "http://www.jangsu.go.kr",
+  "host": "jangsu.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "전북특별자치도 임실군",
+  "url": "http://www.imsil.go.kr",
+  "host": "imsil.go.kr",
+  "have": "queued"
+ },
+ {
+  "name": "전북특별자치도 순창군",
+  "url": "http://www.sunchang.go.kr",
+  "host": "sunchang.go.kr",
+  "have": "draft"
+ },
+ {
+  "name": "전북특별자치도 고창군청",
+  "url": "http://www.gochang.go.kr",
+  "host": "gochang.go.kr",
+  "have": "queued"
+ },
+ {
+  "name": "전북특별자치도 부안군",
+  "url": "https://www.buan.go.kr",
+  "host": "buan.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "전남광주통합특별시 목포시청",
+  "url": "http://www.mokpo.go.kr",
+  "host": "mokpo.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "전남광주통합특별시 여수시",
+  "url": "http://www.yeosu.go.kr",
+  "host": "yeosu.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "전남광주통합특별시 순천시",
+  "url": "https://www.suncheon.go.kr",
+  "host": "suncheon.go.kr",
+  "have": "draft"
+ },
+ {
+  "name": "전남광주통합특별시 나주시",
+  "url": "http://www.naju.go.kr",
+  "host": "naju.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "전남광주통합특별시 광양시",
+  "url": "http://www.gwangyang.go.kr",
+  "host": "gwangyang.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "전남광주통합특별시 동구",
+  "url": "http://www.donggu.kr",
+  "host": "donggu.kr",
+  "have": "draft"
+ },
+ {
+  "name": "전남광주통합특별시 서구",
+  "url": "https://www.seogu.gwangju.kr",
+  "host": "seogu.gwangju.kr",
+  "have": "published"
+ },
+ {
+  "name": "전남광주통합특별시 남구",
+  "url": "http://www.namgu.gwangju.kr",
+  "host": "namgu.gwangju.kr",
+  "have": "draft"
+ },
+ {
+  "name": "전남광주통합특별시 북구",
+  "url": "https://bukgu.gwangju.kr",
+  "host": "bukgu.gwangju.kr",
+  "have": "draft"
+ },
+ {
+  "name": "전남광주통합특별시 광산구",
+  "url": "http://www.gwangsan.go.kr",
+  "host": "gwangsan.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "전남광주통합특별시 담양군",
+  "url": "http://www.damyang.go.kr",
+  "host": "damyang.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "전남광주통합특별시 곡성군",
+  "url": "https://www.gokseong.go.kr",
+  "host": "gokseong.go.kr",
+  "have": "draft"
+ },
+ {
+  "name": "전남광주통합특별시 구례군청",
+  "url": "https://www.gurye.go.kr",
+  "host": "gurye.go.kr",
+  "have": "draft"
+ },
+ {
+  "name": "전남광주통합특별시 고흥군",
+  "url": "https://www.goheung.go.kr",
+  "host": "goheung.go.kr",
+  "have": "draft"
+ },
+ {
+  "name": "전남광주통합특별시 보성군청",
+  "url": "http://www.boseong.go.kr",
+  "host": "boseong.go.kr",
+  "have": "draft"
+ },
+ {
+  "name": "전남광주통합특별시 화순군청",
+  "url": "https://www.hwasun.go.kr",
+  "host": "hwasun.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "전남광주통합특별시 장흥군",
+  "url": "http://www.jangheung.go.kr",
+  "host": "jangheung.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "전남광주통합특별시 강진군청",
+  "url": "http://www.gangjin.go.kr",
+  "host": "gangjin.go.kr",
+  "have": "draft"
+ },
+ {
+  "name": "전남광주통합특별시 해남군",
+  "url": "http://www.haenam.go.kr",
+  "host": "haenam.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "전남광주통합특별시 영암군",
+  "url": "http://www.yeongam.go.kr",
+  "host": "yeongam.go.kr",
+  "have": "draft"
+ },
+ {
+  "name": "전남광주통합특별시 무안군",
+  "url": "http://www.muan.go.kr",
+  "host": "muan.go.kr",
+  "have": "draft"
+ },
+ {
+  "name": "전남광주통합특별시 함평군",
+  "url": "http://www.hampyeong.go.kr",
+  "host": "hampyeong.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "전남광주통합특별시 영광군",
+  "url": "http://www.yeonggwang.go.kr",
+  "host": "yeonggwang.go.kr",
+  "have": "draft"
+ },
+ {
+  "name": "전남광주통합특별시 장성군",
+  "url": "http://www.jangseong.go.kr",
+  "host": "jangseong.go.kr",
+  "have": "queued"
+ },
+ {
+  "name": "전남광주통합특별시 완도군청",
+  "url": "http://www.wando.go.kr",
+  "host": "wando.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "전남광주통합특별시 진도군",
+  "url": "http://www.jindo.go.kr",
+  "host": "jindo.go.kr",
+  "have": "draft"
+ },
+ {
+  "name": "전남광주통합특별시 신안군청",
+  "url": "http://www.shinan.go.kr",
+  "host": "shinan.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "제주특별자치도청",
+  "url": "http://www.jeju.go.kr",
+  "host": "jeju.go.kr",
+  "have": "draft"
+ },
+ {
+  "name": "제주특별자치도 제주시",
+  "url": "http://www.jejusi.go.kr",
+  "host": "jejusi.go.kr",
+  "have": "queued"
+ },
+ {
+  "name": "제주특별자치도 서귀포시",
+  "url": "http://www.seogwipo.go.kr",
+  "host": "seogwipo.go.kr",
+  "have": "draft"
+ },
+ {
+  "name": "서울시교육청",
+  "url": "http://www.sen.go.kr",
+  "host": "sen.go.kr",
+  "have": "draft"
+ },
+ {
+  "name": "부산광역시교육청",
+  "url": "https://www.pen.go.kr",
+  "host": "pen.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "인천광역시교육청",
+  "url": "https://www.ice.go.kr",
+  "host": "ice.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "대구광역시교육청",
+  "url": "https://www.dge.go.kr",
+  "host": "dge.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "대전광역시교육청",
+  "url": "https://www.dje.go.kr",
+  "host": "dje.go.kr",
+  "have": "draft"
+ },
+ {
+  "name": "광주광역시교육청",
+  "url": "http://www.gen.go.kr",
+  "host": "gen.go.kr",
+  "have": "draft"
+ },
+ {
+  "name": "울산광역시교육청",
+  "url": "https://use.go.kr",
+  "host": "use.go.kr",
+  "have": "draft"
+ },
+ {
+  "name": "세종특별자치시교육청",
+  "url": "http://www.sje.go.kr",
+  "host": "sje.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "경기도교육청",
+  "url": "https://www.goe.go.kr",
+  "host": "goe.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "강원특별자치도교육청",
+  "url": "https://www.gwe.go.kr",
+  "host": "gwe.go.kr",
+  "have": "queued"
+ },
+ {
+  "name": "충청북도교육청",
+  "url": "https://www.cbe.go.kr",
+  "host": "cbe.go.kr",
+  "have": "queued"
+ },
+ {
+  "name": "충청남도교육청",
+  "url": "http://www.cne.go.kr",
+  "host": "cne.go.kr",
+  "have": "draft"
+ },
+ {
+  "name": "경상북도 교육청",
+  "url": "https://www.gbe.kr",
+  "host": "gbe.kr",
+  "have": "published"
+ },
+ {
+  "name": "전북특별자치도교육청",
+  "url": "http://www.jbe.go.kr",
+  "host": "jbe.go.kr",
+  "have": "queued"
+ },
+ {
+  "name": "전라남도교육청",
+  "url": "https://www.jne.go.kr",
+  "host": "jne.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "제주특별자치도교육청",
+  "url": "https://www.jje.go.kr",
+  "host": "jje.go.kr",
+  "have": "draft"
+ },
+ {
+  "name": "한국기술교육대학교",
+  "url": "http://www.koreatech.ac.kr",
+  "host": "koreatech.ac.kr",
+  "have": "queued"
+ },
+ {
+  "name": "한국기술교육대학교 대학원",
+  "url": "https://www.koreatech.ac.kr/grd/",
+  "host": "koreatech.ac.kr",
+  "have": "queued"
+ },
+ {
+  "name": "학교법인한국전력국제원자력대학원대학교",
+  "url": "https://www.kings.ac.kr",
+  "host": "kings.ac.kr",
+  "have": "queued"
+ },
+ {
+  "name": "대한민국 국회",
+  "url": "https://www.assembly.go.kr",
+  "host": "assembly.go.kr",
+  "have": "draft"
+ },
+ {
+  "name": "대한민국 법원",
+  "url": "https://www.scourt.go.kr",
+  "host": "scourt.go.kr",
+  "have": "published"
+ },
+ {
+  "name": "헌법재판소",
+  "url": "http://www.ccourt.go.kr",
+  "host": "ccourt.go.kr",
+  "have": "draft"
+ },
+ {
+  "name": "중앙선거관리위원회",
+  "url": "http://www.nec.go.kr",
+  "host": "nec.go.kr",
+  "have": "queued"
+ },
+ {
+  "name": "기후에너지환경부 누리집",
+  "url": "https://www.mcee.go.kr",
+  "host": "mcee.go.kr",
+  "final": "https://www.mcee.go.kr/",
+  "state": "수집 가능",
+  "robots": "허용"
+ },
+ {
+  "name": "한강유역환경청",
+  "url": "https://www.mcee.go.kr/hg",
+  "host": "mcee.go.kr",
+  "final": "https://www.mcee.go.kr/hg/",
+  "state": "수집 가능",
+  "robots": "허용"
+ },
+ {
+  "name": "영산강유역환경청",
+  "url": "https://www.mcee.go.kr/ysg",
+  "host": "mcee.go.kr",
+  "final": "https://www.mcee.go.kr/ysg/",
+  "state": "수집 가능",
+  "robots": "허용"
+ },
+ {
+  "name": "원주지방환경청",
+  "url": "https://www.mcee.go.kr/wonju",
+  "host": "mcee.go.kr",
+  "final": "https://www.mcee.go.kr/wonju/",
+  "state": "수집 가능",
+  "robots": "허용"
+ },
+ {
+  "name": "낙동강유역환경청",
+  "url": "https://www.mcee.go.kr/ndg",
+  "host": "mcee.go.kr",
+  "final": "https://www.mcee.go.kr/ndg/",
+  "state": "수집 가능",
+  "robots": "허용"
+ },
+ {
+  "name": "국립야생동물질병관리원",
+  "url": "https://niwdc.mcee.go.kr",
+  "host": "niwdc.mcee.go.kr",
+  "final": "https://niwdc.mcee.go.kr/",
+  "state": "수집 가능",
+  "robots": "허용"
+ },
+ {
+  "name": "대구지방환경청",
+  "url": "https://www.mcee.go.kr/daegu",
+  "host": "mcee.go.kr",
+  "final": "https://www.mcee.go.kr/daegu/",
+  "state": "수집 가능",
+  "robots": "허용"
+ },
+ {
+  "name": "전북지방환경청",
+  "url": "https://www.mcee.go.kr/smg",
+  "host": "mcee.go.kr",
+  "final": "https://www.mcee.go.kr/smg/",
+  "state": "수집 가능",
+  "robots": "허용"
+ },
+ {
+  "name": "수도권대기환경청",
+  "url": "https://www.mcee.go.kr/mamo",
+  "host": "mcee.go.kr",
+  "final": "https://www.mcee.go.kr/mamo/",
+  "state": "수집 가능",
+  "robots": "허용"
+ },
+ {
+  "name": "금강유역환경청",
+  "url": "https://www.mcee.go.kr/gg",
+  "host": "mcee.go.kr",
+  "final": "https://www.mcee.go.kr/gg/",
+  "state": "수집 가능",
+  "robots": "허용"
+ },
+ {
+  "name": "화학물질안전원",
+  "url": "https://nics.mcee.go.kr",
+  "host": "nics.mcee.go.kr",
+  "final": "https://nics.mcee.go.kr/",
+  "state": "robots 차단",
+  "robots": "전체 차단"
+ },
+ {
+  "name": "대통령경호처",
+  "url": "https://www.pss.go.kr",
+  "host": "pss.go.kr",
+  "final": "",
+  "state": "접속 실패(UNABLE_TO_VERIFY_LEAF_SIGNATURE)",
+  "robots": "robots 없음"
+ },
+ {
+  "name": "기획예산처",
+  "url": "https://www.mpb.go.kr",
+  "host": "mpb.go.kr",
+  "final": "https://www.mpb.go.kr/web/main/main",
+  "state": "수집 가능",
+  "robots": "부분 허용"
+ },
+ {
+  "name": "아시아문화중심도시 광주",
+  "url": "https://www.cct.go.kr",
+  "host": "cct.go.kr",
+  "final": "https://www.cct.go.kr/",
+  "state": "수집 가능",
+  "robots": "허용"
+ },
+ {
+  "name": "중앙환경분쟁조정피해구제위원회",
+  "url": "https://ecc.mcee.go.kr",
+  "host": "ecc.mcee.go.kr",
+  "final": "https://ecc.mcee.go.kr/front/user/main.do;jsessionid=JpsmKYK-SwWaJNyUigb1+oZZ.node13",
+  "state": "수집 가능",
+  "robots": "허용"
+ },
+ {
+  "name": "그랜드코리아레저(주)",
+  "url": "https://www.grandkorea.com",
+  "host": "grandkorea.com",
+  "final": "https://www.grandkorea.com/",
+  "state": "robots 차단",
+  "robots": "전체 차단"
+ },
+ {
+  "name": "국립환경인재개발원",
+  "url": "https://ehrd.mcee.go.kr",
+  "host": "ehrd.mcee.go.kr",
+  "final": "https://ehrd.mcee.go.kr/",
+  "state": "수집 가능",
+  "robots": "허용"
+ },
+ {
+  "name": "방송미디어통신위원회",
+  "url": "https://www.kmcc.go.kr",
+  "host": "kmcc.go.kr",
+  "final": "https://www.kmcc.go.kr/",
+  "state": "수집 가능",
+  "robots": "허용"
+ },
+ {
+  "name": "산업통상부",
+  "url": "http://www.motir.go.kr",
+  "host": "motir.go.kr",
+  "final": "http://www.motir.go.kr/",
+  "state": "수집 가능",
+  "robots": "robots 없음"
+ },
+ {
+  "name": "재외동포365 민원포털",
+  "url": "https://www.g4k.go.kr",
+  "host": "g4k.go.kr",
+  "final": "https://www.g4k.go.kr/",
+  "state": "수집 가능",
+  "robots": "부분 허용"
+ },
+ {
+  "name": "국립전통예술중학교",
+  "url": "http://kugak-am.sen.ms.kr",
+  "host": "kugak-am.sen.ms.kr",
+  "final": "https://kugak-am.sen.ms.kr/",
+  "state": "수집 가능",
+  "robots": "부분 허용"
+ },
+ {
+  "name": "국립아시아문화전당재단",
+  "url": "https://www.accf.or.kr/main/mainpage",
+  "host": "accf.or.kr",
+  "final": "https://www.accf.or.kr/main/mainpage",
+  "state": "robots 차단",
+  "robots": "전체 차단"
+ },
+ {
+  "name": "국립국악고등학교",
+  "url": "http://gugak.sen.hs.kr",
+  "host": "gugak.sen.hs.kr",
+  "final": "https://gugak.sen.hs.kr/",
+  "state": "수집 가능",
+  "robots": "부분 허용"
+ },
+ {
+  "name": "국립전통예술고등학교",
+  "url": "http://kugak-am.sen.hs.kr",
+  "host": "kugak-am.sen.hs.kr",
+  "final": "https://kugak-am.sen.hs.kr/",
+  "state": "수집 가능",
+  "robots": "부분 허용"
+ },
+ {
+  "name": "국가데이터처 누리집",
+  "url": "https://mods.go.kr",
+  "host": "mods.go.kr",
+  "final": "https://mods.go.kr/index.es?sid=a1",
+  "state": "수집 가능",
+  "robots": "허용"
+ },
+ {
+  "name": "수출 플러스 지원단",
+  "url": "https://www.export119.go.kr",
+  "host": "export119.go.kr",
+  "final": "https://www.export119.go.kr/",
+  "state": "robots 차단",
+  "robots": "전체 차단"
+ },
+ {
+  "name": "대한민국 아포스티유 서비스",
+  "url": "https://www.apostille.go.kr/index.do",
+  "host": "apostille.go.kr",
+  "final": "https://www.apostille.go.kr/index.do",
+  "state": "수집 가능",
+  "robots": "부분 허용"
+ },
+ {
+  "name": "농식품인재개발원",
+  "url": "https://www.ahi.go.kr",
+  "host": "ahi.go.kr",
+  "final": "https://www.ahi.go.kr/index.do",
+  "state": "수집 가능",
+  "robots": "허용"
+ },
+ {
+  "name": "인천광역시 제물포구청",
+  "url": "https://www.jemulpo.go.kr",
+  "host": "jemulpo.go.kr",
+  "final": "https://www.jemulpo.go.kr/",
+  "state": "수집 가능",
+  "robots": "허용"
+ },
+ {
+  "name": "지식재산처",
+  "url": "http://www.moip.go.kr",
+  "host": "moip.go.kr",
+  "final": "https://www.moip.go.kr/ko/MainApp.do",
+  "state": "수집 가능",
+  "robots": "허용"
+ },
+ {
+  "name": "해양수산부 부산지방해양수산청",
+  "url": "https://busan.mof.go.kr",
+  "host": "busan.mof.go.kr",
+  "final": "https://busan.mof.go.kr/ko/index.do",
+  "state": "수집 가능",
+  "robots": "허용"
+ },
+ {
+  "name": "한상넷",
+  "url": "http://www.hansang.net",
+  "host": "hansang.net",
+  "final": "https://www.hansang.net/",
+  "state": "수집 가능",
+  "robots": "허용"
+ },
+ {
+  "name": "재단법인경기도일자리재단",
+  "url": "http://gjf.or.kr",
+  "host": "gjf.or.kr",
+  "final": "http://gjf.or.kr/main/intro.do",
+  "state": "수집 가능",
+  "robots": "허용"
+ },
+ {
+  "name": "전북특별자치도남원의료원",
+  "url": "https://www.namwonmed.or.kr",
+  "host": "namwonmed.or.kr",
+  "final": "https://www.namwonmed.or.kr/",
+  "state": "수집 가능",
+  "robots": "허용"
+ },
+ {
+  "name": "전남광주통합특별시",
+  "url": "https://www.jeonnam-gwangju.go.kr/",
+  "host": "jeonnam-gwangju.go.kr",
+  "final": "https://www.jeonnam-gwangju.go.kr/",
+  "state": "수집 가능",
+  "robots": "허용"
+ },
+ {
+  "name": "코리안넷",
+  "url": "http://www.korean.net",
+  "host": "korean.net",
+  "final": "https://www.korean.net/web/main/main",
+  "state": "수집 가능",
+  "robots": "부분 허용"
+ },
+ {
+  "name": "재단법인금천문화재단",
+  "url": "https://gcfac.or.kr/mpage",
+  "host": "gcfac.or.kr",
+  "final": "https://gcfac.or.kr/mpage",
+  "state": "수집 가능",
+  "robots": "허용"
+ },
+ {
+  "name": "재외동포청 워킹홀리데이 인포센터",
+  "url": "http://whic.mofa.go.kr",
+  "host": "whic.mofa.go.kr",
+  "final": "https://whic.mofa.go.kr/whic/main/",
+  "state": "수집 가능",
+  "robots": "허용"
+ },
+ {
+  "name": "전라남도 순천의료원",
+  "url": "https://jsmc.or.kr/",
+  "host": "jsmc.or.kr",
+  "final": "https://jsmc.or.kr/",
+  "state": "수집 가능",
+  "robots": "허용"
+ },
+ {
+  "name": "인천광역시 서해구청",
+  "url": "https://www.seohae.go.kr",
+  "host": "seohae.go.kr",
+  "final": "https://www.seohae.go.kr/open_content/main/",
+  "state": "수집 가능",
+  "robots": "허용"
+ },
+ {
+  "name": "전라남도 강진의료원",
+  "url": "http://www.gjmed.or.kr",
+  "host": "gjmed.or.kr",
+  "final": "http://www.gjmed.or.kr/",
+  "state": "수집 가능",
+  "robots": "허용"
+ },
+ {
+  "name": "재단법인전라남도문화재단",
+  "url": "https://www.jncf.or.kr/jact/index.do",
+  "host": "jncf.or.kr",
+  "final": "",
+  "state": "접속 실패(UNABLE_TO_VERIFY_LEAF_SIGNATURE)",
+  "robots": "robots 없음"
+ },
+ {
+  "name": "전라남도환경산업진흥원",
+  "url": "https://www.jeipi.or.kr",
+  "host": "jeipi.or.kr",
+  "final": "https://www.jeipi.or.kr/",
+  "state": "robots 차단",
+  "robots": "전체 차단"
+ },
+ {
+  "name": "한국전통문화대학교",
+  "url": "https://www.knuh.ac.kr",
+  "host": "knuh.ac.kr",
+  "final": "https://www.knuh.ac.kr/",
+  "state": "수집 가능",
+  "robots": "허용"
+ },
+ {
+  "name": "전라남도체육회",
+  "url": "https://www.jnsports.or.kr/",
+  "host": "jnsports.or.kr",
+  "final": "https://www.jnsports.or.kr/",
+  "state": "수집 가능",
+  "robots": "robots 없음"
+ },
+ {
+  "name": "강원도립대학교",
+  "url": "https://www.gw.ac.kr",
+  "host": "gw.ac.kr",
+  "final": "https://www.gw.ac.kr/",
+  "state": "수집 가능",
+  "robots": "부분 허용"
+ },
+ {
+  "name": "한국농수산대학교",
+  "url": "https://www.af.ac.kr",
+  "host": "af.ac.kr",
+  "final": "https://www.af.ac.kr/",
+  "state": "수집 가능",
+  "robots": "허용"
+ },
+ {
+  "name": "KNU 강원대학교",
+  "url": "https://www.kangwon.ac.kr",
+  "host": "kangwon.ac.kr",
+  "final": "https://www.kangwon.ac.kr/ko/index.do",
+  "state": "수집 가능",
+  "robots": "부분 허용"
+ },
+ {
+  "name": "전남테크노파크",
+  "url": "https://jntp.or.kr/base/main/view",
+  "host": "jntp.or.kr",
+  "final": "https://jntp.or.kr/base/main/view",
+  "state": "수집 가능",
+  "robots": "robots 없음"
+ },
+ {
+  "name": "충남도립대학교",
+  "url": "https://cnsu.ac.kr/main.do",
+  "host": "cnsu.ac.kr",
+  "final": "https://www.cnsu.ac.kr/univ/main.do",
+  "state": "수집 가능",
+  "robots": "robots 없음"
+ },
+ {
+  "name": "경상국립대학교",
+  "url": "https://www.gnu.ac.kr",
+  "host": "gnu.ac.kr",
+  "final": "https://www.gnu.ac.kr/intro/www/",
+  "state": "수집 가능",
+  "robots": "허용"
+ },
+ {
+  "name": "국립공주대학교",
+  "url": "http://www.kongju.ac.kr",
+  "host": "kongju.ac.kr",
+  "final": "https://www.kongju.ac.kr/index.jsp",
+  "state": "수집 가능",
+  "robots": "허용"
+ },
+ {
+  "name": "경북대학교",
+  "url": "https://www.knu.ac.kr",
+  "host": "knu.ac.kr",
+  "final": "https://www.knu.ac.kr/wbbs/wbbs/main/main.action",
+  "state": "수집 가능",
+  "robots": "robots 없음"
+ },
+ {
+  "name": "목포해양대학교",
+  "url": "https://www.mmu.ac.kr",
+  "host": "mmu.ac.kr",
+  "final": "",
+  "state": "접속 실패(TypeError)",
+  "robots": "robots 없음"
+ },
+ {
+  "name": "부산대학교",
+  "url": "http://www.pusan.ac.kr",
+  "host": "pusan.ac.kr",
+  "final": "https://www.pusan.ac.kr/index.jsp",
+  "state": "수집 가능",
+  "robots": "robots 없음"
+ },
+ {
+  "name": "군산대학교",
+  "url": "http://www.kunsan.ac.kr",
+  "host": "kunsan.ac.kr",
+  "final": "https://www.kunsan.ac.kr/index.kunsan?sso=ok",
+  "state": "수집 가능",
+  "robots": "robots 없음"
+ },
+ {
+  "name": "재단법인전남여성가족재단",
+  "url": "https://www.jwomen.or.kr/",
+  "host": "jwomen.or.kr",
+  "final": "https://www.jwomen.or.kr/",
+  "state": "수집 가능",
+  "robots": "허용"
+ },
+ {
+  "name": "충청북도 충북도립대학교",
+  "url": "https://www.cpu.ac.kr",
+  "host": "cpu.ac.kr",
+  "final": "https://www.cpu.ac.kr/home/main.do",
+  "state": "robots 차단",
+  "robots": "전체 차단"
+ },
+ {
+  "name": "전북대학교",
+  "url": "http://www.jbnu.ac.kr",
+  "host": "jbnu.ac.kr",
+  "final": "https://www.jbnu.ac.kr/",
+  "state": "수집 가능",
+  "robots": "허용"
+ },
+ {
+  "name": "창원대학교",
+  "url": "http://www.changwon.ac.kr",
+  "host": "changwon.ac.kr",
+  "final": "https://www.changwon.ac.kr/",
+  "state": "수집 가능",
+  "robots": "허용"
+ },
+ {
+  "name": "충북대학교",
+  "url": "https://www.cbnu.ac.kr",
+  "host": "cbnu.ac.kr",
+  "final": "https://www.cbnu.ac.kr/",
+  "state": "수집 가능",
+  "robots": "robots 없음"
+ },
+ {
+  "name": "한국교원대학교",
+  "url": "http://www.knue.ac.kr",
+  "host": "knue.ac.kr",
+  "final": "https://www.knue.ac.kr/",
+  "state": "수집 가능",
+  "robots": "허용"
+ },
+ {
+  "name": "한국체육대학교",
+  "url": "http://www.knsu.ac.kr",
+  "host": "knsu.ac.kr",
+  "final": "https://www.knsu.ac.kr/index.do",
+  "state": "접속 실패(500)",
+  "robots": "허용"
+ },
+ {
+  "name": "가야대학교",
+  "url": "https://www.kaya.ac.kr",
+  "host": "kaya.ac.kr",
+  "final": "https://www.kaya.ac.kr/",
+  "state": "수집 가능",
+  "robots": "robots 없음"
+ },
+ {
+  "name": "한국해양대학교",
+  "url": "https://www.kmou.ac.kr",
+  "host": "kmou.ac.kr",
+  "final": "https://www.kmou.ac.kr/",
+  "state": "수집 가능",
+  "robots": "허용"
+ },
+ {
+  "name": "서울시립대학교",
+  "url": "https://www.uos.ac.kr",
+  "host": "uos.ac.kr",
+  "final": "https://www.uos.ac.kr/",
+  "state": "수집 가능",
+  "robots": "허용"
+ },
+ {
+  "name": "가톨릭대학교",
+  "url": "https://www.catholic.ac.kr",
+  "host": "catholic.ac.kr",
+  "final": "https://www.catholic.ac.kr/index.do",
+  "state": "접속 실패(404)",
+  "robots": "허용"
+ },
+ {
+  "name": "감리교신학대학교",
+  "url": "https://www.mtu.ac.kr",
+  "host": "mtu.ac.kr",
+  "final": "https://www.mtu.ac.kr/",
+  "state": "수집 가능",
+  "robots": "허용"
+ },
+ {
+  "name": "국립금오공과대학교",
+  "url": "http://www.kumoh.ac.kr",
+  "host": "kumoh.ac.kr",
+  "final": "https://www.kumoh.ac.kr/ko/index.do?sso=ok",
+  "state": "수집 가능",
+  "robots": "허용"
+ },
+ {
+  "name": "건국대학교",
+  "url": "https://www.konkuk.ac.kr",
+  "host": "konkuk.ac.kr",
+  "final": "",
+  "state": "접속 실패(TypeError)",
+  "robots": "허용"
+ },
+ {
+  "name": "건양대학교",
+  "url": "https://www.konyang.ac.kr",
+  "host": "konyang.ac.kr",
+  "final": "https://www.konyang.ac.kr/kor.do",
+  "state": "수집 가능",
+  "robots": "허용"
+ },
+ {
+  "name": "경기대학교",
+  "url": "https://www.kyonggi.ac.kr",
+  "host": "kyonggi.ac.kr",
+  "final": "https://www.kyonggi.ac.kr/",
+  "state": "robots 차단",
+  "robots": "전체 차단"
+ },
+ {
+  "name": "강남대학교",
+  "url": "https://web.kangnam.ac.kr",
+  "host": "web.kangnam.ac.kr",
+  "final": "https://web.kangnam.ac.kr/",
+  "state": "수집 가능",
+  "robots": "허용"
+ },
+ {
+  "name": "계명대학교",
+  "url": "http://www.kmu.ac.kr",
+  "host": "kmu.ac.kr",
+  "final": "",
+  "state": "접속 실패(UNABLE_TO_VERIFY_LEAF_SIGNATURE)",
+  "robots": "robots 없음"
+ },
+ {
+  "name": "제주대학교",
+  "url": "http://www.jejunu.ac.kr",
+  "host": "jejunu.ac.kr",
+  "final": "http://www.jejunu.ac.kr/",
+  "state": "robots 차단",
+  "robots": "전체 차단"
+ },
+ {
+  "name": "경남대학교",
+  "url": "https://www.kyungnam.ac.kr",
+  "host": "kyungnam.ac.kr",
+  "final": "https://www.kyungnam.ac.kr/sites/ko/main.jsp",
+  "state": "robots 차단",
+  "robots": "전체 차단"
+ },
+ {
+  "name": "경성대학교",
+  "url": "http://ks.ac.kr",
+  "host": "ks.ac.kr",
+  "final": "http://ks.ac.kr/kor/Main.do",
+  "state": "수집 가능",
+  "robots": "robots 없음"
+ },
+ {
+  "name": "경희대학교",
+  "url": "http://www.khu.ac.kr",
+  "host": "khu.ac.kr",
+  "final": "https://www.khu.ac.kr/kor/user/main/view.do",
+  "state": "수집 가능",
+  "robots": "robots 없음"
+ },
+ {
+  "name": "재단법인전라남도정보문화산업진흥원",
+  "url": "https://jcia.or.kr/cf/index.do",
+  "host": "jcia.or.kr",
+  "final": "https://jcia.or.kr/cf/index.do",
+  "state": "수집 가능",
+  "robots": "허용"
+ },
+ {
+  "name": "고려대학교",
+  "url": "http://www.korea.ac.kr",
+  "host": "korea.ac.kr",
+  "final": "https://www.korea.ac.kr/",
+  "state": "수집 가능",
+  "robots": "허용"
+ },
+ {
+  "name": "광주가톨릭대학교",
+  "url": "https://www.gjc.ac.kr",
+  "host": "gjc.ac.kr",
+  "final": "https://www.gjc.ac.kr/",
+  "state": "수집 가능",
+  "robots": "robots 없음"
+ },
+ {
+  "name": "대신대학교",
+  "url": "https://www.daeshin.ac.kr",
+  "host": "daeshin.ac.kr",
+  "final": "",
+  "state": "접속 실패(UNABLE_TO_VERIFY_LEAF_SIGNATURE)",
+  "robots": "robots 없음"
+ },
+ {
+  "name": "대전대학교",
+  "url": "https://www.dju.ac.kr",
+  "host": "dju.ac.kr",
+  "final": "https://www.dju.ac.kr/",
+  "state": "수집 가능",
+  "robots": "허용"
+ },
+ {
+  "name": "대구가톨릭대학교",
+  "url": "https://www.cu.ac.kr",
+  "host": "cu.ac.kr",
+  "final": "https://www.cu.ac.kr/index.php",
+  "state": "수집 가능",
+  "robots": "허용"
+ },
+ {
+  "name": "대구대학교",
+  "url": "http://www.daegu.ac.kr",
+  "host": "daegu.ac.kr",
+  "final": "https://www.daegu.ac.kr/main",
+  "state": "수집 가능",
+  "robots": "허용"
+ },
+ {
+  "name": "동아대학교",
+  "url": "https://www.donga.ac.kr",
+  "host": "donga.ac.kr",
+  "final": "https://www.donga.ac.kr/",
+  "state": "수집 가능",
+  "robots": "허용"
+ },
+ {
+  "name": "동신대학교",
+  "url": "https://www.dsu.ac.kr/kr",
+  "host": "dsu.ac.kr",
+  "final": "https://www.dsu.ac.kr/kr/",
+  "state": "robots 차단",
+  "robots": "전체 차단"
+ },
+ {
+  "name": "명지대학교",
+  "url": "https://www.mju.ac.kr",
+  "host": "mju.ac.kr",
+  "final": "https://www.mju.ac.kr/sites/mjukr/intro/intro.html",
+  "state": "수집 가능",
+  "robots": "허용"
+ },
+ {
+  "name": "단국대학교",
+  "url": "https://www.dankook.ac.kr",
+  "host": "dankook.ac.kr",
+  "final": "https://www.dankook.ac.kr/web/kor/home",
+  "state": "수집 가능",
+  "robots": "허용"
+ },
+ {
+  "name": "동덕여자대학교",
+  "url": "https://www.dongduk.ac.kr",
+  "host": "dongduk.ac.kr",
+  "final": "https://www.dongduk.ac.kr/www/main/index.do",
+  "state": "수집 가능",
+  "robots": "허용"
+ },
+ {
+  "name": "배재대학교",
+  "url": "http://www.pcu.ac.kr",
+  "host": "pcu.ac.kr",
+  "final": "https://www.pcu.ac.kr/kor",
+  "state": "수집 가능",
+  "robots": "허용"
+ },
+ {
+  "name": "목원대학교",
+  "url": "https://www.mokwon.ac.kr",
+  "host": "mokwon.ac.kr",
+  "final": "https://www.mokwon.ac.kr/kr/",
+  "state": "수집 가능",
+  "robots": "허용"
+ },
+ {
+  "name": "부산외국어대학교",
+  "url": "http://www.bufs.ac.kr",
+  "host": "bufs.ac.kr",
+  "final": "https://landing.bufs.ac.kr/",
+  "state": "수집 가능",
+  "robots": "허용"
+ },
+ {
+  "name": "상지대학교",
+  "url": "https://www.sangji.ac.kr",
+  "host": "sangji.ac.kr",
+  "final": "https://www.sangji.ac.kr/html/kor/intro.html",
+  "state": "수집 가능",
+  "robots": "허용"
+ },
+ {
+  "name": "서경대학교",
+  "url": "http://www.skuniv.ac.kr",
+  "host": "skuniv.ac.kr",
+  "final": "https://www.skuniv.ac.kr/intro",
+  "state": "수집 가능",
+  "robots": "허용"
+ },
+ {
+  "name": "국민대학교",
+  "url": "http://www.kookmin.ac.kr",
+  "host": "kookmin.ac.kr",
+  "final": "https://www.kookmin.ac.kr/user/index.do",
+  "state": "수집 가능",
+  "robots": "허용"
+ },
+ {
+  "name": "서울신학대학교",
+  "url": "http://www.stu.ac.kr",
+  "host": "stu.ac.kr",
+  "final": "https://www.stu.ac.kr:8443/",
+  "state": "수집 가능",
+  "robots": "허용"
+ },
+ {
+  "name": "덕성여자대학교",
+  "url": "https://www.duksung.ac.kr",
+  "host": "duksung.ac.kr",
+  "final": "https://www.duksung.ac.kr/main.do?isMaster=N&isLogined=N&viewPrefix=%2FWEB-INF%2Fjsp%2Fcms&urlRootPath=&siteResourcePath=%2Fsite%2Fduksung",
+  "state": "수집 가능",
+  "robots": "허용"
+ },
+ {
+  "name": "삼육대학교",
+  "url": "http://www.syu.ac.kr",
+  "host": "syu.ac.kr",
+  "final": "https://www.syu.ac.kr/",
+  "state": "수집 가능",
+  "robots": "허용"
+ },
+ {
+  "name": "서강대학교",
+  "url": "http://www.sogang.ac.kr",
+  "host": "sogang.ac.kr",
+  "final": "",
+  "state": "접속 실패(UNABLE_TO_VERIFY_LEAF_SIGNATURE)",
+  "robots": "허용"
+ },
+ {
+  "name": "성공회대학교",
+  "url": "http://www.skhu.ac.kr",
+  "host": "skhu.ac.kr",
+  "final": "https://www.skhu.ac.kr/",
+  "state": "수집 가능",
+  "robots": "허용"
+ },
+ {
+  "name": "성결대학교",
+  "url": "https://www.sungkyul.ac.kr",
+  "host": "sungkyul.ac.kr",
+  "final": "https://www.sungkyul.ac.kr/",
+  "state": "수집 가능",
+  "robots": "robots 없음"
+ },
+ {
+  "name": "성균관대학교",
+  "url": "http://www.skku.edu",
+  "host": "skku.edu",
+  "final": "https://www.skku.edu/",
+  "state": "접속 실패(404)",
+  "robots": "허용"
+ },
+ {
+  "name": "성신여자대학교",
+  "url": "http://www.sungshin.ac.kr",
+  "host": "sungshin.ac.kr",
+  "final": "https://www.sungshin.ac.kr/",
+  "state": "수집 가능",
+  "robots": "허용"
+ },
+ {
+  "name": "세명대학교",
+  "url": "http://www.semyung.ac.kr",
+  "host": "semyung.ac.kr",
+  "final": "",
+  "state": "접속 실패(ERR_SSL_UNSAFE_LEGACY_RENEGOTIATION_DISABLED)",
+  "robots": "robots 없음"
+ },
+ {
+  "name": "충남선문대학교",
+  "url": "https://lily.sunmoon.ac.kr",
+  "host": "lily.sunmoon.ac.kr",
+  "final": "https://lily.sunmoon.ac.kr/MainDefault3.aspx",
+  "state": "수집 가능",
+  "robots": "허용"
+ },
+ {
+  "name": "수원대학교",
+  "url": "http://www.suwon.ac.kr",
+  "host": "suwon.ac.kr",
+  "final": "https://www.suwon.ac.kr/",
+  "state": "수집 가능",
+  "robots": "robots 없음"
+ },
+ {
+  "name": "순천향대학교",
+  "url": "https://www.sch.ac.kr",
+  "host": "sch.ac.kr",
+  "final": "https://www.sch.ac.kr/",
+  "state": "수집 가능",
+  "robots": "부분 허용"
+ },
+ {
+  "name": "숙명여자대학교",
+  "url": "http://www.sookmyung.ac.kr",
+  "host": "sookmyung.ac.kr",
+  "final": "https://www.sookmyung.ac.kr/index.do",
+  "state": "접속 실패(404)",
+  "robots": "허용"
+ },
+ {
+  "name": "아주대학교",
+  "url": "http://www.ajou.ac.kr",
+  "host": "ajou.ac.kr",
+  "final": "https://www.ajou.ac.kr/index.do",
+  "state": "접속 실패(404)",
+  "robots": "허용"
+ },
+ {
+  "name": "세종대학교",
+  "url": "http://www.sejong.ac.kr",
+  "host": "sejong.ac.kr",
+  "final": "",
+  "state": "접속 실패(TypeError)",
+  "robots": "robots 없음"
+ },
+ {
+  "name": "연세대학교",
+  "url": "http://www.yonsei.ac.kr",
+  "host": "yonsei.ac.kr",
+  "final": "https://www.yonsei.ac.kr/",
+  "state": "수집 가능",
+  "robots": "허용"
+ },
+ {
+  "name": "영남신학대학교",
+  "url": "http://www.ytus.ac.kr",
+  "host": "ytus.ac.kr",
+  "final": "http://www.ytus.ac.kr/",
+  "state": "수집 가능",
+  "robots": "robots 없음"
+ },
+ {
+  "name": "서울여자대학교",
+  "url": "http://www.swu.ac.kr",
+  "host": "swu.ac.kr",
+  "final": "https://www.swu.ac.kr//",
+  "state": "수집 가능",
+  "robots": "허용"
+ },
+ {
+  "name": "용인대학교",
+  "url": "http://www.yongin.ac.kr",
+  "host": "yongin.ac.kr",
+  "final": "https://www.yongin.ac.kr/",
+  "state": "수집 가능",
+  "robots": "robots 없음"
+ },
+ {
+  "name": "우석대학교",
+  "url": "http://www.woosuk.ac.kr",
+  "host": "woosuk.ac.kr",
+  "final": "https://www.woosuk.ac.kr/",
+  "state": "수집 가능",
+  "robots": "허용"
+ },
+ {
+  "name": "숭실대학교",
+  "url": "https://ssu.ac.kr",
+  "host": "ssu.ac.kr",
+  "final": "https://ssu.ac.kr/",
+  "state": "수집 가능",
+  "robots": "허용"
+ },
+ {
+  "name": "이화여자대학교",
+  "url": "http://www.ewha.ac.kr",
+  "host": "ewha.ac.kr",
+  "final": "http://www.ewha.ac.kr/ewhaen/index.do",
+  "state": "수집 가능",
+  "robots": "허용"
+ },
+ {
+  "name": "인하대학교",
+  "url": "http://www.inha.ac.kr",
+  "host": "inha.ac.kr",
+  "final": "http://www.inha.ac.kr/",
+  "state": "수집 가능",
+  "robots": "허용"
+ },
+ {
+  "name": "울산대학교",
+  "url": "http://www.ulsan.ac.kr",
+  "host": "ulsan.ac.kr",
+  "final": "https://www.ulsan.ac.kr/kor/Main.do",
+  "state": "수집 가능",
+  "robots": "부분 허용"
+ },
+ {
+  "name": "장로회신학대학교",
+  "url": "http://www.pcts.ac.kr",
+  "host": "pcts.ac.kr",
+  "final": "http://www.pcts.ac.kr/",
+  "state": "robots 차단",
+  "robots": "전체 차단"
+ },
+ {
+  "name": "인제대학교",
+  "url": "http://www.inje.ac.kr",
+  "host": "inje.ac.kr",
+  "final": "",
+  "state": "접속 실패(UNABLE_TO_VERIFY_LEAF_SIGNATURE)",
+  "robots": "robots 없음"
+ },
+ {
+  "name": "조선대학교",
+  "url": "http://www.chosun.ac.kr",
+  "host": "chosun.ac.kr",
+  "final": "",
+  "state": "접속 실패(ECONNRESET)",
+  "robots": "robots 없음"
+ },
+ {
+  "name": "전주대학교",
+  "url": "http://www.jj.ac.kr",
+  "host": "jj.ac.kr",
+  "final": "https://www.jj.ac.kr/index.do",
+  "state": "접속 실패(404)",
+  "robots": "허용"
+ },
+ {
+  "name": "중앙대학교",
+  "url": "http://www.cau.ac.kr",
+  "host": "cau.ac.kr",
+  "final": "https://www.cau.ac.kr/index.do",
+  "state": "수집 가능",
+  "robots": "허용"
+ },
+ {
+  "name": "총신대학교",
+  "url": "https://www.csu.ac.kr",
+  "host": "csu.ac.kr",
+  "final": "https://www.csu.ac.kr/gate",
+  "state": "수집 가능",
+  "robots": "robots 없음"
+ },
+ {
+  "name": "청주대학교",
+  "url": "http://www.chongju.ac.kr",
+  "host": "chongju.ac.kr",
+  "final": "https://www.cju.ac.kr/www/index.do",
+  "state": "수집 가능",
+  "robots": "허용"
+ },
+ {
+  "name": "스터디코리안",
+  "url": "http://study.korean.net",
+  "host": "study.korean.net",
+  "final": "",
+  "state": "접속 실패(AbortError)",
+  "robots": "허용"
+ },
+ {
+  "name": "한국외국어대학교",
+  "url": "http://www.hufs.ac.kr",
+  "host": "hufs.ac.kr",
+  "final": "https://www.hufs.ac.kr/sites/hufs/index.html",
+  "state": "수집 가능",
+  "robots": "허용"
+ },
+ {
+  "name": "영남대학교",
+  "url": "http://www.yu.ac.kr",
+  "host": "yu.ac.kr",
+  "final": "https://www.yu.ac.kr/",
+  "state": "접속 실패(404)",
+  "robots": "허용"
+ },
+ {
+  "name": "침례신학대학교",
+  "url": "https://www.kbtus.ac.kr",
+  "host": "kbtus.ac.kr",
+  "final": "https://www.kbtus.ac.kr/kor/intro.do",
+  "state": "수집 가능",
+  "robots": "부분 허용"
+ },
+ {
+  "name": "한남대학교",
+  "url": "http://www.hannam.ac.kr",
+  "host": "hannam.ac.kr",
+  "final": "https://www.hannam.ac.kr/",
+  "state": "수집 가능",
+  "robots": "허용"
+ },
+ {
+  "name": "한동대학교",
+  "url": "http://www.handong.edu",
+  "host": "handong.edu",
+  "final": "https://www.handong.edu/",
+  "state": "수집 가능",
+  "robots": "허용"
+ },
+ {
+  "name": "한국항공대학교",
+  "url": "http://www.kau.ac.kr",
+  "host": "kau.ac.kr",
+  "final": "https://www.kau.ac.kr/",
+  "state": "수집 가능",
+  "robots": "robots 없음"
+ },
+ {
+  "name": "한서대학교",
+  "url": "http://www.hanseo.ac.kr",
+  "host": "hanseo.ac.kr",
+  "final": "https://www.hanseo.ac.kr/",
+  "state": "수집 가능",
+  "robots": "robots 없음"
+ },
+ {
+  "name": "한성대학교",
+  "url": "http://www.hansung.ac.kr",
+  "host": "hansung.ac.kr",
+  "final": "https://www.hansung.ac.kr/",
+  "state": "수집 가능",
+  "robots": "허용"
+ },
+ {
+  "name": "한신대학교",
+  "url": "http://www.hs.ac.kr",
+  "host": "hs.ac.kr",
+  "final": "https://www.hs.ac.kr/",
+  "state": "수집 가능",
+  "robots": "허용"
+ },
+ {
+  "name": "한림대학교",
+  "url": "http://www.hallym.ac.kr",
+  "host": "hallym.ac.kr",
+  "final": "https://www.hallym.ac.kr//",
+  "state": "수집 가능",
+  "robots": "허용"
+ },
+ {
+  "name": "협성대학교",
+  "url": "http://www.uhs.ac.kr",
+  "host": "uhs.ac.kr",
+  "final": "https://www.uhs.ac.kr/",
+  "state": "수집 가능",
+  "robots": "robots 없음"
+ },
+ {
+  "name": "호남대학교",
+  "url": "http://www.honam.ac.kr",
+  "host": "honam.ac.kr",
+  "final": "http://www.honam.ac.kr/",
+  "state": "수집 가능",
+  "robots": "robots 없음"
+ },
+ {
+  "name": "호남신학대학교",
+  "url": "http://www.htus.ac.kr",
+  "host": "htus.ac.kr",
+  "final": "https://www.htus.ac.kr/",
+  "state": "수집 가능",
+  "robots": "허용"
+ },
+ {
+  "name": "홍익대학교",
+  "url": "https://www.hongik.ac.kr",
+  "host": "hongik.ac.kr",
+  "final": "https://www.hongik.ac.kr/kr/index.do",
+  "state": "수집 가능",
+  "robots": "허용"
+ },
+ {
+  "name": "공주교육대학교",
+  "url": "http://www.gjue.ac.kr",
+  "host": "gjue.ac.kr",
+  "final": "http://www.gjue.ac.kr/",
+  "state": "robots 차단",
+  "robots": "전체 차단"
+ },
+ {
+  "name": "광주교육대학교",
+  "url": "https://www.gnue.ac.kr",
+  "host": "gnue.ac.kr",
+  "final": "https://www.gnue.ac.kr/",
+  "state": "수집 가능",
+  "robots": "허용"
+ },
+ {
+  "name": "호서대학교",
+  "url": "http://www.hoseo.ac.kr",
+  "host": "hoseo.ac.kr",
+  "final": "https://www.hoseo.ac.kr/Home/Main.mbz",
+  "state": "수집 가능",
+  "robots": "허용"
+ },
+ {
+  "name": "한양대학교",
+  "url": "http://www.hanyang.ac.kr",
+  "host": "hanyang.ac.kr",
+  "final": "https://www.hanyang.ac.kr/home",
+  "state": "수집 가능",
+  "robots": "허용"
+ },
+ {
+  "name": "부산교육대학교",
+  "url": "http://www.bnue.ac.kr",
+  "host": "bnue.ac.kr",
+  "final": "https://www.bnue.ac.kr/home/main;jsessionid=52496A4E5331D8CAC1794BED540A9170.tomcat1",
+  "state": "수집 가능",
+  "robots": "허용"
+ },
+ {
+  "name": "서울교육대학교",
+  "url": "http://www.snue.ac.kr",
+  "host": "snue.ac.kr",
+  "final": "https://www.snue.ac.kr/",
+  "state": "수집 가능",
+  "robots": "robots 없음"
+ },
+ {
+  "name": "대구교육대학교",
+  "url": "http://www.dnue.ac.kr",
+  "host": "dnue.ac.kr",
+  "final": "http://www.dnue.ac.kr/kor/intro.do;jsessionid=BC8D6A42B95432391B332B354FBBFDF7.tomcat1",
+  "state": "수집 가능",
+  "robots": "robots 없음"
+ },
+ {
+  "name": "전주교육대학교",
+  "url": "http://www.jnue.kr",
+  "host": "jnue.kr",
+  "final": "https://www.jnue.kr/",
+  "state": "수집 가능",
+  "robots": "robots 없음"
+ },
+ {
+  "name": "진주교육대학교",
+  "url": "https://www.cue.ac.kr/kor/Main.do",
+  "host": "cue.ac.kr",
+  "final": "https://www.cue.ac.kr/kor/Main.do",
+  "state": "수집 가능",
+  "robots": "부분 허용"
+ },
+ {
+  "name": "국립한국방송통신대학교",
+  "url": "http://www.knou.ac.kr",
+  "host": "knou.ac.kr",
+  "final": "https://www.knou.ac.kr/",
+  "state": "수집 가능",
+  "robots": "허용"
+ },
+ {
+  "name": "춘천교육대학교",
+  "url": "https://www.cnue.ac.kr/cnue",
+  "host": "cnue.ac.kr",
+  "final": "https://www.cnue.ac.kr/cnue/index.do",
+  "state": "수집 가능",
+  "robots": "허용"
+ },
+ {
+  "name": "서울과학기술대학교",
+  "url": "http://www.seoultech.ac.kr",
+  "host": "seoultech.ac.kr",
+  "final": "https://www.seoultech.ac.kr/",
+  "state": "수집 가능",
+  "robots": "robots 없음"
+ },
+ {
+  "name": "청주교육대학교",
+  "url": "http://www.cje.ac.kr",
+  "host": "cje.ac.kr",
+  "final": "https://www.cje.ac.kr/web/main.do?screenTp=USER",
+  "state": "수집 가능",
+  "robots": "허용"
+ },
+ {
+  "name": "부경대학교",
+  "url": "http://www.pknu.ac.kr",
+  "host": "pknu.ac.kr",
+  "final": "https://www.pknu.ac.kr/intro.html",
+  "state": "수집 가능",
+  "robots": "허용"
+ },
+ {
+  "name": "공주대학교 공과대학",
+  "url": "http://brain.kongju.ac.kr",
+  "host": "brain.kongju.ac.kr",
+  "final": "https://brain.kongju.ac.kr/index.jsp",
+  "state": "수집 가능",
+  "robots": "허용"
+ },
+ {
+  "name": "전남대학교",
+  "url": "http://www.jnu.ac.kr",
+  "host": "jnu.ac.kr",
+  "final": "",
+  "state": "접속 실패(AbortError)",
+  "robots": "robots 없음"
+ },
+ {
+  "name": "경운대학교",
+  "url": "http://www.ikw.ac.kr",
+  "host": "ikw.ac.kr",
+  "final": "https://www.ikw.ac.kr/main.tc",
+  "state": "수집 가능",
+  "robots": "허용"
+ },
+ {
+  "name": "경일대학교",
+  "url": "http://www.kiu.ac.kr",
+  "host": "kiu.ac.kr",
+  "final": "http://www.kiu.ac.kr/",
+  "state": "robots 차단",
+  "robots": "전체 차단"
+ },
+ {
+  "name": "경동대학교",
+  "url": "https://kduniv.ac.kr",
+  "host": "kduniv.ac.kr",
+  "final": "https://kduniv.ac.kr/kor/Main.do",
+  "state": "수집 가능",
+  "robots": "허용"
+ },
+ {
+  "name": "고려대학교 보건과학대학",
+  "url": "http://chs.korea.ac.kr",
+  "host": "chs.korea.ac.kr",
+  "final": "http://chs.korea.ac.kr/",
+  "state": "수집 가능",
+  "robots": "허용"
+ },
+ {
+  "name": "광신대학교",
+  "url": "http://www.kwangshin.ac.kr",
+  "host": "kwangshin.ac.kr",
+  "final": "http://www.kwangshin.ac.kr/",
+  "state": "수집 가능",
+  "robots": "robots 없음"
+ },
+ {
+  "name": "광주여자대학교",
+  "url": "http://www.kwu.ac.kr",
+  "host": "kwu.ac.kr",
+  "final": "https://www.kwu.ac.kr/index.do",
+  "state": "수집 가능",
+  "robots": "허용"
+ },
+ {
+  "name": "극동대학교",
+  "url": "https://www.kdu.ac.kr",
+  "host": "kdu.ac.kr",
+  "final": "https://www.kdu.ac.kr/",
+  "state": "수집 가능",
+  "robots": "robots 없음"
+ },
+ {
+  "name": "나사렛대학교",
+  "url": "http://www.kornu.ac.kr",
+  "host": "kornu.ac.kr",
+  "final": "http://www.kornu.ac.kr/",
+  "state": "수집 가능",
+  "robots": "robots 없음"
+ },
+ {
+  "name": "남부대학교",
+  "url": "http://www.nambu.ac.kr",
+  "host": "nambu.ac.kr",
+  "final": "http://www.nambu.ac.kr/",
+  "state": "수집 가능",
+  "robots": "robots 없음"
+ },
+ {
+  "name": "남서울대학교",
+  "url": "http://www.nsu.ac.kr",
+  "host": "nsu.ac.kr",
+  "final": "https://www.namseoul.net/mainIntro/intro.do",
+  "state": "수집 가능",
+  "robots": "robots 없음"
+ },
+ {
+  "name": "광주대학교",
+  "url": "http://www.gwangju.ac.kr",
+  "host": "gwangju.ac.kr",
+  "final": "https://www.gwangju.ac.kr/",
+  "state": "수집 가능",
+  "robots": "robots 없음"
+ },
+ {
+  "name": "대구예술대학교",
+  "url": "http://www.dgau.ac.kr",
+  "host": "dgau.ac.kr",
+  "final": "https://www.dgau.ac.kr/",
+  "state": "수집 가능",
+  "robots": "robots 없음"
+ },
+ {
+  "name": "동서대학교",
+  "url": "https://www.dongseo.ac.kr",
+  "host": "dongseo.ac.kr",
+  "final": "https://www.dongseo.ac.kr/",
+  "state": "수집 가능",
+  "robots": "허용"
+ },
+ {
+  "name": "동의대학교",
+  "url": "https://www.deu.ac.kr",
+  "host": "deu.ac.kr",
+  "final": "",
+  "state": "접속 실패(UND_ERR_CONNECT_TIMEOUT)",
+  "robots": "robots 없음"
+ },
+ {
+  "name": "목포가톨릭대학교",
+  "url": "https://www.mcu.ac.kr",
+  "host": "mcu.ac.kr",
+  "final": "https://www.mcu.ac.kr/",
+  "state": "수집 가능",
+  "robots": "robots 없음"
+ },
+ {
+  "name": "대한신학대학원대학교",
+  "url": "https://www.dtu.ac.kr",
+  "host": "dtu.ac.kr",
+  "final": "https://www.dtu.ac.kr/",
+  "state": "robots 차단",
+  "robots": "전체 차단"
+ },
+ {
+  "name": "건신대학원대학교",
+  "url": "https://www.alu.ac.kr",
+  "host": "alu.ac.kr",
+  "final": "https://www.alu.ac.kr/",
+  "state": "수집 가능",
+  "robots": "robots 없음"
+ },
+ {
+  "name": "베뢰아국제대학원대학교",
+  "url": "http://www.berea.ac.kr",
+  "host": "berea.ac.kr",
+  "final": "https://berea.ac.kr/",
+  "state": "수집 가능",
+  "robots": "허용"
+ },
+ {
+  "name": "부산가톨릭대학교",
+  "url": "http://www.cup.ac.kr",
+  "host": "cup.ac.kr",
+  "final": "https://www.cup.ac.kr/main.do",
+  "state": "수집 가능",
+  "robots": "허용"
+ },
+ {
+  "name": "동양대학교",
+  "url": "https://www.dyu.ac.kr",
+  "host": "dyu.ac.kr",
+  "final": "https://www.dyu.ac.kr/",
+  "state": "수집 가능",
+  "robots": "허용"
+ },
+ {
+  "name": "서울기독대학교",
+  "url": "http://www.scu.ac.kr",
+  "host": "scu.ac.kr",
+  "final": "https://www.scu.ac.kr/",
+  "state": "수집 가능",
+  "robots": "허용"
+ },
+ {
+  "name": "부산장신대학교",
+  "url": "http://www.bpu.ac.kr",
+  "host": "bpu.ac.kr",
+  "final": "https://www.bpu.ac.kr/",
+  "state": "수집 가능",
+  "robots": "robots 없음"
+ },
+ {
+  "name": "서울장신대학교",
+  "url": "http://www.sjs.ac.kr",
+  "host": "sjs.ac.kr",
+  "final": "http://www.sjs.ac.kr/ht_ml/main/",
+  "state": "수집 가능",
+  "robots": "허용"
+ },
+ {
+  "name": "서울성경신학대학원대학교",
+  "url": "http://www.sb.ac.kr",
+  "host": "sb.ac.kr",
+  "final": "http://www.sb.ac.kr/",
+  "state": "robots 차단",
+  "robots": "전체 차단"
+ },
+ {
+  "name": "상명대학교",
+  "url": "http://www.smu.ac.kr",
+  "host": "smu.ac.kr",
+  "final": "http://www.smu.ac.kr/index.do",
+  "state": "접속 실패(404)",
+  "robots": "허용"
+ },
+ {
+  "name": "삼육보건대학교",
+  "url": "http://www.shu.ac.kr",
+  "host": "shu.ac.kr",
+  "final": "https://www.shu.ac.kr/index.do",
+  "state": "수집 가능",
+  "robots": "robots 없음"
+ },
+ {
+  "name": "수원가톨릭대학교",
+  "url": "http://www.suwoncatholic.ac.kr",
+  "host": "suwoncatholic.ac.kr",
+  "final": "https://www.suwoncatholic.ac.kr/",
+  "state": "수집 가능",
+  "robots": "robots 없음"
+ },
+ {
+  "name": "신성대학교",
+  "url": "http://www.shinsung.ac.kr",
+  "host": "shinsung.ac.kr",
+  "final": "https://www.shinsung.ac.kr/intro/",
+  "state": "수집 가능",
+  "robots": "robots 없음"
+ },
+ {
+  "name": "우송대학교",
+  "url": "http://www.wsu.ac.kr",
+  "host": "wsu.ac.kr",
+  "final": "",
+  "state": "접속 실패(TypeError)",
+  "robots": "허용"
+ },
+ {
+  "name": "서원대학교",
+  "url": "http://www.seowon.ac.kr",
+  "host": "seowon.ac.kr",
+  "final": "https://www.seowon.ac.kr/",
+  "state": "수집 가능",
+  "robots": "robots 없음"
+ },
+ {
+  "name": "영산대학교",
+  "url": "http://www.ysu.ac.kr",
+  "host": "ysu.ac.kr",
+  "final": "https://www.ysu.ac.kr/kor/Main.do",
+  "state": "수집 가능",
+  "robots": "허용"
+ },
+ {
+  "name": "웨스트민스터신학대학원대학교",
+  "url": "http://www.wgst.ac.kr",
+  "host": "wgst.ac.kr",
+  "final": "http://www.wgst.ac.kr/",
+  "state": "수집 가능",
+  "robots": "허용"
+ },
+ {
+  "name": "위덕대학교",
+  "url": "http://www.uu.ac.kr",
+  "host": "uu.ac.kr",
+  "final": "http://www.uu.ac.kr/",
+  "state": "수집 가능",
+  "robots": "robots 없음"
+ },
+ {
+  "name": "중부대학교",
+  "url": "http://www.joongbu.ac.kr",
+  "host": "joongbu.ac.kr",
+  "final": "",
+  "state": "접속 실패(AbortError)",
+  "robots": "robots 없음"
+ },
+ {
+  "name": "원불교대학원대학교",
+  "url": "http://www.wonbuddhism.ac.kr",
+  "host": "wonbuddhism.ac.kr",
+  "final": "https://www.wonbuddhism.ac.kr/",
+  "state": "수집 가능",
+  "robots": "robots 없음"
+ },
+ {
+  "name": "포항공과대학교(POSTECH)",
+  "url": "http://www.postech.ac.kr",
+  "host": "postech.ac.kr",
+  "final": "",
+  "state": "접속 실패(AbortError)",
+  "robots": "robots 없음"
+ },
+ {
+  "name": "한밭대학교",
+  "url": "http://www.hanbat.ac.kr",
+  "host": "hanbat.ac.kr",
+  "final": "",
+  "state": "접속 실패(UND_ERR_CONNECT_TIMEOUT)",
+  "robots": "robots 없음"
+ },
+ {
+  "name": "국제법률경영대학원대학교(영어)",
+  "url": "http://www.tlbu.ac.kr",
+  "host": "tlbu.ac.kr",
+  "final": "",
+  "state": "접속 실패(UND_ERR_CONNECT_TIMEOUT)",
+  "robots": "robots 없음"
+ },
+ {
+  "name": "중앙승가대학교",
+  "url": "http://www.sangha.ac.kr",
+  "host": "sangha.ac.kr",
+  "final": "http://www.sangha.ac.kr/",
+  "state": "수집 가능",
+  "robots": "robots 없음"
+ },
+ {
+  "name": "온석대학원대학교",
+  "url": "https://www.osu.ac.kr",
+  "host": "osu.ac.kr",
+  "final": "https://www.osu.ac.kr/",
+  "state": "robots 차단",
+  "robots": "전체 차단"
+ },
+ {
+  "name": "추계예술대학교",
+  "url": "https://www.chugye.ac.kr",
+  "host": "chugye.ac.kr",
+  "final": "https://www.chugye.ac.kr/",
+  "state": "수집 가능",
+  "robots": "허용"
+ },
+ {
+  "name": "청운대학교",
+  "url": "http://home.chungwoon.ac.kr",
+  "host": "home.chungwoon.ac.kr",
+  "final": "https://home.chungwoon.ac.kr/",
+  "state": "robots 차단",
+  "robots": "전체 차단"
+ },
+ {
+  "name": "평택대학교",
+  "url": "http://www.ptu.ac.kr",
+  "host": "ptu.ac.kr",
+  "final": "https://www.ptu.ac.kr/",
+  "state": "수집 가능",
+  "robots": "robots 없음"
+ },
+ {
+  "name": "초당대학교",
+  "url": "https://www.cdu.ac.kr",
+  "host": "cdu.ac.kr",
+  "final": "https://www.cdu.ac.kr/intro.do",
+  "state": "수집 가능",
+  "robots": "robots 없음"
+ },
+ {
+  "name": "한국공학대학교",
+  "url": "https://www.tukorea.ac.kr",
+  "host": "tukorea.ac.kr",
+  "final": "https://www.tukorea.ac.kr/intro/index.html",
+  "state": "수집 가능",
+  "robots": "허용"
+ },
+ {
+  "name": "한국개발연구원국제정책대학원대학교",
+  "url": "https://www.kdischool.ac.kr",
+  "host": "kdischool.ac.kr",
+  "final": "https://www.kdischool.ac.kr/",
+  "state": "수집 가능",
+  "robots": "허용"
+ },
+ {
+  "name": "인천가톨릭대학교",
+  "url": "http://www.iccu.ac.kr",
+  "host": "iccu.ac.kr",
+  "final": "https://www.iccu.ac.kr/default.php",
+  "state": "수집 가능",
+  "robots": "부분 허용"
+ },
+ {
+  "name": "한라대학교",
+  "url": "http://www.halla.ac.kr",
+  "host": "halla.ac.kr",
+  "final": "https://www.halla.ac.kr//",
+  "state": "수집 가능",
+  "robots": "허용"
+ },
+ {
+  "name": "한세대학교",
+  "url": "http://www.hansei.ac.kr",
+  "host": "hansei.ac.kr",
+  "final": "https://hansei.ac.kr/",
+  "state": "수집 가능",
+  "robots": "robots 없음"
+ },
+ {
+  "name": "한국성서대학교",
+  "url": "http://www.bible.ac.kr",
+  "host": "bible.ac.kr",
+  "final": "http://www.bible.ac.kr/",
+  "state": "수집 가능",
+  "robots": "부분 허용"
+ },
+ {
+  "name": "합동신학대학원대학교",
+  "url": "http://www.hapdong.ac.kr",
+  "host": "hapdong.ac.kr",
+  "final": "http://www.hapdong.ac.kr/",
+  "state": "수집 가능",
+  "robots": "허용"
+ },
+ {
+  "name": "서울불교대학원대학교",
+  "url": "http://www.sub.ac.kr",
+  "host": "sub.ac.kr",
+  "final": "https://www.sub.ac.kr/fro_end/html/main/",
+  "state": "robots 차단",
+  "robots": "전체 차단"
+ },
+ {
+  "name": "호원대학교",
+  "url": "http://www.howon.ac.kr",
+  "host": "howon.ac.kr",
+  "final": "https://www.howon.ac.kr/",
+  "state": "robots 차단",
+  "robots": "전체 차단"
+ },
+ {
+  "name": "횃불트리니티신학대학원대학교",
+  "url": "http://www.ttgu.ac.kr",
+  "host": "ttgu.ac.kr",
+  "final": "https://www.ttgu.ac.kr/",
+  "state": "수집 가능",
+  "robots": "허용"
+ },
+ {
+  "name": "서울 한영대학교",
+  "url": "https://www.shyu.ac.kr",
+  "host": "shyu.ac.kr",
+  "final": "https://www.shyu.ac.kr/fro_end/html/main/",
+  "state": "robots 차단",
+  "robots": "전체 차단"
+ },
+ {
+  "name": "원광디지털대학교",
+  "url": "http://www.wdu.ac.kr",
+  "host": "wdu.ac.kr",
+  "final": "https://www.wdu.ac.kr/",
+  "state": "robots 차단",
+  "robots": "전체 차단"
+ },
+ {
+  "name": "에스라성경대학원대학교",
+  "url": "https://www.ezra.ac.kr",
+  "host": "ezra.ac.kr",
+  "final": "https://www.ezra.ac.kr/",
+  "state": "robots 차단",
+  "robots": "전체 차단"
+ },
+ {
+  "name": "대구한의대학교",
+  "url": "http://www.dhu.ac.kr",
+  "host": "dhu.ac.kr",
+  "final": "http://www.dhu.ac.kr/",
+  "state": "수집 가능",
+  "robots": "허용"
+ },
+ {
+  "name": "경인교육대학교",
+  "url": "http://www.ginue.ac.kr",
+  "host": "ginue.ac.kr",
+  "final": "https://www.ginue.ac.kr/",
+  "state": "수집 가능",
+  "robots": "robots 없음"
+ },
+ {
+  "name": "경기칼빈대학교",
+  "url": "http://www.calvin.ac.kr",
+  "host": "calvin.ac.kr",
+  "final": "http://www.calvin.ac.kr/main/index.do",
+  "state": "robots 차단",
+  "robots": "전체 차단"
+ },
+ {
+  "name": "한일장신대학교",
+  "url": "http://www.hanil.ac.kr",
+  "host": "hanil.ac.kr",
+  "final": "https://www.hanil.ac.kr/portal/default/main/main.do",
+  "state": "수집 가능",
+  "robots": "robots 없음"
+ },
+ {
+  "name": "금강대학교",
+  "url": "http://www.ggu.ac.kr",
+  "host": "ggu.ac.kr",
+  "final": "https://www.ggu.ac.kr/",
+  "state": "수집 가능",
+  "robots": "robots 없음"
+ },
+ {
+  "name": "루터대학교",
+  "url": "http://www.ltu.ac.kr",
+  "host": "ltu.ac.kr",
+  "final": "http://www.ltu.ac.kr/",
+  "state": "수집 가능",
+  "robots": "robots 없음"
+ },
+ {
+  "name": "대전가톨릭대학교",
+  "url": "https://www.dcatholic.ac.kr",
+  "host": "dcatholic.ac.kr",
+  "final": "https://www.dcatholic.ac.kr/",
+  "state": "수집 가능",
+  "robots": "robots 없음"
+ },
+ {
+  "name": "선학UP대학원대학교",
+  "url": "https://www.sunhakup.ac.kr",
+  "host": "sunhakup.ac.kr",
+  "final": "",
+  "state": "접속 실패(UNABLE_TO_VERIFY_LEAF_SIGNATURE)",
+  "robots": "robots 없음"
+ },
+ {
+  "name": "세종사이버대학교",
+  "url": "https://home.sjcu.ac.kr",
+  "host": "home.sjcu.ac.kr",
+  "final": "https://home.sjcu.ac.kr/ko/index.do",
+  "state": "수집 가능",
+  "robots": "허용"
+ },
+ {
+  "name": "영산선학대학교",
+  "url": "http://www.youngsan.ac.kr",
+  "host": "youngsan.ac.kr",
+  "final": "http://www.youngsan.ac.kr/",
+  "state": "수집 가능",
+  "robots": "허용"
+ },
+ {
+  "name": "서정대학교",
+  "url": "http://www.seojeong.ac.kr",
+  "host": "seojeong.ac.kr",
+  "final": "https://www.seojeong.ac.kr/index.do",
+  "state": "접속 실패(500)",
+  "robots": "robots 없음"
+ },
+ {
+  "name": "부산디지털대학교",
+  "url": "http://www.bdu.ac.kr",
+  "host": "bdu.ac.kr",
+  "final": "https://www.bdu.ac.kr/bduhome/index.do",
+  "state": "수집 가능",
+  "robots": "허용"
+ },
+ {
+  "name": "동방문화대학원대학교",
+  "url": "https://www.dongbang.ac.kr",
+  "host": "dongbang.ac.kr",
+  "final": "https://www.dongbang.ac.kr/",
+  "state": "수집 가능",
+  "robots": "robots 없음"
+ },
+ {
+  "name": "서울대학교",
+  "url": "http://www.snu.ac.kr",
+  "host": "snu.ac.kr",
+  "final": "https://www.snu.ac.kr/",
+  "state": "수집 가능",
+  "robots": "허용"
+ },
+ {
+  "name": "백석대학교",
+  "url": "http://www.bu.ac.kr",
+  "host": "bu.ac.kr",
+  "final": "http://www.bu.ac.kr/",
+  "state": "수집 가능",
+  "robots": "robots 없음"
+ },
+ {
+  "name": "실천신학대학원대학교",
+  "url": "http://www.gspt.ac.kr",
+  "host": "gspt.ac.kr",
+  "final": "http://www.gspt.ac.kr/",
+  "state": "수집 가능",
+  "robots": "허용"
+ },
+ {
+  "name": "한반도국제대학원대학교",
+  "url": "http://www.kuis.ac.kr",
+  "host": "kuis.ac.kr",
+  "final": "http://www.kuis.ac.kr/",
+  "state": "수집 가능",
+  "robots": "robots 없음"
+ },
+ {
+  "name": "한림국제대학원/대학교",
+  "url": "http://www.hugs.ac.kr",
+  "host": "hugs.ac.kr",
+  "final": "https://www.hugs.ac.kr/",
+  "state": "수집 가능",
+  "robots": "허용"
+ },
+ {
+  "name": "개신대학원대학교",
+  "url": "http://www.rts.ac.kr",
+  "host": "rts.ac.kr",
+  "final": "http://www.rts.ac.kr/",
+  "state": "robots 차단",
+  "robots": "전체 차단"
+ },
+ {
+  "name": "동명대학교",
+  "url": "https://www.tu.ac.kr",
+  "host": "tu.ac.kr",
+  "final": "https://www.tu.ac.kr/index.do",
+  "state": "접속 실패(404)",
+  "robots": "robots 없음"
+ },
+ {
+  "name": "서울사이버대학교",
+  "url": "http://www.iscu.ac.kr",
+  "host": "iscu.ac.kr",
+  "final": "http://www.iscu.ac.kr/",
+  "state": "수집 가능",
+  "robots": "허용"
+ },
+ {
+  "name": "성산효대학원/대학교",
+  "url": "http://www.hyo.ac.kr",
+  "host": "hyo.ac.kr",
+  "final": "https://www.hyo.ac.kr/main/",
+  "state": "수집 가능",
+  "robots": "허용"
+ },
+ {
+  "name": "예원예술대학교",
+  "url": "http://www.yewon.ac.kr",
+  "host": "yewon.ac.kr",
+  "final": "https://www.yewon.ac.kr/",
+  "state": "수집 가능",
+  "robots": "robots 없음"
+ },
+ {
+  "name": "경희사이버대학교",
+  "url": "http://www.khcu.ac.kr",
+  "host": "khcu.ac.kr",
+  "final": "https://www.khcu.ac.kr/main/index.do",
+  "state": "robots 차단",
+  "robots": "전체 차단"
+ },
+ {
+  "name": "대구사이버대학교",
+  "url": "http://www.dcu.ac.kr",
+  "host": "dcu.ac.kr",
+  "final": "http://www.dcu.ac.kr/",
+  "state": "수집 가능",
+  "robots": "허용"
+ },
+ {
+  "name": "국제뇌교육종합대학원대학교",
+  "url": "https://www.ube.ac.kr",
+  "host": "ube.ac.kr",
+  "final": "https://www.ube.ac.kr/",
+  "state": "수집 가능",
+  "robots": "robots 없음"
+ },
+ {
+  "name": "영남사이버대학교",
+  "url": "http://www.yncu.ac.kr",
+  "host": "yncu.ac.kr",
+  "final": "https://www.yncu.ac.kr/index.asp",
+  "state": "수집 가능",
+  "robots": "robots 없음"
+ },
+ {
+  "name": "열린사이버대학교",
+  "url": "http://www.ocu.ac.kr",
+  "host": "ocu.ac.kr",
+  "final": "https://www.ocu.ac.kr/",
+  "state": "robots 차단",
+  "robots": "전체 차단"
+ },
+ {
+  "name": "성서침례대학원대학교",
+  "url": "http://www.bbts.ac.kr",
+  "host": "bbts.ac.kr",
+  "final": "https://www.bbts.ac.kr/",
+  "state": "수집 가능",
+  "robots": "robots 없음"
+ },
+ {
+  "name": "을지대학교",
+  "url": "http://www.eulji.ac.kr",
+  "host": "eulji.ac.kr",
+  "final": "",
+  "state": "접속 실패(TypeError)",
+  "robots": "robots 없음"
+ },
+ {
+  "name": "국립공주대학교 사범대학",
+  "url": "http://sabum.kongju.ac.kr",
+  "host": "sabum.kongju.ac.kr",
+  "final": "https://sabum.kongju.ac.kr/index.jsp",
+  "state": "수집 가능",
+  "robots": "허용"
+ },
+ {
+  "name": "인천대학교",
+  "url": "https://www.inu.ac.kr",
+  "host": "inu.ac.kr",
+  "final": "https://www.inu.ac.kr/",
+  "state": "수집 가능",
+  "robots": "허용"
+ },
+ {
+  "name": "중원대학교",
+  "url": "http://www.jwu.ac.kr",
+  "host": "jwu.ac.kr",
+  "final": "http://www.jwu.ac.kr/",
+  "state": "수집 가능",
+  "robots": "허용"
+ },
+ {
+  "name": "서울사회복지대학원대학교",
+  "url": "http://www.ssgu.ac.kr",
+  "host": "ssgu.ac.kr",
+  "final": "https://www.ssgu.ac.kr/",
+  "state": "robots 차단",
+  "robots": "전체 차단"
+ },
+ {
+  "name": "한양사이버대학교",
+  "url": "http://www.hycu.ac.kr",
+  "host": "hycu.ac.kr",
+  "final": "https://www.hycu.ac.kr/user/index.do",
+  "state": "수집 가능",
+  "robots": "허용"
+ },
+ {
+  "name": "순복음대학원대학교",
+  "url": "http://www.sunbokeum.ac.kr",
+  "host": "sunbokeum.ac.kr",
+  "final": "https://www.sunbokeum.ac.kr:499/GateWeb/login.aspx",
+  "state": "수집 가능",
+  "robots": "robots 없음"
+ },
+ {
+  "name": "화신사이버대학교",
+  "url": "http://www.hscu.ac.kr",
+  "host": "hscu.ac.kr",
+  "final": "https://www.hscu.ac.kr/",
+  "state": "수집 가능",
+  "robots": "허용"
+ },
+ {
+  "name": "예수대학교",
+  "url": "http://www.jesus.ac.kr",
+  "host": "jesus.ac.kr",
+  "final": "https://www.jesus.ac.kr/main/",
+  "state": "수집 가능",
+  "robots": "허용"
+ },
+ {
+  "name": "글로벌사이버대학교",
+  "url": "http://www.global.ac.kr",
+  "host": "global.ac.kr",
+  "final": "https://www.global.ac.kr/",
+  "state": "수집 가능",
+  "robots": "허용"
+ },
+ {
+  "name": "대전신학대학교",
+  "url": "https://www.daejeon.ac.kr",
+  "host": "daejeon.ac.kr",
+  "final": "https://www.daejeon.ac.kr/",
+  "state": "수집 가능",
+  "robots": "허용"
+ },
+ {
+  "name": "김천대학교",
+  "url": "http://www.gimcheon.ac.kr",
+  "host": "gimcheon.ac.kr",
+  "final": "https://www.gimcheon.ac.kr/site/gimcheon/",
+  "state": "robots 차단",
+  "robots": "전체 차단"
+ },
+ {
+  "name": "한국상담대학원대학교",
+  "url": "http://www.kcgu.ac.kr",
+  "host": "kcgu.ac.kr",
+  "final": "https://www.kcgu.ac.kr:57420/",
+  "state": "수집 가능",
+  "robots": "허용"
+ },
+ {
+  "name": "국제사이버대학교",
+  "url": "https://www.gjcu.ac.kr",
+  "host": "gjcu.ac.kr",
+  "final": "https://www.gjcu.ac.kr/index",
+  "state": "수집 가능",
+  "robots": "robots 없음"
+ },
+ {
+  "name": "북한대학원대학교",
+  "url": "http://www.nk.ac.kr",
+  "host": "nk.ac.kr",
+  "final": "https://nk.ac.kr/",
+  "state": "수집 가능",
+  "robots": "허용"
+ },
+ {
+  "name": "꽃동네대학교",
+  "url": "https://www.kkot.ac.kr",
+  "host": "kkot.ac.kr",
+  "final": "https://www.kkot.ac.kr/base/main/view",
+  "state": "robots 차단",
+  "robots": "전체 차단"
+ },
+ {
+  "name": "서영대학교",
+  "url": "http://www.seoyeong.ac.kr",
+  "host": "seoyeong.ac.kr",
+  "final": "https://www.seoyeong.ac.kr/",
+  "state": "수집 가능",
+  "robots": "허용"
+ },
+ {
+  "name": "차의과학대학교",
+  "url": "http://www.cha.ac.kr",
+  "host": "cha.ac.kr",
+  "final": "https://www.cha.ac.kr/",
+  "state": "수집 가능",
+  "robots": "허용"
+ },
+ {
+  "name": "대전과학기술대학교",
+  "url": "https://www.dst.ac.kr",
+  "host": "dst.ac.kr",
+  "final": "https://www.dst.ac.kr/kor/intro.do;jsessionid=6220FF666098845D067070A63C480A4F",
+  "state": "수집 가능",
+  "robots": "허용"
+ },
+ {
+  "name": "대원대학교",
+  "url": "https://www.daewon.ac.kr",
+  "host": "daewon.ac.kr",
+  "final": "https://www.daewon.ac.kr/mbs/daewon/",
+  "state": "수집 가능",
+  "robots": "부분 허용"
+ },
+ {
+  "name": "동서울대학교",
+  "url": "https://enter.du.ac.kr",
+  "host": "enter.du.ac.kr",
+  "final": "https://enter.du.ac.kr/",
+  "state": "수집 가능",
+  "robots": "robots 없음"
+ },
+ {
+  "name": "디지털서울문화예술대학교",
+  "url": "https://www.scau.ac.kr",
+  "host": "scau.ac.kr",
+  "final": "https://www.scau.ac.kr/",
+  "state": "수집 가능",
+  "robots": "robots 없음"
+ },
+ {
+  "name": "포항대학교",
+  "url": "http://www.pohang.ac.kr",
+  "host": "pohang.ac.kr",
+  "final": "",
+  "state": "접속 실패(UNABLE_TO_VERIFY_LEAF_SIGNATURE)",
+  "robots": "robots 없음"
+ },
+ {
+  "name": "광주보건대학교",
+  "url": "http://www.ghc.ac.kr",
+  "host": "ghc.ac.kr",
+  "final": "https://www.ghu.ac.kr/",
+  "state": "수집 가능",
+  "robots": "robots 없음"
+ },
+ {
+  "name": "제주한라대학교",
+  "url": "https://www.chu.ac.kr",
+  "host": "chu.ac.kr",
+  "final": "https://www.chu.ac.kr/",
+  "state": "수집 가능",
+  "robots": "robots 없음"
+ },
+ {
+  "name": "송원대학교",
+  "url": "http://www.songwon.ac.kr",
+  "host": "songwon.ac.kr",
+  "final": "https://www.songwon.ac.kr/",
+  "state": "수집 가능",
+  "robots": "robots 없음"
+ },
+ {
+  "name": "대동대학교",
+  "url": "https://www.daedong.ac.kr",
+  "host": "daedong.ac.kr",
+  "final": "https://www.daedong.ac.kr/www/intro.do",
+  "state": "수집 가능",
+  "robots": "robots 없음"
+ },
+ {
+  "name": "부산경상대학교",
+  "url": "http://www.bsks.ac.kr",
+  "host": "bsks.ac.kr",
+  "final": "https://www.bsks.ac.kr/intro_new/index.html",
+  "state": "robots 차단",
+  "robots": "전체 차단"
+ },
+ {
+  "name": "강동대학교",
+  "url": "https://www.gangdong.ac.kr",
+  "host": "gangdong.ac.kr",
+  "final": "",
+  "state": "접속 실패(UNABLE_TO_VERIFY_LEAF_SIGNATURE)",
+  "robots": "robots 없음"
+ },
+ {
+  "name": "부천대학교",
+  "url": "http://www.bc.ac.kr",
+  "host": "bc.ac.kr",
+  "final": "https://www.bc.ac.kr/index.do",
+  "state": "접속 실패(404)",
+  "robots": "robots 없음"
+ },
+ {
+  "name": "사이버외국어대학교",
+  "url": "http://www.cufs.ac.kr",
+  "host": "cufs.ac.kr",
+  "final": "https://www.cufs.ac.kr/",
+  "state": "수집 가능",
+  "robots": "robots 없음"
+ },
+ {
+  "name": "동의과학대학교",
+  "url": "https://www.dit.ac.kr",
+  "host": "dit.ac.kr",
+  "final": "https://www.dit.ac.kr/kr/",
+  "state": "수집 가능",
+  "robots": "허용"
+ },
+ {
+  "name": "대림대학교",
+  "url": "http://www.daelim.ac.kr",
+  "host": "daelim.ac.kr",
+  "final": "https://www.daelim.ac.kr/",
+  "state": "수집 가능",
+  "robots": "허용"
+ },
+ {
+  "name": "경복대학교",
+  "url": "https://www.kbu.ac.kr",
+  "host": "kbu.ac.kr",
+  "final": "https://www.kbu.ac.kr/kor/intro.do;jsessionid=164C95E3A7400D37F7DB029A5A03958F.tomcat1",
+  "state": "수집 가능",
+  "robots": "허용"
+ },
+ {
+  "name": "신안산대학교",
+  "url": "http://www.sau.ac.kr",
+  "host": "sau.ac.kr",
+  "final": "https://www.sau.ac.kr/index.do",
+  "state": "접속 실패(404)",
+  "robots": "허용"
+ },
+ {
+  "name": "대구보건대학교",
+  "url": "http://www.dhc.ac.kr",
+  "host": "dhc.ac.kr",
+  "final": "http://www.dhc.ac.kr/",
+  "state": "robots 차단",
+  "robots": "전체 차단"
+ },
+ {
+  "name": "울산과학대학교",
+  "url": "http://www.uc.ac.kr",
+  "host": "uc.ac.kr",
+  "final": "https://www.uc.ac.kr/kr/intro.do;jsessionid=1D8CB0058B3CD554591A42372091D459.uchome1",
+  "state": "수집 가능",
+  "robots": "robots 없음"
+ },
+ {
+  "name": "부산보건대학교",
+  "url": "https://www.bhu.ac.kr",
+  "host": "bhu.ac.kr",
+  "final": "https://www.bhu.ac.kr/intro/default.aspx",
+  "state": "수집 가능",
+  "robots": "허용"
+ },
+ {
+  "name": "한림성심대학교",
+  "url": "http://www.hsc.ac.kr",
+  "host": "hsc.ac.kr",
+  "final": "https://www.hsc.ac.kr/intro_ipsi2_2.jsp",
+  "state": "수집 가능",
+  "robots": "허용"
+ },
+ {
+  "name": "대구과학대학교",
+  "url": "https://www.tsu.ac.kr",
+  "host": "tsu.ac.kr",
+  "final": "https://www.tsu.ac.kr/",
+  "state": "robots 차단",
+  "robots": "전체 차단"
+ },
+ {
+  "name": "마산대학교",
+  "url": "https://www.masan.ac.kr",
+  "host": "masan.ac.kr",
+  "final": "https://www.masan.ac.kr/intro260907.html",
+  "state": "수집 가능",
+  "robots": "부분 허용"
+ },
+ {
+  "name": "동강대학교",
+  "url": "https://www.dkc.ac.kr",
+  "host": "dkc.ac.kr",
+  "final": "",
+  "state": "접속 실패(TypeError)",
+  "robots": "전체 차단"
+ },
+ {
+  "name": "경기과학기술대학교",
+  "url": "https://www.gtec.ac.kr",
+  "host": "gtec.ac.kr",
+  "final": "https://www.gtec.ac.kr/",
+  "state": "수집 가능",
+  "robots": "robots 없음"
+ },
+ {
+  "name": "제주관광대학교",
+  "url": "http://www.ctc.ac.kr",
+  "host": "ctc.ac.kr",
+  "final": "http://www.ctc.ac.kr/",
+  "state": "수집 가능",
+  "robots": "허용"
+ },
+ {
+  "name": "진주보건대학교",
+  "url": "http://www.jhc.ac.kr",
+  "host": "jhc.ac.kr",
+  "final": "https://www.jhc.ac.kr/",
+  "state": "수집 가능",
+  "robots": "robots 없음"
+ },
+ {
+  "name": "동남보건대학교",
+  "url": "https://www.dongnam.ac.kr",
+  "host": "dongnam.ac.kr",
+  "final": "https://www.dongnam.ac.kr/",
+  "state": "수집 가능",
+  "robots": "robots 없음"
+ },
+ {
+  "name": "목포과학대학교",
+  "url": "https://www.msu.ac.kr",
+  "host": "msu.ac.kr",
+  "final": "https://www.msu.ac.kr/index",
+  "state": "수집 가능",
+  "robots": "robots 없음"
+ },
+ {
+  "name": "건양사이버대학교",
+  "url": "https://www.kycu.ac.kr",
+  "host": "kycu.ac.kr",
+  "final": "https://www.kycu.ac.kr/",
+  "state": "수집 가능",
+  "robots": "허용"
+ },
+ {
+  "name": "경북전문대학교",
+  "url": "https://www.kbc.ac.kr",
+  "host": "kbc.ac.kr",
+  "final": "https://www.kbc.ac.kr/kor/Main.do;SESSIONID_WWW=mBDd1qXKignlYg8iDU3eobYtUles8L4OK9iQgAPeXDru8VLjMKvR!745361276",
+  "state": "수집 가능",
+  "robots": "허용"
+ },
+ {
+  "name": "원광보건대학교",
+  "url": "http://www.wu.ac.kr",
+  "host": "wu.ac.kr",
+  "final": "http://www.wu.ac.kr/",
+  "state": "수집 가능",
+  "robots": "허용"
+ },
+ {
+  "name": "부산여자대학교",
+  "url": "http://www.bwc.ac.kr",
+  "host": "bwc.ac.kr",
+  "final": "https://www.bwc.ac.kr/sch/index.asp",
+  "state": "수집 가능",
+  "robots": "robots 없음"
+ },
+ {
+  "name": "호산대학교",
+  "url": "https://www.hosan.ac.kr",
+  "host": "hosan.ac.kr",
+  "final": "https://www.hosan.ac.kr/intro/intro.html",
+  "state": "수집 가능",
+  "robots": "허용"
+ },
+ {
+  "name": "문경대학교",
+  "url": "http://www.mkc.ac.kr",
+  "host": "mkc.ac.kr",
+  "final": "https://www.mkc.ac.kr/",
+  "state": "수집 가능",
+  "robots": "허용"
+ },
+ {
+  "name": "국제대학교",
+  "url": "http://www.kookje.ac.kr",
+  "host": "kookje.ac.kr",
+  "final": "http://www.kookje.ac.kr/",
+  "state": "수집 가능",
+  "robots": "허용"
+ },
+ {
+  "name": "전북과학대학교",
+  "url": "http://www.jbsc.ac.kr",
+  "host": "jbsc.ac.kr",
+  "final": "https://www.jbsc.ac.kr/",
+  "state": "수집 가능",
+  "robots": "부분 허용"
+ },
+ {
+  "name": "신구대학교",
+  "url": "http://www.shingu.ac.kr",
+  "host": "shingu.ac.kr",
+  "final": "https://www.shingu.ac.kr/",
+  "state": "수집 가능",
+  "robots": "robots 없음"
+ },
+ {
+  "name": "경북과학대학교",
+  "url": "https://www.kbsu.ac.kr",
+  "host": "kbsu.ac.kr",
+  "final": "https://www.kbsu.ac.kr/",
+  "state": "수집 가능",
+  "robots": "허용"
+ },
+ {
+  "name": "백석문화대학교",
+  "url": "http://www.bscu.ac.kr",
+  "host": "bscu.ac.kr",
+  "final": "http://www.bscu.ac.kr/",
+  "state": "수집 가능",
+  "robots": "robots 없음"
+ },
+ {
+  "name": "한국교통대학교",
+  "url": "http://www.ut.ac.kr",
+  "host": "ut.ac.kr",
+  "final": "https://www.ut.ac.kr/",
+  "state": "수집 가능",
+  "robots": "robots 없음"
+ },
+ {
+  "name": "송곡대학교",
+  "url": "https://www.songgok.ac.kr",
+  "host": "songgok.ac.kr",
+  "final": "https://www.songgok.ac.kr/",
+  "state": "수집 가능",
+  "robots": "robots 없음"
+ },
+ {
+  "name": "춘해보건대학교",
+  "url": "http://www.ch.ac.kr",
+  "host": "ch.ac.kr",
+  "final": "",
+  "state": "접속 실패(UNABLE_TO_VERIFY_LEAF_SIGNATURE)",
+  "robots": "robots 없음"
+ },
+ {
+  "name": "거제대학교",
+  "url": "https://www.koje.ac.kr",
+  "host": "koje.ac.kr",
+  "final": "https://www.koje.ac.kr/www",
+  "state": "수집 가능",
+  "robots": "허용"
+ },
+ {
+  "name": "동원과학기술대학교(구양산대학교)",
+  "url": "https://www.dist.ac.kr",
+  "host": "dist.ac.kr",
+  "final": "",
+  "state": "접속 실패(UND_ERR_SOCKET)",
+  "robots": "허용"
+ },
+ {
+  "name": "가천대학교 입학처",
+  "url": "https://admission.gachon.ac.kr",
+  "host": "admission.gachon.ac.kr",
+  "final": "",
+  "state": "접속 실패(UNABLE_TO_VERIFY_LEAF_SIGNATURE)",
+  "robots": "robots 없음"
+ },
+ {
+  "name": "안산대학교",
+  "url": "http://www.ansan.ac.kr",
+  "host": "ansan.ac.kr",
+  "final": "https://www.ansan.ac.kr/intro",
+  "state": "수집 가능",
+  "robots": "robots 없음"
+ },
+ {
+  "name": "배화여자대학교",
+  "url": "https://www.baewha.ac.kr",
+  "host": "baewha.ac.kr",
+  "final": "https://www.baewha.ac.kr/",
+  "state": "수집 가능",
+  "robots": "허용"
+ },
+ {
+  "name": "농협대학교",
+  "url": "https://www.nonghyup.ac.kr",
+  "host": "nonghyup.ac.kr",
+  "final": "https://www.nonghyup.ac.kr/",
+  "state": "수집 가능",
+  "robots": "robots 없음"
+ },
+ {
+  "name": "인덕대학교",
+  "url": "http://www.induk.ac.kr",
+  "host": "induk.ac.kr",
+  "final": "https://www.induk.ac.kr/",
+  "state": "수집 가능",
+  "robots": "robots 없음"
+ },
+ {
+  "name": "세경대학교",
+  "url": "https://www.saekyung.ac.kr",
+  "host": "saekyung.ac.kr",
+  "final": "https://www.saekyung.ac.kr/",
+  "state": "수집 가능",
+  "robots": "robots 없음"
+ },
+ {
+  "name": "백석예술대학교",
+  "url": "http://www.bau.ac.kr",
+  "host": "bau.ac.kr",
+  "final": "http://www.bau.ac.kr/",
+  "state": "robots 차단",
+  "robots": "전체 차단"
+ },
+ {
+  "name": "동아보건대학교",
+  "url": "https://www.duh.ac.kr",
+  "host": "duh.ac.kr",
+  "final": "",
+  "state": "접속 실패(UNABLE_TO_VERIFY_LEAF_SIGNATURE)",
+  "robots": "robots 없음"
+ },
+ {
+  "name": "선린대학교",
+  "url": "http://www.sunlin.ac.kr",
+  "host": "sunlin.ac.kr",
+  "final": "https://www.sunlin.ac.kr/intro_2026.html",
+  "state": "수집 가능",
+  "robots": "허용"
+ },
+ {
+  "name": "경민대학교",
+  "url": "https://www.kyungmin.ac.kr",
+  "host": "kyungmin.ac.kr",
+  "final": "https://www.kyungmin.ac.kr/homepage/intro.do",
+  "state": "수집 가능",
+  "robots": "robots 없음"
+ },
+ {
+  "name": "부산과학기술대학교",
+  "url": "http://www.bist.ac.kr",
+  "host": "bist.ac.kr",
+  "final": "http://www.bist.ac.kr/",
+  "state": "수집 가능",
+  "robots": "허용"
+ },
+ {
+  "name": "영남이공대학교",
+  "url": "http://www.ync.ac.kr",
+  "host": "ync.ac.kr",
+  "final": "http://www.ync.ac.kr/kor/intro.do;jsessionid=7751492ACBD03B52BF65BFAB16C106D9",
+  "state": "수집 가능",
+  "robots": "부분 허용"
+ },
+ {
+  "name": "혜전대학교",
+  "url": "http://www.hj.ac.kr",
+  "host": "hj.ac.kr",
+  "final": "http://www.hj.ac.kr/",
+  "state": "수집 가능",
+  "robots": "허용"
+ },
+ {
+  "name": "조선이공대학교",
+  "url": "http://www.cst.ac.kr",
+  "host": "cst.ac.kr",
+  "final": "https://www.cst.ac.kr/",
+  "state": "robots 차단",
+  "robots": "전체 차단"
+ },
+ {
+  "name": "구미대학교",
+  "url": "https://www.gumi.ac.kr",
+  "host": "gumi.ac.kr",
+  "final": "https://www.gumi.ac.kr/pages/intro_2026.htm",
+  "state": "수집 가능",
+  "robots": "허용"
+ },
+ {
+  "name": "기독간호대학교",
+  "url": "http://www.ccn.ac.kr",
+  "host": "ccn.ac.kr",
+  "final": "http://www.ccn.ac.kr/",
+  "state": "수집 가능",
+  "robots": "robots 없음"
+ },
+ {
+  "name": "한양여자대학교",
+  "url": "http://www.hywoman.ac.kr",
+  "host": "hywoman.ac.kr",
+  "final": "",
+  "state": "접속 실패(TypeError)",
+  "robots": "robots 없음"
+ },
+ {
+  "name": "오산대학교",
+  "url": "http://www.osan.ac.kr",
+  "host": "osan.ac.kr",
+  "final": "https://www.osan.ac.kr/?menuno=298",
+  "state": "수집 가능",
+  "robots": "robots 없음"
+ },
+ {
+  "name": "여주대학교",
+  "url": "http://www.yit.ac.kr",
+  "host": "yit.ac.kr",
+  "final": "https://www.yit.ac.kr/",
+  "state": "수집 가능",
+  "robots": "robots 없음"
+ },
+ {
+  "name": "수원과학대학교",
+  "url": "http://www.ssc.ac.kr",
+  "host": "ssc.ac.kr",
+  "final": "https://ssc.ac.kr//",
+  "state": "수집 가능",
+  "robots": "robots 없음"
+ },
+ {
+  "name": "백제예술대학교",
+  "url": "http://www.paekche.ac.kr",
+  "host": "paekche.ac.kr",
+  "final": "https://www.paekche.ac.kr/",
+  "state": "수집 가능",
+  "robots": "허용"
+ },
+ {
+  "name": "조선간호대학교",
+  "url": "http://www.cnc.ac.kr",
+  "host": "cnc.ac.kr",
+  "final": "https://www.cnc.ac.kr/",
+  "state": "수집 가능",
+  "robots": "robots 없음"
+ },
+ {
+  "name": "경인여자대학교",
+  "url": "http://www.kiwu.ac.kr",
+  "host": "kiwu.ac.kr",
+  "final": "https://www.kiwu.ac.kr/",
+  "state": "수집 가능",
+  "robots": "허용"
+ },
+ {
+  "name": "안동과학대학교",
+  "url": "http://www.asc.ac.kr",
+  "host": "asc.ac.kr",
+  "final": "https://www.asc.ac.kr/asc/index.do",
+  "state": "robots 차단",
+  "robots": "전체 차단"
+ },
+ {
+  "name": "수성대학교",
+  "url": "http://www.sc.ac.kr",
+  "host": "sc.ac.kr",
+  "final": "https://www.sc.ac.kr/",
+  "state": "수집 가능",
+  "robots": "robots 없음"
+ },
+ {
+  "name": "동양미래대학교",
+  "url": "https://www.dongyang.ac.kr",
+  "host": "dongyang.ac.kr",
+  "final": "https://www.dongyang.ac.kr/",
+  "state": "수집 가능",
+  "robots": "허용"
+ },
+ {
+  "name": "대전보건대학교",
+  "url": "https://www.hit.ac.kr",
+  "host": "hit.ac.kr",
+  "final": "https://www.hit.ac.kr/",
+  "state": "수집 가능",
+  "robots": "허용"
+ },
+ {
+  "name": "두원공과대학교",
+  "url": "https://www.doowon.ac.kr",
+  "host": "doowon.ac.kr",
+  "final": "https://www.doowon.ac.kr/",
+  "state": "robots 차단",
+  "robots": "전체 차단"
+ },
+ {
+  "name": "서울예술대학교",
+  "url": "http://www.seoularts.ac.kr",
+  "host": "seoularts.ac.kr",
+  "final": "https://www.seoularts.ac.kr/",
+  "state": "수집 가능",
+  "robots": "robots 없음"
+ },
+ {
+  "name": "경남정보대학교",
+  "url": "https://www.kit.ac.kr",
+  "host": "kit.ac.kr",
+  "final": "",
+  "state": "접속 실패(UNABLE_TO_VERIFY_LEAF_SIGNATURE)",
+  "robots": "robots 없음"
+ },
+ {
+  "name": "유한대학교",
+  "url": "https://www.yuhan.ac.kr",
+  "host": "yuhan.ac.kr",
+  "final": "https://sky.yuhan.ac.kr/intro.html",
+  "state": "수집 가능",
+  "robots": "허용"
+ },
+ {
+  "name": "연성대학교",
+  "url": "http://www.yeonsung.ac.kr",
+  "host": "yeonsung.ac.kr",
+  "final": "https://www.yeonsung.ac.kr/",
+  "state": "수집 가능",
+  "robots": "허용"
+ },
+ {
+  "name": "전남과학대학교",
+  "url": "http://www.cntu.ac.kr",
+  "host": "cntu.ac.kr",
+  "final": "https://www.cntu.ac.kr/",
+  "state": "수집 가능",
+  "robots": "허용"
+ },
+ {
+  "name": "장안대학교",
+  "url": "http://www.jangan.ac.kr",
+  "host": "jangan.ac.kr",
+  "final": "",
+  "state": "접속 실패(UND_ERR_CONNECT_TIMEOUT)",
+  "robots": "robots 없음"
+ },
+ {
+  "name": "숭실사이버대학교",
+  "url": "http://www.kcu.ac",
+  "host": "kcu.ac",
+  "final": "https://www.kcu.ac/?sso=ok",
+  "state": "수집 가능",
+  "robots": "robots 없음"
+ },
+ {
+  "name": "서울벤처대학원대학교",
+  "url": "http://www.svu.ac.kr",
+  "host": "svu.ac.kr",
+  "final": "https://www.svu.ac.kr/",
+  "state": "수집 가능",
+  "robots": "허용"
+ },
+ {
+  "name": "동아방송예술대학교",
+  "url": "https://www.dima.ac.kr",
+  "host": "dima.ac.kr",
+  "final": "https://www.dima.ac.kr/",
+  "state": "robots 차단",
+  "robots": "전체 차단"
+ },
+ {
+  "name": "숭의여자대학교",
+  "url": "https://www.sewu.ac.kr",
+  "host": "sewu.ac.kr",
+  "final": "https://www.sewu.ac.kr/sewu/index.do",
+  "state": "수집 가능",
+  "robots": "허용"
+ },
+ {
+  "name": "한국관광대학교",
+  "url": "http://www.ktc.ac.kr",
+  "host": "ktc.ac.kr",
+  "final": "http://www.ktc.ac.kr/",
+  "state": "수집 가능",
+  "robots": "robots 없음"
+ },
+ {
+  "name": "인천재능대학교",
+  "url": "http://www.jeiu.ac.kr",
+  "host": "jeiu.ac.kr",
+  "final": "http://www.jeiu.ac.kr/",
+  "state": "수집 가능",
+  "robots": "robots 없음"
+ },
+ {
+  "name": "한경국립대학교",
+  "url": "https://www.hknu.ac.kr",
+  "host": "hknu.ac.kr",
+  "final": "https://www.hknu.ac.kr/",
+  "state": "수집 가능",
+  "robots": "robots 없음"
+ },
+ {
+  "name": "대경대학교",
+  "url": "http://www.tk.ac.kr",
+  "host": "tk.ac.kr",
+  "final": "https://www.tk.ac.kr/",
+  "state": "수집 가능",
+  "robots": "robots 없음"
+ },
+ {
+  "name": "충북보건과학대학교",
+  "url": "http://www.chsu.ac.kr",
+  "host": "chsu.ac.kr",
+  "final": "https://www.chsu.ac.kr/",
+  "state": "수집 가능",
+  "robots": "robots 없음"
+ },
+ {
+  "name": "전주비전대학교",
+  "url": "http://www.jvision.ac.kr",
+  "host": "jvision.ac.kr",
+  "final": "https://www.jvision.ac.kr/vision/main/",
+  "state": "수집 가능",
+  "robots": "robots 없음"
+ },
+ {
+  "name": "나주대학교",
+  "url": "https://www.naju.ac.kr",
+  "host": "naju.ac.kr",
+  "final": "https://www.naju.ac.kr/",
+  "state": "수집 가능",
+  "robots": "robots 없음"
+ },
+ {
+  "name": "수원여자대학교",
+  "url": "https://www.swwu.ac.kr",
+  "host": "swwu.ac.kr",
+  "final": "https://www.swwu.ac.kr/",
+  "state": "수집 가능",
+  "robots": "robots 없음"
+ },
+ {
+  "name": "동원대학교",
+  "url": "https://www.tw.ac.kr",
+  "host": "tw.ac.kr",
+  "final": "https://www.tw.ac.kr/main.do;jsessionid=77A643817C66EDFA9B0FF385DDAA3B35?isMaster=N&isLogined=N&viewPrefix=%2FWEB-INF%2Fjsp%2Fcms&urlRootPath=&siteResourcePath=%2Fsite%2Ftw",
+  "state": "수집 가능",
+  "robots": "허용"
+ },
+ {
+  "name": "세한대학교",
+  "url": "http://www.sehan.ac.kr",
+  "host": "sehan.ac.kr",
+  "final": "https://www.sehan.ac.kr/",
+  "state": "수집 가능",
+  "robots": "robots 없음"
+ },
+ {
+  "name": "충청대학교",
+  "url": "http://www.ok.ac.kr",
+  "host": "ok.ac.kr",
+  "final": "",
+  "state": "접속 실패(ECONNRESET)",
+  "robots": "robots 없음"
+ },
+ {
+  "name": "제주국제대학교",
+  "url": "http://www.jeju.ac.kr",
+  "host": "jeju.ac.kr",
+  "final": "",
+  "state": "접속 실패(UND_ERR_CONNECT_TIMEOUT)",
+  "robots": "robots 없음"
+ },
+ {
+  "name": "웅지세무대학교",
+  "url": "http://wat.ac.kr",
+  "host": "wat.ac.kr",
+  "final": "http://wat.ac.kr/intro/",
+  "state": "수집 가능",
+  "robots": "허용"
+ },
+ {
+  "name": "김해대학교",
+  "url": "http://www.gimhae.ac.kr",
+  "host": "gimhae.ac.kr",
+  "final": "",
+  "state": "접속 실패(UND_ERR_SOCKET)",
+  "robots": "robots 없음"
+ },
+ {
+  "name": "계명문화대학교",
+  "url": "http://www.kmcu.ac.kr",
+  "host": "kmcu.ac.kr",
+  "final": "http://www.kmcu.ac.kr/",
+  "state": "수집 가능",
+  "robots": "허용"
+ },
+ {
+  "name": "송호대학교",
+  "url": "http://www.songho.ac.kr",
+  "host": "songho.ac.kr",
+  "final": "http://www.songho.ac.kr/",
+  "state": "수집 가능",
+  "robots": "robots 없음"
+ },
+ {
+  "name": "강릉영동대학교",
+  "url": "https://www.gyu.ac.kr",
+  "host": "gyu.ac.kr",
+  "final": "",
+  "state": "접속 실패(ECONNRESET)",
+  "robots": "robots 없음"
+ },
+ {
+  "name": "유원대학교",
+  "url": "https://www.u1.ac.kr",
+  "host": "u1.ac.kr",
+  "final": "https://www.u1.ac.kr/index.do",
+  "state": "접속 실패(404)",
+  "robots": "허용"
+ },
+ {
+  "name": "대덕대학교",
+  "url": "http://www.ddc.ac.kr",
+  "host": "ddc.ac.kr",
+  "final": "https://www.ddc.ac.kr/",
+  "state": "수집 가능",
+  "robots": "robots 없음"
+ },
+ {
+  "name": "서울여자간호대학교",
+  "url": "http://www.snjc.ac.kr",
+  "host": "snjc.ac.kr",
+  "final": "https://portal.snjc.ac.kr/",
+  "state": "수집 가능",
+  "robots": "robots 없음"
+ },
+ {
+  "name": "경북보건대학교",
+  "url": "http://www.kcs.ac.kr",
+  "host": "kcs.ac.kr",
+  "final": "http://www.kcs.ac.kr/intro.php",
+  "state": "robots 차단",
+  "robots": "전체 차단"
+ },
+ {
+  "name": "강서대학교",
+  "url": "https://gangseo.ac.kr",
+  "host": "gangseo.ac.kr",
+  "final": "https://gangseo.ac.kr/",
+  "state": "수집 가능",
+  "robots": "robots 없음"
+ },
+ {
+  "name": "경안대학원대학교",
+  "url": "http://www.gyeongan.ac.kr",
+  "host": "gyeongan.ac.kr",
+  "final": "https://gyeongan.ac.kr:8023/",
+  "state": "수집 가능",
+  "robots": "허용"
+ },
+ {
+  "name": "과학기술연합대학원대학교",
+  "url": "http://www.ust.ac.kr",
+  "host": "ust.ac.kr",
+  "final": "",
+  "state": "접속 실패(UND_ERR_SOCKET)",
+  "robots": "robots 없음"
+ },
+ {
+  "name": "국립경국대학교",
+  "url": "https://www.gknu.ac.kr",
+  "host": "gknu.ac.kr",
+  "final": "https://www.gknu.ac.kr/",
+  "state": "수집 가능",
+  "robots": "robots 없음"
+ },
+ {
+  "name": "창신대학교",
+  "url": "https://www.cs.ac.kr",
+  "host": "cs.ac.kr",
+  "final": "",
+  "state": "접속 실패(UNABLE_TO_VERIFY_LEAF_SIGNATURE)",
+  "robots": "robots 없음"
+ },
+ {
+  "name": "신경주대학교",
+  "url": "http://www.sgu.ac.kr",
+  "host": "sgu.ac.kr",
+  "final": "https://www.sgu.ac.kr/",
+  "state": "robots 차단",
+  "robots": "전체 차단"
+ },
+ {
+  "name": "수도국제대학원대학교",
+  "url": "http://siu.ac.kr",
+  "host": "siu.ac.kr",
+  "final": "https://www.siu.ac.kr/",
+  "state": "robots 차단",
+  "robots": "전체 차단"
+ },
+ {
+  "name": "국제언어대학원대학교",
+  "url": "http://www.igse.ac.kr",
+  "host": "igse.ac.kr",
+  "final": "https://www.igse.ac.kr/",
+  "state": "수집 가능",
+  "robots": "허용"
+ },
+ {
+  "name": "아신대학교",
+  "url": "http://www.acts.ac.kr",
+  "host": "acts.ac.kr",
+  "final": "https://www.acts.ac.kr/design/index.asp",
+  "state": "수집 가능",
+  "robots": "허용"
+ },
+ {
+  "name": "서울디지털대학교",
+  "url": "http://www.sdu.ac.kr",
+  "host": "sdu.ac.kr",
+  "final": "http://www.sdu.ac.kr/",
+  "state": "수집 가능",
+  "robots": "허용"
+ },
+ {
+  "name": "한국영상대학교",
+  "url": "http://www.pro.ac.kr",
+  "host": "pro.ac.kr",
+  "final": "",
+  "state": "접속 실패(AbortError)",
+  "robots": "robots 없음"
+ }
+]

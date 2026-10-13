@@ -1,0 +1,38 @@
+# powerplus.hom2box.com 루트 — React Router SPA + PHP REST v1 (기획 §2)
+Options -Indexes
+RewriteEngine On
+RewriteBase /
+# REST v1·시안 게시 주소 → PHP 프론트 컨트롤러 (api/src·routes 직접 접근은 api/.htaccess 가 막는다)
+RewriteRule ^api/v1(/.*)?$ api/public/index.php [L,QSA]
+RewriteRule ^p/([A-Za-z0-9_-]+)$ api/public/index.php [L,QSA]
+# 민감 파일 이름은 어디서든 차단
+<FilesMatch "(\.(pem|key|env|bak|sql|log|sh|ps1|md)|^config\.php\..*)$">
+  Require all denied
+</FilesMatch>
+# SPA 폴백
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^ index.html [L]
+<IfModule mod_headers.c>
+  Header always set X-Content-Type-Options "nosniff"
+  Header always set Referrer-Policy "strict-origin-when-cross-origin"
+  <FilesMatch "\.(js|css|woff2)$">
+    Header set Cache-Control "public, max-age=31536000, immutable"
+  </FilesMatch>
+  <Files "index.html">
+    Header set Cache-Control "no-cache"
+  </Files>
+  # 키트 미리보기·문서는 파일 이름이 바뀌지 않는다 → 매번 확인(옛 미리보기가 1년 캐시로 남던 것, 2026-10-08)
+  <If "%{REQUEST_URI} =~ m#^/kit-files/#">
+    Header set Cache-Control "no-cache"
+  </If>
+</IfModule>
+# powerGuide 토큰 산출물(/guide-files) — 서버가 모르는 확장자를 내려받기용 글로 내준다(옛날엔 octet-stream·빈 타입)
+<IfModule mod_mime.c>
+  AddType text/x-scss .scss
+  AddType text/x-sass .sass
+  AddType text/x-java-source .java
+  AddType text/plain .properties
+  AddType text/x-less .less
+  AddType text/typescript .ts
+</IfModule>

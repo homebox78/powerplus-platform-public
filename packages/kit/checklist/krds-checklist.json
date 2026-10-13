@@ -1,0 +1,2348 @@
+{
+ "source": "디지털 정부 서비스 UI/UX 가이드라인 자체 검증 체크리스트 (2024.11)",
+ "count": 274,
+ "items": [
+  {
+   "section": "style",
+   "component": "색상|정부 상징",
+   "no": 1,
+   "text": "디지털 정부 디자인 시스템의 Primary, Secondary, Gray, System 색상 팔레트와 색상값을 사용하고 있다.",
+   "guideline": null,
+   "idx": 1
+  },
+  {
+   "section": "style",
+   "component": "색상|정부 상징",
+   "no": 2,
+   "text": "디지털 정부 디자인 시스템의 각 컴포넌트에 정의된 상호작용 상태 표현 색상과 방식을 적용하고 있다.",
+   "guideline": null,
+   "idx": 2
+  },
+  {
+   "section": "style",
+   "component": "색상|정부 상징",
+   "no": 3,
+   "text": "디지털 정부 디자인 시스템에 정의된 배경 색상을 사용하고 있다.",
+   "guideline": null,
+   "idx": 3
+  },
+  {
+   "section": "style",
+   "component": "색상|자체 상징",
+   "no": 1,
+   "text": "상호작용 상태를 표현할 때, 기본 상태 색상을 기준으로 한 증·감 규칙을 적용하고 있다.",
+   "guideline": null,
+   "idx": 4
+  },
+  {
+   "section": "style",
+   "component": "색상|자체 상징",
+   "no": 2,
+   "text": "시스템 상태를 표현할 때, 시스템 색상의 색상 범주와 의미 체계를 따르고 있다.",
+   "guideline": null,
+   "idx": 5
+  },
+  {
+   "section": "style",
+   "component": "색상|공통",
+   "no": 1,
+   "text": "배경 색상을 일관성 있게 표현하고 있다.",
+   "guideline": null,
+   "idx": 6
+  },
+  {
+   "section": "style",
+   "component": "색상|공통",
+   "no": 2,
+   "text": "액션, 선택, 입력 컴포넌트의 테두리를 일관성 있게 표현하고 있다.",
+   "guideline": null,
+   "idx": 7
+  },
+  {
+   "section": "style",
+   "component": "색상|공통",
+   "no": 3,
+   "text": "텍스트 색상을 일관성 있게 표현하고 있다.",
+   "guideline": null,
+   "idx": 8
+  },
+  {
+   "section": "style",
+   "component": "서체|공통",
+   "no": 1,
+   "text": "Title과 Heading 텍스트를 본문보다 굵거나 크게 표현하고 있다.",
+   "guideline": null,
+   "idx": 9
+  },
+  {
+   "section": "style",
+   "component": "서체|공통",
+   "no": 2,
+   "text": "서체 사용 규칙을 일관되게 적용하고 있다.",
+   "guideline": null,
+   "idx": 10
+  },
+  {
+   "section": "style",
+   "component": "서체|공통",
+   "no": 3,
+   "text": "여러 줄로 구성된 텍스트의 행간을 텍스트 크기의 1.5배 이상으로 표현하고 있다.",
+   "guideline": null,
+   "idx": 11
+  },
+  {
+   "section": "style",
+   "component": "서체|정부 상징",
+   "no": 1,
+   "text": "본문의 기본 텍스트 크기를 16px 이상으로 표현하고 있다.",
+   "guideline": null,
+   "idx": 12
+  },
+  {
+   "section": "style",
+   "component": "서체|정부 상징",
+   "no": 2,
+   "text": "고딕 계열 서체를 사용하고 있다.",
+   "guideline": null,
+   "idx": 13
+  },
+  {
+   "section": "style",
+   "component": "서체|정부 상징",
+   "no": 3,
+   "text": "서체의 굵기를 2가지로 구분하여 표현하고 있다.",
+   "guideline": null,
+   "idx": 14
+  },
+  {
+   "section": "style",
+   "component": "서체|자체 상징",
+   "no": 1,
+   "text": "Pretendard GOV 서체를 사용하고 있다.",
+   "guideline": null,
+   "idx": 15
+  },
+  {
+   "section": "style",
+   "component": "서체|자체 상징",
+   "no": 2,
+   "text": "본문의 기본 텍스트 크기를 17px 이상으로 표현하고 있다.",
+   "guideline": null,
+   "idx": 16
+  },
+  {
+   "section": "style",
+   "component": "서체|자체 상징",
+   "no": 3,
+   "text": "디지털 정부 디자인 시스템에 정의된 서체 사용 규격을 적용하고 있다.",
+   "guideline": null,
+   "idx": 17
+  },
+  {
+   "section": "style",
+   "component": "서체|자체 상징",
+   "no": 4,
+   "text": "각 서체 굵기에 맞는 폰트 파일을 사용하고 있다.",
+   "guideline": null,
+   "idx": 18
+  },
+  {
+   "section": "style",
+   "component": "형태|자체 상징",
+   "no": 1,
+   "text": "디지털 정부 디자인 시스템에 정의된 형태 규칙 및 규격을 사용하고 있다.",
+   "guideline": null,
+   "idx": 19
+  },
+  {
+   "section": "style",
+   "component": "형태|공통",
+   "no": 1,
+   "text": "컨테이너 크기가 커질수록 둥글기 값이 커지도록 표현하고 있다.",
+   "guideline": null,
+   "idx": 20
+  },
+  {
+   "section": "style",
+   "component": "형태|공통",
+   "no": 1,
+   "text": "컨테이너의 둥글기 사용에도 내부 콘텐츠가 가려지거나 잘림 없이 표시되고 있다.",
+   "guideline": null,
+   "idx": 21
+  },
+  {
+   "section": "component",
+   "component": "공식 배너",
+   "no": 1,
+   "text": "공식 배너를 모든 화면의 최상단에 제공하고 있다.",
+   "guideline": "배너는 모든 화면의 최상단에 제공한다.",
+   "idx": 22,
+   "kit": "masthead"
+  },
+  {
+   "section": "component",
+   "component": "공식 배너",
+   "no": 2,
+   "text": "공식 배너의 스타일을 변형하지 않고 있다.",
+   "guideline": "배너 텍스트와 스타일을 변형하지 않는다.",
+   "idx": 23,
+   "kit": "masthead"
+  },
+  {
+   "section": "component",
+   "component": "공식 배너",
+   "no": 3,
+   "text": "공식 배너의 텍스트를 변형하지 않고 있다.",
+   "guideline": null,
+   "idx": 24,
+   "kit": "masthead"
+  },
+  {
+   "section": "component",
+   "component": "공식 배너",
+   "no": 4,
+   "text": "공식 배너를 웹사이트의 모든 화면에 제공하고 있다.",
+   "guideline": null,
+   "idx": 25,
+   "kit": "masthead"
+  },
+  {
+   "section": "component",
+   "component": "운영기관 식별자",
+   "no": 1,
+   "text": "운영기관 식별자의 로고 영역에 상위 기관의 로고를 제공하고 있다.",
+   "guideline": "로고 영역에는 서비스의 로고나 서비스 운영 주체의 로고가 아니라 서비스 운영과 관련된 상위 기관의 로고를 제공한다.",
+   "idx": 26,
+   "kit": "identifier"
+  },
+  {
+   "section": "component",
+   "component": "운영기관 식별자",
+   "no": 2,
+   "text": "관련 기관이 2개 이상 존재하는 경우 운영기관 식별자에 기관의 계층 수준에 따라 로고를 순서대로 배치하고 있다.",
+   "guideline": "관련 기관이 2개 이상 존재하는 경우 기관의 계층 수준에 따라 로고를 순서대로 배치한다.",
+   "idx": 27,
+   "kit": "identifier"
+  },
+  {
+   "section": "component",
+   "component": "운영기관 식별자",
+   "no": 3,
+   "text": "운영기관 식별자에 안내 텍스트와 요소의 배치를 일관되게 제공하고 있다.",
+   "guideline": "안내 텍스트와 요소의 배치를 변경하지 않는다.",
+   "idx": 28,
+   "kit": "identifier"
+  },
+  {
+   "section": "component",
+   "component": "푸터",
+   "no": 1,
+   "text": "푸터에 서비스 로고, 연락처, 저작권 정보를 제공하고 있다.",
+   "guideline": "구조",
+   "idx": 29,
+   "kit": "footer"
+  },
+  {
+   "section": "component",
+   "component": "푸터",
+   "no": 2,
+   "text": "푸터를 모든 화면에서 일관된 위치에 제공하고 있다.",
+   "guideline": "모든 화면에 푸터를 일관된 위치에 제공해야 한다.",
+   "idx": 30,
+   "kit": "footer"
+  },
+  {
+   "section": "component",
+   "component": "푸터",
+   "no": 3,
+   "text": "푸터 섹션의 정보를 일관된 순서로 제공하고 있다.",
+   "guideline": "모든 디지털 정부서비스에서 푸터 섹션의 정보는 일관된 순서로 제공한다.",
+   "idx": 31,
+   "kit": "footer"
+  },
+  {
+   "section": "component",
+   "component": "푸터",
+   "no": 4,
+   "text": "푸터에 개인 정보 처리 방침을 표시하고 있다.",
+   "guideline": "개인 정보 처리 방침을 반드시 표시한다.",
+   "idx": 32,
+   "kit": "footer"
+  },
+  {
+   "section": "component",
+   "component": "푸터",
+   "no": 5,
+   "text": "전자상거래가 포함된 경우 푸터에 이용약관을 표시하고 있다.",
+   "guideline": "전자상거래가 포함된 경우 이용약관을 반드시 표시한다.",
+   "idx": 33,
+   "kit": "footer"
+  },
+  {
+   "section": "component",
+   "component": "푸터",
+   "no": 6,
+   "text": "푸터에 사용자들이 빈번하게 찾는 링크를 배치하고 있다.",
+   "guideline": "사용자들이 빈번하게 찾는 링크를 배치한다.",
+   "idx": 34,
+   "kit": "footer"
+  },
+  {
+   "section": "component",
+   "component": "푸터",
+   "no": 7,
+   "text": "푸터의 서비스 내비게이션이 기본 내비게이션과 동일하게 제공되고 있다.",
+   "guideline": "푸터에 제공하는 서비스 내비게이션은 기본 내비게이션과 동일한 구조 및 레이블을 따라야 한다.",
+   "idx": 35,
+   "kit": "footer"
+  },
+  {
+   "section": "component",
+   "component": "푸터",
+   "no": 8,
+   "text": "푸터에 최신 연락처 정보를 정확하게 제공하고 있다.",
+   "guideline": "연락처 정보와 각종 링크는 항상 최신 상태로 유지한다.",
+   "idx": 36,
+   "kit": "footer"
+  },
+  {
+   "section": "component",
+   "component": "푸터",
+   "no": 9,
+   "text": "푸터의 각종 링크는 링크 레이블에 명시된 정확한 페이지로 연결되고 있다.",
+   "guideline": null,
+   "idx": 37,
+   "kit": "footer"
+  },
+  {
+   "section": "component",
+   "component": "헤더",
+   "no": 1,
+   "text": "헤더의 스타일 수정을 최소화하고 있다.",
+   "guideline": "헤더의 스타일 수정을 최소화하고 있다.",
+   "idx": 38,
+   "kit": "header"
+  },
+  {
+   "section": "component",
+   "component": "헤더",
+   "no": 2,
+   "text": "서비스 로고를 헤더의 왼쪽 상단에 제공하고 있다.",
+   "guideline": "정부 로고는 항상 헤더의 왼쪽 상단에 제공한다.",
+   "idx": 39,
+   "kit": "header"
+  },
+  {
+   "section": "component",
+   "component": "헤더",
+   "no": 3,
+   "text": "헤더의 내부 컴포넌트를 일관된 순서로 제공하고 있다.",
+   "guideline": "헤더의 내부 컴포넌트를 일관된 순서로 배치한다.",
+   "idx": 40,
+   "kit": "header"
+  },
+  {
+   "section": "component",
+   "component": "헤더",
+   "no": 4,
+   "text": "유틸리티 링크 그룹은 헤더 우측 상단에 제공하고 있다.",
+   "guideline": "유틸리티 링크 그룹은 헤더 우측 상단에 제공한다.",
+   "idx": 41,
+   "kit": "header"
+  },
+  {
+   "section": "component",
+   "component": "헤더",
+   "no": 5,
+   "text": "헤더에서 유틸리티 링크 그룹을 디바이더로 구분하고 있다.",
+   "guideline": "유틸리티 링크 그룹을 디바이더로 구분하여 표현한다.",
+   "idx": 42,
+   "kit": "header"
+  },
+  {
+   "section": "component",
+   "component": "헤더",
+   "no": 6,
+   "text": "헤더에 4개 이하의 유틸리티 링크를 사용하고 있다.",
+   "guideline": "유틸리티 링크가 5개 이상 필요한 경우 드롭다운 메뉴를 사용한다.",
+   "idx": 43,
+   "kit": "header"
+  },
+  {
+   "section": "component",
+   "component": "헤더",
+   "no": 7,
+   "text": "언어 설정을 위한 드롭다운 메뉴에 국기를 사용하지 않는다.",
+   "guideline": "헤더의 언어 설정을 위한 드롭다운 메뉴에 국기를 사용하지 않고 있다.",
+   "idx": 44,
+   "kit": "header"
+  },
+  {
+   "section": "component",
+   "component": "헤더",
+   "no": 8,
+   "text": "헤더의 아이콘 버튼/링크에 텍스트 레이블을 제공하고 있다.",
+   "guideline": "아이콘 버튼/링크에 텍스트 레이블을 제공한다.",
+   "idx": 45,
+   "kit": "header"
+  },
+  {
+   "section": "component",
+   "component": "헤더",
+   "no": 9,
+   "text": "화면을 위로 스크롤 했을 때 헤더를 뷰포트 상단에 고정하고 있다.",
+   "guideline": "화면을 스크롤 했을 때 헤더를 뷰포트 상단에 고정한다.",
+   "idx": 46,
+   "kit": "header"
+  },
+  {
+   "section": "component",
+   "component": "건너뛰기 링크",
+   "no": 1,
+   "text": "반복되는 영역이 없는 단순한 화면에 건너뛰기 링크를 생략하고 있다.",
+   "guideline": "용례",
+   "idx": 47,
+   "kit": "skip-link"
+  },
+  {
+   "section": "component",
+   "component": "건너뛰기 링크",
+   "no": 2,
+   "text": "건너뛰기 링크를 웹사이트의 모든 화면에 제공하고 있다.",
+   "guideline": "웹사이트의 모든 페이지에 건너뛰기 링크를 제공한다.",
+   "idx": 48,
+   "kit": "skip-link"
+  },
+  {
+   "section": "component",
+   "component": "건너뛰기 링크",
+   "no": 3,
+   "text": "건너뛰기 링크의 개수를 3개 이내로 제공하고 있다.",
+   "guideline": "건너뛰기 링크의 개수는 3개 이내로 제공한다.",
+   "idx": 49,
+   "kit": "skip-link"
+  },
+  {
+   "section": "component",
+   "component": "건너뛰기 링크",
+   "no": 4,
+   "text": "건너뛰기 링크에 화면의 핵심 영역으로 이동하는 링크를 첫 번째 항목으로 제공하고 있다.",
+   "guideline": null,
+   "idx": 50,
+   "kit": "skip-link"
+  },
+  {
+   "section": "component",
+   "component": "건너뛰기 링크",
+   "no": 5,
+   "text": "건너뛰기 링크는 적절한 목적지에 연결되어 있다.",
+   "guideline": "건너뛰기 링크의 목적지를 적절하게 설정한다.",
+   "idx": 51,
+   "kit": "skip-link"
+  },
+  {
+   "section": "component",
+   "component": "건너뛰기 링크",
+   "no": 6,
+   "text": "건너뛰기 링크의 탐색, 이동에 대한 상호작용을 적절하게 구현하고 있다.",
+   "guideline": "상호작용 가이드라인",
+   "idx": 52,
+   "kit": "skip-link"
+  },
+  {
+   "section": "component",
+   "component": "메인 메뉴",
+   "no": 1,
+   "text": "메인 메뉴 드롭다운 영역 내에서 레이블은 좌측으로 정렬하고 있다.",
+   "guideline": "드롭다운 메뉴 영역 내에서 레이블은 좌측으로 정렬한다.",
+   "idx": 53,
+   "kit": "navigation-menu, mobile-menu"
+  },
+  {
+   "section": "component",
+   "component": "메인 메뉴",
+   "no": 2,
+   "text": "메인 메뉴 드롭다운 영역의 최대 높이가 뷰포트를 초과하지 않고 있다.",
+   "guideline": "드롭다운 영역의 최대 높이는 뷰포트를 초과하지 않도록 하고 최대 높이를 초과하는 경우에 스크롤이 생성되도록 제공한다.",
+   "idx": 54,
+   "kit": "navigation-menu, mobile-menu"
+  },
+  {
+   "section": "component",
+   "component": "메인 메뉴",
+   "no": 3,
+   "text": "메인 메뉴의 링크 목록 수가 많아 드롭다운 메뉴 영역을 넘어가는 경우 드롭다운 영역 스크롤을 제공하고 있다.",
+   "guideline": null,
+   "idx": 55,
+   "kit": "navigation-menu, mobile-menu"
+  },
+  {
+   "section": "component",
+   "component": "메인 메뉴",
+   "no": 4,
+   "text": "메인 메뉴 링크의 활성화 상태, 선택 상태가 명확히 구분되도록 표현하고 있다.",
+   "guideline": "링크의 활성화 상태, 선택 상태가 명확히 구분되도록 표현한다.",
+   "idx": 56,
+   "kit": "navigation-menu, mobile-menu"
+  },
+  {
+   "section": "component",
+   "component": "메인 메뉴",
+   "no": 5,
+   "text": "메인 메뉴 드롭다운 영역에 제목을 제공하고 있다.",
+   "guideline": "드롭다운 영역에 제목을 제공한다.",
+   "idx": 57,
+   "kit": "navigation-menu, mobile-menu"
+  },
+  {
+   "section": "component",
+   "component": "메인 메뉴",
+   "no": 6,
+   "text": "메인 메뉴를 3수준 이하로 제공하고 있다.",
+   "guideline": "서비스 정보 구조를 적절하게 반영하여 메인 메뉴를 구성하고 최대 3수준의 메뉴를 사용한다.",
+   "idx": 58,
+   "kit": "navigation-menu, mobile-menu"
+  },
+  {
+   "section": "component",
+   "component": "메인 메뉴",
+   "no": 7,
+   "text": "메인 메뉴 링크명에 이해하기 쉬운 용어를 사용하고 있다.",
+   "guideline": "링크명에 이해하기 쉬운 용어를 사용한다.",
+   "idx": 59,
+   "kit": "navigation-menu, mobile-menu"
+  },
+  {
+   "section": "component",
+   "component": "메인 메뉴",
+   "no": 8,
+   "text": "마우스오버를 사용하여 드롭다운 목록을 확장하지 않는다.",
+   "guideline": "메인 메뉴 드롭다운 목록 확장에 마우스오버를 사용하지 않고 있다.",
+   "idx": 60,
+   "kit": "navigation-menu, mobile-menu"
+  },
+  {
+   "section": "component",
+   "component": "메인 메뉴",
+   "no": 9,
+   "text": "메인 메뉴의 1수준 메뉴 전체를 확인할 수 있도록 표현하고 있다.",
+   "guideline": "플랫폼에 대한 고려 사항 화면 너비가 충분한 경우에는 1수준 메뉴 전체를 확인할 수 있도록 표현한다.",
+   "idx": 61,
+   "kit": "navigation-menu, mobile-menu"
+  },
+  {
+   "section": "component",
+   "component": "브레드크럼",
+   "no": 1,
+   "text": "탐색 계층 구조가 1수준인 사이트에 브레드크럼을 사용하지 않고 있다.",
+   "guideline": "상호작용 가이드라인 10.메인 메뉴 영역 확장 및 축소에 대한 상호작용을 적절하게 구현하고 있다. 11.메인 메뉴 링크 목록 탐색에 대한 키보드 상호작용을 적절하게 구현하고 있다. 용례",
+   "idx": 62,
+   "kit": "breadcrumb"
+  },
+  {
+   "section": "component",
+   "component": "브레드크럼",
+   "no": 2,
+   "text": "브레드크럼을 메인 또는 랜딩 페이지에서 사용하지 않고 있다.",
+   "guideline": null,
+   "idx": 63,
+   "kit": "breadcrumb"
+  },
+  {
+   "section": "component",
+   "component": "브레드크럼",
+   "no": 3,
+   "text": "브레드크럼을 진행 상황 표시를 위해 사용하지 않고 있다.",
+   "guideline": null,
+   "idx": 64,
+   "kit": "breadcrumb"
+  },
+  {
+   "section": "component",
+   "component": "브레드크럼",
+   "no": 4,
+   "text": "브레드크럼에 구분자를 제공하고 있다.",
+   "guideline": "구조",
+   "idx": 65,
+   "kit": "breadcrumb"
+  },
+  {
+   "section": "component",
+   "component": "브레드크럼",
+   "no": 5,
+   "text": "브레드크럼의 가장 첫 번째 항목으로 메인 화면 링크를 제공하고 있다.",
+   "guideline": "브레드크럼 목록의 가장 첫 번째 항목으로 메인 화면 링크를 제공한다.",
+   "idx": 66,
+   "kit": "breadcrumb"
+  },
+  {
+   "section": "component",
+   "component": "브레드크럼",
+   "no": 6,
+   "text": "브레드크럼의 가장 마지막 항목으로 현재 화면의 상위 화면 링크를 제공하고 있다.",
+   "guideline": "브레드크럼 목록의 가장 마지막 항목으로 현재 화면의 상위 화면 링크를 제공한다.",
+   "idx": 67,
+   "kit": "breadcrumb"
+  },
+  {
+   "section": "component",
+   "component": "브레드크럼",
+   "no": 7,
+   "text": "브레드크럼과 본문 제목 사이에 다른 요소를 제공하지 않고 있다.",
+   "guideline": null,
+   "idx": 68,
+   "kit": "breadcrumb"
+  },
+  {
+   "section": "component",
+   "component": "브레드크럼",
+   "no": 8,
+   "text": "브레드크럼에 현재 화면의 전체 정보 계층 구조를 표시하고 있다.",
+   "guideline": "상위 화면으로 연결되는 링크가 없는 경우에도 항상 현재 화면의 전체 정보 계층 구조를 표시한다.",
+   "idx": 69,
+   "kit": "breadcrumb"
+  },
+  {
+   "section": "component",
+   "component": "브레드크럼",
+   "no": 9,
+   "text": "브레드크럼 텍스트 경로가 링크임을 인지할 수 있는 시각적 단서를 제공하고 있다.",
+   "guideline": "브레드크럼 텍스트 경로가 링크임을 인지할 수 있는 시각적 단서를 제공한다.",
+   "idx": 70,
+   "kit": "breadcrumb"
+  },
+  {
+   "section": "component",
+   "component": "사이드 메뉴",
+   "no": 1,
+   "text": "사이드 메뉴에서 현재 탐색 중인 화면에 대한 링크를 강조 표시하고 있다.",
+   "guideline": "현재 탐색 중인 화면에 대한 링크를 강조 표시한다.",
+   "idx": 71,
+   "kit": "side-navigation"
+  },
+  {
+   "section": "component",
+   "component": "사이드 메뉴",
+   "no": 2,
+   "text": "사이드 메뉴 링크 목록의 계층 구조를 최대 2개 수준까지 사용하고 있다.",
+   "guideline": "메뉴의 계층 구조는 최대 2개 수준까지 사용한다.",
+   "idx": 72,
+   "kit": "side-navigation"
+  },
+  {
+   "section": "component",
+   "component": "사이드 메뉴",
+   "no": 3,
+   "text": "사이드 메뉴에서 하위 수준 메뉴를 확장 가능한 영역으로 제공하고 있다.",
+   "guideline": "하위 수준 메뉴 표시에 확장 가능한 영역을 사용하는 방안을 고려한다.",
+   "idx": 73,
+   "kit": "side-navigation"
+  },
+  {
+   "section": "component",
+   "component": "사이드 메뉴",
+   "no": 4,
+   "text": "사이드 메뉴의 계층 구조를 명확하게 구분하여 표현한다.",
+   "guideline": "메뉴의 계층 구조를 명확하게 구분하여 표현한다.",
+   "idx": 74,
+   "kit": "side-navigation"
+  },
+  {
+   "section": "component",
+   "component": "사이드 메뉴",
+   "no": 5,
+   "text": "작은 화면 너비에서 사이드 메뉴를 표시하지 않고 있다.",
+   "guideline": "플랫폼에 대한 고려 사항 화면 너비가 충분하지 않은 경우 사이드 메뉴를 표시하지 않는다.",
+   "idx": 75,
+   "kit": "side-navigation"
+  },
+  {
+   "section": "component",
+   "component": "사이드 메뉴",
+   "no": 6,
+   "text": "사이드 메뉴 링크 탐색에 대한 상호작용을 적절하게 구현하고 있다.",
+   "guideline": "상호작용 가이드라인",
+   "idx": 76,
+   "kit": "side-navigation"
+  },
+  {
+   "section": "component",
+   "component": "사이드 메뉴",
+   "no": 7,
+   "text": "사이드 메뉴 링크 관련 화면으로 이동에 대한 상호작용을 적절하게 구현하고 있다.",
+   "guideline": null,
+   "idx": 77,
+   "kit": "side-navigation"
+  },
+  {
+   "section": "component",
+   "component": "사이드 메뉴",
+   "no": 8,
+   "text": "사이드 메뉴 영역 확장 및 축소에 대한 상호작용을 적절하게 구현하고 있다.",
+   "guideline": null,
+   "idx": 78,
+   "kit": "side-navigation"
+  },
+  {
+   "section": "component",
+   "component": "콘텐츠 내 탐색",
+   "no": 1,
+   "text": "콘텐츠 내 탐색을 계층 구조가 없는 콘텐츠에 사용하지 않고 있다.",
+   "guideline": "용례",
+   "idx": 79,
+   "kit": "in-page-navigation"
+  },
+  {
+   "section": "component",
+   "component": "콘텐츠 내 탐색",
+   "no": 2,
+   "text": "콘텐츠 내 탐색에 제목, 활성화 상태 인디케이터를 제공하고 있다.",
+   "guideline": "구조",
+   "idx": 80,
+   "kit": "in-page-navigation"
+  },
+  {
+   "section": "component",
+   "component": "콘텐츠 내 탐색",
+   "no": 3,
+   "text": "콘텐츠 내 탐색을 적절한 너비로 표현하고 있다.",
+   "guideline": "적절한 너비로 표현한다.",
+   "idx": 81,
+   "kit": "in-page-navigation"
+  },
+  {
+   "section": "component",
+   "component": "콘텐츠 내 탐색",
+   "no": 4,
+   "text": "콘텐츠 내 탐색을 본문 우측에 표시하고 있다.",
+   "guideline": "콘텐츠 내 탐색은 본문 우측에 표시한다.",
+   "idx": 82,
+   "kit": "in-page-navigation"
+  },
+  {
+   "section": "component",
+   "component": "콘텐츠 내 탐색",
+   "no": 5,
+   "text": "콘텐츠 내 탐색 텍스트는 연결된 섹션 제목과 일치하고 있다.",
+   "guideline": "개요 목록 텍스트는 연결된 섹션 제목과 일치하는 내용으로 제공한다.",
+   "idx": 83,
+   "kit": "in-page-navigation"
+  },
+  {
+   "section": "component",
+   "component": "콘텐츠 내 탐색",
+   "no": 6,
+   "text": "콘텐츠 내 탐색을 3수준 이하로 제공하고 있다.",
+   "guideline": "목록 수준은 최대 3단계까지 사용한다.",
+   "idx": 84,
+   "kit": "in-page-navigation"
+  },
+  {
+   "section": "component",
+   "component": "콘텐츠 내 탐색",
+   "no": 7,
+   "text": "작은 화면 너비에서 콘텐츠 내 탐색을 제목과 본문 사이에 배치하고 있다.",
+   "guideline": "플랫폼에 대한 고려 사항 모바일에서 콘텐츠 내 탐색은 제목과 본문 사이에 배치한다.",
+   "idx": 85,
+   "kit": "in-page-navigation"
+  },
+  {
+   "section": "component",
+   "component": "콘텐츠 내 탐색",
+   "no": 8,
+   "text": "콘텐츠 내 탐색의 목록 탐색에 대한 상호작용을 적절하게 구현하고 있다.",
+   "guideline": "상호작용 가이드라인",
+   "idx": 86,
+   "kit": "in-page-navigation"
+  },
+  {
+   "section": "component",
+   "component": "콘텐츠 내 탐색",
+   "no": 9,
+   "text": "콘텐츠 내 탐색 링크의 콘텐츠 섹션 이동에 대한 상호작용을 적절하게 구현하고 있다.",
+   "guideline": null,
+   "idx": 87,
+   "kit": "in-page-navigation"
+  },
+  {
+   "section": "component",
+   "component": "페이지네이션",
+   "no": 1,
+   "text": "페이지네이션을 무한 스크롤 기능과 함께 사용하지 않고 있다.",
+   "guideline": "용례",
+   "idx": 88,
+   "kit": "pagination"
+  },
+  {
+   "section": "component",
+   "component": "페이지네이션",
+   "no": 2,
+   "text": "페이지네이션에 첫/마지막 화면, 이전/다음 화면으로 이동할 수 있는 수단을 제공하고 있다.",
+   "guideline": "페이지네이션에는 첫/마지막 화면, 이전/다음 화면으로 이동할 수 있는 수단을 제공한다.",
+   "idx": 89,
+   "kit": "pagination"
+  },
+  {
+   "section": "component",
+   "component": "페이지네이션",
+   "no": 3,
+   "text": "페이지네이션에 전체 화면 수를 표시하고 있다.",
+   "guideline": "전체 화면 수를 표시한다.",
+   "idx": 90,
+   "kit": "pagination"
+  },
+  {
+   "section": "component",
+   "component": "페이지네이션",
+   "no": 4,
+   "text": "페이지네이션 번호 링크에 현재 화면 숫자를 강조하여 표현하고 있다.",
+   "guideline": "번호 링크에 현재 화면 숫자를 강조하여 표현한다.",
+   "idx": 91,
+   "kit": "pagination"
+  },
+  {
+   "section": "component",
+   "component": "페이지네이션",
+   "no": 5,
+   "text": "페이지네이션을 콘텐츠 목록 하단에 중앙 정렬하여 제공하고 있다.",
+   "guideline": "페이지네이션은 전체 서비스에서 일관된 영역에 배치한다.",
+   "idx": 92,
+   "kit": "pagination"
+  },
+  {
+   "section": "component",
+   "component": "페이지네이션",
+   "no": 6,
+   "text": "페이지네이션을 한 화면에 하나만 사용하고 있다.",
+   "guideline": "페이지네이션은 한 화면에 하나만 사용한다.",
+   "idx": 93,
+   "kit": "pagination"
+  },
+  {
+   "section": "component",
+   "component": "페이지네이션",
+   "no": 7,
+   "text": "숫자 링크 목록 유형의 페이지네이션에 말줄임표를 포함하여 10개 이내의 항목을 표시하고 있다.",
+   "guideline": "숫자 링크 목록에는 말줄임표를 포함하여 10개 이내의 항목을 표시한다.",
+   "idx": 94,
+   "kit": "pagination"
+  },
+  {
+   "section": "component",
+   "component": "페이지네이션",
+   "no": 8,
+   "text": "작은 화면 너비에서 숫자 링크 목록 유형의 페이지네이션에 이전/다음 버튼, 숫자 링크 목록을 수직으로 배치하고 있다.",
+   "guideline": "플랫폼에 대한 고려 사항 화면 너비가 충분하지 않은 경우 이전/다음 버튼, 숫자 링크 목록을 수직으로 배치한다.",
+   "idx": 95,
+   "kit": "pagination"
+  },
+  {
+   "section": "component",
+   "component": "페이지네이션",
+   "no": 9,
+   "text": "작은 화면 너비에서 숫자 링크 목록 유형의 페이지네이션에 말줄임표를 포함하여 최대 7개 링크를 표시하고 있다.",
+   "guideline": "화면 너비가 충분하지 않은 경우 숫자 링크 목록은 말줄임표를 포함하여 최대 7개 링크를 표시한다.",
+   "idx": 96,
+   "kit": "pagination"
+  },
+  {
+   "section": "component",
+   "component": "링크",
+   "no": 1,
+   "text": "인라인 링크를 주변 텍스트와 동일한 크기로 제공하고 있다.",
+   "guideline": "링크가 인라인으로 사용될 때 링크 텍스트를 주변 텍스트와 동일한 크기로 제공한다.",
+   "idx": 97,
+   "kit": "link"
+  },
+  {
+   "section": "component",
+   "component": "링크",
+   "no": 2,
+   "text": "링크를 색상만으로 구분하지 않고 있다.",
+   "guideline": "링크를 색상만으로 구분하지 않는다.",
+   "idx": 98,
+   "kit": "link"
+  },
+  {
+   "section": "component",
+   "component": "링크",
+   "no": 3,
+   "text": "링크 레이블은 연결된 목적지 정보를 정확하게 반영하고 있다.",
+   "guideline": "링크 레이블은 연결된 목적지 정보를 예측할 수 있는 내용으로 제공한다.",
+   "idx": 99,
+   "kit": "link"
+  },
+  {
+   "section": "component",
+   "component": "링크",
+   "no": 4,
+   "text": "이메일 주소를 링크로 제공하고 있다.",
+   "guideline": "이메일 주소, 전화번호 정보를 링크로 제공한다.",
+   "idx": 100,
+   "kit": "link"
+  },
+  {
+   "section": "component",
+   "component": "링크",
+   "no": 5,
+   "text": "전화번호 정보를 링크로 제공하고 있다.",
+   "guideline": "이메일 주소, 전화번호 정보를 링크로 제공한다.",
+   "idx": 101,
+   "kit": "link"
+  },
+  {
+   "section": "component",
+   "component": "링크",
+   "no": 6,
+   "text": "외부 서비스로 이동하는 링크를 분명하게 구분하고 있다.",
+   "guideline": "외부 서비스로 이동하는 링크를 분명하게 구분하고 일관된 방식으로 표현한다.",
+   "idx": 102,
+   "kit": "link"
+  },
+  {
+   "section": "component",
+   "component": "링크",
+   "no": 7,
+   "text": "외부 서비스로 이동하는 링크를 일관된 방식으로 표현하고 있다.",
+   "guideline": null,
+   "idx": 103,
+   "kit": "link"
+  },
+  {
+   "section": "component",
+   "component": "링크",
+   "no": 8,
+   "text": "링크가 레이블에 명시된 정확한 목적지로 연결되고 있다.",
+   "guideline": "링크는 레이블의 설명과 가장 관련성이 높은 목적지로 바로 이동할 수 있도록 구성한다.",
+   "idx": 104,
+   "kit": "link"
+  },
+  {
+   "section": "component",
+   "component": "링크",
+   "no": 9,
+   "text": "링크 탐색에 대한 상호작용을 적절하게 구현하고 있다.",
+   "guideline": "상호작용 가이드라인",
+   "idx": 105,
+   "kit": "link"
+  },
+  {
+   "section": "component",
+   "component": "버튼",
+   "no": 1,
+   "text": "그룹으로 제공될 때 모든 버튼의 크기를 동일하게 제공하고 있다.",
+   "guideline": "버튼이 그룹으로 제공될 때 모든 버튼의 크기를 동일하게 제공한다.",
+   "idx": 106,
+   "kit": "button"
+  },
+  {
+   "section": "component",
+   "component": "버튼",
+   "no": 2,
+   "text": "한 화면에 최상위 수준의 강조 버튼은 한 번만 사용하고 있다.",
+   "guideline": "한 화면에 최상위 수준의 강조 버튼은 한 번만 사용한다.",
+   "idx": 107,
+   "kit": "button"
+  },
+  {
+   "section": "component",
+   "component": "버튼",
+   "no": 3,
+   "text": "버튼 그룹을 수직으로 배열할 때 최상위 수준의 강조 버튼을 첫 번째로 배치하고 있다.",
+   "guideline": "버튼 그룹을 수직으로 배열할 때 최상위 수준의 강조 버튼을 첫 번째로 배치한다.",
+   "idx": 108,
+   "kit": "button"
+  },
+  {
+   "section": "component",
+   "component": "버튼",
+   "no": 4,
+   "text": "버튼의 텍스트 레이블이 동사형으로 제공되고 있다.",
+   "guideline": "버튼의 텍스트 레이블은 버튼을 통해 실행되는 기능을 예측할 수 있는 명확한 내용을 동사형으로 제공한다.",
+   "idx": 109,
+   "kit": "button"
+  },
+  {
+   "section": "component",
+   "component": "버튼",
+   "no": 5,
+   "text": "버튼 실행 시 사용자의 두 번째 인터랙션이 무시되도록 구현하고 있다.",
+   "guideline": "사용자가 실수로 버튼을 두 번 이상 누르는 상황을 고려한다.",
+   "idx": 110,
+   "kit": "button"
+  },
+  {
+   "section": "component",
+   "component": "버튼",
+   "no": 6,
+   "text": "버튼 탐색에 대한 상호작용을 적절하게 구현하고 있다.",
+   "guideline": "상호작용 가이드라인",
+   "idx": 111,
+   "kit": "button"
+  },
+  {
+   "section": "component",
+   "component": "버튼",
+   "no": 7,
+   "text": "버튼 실행에 대한 상호작용을 적절하게 구현하고 있다.",
+   "guideline": null,
+   "idx": 112,
+   "kit": "button"
+  },
+  {
+   "section": "component",
+   "component": "라디오 버튼",
+   "no": 1,
+   "text": "여러 개의 옵션을 선택하는 데 라디오 버튼을 사용하지 않고 있다.",
+   "guideline": "용례",
+   "idx": 113,
+   "kit": "radio-group"
+  },
+  {
+   "section": "component",
+   "component": "라디오 버튼",
+   "no": 2,
+   "text": "옵션의 개수가 많은 경우에 라디오 버튼을 사용하지 않고 있다.",
+   "guideline": null,
+   "idx": 114,
+   "kit": "radio-group"
+  },
+  {
+   "section": "component",
+   "component": "라디오 버튼",
+   "no": 3,
+   "text": "라디오 버튼 옵션을 가나다순으로 정렬하고 있다.",
+   "guideline": "기본적으로 라디오 버튼의 옵션은 가나다순으로 정렬한다.",
+   "idx": 115,
+   "kit": "radio-group"
+  },
+  {
+   "section": "component",
+   "component": "라디오 버튼",
+   "no": 4,
+   "text": "라디오 버튼 옵션을 수직으로 배치하고 있다.",
+   "guideline": "라디오 버튼은 수직으로, 라디오 버튼의 레이블은 양식의 오른쪽에 배치한다.",
+   "idx": 116,
+   "kit": "radio-group"
+  },
+  {
+   "section": "component",
+   "component": "라디오 버튼",
+   "no": 5,
+   "text": "라디오 버튼 레이블을 양식의 오른쪽에 배치하고 있다.",
+   "guideline": null,
+   "idx": 117,
+   "kit": "radio-group"
+  },
+  {
+   "section": "component",
+   "component": "라디오 버튼",
+   "no": 6,
+   "text": "라디오 버튼 옵션을 수평으로 배치하는 경우 옵션 간 간격을 충분하게 제공하고 있다.",
+   "guideline": "라디오 버튼을 수평으로 배치하는 경우 버튼 간 간격을 충분히 제공한다.",
+   "idx": 118,
+   "kit": "radio-group"
+  },
+  {
+   "section": "component",
+   "component": "라디오 버튼",
+   "no": 7,
+   "text": "라디오 버튼의 특정 옵션을 기본 선택값으로 제공하지 않고 있다.",
+   "guideline": "사용자가 정확한 값을 입력하는 것이 중요한 경우 라디오 버튼의 특정 옵션을 기본 선택값으로 제공하지 않아야 한다.",
+   "idx": 119,
+   "kit": "radio-group"
+  },
+  {
+   "section": "component",
+   "component": "라디오 버튼",
+   "no": 8,
+   "text": "라디오 버튼에 선택을 되돌릴 수 있는 방법을 제공하고 있다.",
+   "guideline": "‘해당 없음’, ‘잘 모름’ 옵션 제공을 고려한다.",
+   "idx": 120,
+   "kit": "radio-group"
+  },
+  {
+   "section": "component",
+   "component": "라디오 버튼",
+   "no": 9,
+   "text": "라디오 버튼 탐색에 대한 상호작용을 적절하게 구현하고 있다.",
+   "guideline": "상호작용 가이드라인",
+   "idx": 121,
+   "kit": "radio-group"
+  },
+  {
+   "section": "component",
+   "component": "셀렉트",
+   "no": 1,
+   "text": "여러 개의 옵션을 선택하는 데 셀렉트를 사용하지 않고 있다.",
+   "guideline": "10.라디오 버튼 실행에 대한 상호작용을 적절하게 구현하고 있다. 용례",
+   "idx": 122,
+   "kit": "select"
+  },
+  {
+   "section": "component",
+   "component": "셀렉트",
+   "no": 2,
+   "text": "옵션의 개수가 많은 경우에 셀렉트를 사용하지 않고 있다.",
+   "guideline": null,
+   "idx": 123,
+   "kit": "select"
+  },
+  {
+   "section": "component",
+   "component": "셀렉트",
+   "no": 3,
+   "text": "셀렉트에 선택값을 제공하고 있다.",
+   "guideline": "구조",
+   "idx": 124,
+   "kit": "select"
+  },
+  {
+   "section": "component",
+   "component": "셀렉트",
+   "no": 4,
+   "text": "셀렉트에 레이블을 제공하고 있다.",
+   "guideline": "모든 셀렉트에는 레이블을 제공한다.",
+   "idx": 125,
+   "kit": "select"
+  },
+  {
+   "section": "component",
+   "component": "셀렉트",
+   "no": 5,
+   "text": "셀렉트 옵션 값을 변경했을 때 폼이 제출되지 않도록 구현하고 있다.",
+   "guideline": "셀렉트의 값을 변경하였을 때 폼이 제출되어서는 안 된다.",
+   "idx": 126,
+   "kit": "select"
+  },
+  {
+   "section": "component",
+   "component": "셀렉트",
+   "no": 6,
+   "text": "셀렉트 목록 확장 및 축소에 대한 상호작용을 적절하게 구현하고 있다.",
+   "guideline": "상호작용 가이드라인",
+   "idx": 127,
+   "kit": "select"
+  },
+  {
+   "section": "component",
+   "component": "셀렉트",
+   "no": 7,
+   "text": "셀렉트 탐색에 대한 상호작용을 적절하게 구현하고 있다.",
+   "guideline": null,
+   "idx": 128,
+   "kit": "select"
+  },
+  {
+   "section": "component",
+   "component": "셀렉트",
+   "no": 8,
+   "text": "셀렉트 옵션 선택에 대한 상호작용을 적절하게 구현하고 있다.",
+   "guideline": null,
+   "idx": 129,
+   "kit": "select"
+  },
+  {
+   "section": "component",
+   "component": "체크박스",
+   "no": 1,
+   "text": "한 개의 옵션을 선택하는 데 체크박스를 사용하지 않고 있다.",
+   "guideline": "용례",
+   "idx": 130,
+   "kit": "checkbox"
+  },
+  {
+   "section": "component",
+   "component": "체크박스",
+   "no": 2,
+   "text": "체크박스 옵션을 가나다순으로 정렬하고 있다.",
+   "guideline": "기본적으로 체크박스의 옵션은 가나다순으로 정렬한다.",
+   "idx": 131,
+   "kit": "checkbox"
+  },
+  {
+   "section": "component",
+   "component": "체크박스",
+   "no": 3,
+   "text": "체크박스 옵션을 수직으로 배치하고 있다.",
+   "guideline": "체크박스는 수직으로, 체크박스 레이블은 양식의 오른쪽에 배치한다.",
+   "idx": 132,
+   "kit": "checkbox"
+  },
+  {
+   "section": "component",
+   "component": "체크박스",
+   "no": 4,
+   "text": "체크박스 레이블을 양식의 오른쪽에 배치하고 있다.",
+   "guideline": null,
+   "idx": 133,
+   "kit": "checkbox"
+  },
+  {
+   "section": "component",
+   "component": "체크박스",
+   "no": 5,
+   "text": "체크박스에서 전체 선택 옵션이 제공되는 경우 중간 상태를 명확하게 표현하고 있다.",
+   "guideline": "전체 선택 옵션이 제공되는 경우 중간 상태를 명확하게 표현한다.",
+   "idx": 134,
+   "kit": "checkbox"
+  },
+  {
+   "section": "component",
+   "component": "체크박스",
+   "no": 6,
+   "text": "체크박스 탐색에 대한 상호작용을 적절하게 구현하고 있다.",
+   "guideline": "상호작용 가이드라인",
+   "idx": 135,
+   "kit": "checkbox"
+  },
+  {
+   "section": "component",
+   "component": "체크박스",
+   "no": 7,
+   "text": "체크박스 옵션 선택 및 선택 해제에 대한 상호작용을 적절하게 구현하고 있다.",
+   "guideline": null,
+   "idx": 136,
+   "kit": "checkbox"
+  },
+  {
+   "section": "component",
+   "component": "태그",
+   "no": 1,
+   "text": "태그 레이블을 간결하게 제공하고 있다.",
+   "guideline": "레이블은 정확한 내용으로 간결하게 제공한다.",
+   "idx": 137,
+   "kit": "tag"
+  },
+  {
+   "section": "component",
+   "component": "태그",
+   "no": 2,
+   "text": "대화형 태그와 비대화형 태그를 같은 그룹에 혼용하지 않고 있다.",
+   "guideline": "대화형 태그와 비대화형 태그를 같은 그룹에 포함하지 않는다.",
+   "idx": 138,
+   "kit": "tag"
+  },
+  {
+   "section": "component",
+   "component": "태그",
+   "no": 3,
+   "text": "태그 탐색에 대한 상호작용을 적절하게 구현하고 있다.",
+   "guideline": "상호작용 가이드라인",
+   "idx": 139,
+   "kit": "tag"
+  },
+  {
+   "section": "component",
+   "component": "태그",
+   "no": 4,
+   "text": "태그 실행에 대한 상호작용을 적절하게 구현하고 있다.",
+   "guideline": null,
+   "idx": 140,
+   "kit": "tag"
+  },
+  {
+   "section": "component",
+   "component": "태그",
+   "no": 5,
+   "text": "태그 삭제에 대한 상호작용을 적절하게 구현하고 있다.",
+   "guideline": null,
+   "idx": 141,
+   "kit": "tag"
+  },
+  {
+   "section": "component",
+   "component": "날짜 입력 필드",
+   "no": 1,
+   "text": "날짜 입력 필드를 상대적인 날짜 입력에 사용하지 않고 있다.",
+   "guideline": "용례",
+   "idx": 142,
+   "kit": "date-input, date-picker, calendar"
+  },
+  {
+   "section": "component",
+   "component": "날짜 입력 필드",
+   "no": 2,
+   "text": "날짜 입력 필드에 레이블을 제공하고 어떤 날짜를 입력해야 하는지 명확하게 설명하고 있다.",
+   "guideline": "입력 필드에 레이블을 제공하고 어떤 날짜를 입력해야 하는지 명확하게 설명한다.",
+   "idx": 143,
+   "kit": "date-input, date-picker, calendar"
+  },
+  {
+   "section": "component",
+   "component": "날짜 입력 필드",
+   "no": 3,
+   "text": "다중 날짜 입력 필드에 '년', '월', '일' 레이블을 제공하고 있다.",
+   "guideline": null,
+   "idx": 144,
+   "kit": "date-input, date-picker, calendar"
+  },
+  {
+   "section": "component",
+   "component": "날짜 입력 필드",
+   "no": 4,
+   "text": "날짜 입력 필드에 도움말 텍스트로 날짜 입력 형식을 안내하고 있다.",
+   "guideline": "도움말 텍스트를 활용하여 날짜 입력 형식을 안내한다.",
+   "idx": 145,
+   "kit": "date-input, date-picker, calendar"
+  },
+  {
+   "section": "component",
+   "component": "날짜 입력 필드",
+   "no": 5,
+   "text": "문서에 표시된 날짜를 정확하게 요청할 때 원본 형식과 동일한 구성의 날짜 입력 필드를 사용하고 있다.",
+   "guideline": "문서에 표시된 날짜를 정확하게 요청할 때 입력 필드의 구성을 원본 형식과 일치시킨다.",
+   "idx": 146,
+   "kit": "date-input, date-picker, calendar"
+  },
+  {
+   "section": "component",
+   "component": "날짜 입력 필드",
+   "no": 6,
+   "text": "날짜 입력 필드에 사용자가 대략적인 날짜를 입력할 수 있도록 제공하고 있다.",
+   "guideline": "사용자가 대략적인 날짜를 입력할 수 있도록 한다.",
+   "idx": 147,
+   "kit": "date-input, date-picker, calendar"
+  },
+  {
+   "section": "component",
+   "component": "날짜 입력 필드",
+   "no": 7,
+   "text": "날짜 입력 필드에 사용자가 자주, 반복적으로 입력하는 날짜는 자동 완성되도록 구현하고 있다.",
+   "guideline": "사용자가 자주, 반복적으로 입력하는 날짜는 자동 완성될 수 있도록 구현한다.",
+   "idx": 148,
+   "kit": "date-input, date-picker, calendar"
+  },
+  {
+   "section": "component",
+   "component": "날짜 입력 필드",
+   "no": 8,
+   "text": "날짜 입력 필드의 데이터 입력에 대한 상호작용을 적절하게 구현하고 있다.",
+   "guideline": "상호작용 가이드라인",
+   "idx": 149,
+   "kit": "date-input, date-picker, calendar"
+  },
+  {
+   "section": "component",
+   "component": "텍스트 영역",
+   "no": 1,
+   "text": "텍스트 영역에 레이블을 제공하고 있다.",
+   "guideline": "모든 텍스트 영역에는 레이블을 제공한다.",
+   "idx": 150,
+   "kit": "textarea"
+  },
+  {
+   "section": "component",
+   "component": "텍스트 영역",
+   "no": 2,
+   "text": "텍스트 영역의 레이블이나 도움말을 플레이스홀더로 제공하지 않고 있다.",
+   "guideline": "플레이스홀더가 레이블이나 도움말의 대체 수단으로 사용되어서는 안 된다.",
+   "idx": 151,
+   "kit": "textarea"
+  },
+  {
+   "section": "component",
+   "component": "텍스트 영역",
+   "no": 3,
+   "text": "텍스트 영역에 복사 및 붙여넣기 기능을 사용할 수 있다.",
+   "guideline": "복사, 붙여넣기를 제한하지 않는다.",
+   "idx": 152,
+   "kit": "textarea"
+  },
+  {
+   "section": "component",
+   "component": "텍스트 영역",
+   "no": 4,
+   "text": "텍스트 영역에 입력 가능한 글자 수의 제한이 있는 경우 사용자에게 글자 수 정보를 제공하고 있다.",
+   "guideline": "입력 가능한 글자 수에 제한이 있는 경우 사용자에게 글자 수 정보를 제공한다.",
+   "idx": 153,
+   "kit": "textarea"
+  },
+  {
+   "section": "component",
+   "component": "텍스트 영역",
+   "no": 5,
+   "text": "텍스트 영역에서 데이터 입력에 대한 상호작용을 적절하게 구현하고 있다.",
+   "guideline": "상호작용 가이드라인",
+   "idx": 154,
+   "kit": "textarea"
+  },
+  {
+   "section": "component",
+   "component": "텍스트 영역",
+   "no": 6,
+   "text": "텍스트 영역에서 스크롤에 대한 상호작용을 적절하게 구현하고 있다.",
+   "guideline": null,
+   "idx": 155,
+   "kit": "textarea"
+  },
+  {
+   "section": "component",
+   "component": "텍스트 영역",
+   "no": 7,
+   "text": "텍스트 입력 필드가 기본적으로 크기가 전체 섹션 영역을 차지하도록 구현하고 있다.",
+   "guideline": null,
+   "idx": 156,
+   "kit": "textarea"
+  },
+  {
+   "section": "component",
+   "component": "텍스트 입력 필드",
+   "no": 1,
+   "text": "텍스트 입력 필드가 기본적으로 크기가 전체 섹션 영역을 차지하도록 구현하고 있다.",
+   "guideline": "입력 필드는 텍스트의 길이를 고려하여 적절한 크기로 제공한다.",
+   "idx": 157,
+   "kit": "input"
+  },
+  {
+   "section": "component",
+   "component": "텍스트 입력 필드",
+   "no": 2,
+   "text": "텍스트 입력 필드에 레이블을 제공하고 있다.",
+   "guideline": "모든 텍스트 입력 필드에는 레이블을 제공한다.",
+   "idx": 158,
+   "kit": "input"
+  },
+  {
+   "section": "component",
+   "component": "텍스트 입력 필드",
+   "no": 3,
+   "text": "텍스트 입력 필드의 레이블이나 도움말을 플레이스홀더로 제공하지 않고 있다.",
+   "guideline": "플레이스홀더가 레이블이나 도움말의 대체 수단으로 사용되어서는 안 된다.",
+   "idx": 159,
+   "kit": "input"
+  },
+  {
+   "section": "component",
+   "component": "텍스트 입력 필드",
+   "no": 4,
+   "text": "텍스트 입력 필드에 복사 및 붙여넣기 기능을 사용할 수 있다.",
+   "guideline": "복사, 붙여넣기를 제한하지 않는다.",
+   "idx": 160,
+   "kit": "input"
+  },
+  {
+   "section": "component",
+   "component": "텍스트 입력 필드",
+   "no": 5,
+   "text": "텍스트 입력 필드에 사용자가 자주, 반복적으로 입력하는 값은 자동 완성될 수 있도록 구현하고 있다.",
+   "guideline": "사용자가 자주, 반복적으로 입력하는 값은 자동 완성될 수 있도록 구현한다.",
+   "idx": 161,
+   "kit": "input"
+  },
+  {
+   "section": "component",
+   "component": "텍스트 입력 필드",
+   "no": 6,
+   "text": "텍스트 입력 필드에서 데이터 입력에 대한 상호작용을 적절하게 구현하고 있다.",
+   "guideline": "상호작용 가이드라인",
+   "idx": 162,
+   "kit": "input"
+  },
+  {
+   "section": "component",
+   "component": "파일 업로드",
+   "no": 1,
+   "text": "모달 레이아웃에서 다중 파일 업로드를 사용하지 않고 있다.",
+   "guideline": "용례",
+   "idx": 163,
+   "kit": "file-upload"
+  },
+  {
+   "section": "component",
+   "component": "파일 업로드",
+   "no": 2,
+   "text": "파일 업로드에 파일 항목, 삭제 버튼을 제공하고 있다.",
+   "guideline": "구조",
+   "idx": 164,
+   "kit": "file-upload"
+  },
+  {
+   "section": "component",
+   "component": "파일 업로드",
+   "no": 3,
+   "text": "파일 업로드에 레이블을 제공하고 있다.",
+   "guideline": "레이블을 제공한다.",
+   "idx": 165,
+   "kit": "file-upload"
+  },
+  {
+   "section": "component",
+   "component": "파일 업로드",
+   "no": 4,
+   "text": "파일 업로드에서 파일 유형, 파일 크기, 파일 개수 제한에 대해 안내하고 있다.",
+   "guideline": "파일 유형, 파일 크기, 파일 개수 제한에 대해 안내한다.",
+   "idx": 166,
+   "kit": "file-upload"
+  },
+  {
+   "section": "component",
+   "component": "파일 업로드",
+   "no": 5,
+   "text": "파일 업로드에서 파일이 업로드된 후에도 파일 선택 버튼을 기본 상태로 유지하고 있다.",
+   "guideline": "파일이 업로드된 후에도 파일 선택 버튼을 기본 상태로 유지한다.",
+   "idx": 167,
+   "kit": "file-upload"
+  },
+  {
+   "section": "component",
+   "component": "파일 업로드",
+   "no": 6,
+   "text": "파일 업로드의 파일 선택 버튼을 적절한 강조 수준으로 표현하고 있다.",
+   "guideline": "파일 선택 버튼을 적절한 강조 수준으로 표현한다.",
+   "idx": 168,
+   "kit": "file-upload"
+  },
+  {
+   "section": "component",
+   "component": "파일 업로드",
+   "no": 7,
+   "text": "파일 업로드에서 파일을 자동으로 제출하지 않고 있다.",
+   "guideline": "파일을 자동으로 제출하지 않는다.",
+   "idx": 169,
+   "kit": "file-upload"
+  },
+  {
+   "section": "component",
+   "component": "파일 업로드",
+   "no": 8,
+   "text": "파일 업로드에서 오류 상태에 대한 구체적인 오류 메시지를 제공하고 있다.",
+   "guideline": "오류 상태에 대한 구체적인 오류 메시지를 제공한다.",
+   "idx": 170,
+   "kit": "file-upload"
+  },
+  {
+   "section": "component",
+   "component": "파일 업로드",
+   "no": 9,
+   "text": "파일 업로드에서 업로드된 파일 이름을 한 줄 텍스트로 제공하고 있다.",
+   "guideline": "업로드된 파일 이름 텍스트를 두 줄로 제공하지 않는다.",
+   "idx": 171,
+   "kit": "file-upload"
+  },
+  {
+   "section": "pattern",
+   "component": "개인 식별 정보 입력",
+   "no": 1,
+   "text": "입력이 필요한 개인 식별 정보의 용도를 명확하게 설명하고 있다.",
+   "guideline": "입력이 필요한 데이터의 용도를 명확하게 설명한다.",
+   "idx": 172
+  },
+  {
+   "section": "pattern",
+   "component": "개인 식별 정보 입력",
+   "no": 2,
+   "text": "개인 식별 정보 입력 필드에 복사 및 붙여넣기 기능을 사용할 수 있다.",
+   "guideline": "개인 식별 정보 입력 필드에 복사와 붙여넣기를 허용한다.",
+   "idx": 173
+  },
+  {
+   "section": "pattern",
+   "component": "개인 식별 정보 입력",
+   "no": 3,
+   "text": "개인 식별 정보 입력에 기본값을 설정하지 않고 있다.",
+   "guideline": "기본값을 설정하지 않는다.",
+   "idx": 174
+  },
+  {
+   "section": "pattern",
+   "component": "개인 식별 정보 입력",
+   "no": 4,
+   "text": "개인 식별 정보 입력 영역/필드의 플레이스홀더가 실제 입력과 구분되고 있다.",
+   "guideline": null,
+   "idx": 175
+  },
+  {
+   "section": "pattern",
+   "component": "개인 식별 정보 입력",
+   "no": 5,
+   "text": "이름 입력 필드에 모든 문자의 입력과 표시를 지원하고 있다.",
+   "guideline": "사용자가 입력할 수 있는 모든 문자의 입력과 표시를 지원한다.",
+   "idx": 176
+  },
+  {
+   "section": "pattern",
+   "component": "개인 식별 정보 입력",
+   "no": 6,
+   "text": "이름 입력 필드에 입력 형식에 대한 정확한 설명을 제공하고 있다.",
+   "guideline": null,
+   "idx": 177
+  },
+  {
+   "section": "pattern",
+   "component": "개인 식별 정보 입력",
+   "no": 7,
+   "text": "이름 입력 필드에 입력 가능한 글자 수를 적절하게 구성하고 있다.",
+   "guideline": "이름 입력 필드에 입력 가능한 글자 수를 적절하게 구성한다.",
+   "idx": 178
+  },
+  {
+   "section": "pattern",
+   "component": "개인 식별 정보 입력",
+   "no": 8,
+   "text": "이름 입력 필드의 너비를 최대 글자 수 길이에 맞추어 제공하고 있다.",
+   "guideline": null,
+   "idx": 179
+  },
+  {
+   "section": "pattern",
+   "component": "개인 식별 정보 입력",
+   "no": 9,
+   "text": "이름 입력에 단일 텍스트 입력 필드를 사용하고 있다.",
+   "guideline": "이름 입력에 단일 텍스트 입력 필드를 사용한다.",
+   "idx": 180
+  },
+  {
+   "section": "pattern",
+   "component": "입력폼",
+   "no": 1,
+   "text": "입력폼에 제목을 제공하고 있다.",
+   "guideline": "개명한 사용자가 문제없이 이름을 입력할 수 있는지 확인한다. 10.이름 입력 필드 주변에 개명한 사용자를 위한 도움말을 제공하고 있다. 생년월일의 입력에 날짜 선택기를 사용하지 않는다. 11.생년월일의 입력에 날짜 선택기를 기본으로 사용하지 않고 있다. 연도, 일의 입력에 셀렉트를 사용하지 않는다. 12.생년월일의 연도, 일 입력에 셀렉트를 사용하지 않고 있다. 날짜 입력 형식을 정확하게 안내한다. 13.생년월일 입력 형식을 정확하게 안내하고 있다. 특정 성별을 기본값으로 지정하지 않는다. 14.특정 성별을 기본값으로 지정하지 않고 있다. ‘선택 안 함’ 옵션을 제공한다. 15.성별 정보 입력에 '선택 안 함' 옵션을 제공하고 있다. 활용 용도에 적합한 유형의 전화번호 입력을 요청한다. 16.특정 유형의 전화번호를 필수로 요청하지 않고 있다. 전화번호 입력 필드에 명확한 레이블을 제공한다. 17.전화번호 입력 필드에 명확한 레이블을 제공하고 있다. 여러 가지 입력 형식에 유연한 입력 필드를 제공한다. 18.전화번호 입력 필드에 다양한 입력 문자의 입력과 표시를 지원하고 있다. 19.전화번호 입력 형식을 정확하게 안내하고 있다. 국가 코드 입력에 콤보박스를 사용한다. 20.전화번호 국가 코드 입력에 콤보박스를 사용하고 있다. 여러 개의 전화번호 입력 요청 시, 각 번호를 구분할 수 있는 레이블을 제공한다. 21.여러 개의 전화번호 입력 요청 시, 각 번호를 구분할 수 있는 레이블을 제공하고 있다. 여러 개의 전화번호 입력 요청 시, 주로 사용하는 번호를 지정할 수 있는 옵션을 제공한다. 22.여러 개의 전화번호 입력 요청 시, 주로 사용하는 번호를 지정할 수 있는 옵션을 제공하고 있다. 구조",
+   "idx": 181
+  },
+  {
+   "section": "pattern",
+   "component": "입력폼",
+   "no": 2,
+   "text": "입력폼 내부의 콘텐츠를 하나의 열에 수직으로 정렬하고 있다.",
+   "guideline": "콘텐츠는 가능한 한 하나의 열에 수직으로 정렬한다.",
+   "idx": 182
+  },
+  {
+   "section": "pattern",
+   "component": "입력폼",
+   "no": 3,
+   "text": "입력폼과 입력폼, 콘텐츠와 콘텐츠 사이에 충분한 간격을 제공하고 있다.",
+   "guideline": "입력폼과 입력폼, 콘텐츠와 콘텐츠 사이에 충분한 간격을 제공한다.",
+   "idx": 183
+  },
+  {
+   "section": "pattern",
+   "component": "입력폼",
+   "no": 4,
+   "text": "입력폼의 액션 버튼은 일관된 위치에 배치하고 정렬하고 있다.",
+   "guideline": "액션 버튼은 일관된 위치에 배치하고 정렬한다.",
+   "idx": 184
+  },
+  {
+   "section": "pattern",
+   "component": "입력폼",
+   "no": 5,
+   "text": "입력폼에 비활성화 상태의 입력폼 제출 버튼을 사용하고 있다.",
+   "guideline": "비활성화 상태의 입력폼 제출 버튼 사용을 고려한다.",
+   "idx": 185
+  },
+  {
+   "section": "pattern",
+   "component": "입력폼",
+   "no": 6,
+   "text": "입력폼의 입력 관련 컴포넌트 주변에 레이블과 설명을 제공하고 있다.",
+   "guideline": "입력 필드 주변에 레이블과 설명을 제공한다.",
+   "idx": 186
+  },
+  {
+   "section": "pattern",
+   "component": "입력폼",
+   "no": 7,
+   "text": "입력폼의 입력 필드에 입력값의 단위를 표시하고 있다.",
+   "guideline": "입력값의 단위를 표시한다.",
+   "idx": 187
+  },
+  {
+   "section": "pattern",
+   "component": "입력폼",
+   "no": 8,
+   "text": "입력폼에 필수 입력 항목과 선택 입력 항목을 명확하게 구분하고 있다.",
+   "guideline": "필수 입력 항목과 선택 입력 항목을 명확하게 구분한다.",
+   "idx": 188
+  },
+  {
+   "section": "pattern",
+   "component": "입력폼",
+   "no": 9,
+   "text": "입력폼에 필수 또는 선택 입력 항목은 일관성 있는 방식으로 구분하고 있다.",
+   "guideline": "필수 또는 선택 입력 항목은 일관성 있는 방식으로 구분한다.",
+   "idx": 189
+  },
+  {
+   "section": "pattern",
+   "component": "첨부파일",
+   "no": 1,
+   "text": "첨부파일 링크 주변에 파일 다운로드를 유발할 수 있음에 대한 사전 안내를 제공하고 있다.",
+   "guideline": "링크가 파일 다운로드를 유발할 수 있음을 사용자에게 사전에 안내한다.",
+   "idx": 190
+  },
+  {
+   "section": "pattern",
+   "component": "첨부파일",
+   "no": 2,
+   "text": "첨부파일의 크기와 형식 정보를 표시하고 있다.",
+   "guideline": "파일의 크기와 형식 정보를 표시한다.",
+   "idx": 191
+  },
+  {
+   "section": "pattern",
+   "component": "첨부파일",
+   "no": 3,
+   "text": "인라인 링크 유형의 첨부파일 레이블 텍스트는 주변 콘텐츠와 비슷한 크기로 제공하고 있다.",
+   "guideline": "인라인 링크 유형의 첨부파일 텍스트는 주변 콘텐츠와 비슷한 크기로 제공한다.",
+   "idx": 192
+  },
+  {
+   "section": "pattern",
+   "component": "필터링·정렬",
+   "no": 1,
+   "text": "필터링·정렬 컨트롤을 숨기지 않고 있다.",
+   "guideline": "필터링·정렬 컨트롤을 가능한 한 숨기지 않는다.",
+   "idx": 193
+  },
+  {
+   "section": "pattern",
+   "component": "필터링·정렬",
+   "no": 2,
+   "text": "선택된 필터링·정렬 옵션이 명확하게 구분되도록 표현하고 있다.",
+   "guideline": "선택된 필터링·정렬 옵션이 명확하게 구분되도록 표현한다.",
+   "idx": 194
+  },
+  {
+   "section": "pattern",
+   "component": "필터링·정렬",
+   "no": 3,
+   "text": "필터링·정렬 조건이 적용되었음을 확인할 수 있는 명확한 시각적 단서를 제공하고 있다.",
+   "guideline": "조건이 적용되었음을 확인할 수 있는 명확한 시각적 단서를 제공한다.",
+   "idx": 195
+  },
+  {
+   "section": "pattern",
+   "component": "필터링·정렬",
+   "no": 4,
+   "text": "필터링·정렬 실행 버튼에 레이블을 제공하고 있다.",
+   "guideline": "모든 필터링·정렬 컨트롤에 레이블과 그룹 헤딩을 제공한다.",
+   "idx": 196
+  },
+  {
+   "section": "pattern",
+   "component": "필터링·정렬",
+   "no": 5,
+   "text": "모든 필터링·정렬 컨트롤에 그룹 헤딩을 제공하고 있다.",
+   "guideline": null,
+   "idx": 197
+  },
+  {
+   "section": "pattern",
+   "component": "필터링·정렬",
+   "no": 6,
+   "text": "필터링·정렬 컨트롤 레이블은 간결하고 정확한 내용으로 제공하고 있다.",
+   "guideline": "필터링·정렬 컨트롤 레이블은 이해가 쉽도록 간결하고 정확한 내용으로 제공한다.",
+   "idx": 198
+  },
+  {
+   "section": "pattern",
+   "component": "필터링·정렬",
+   "no": 7,
+   "text": "관련 있거나 유사한 필터링 컨트롤을 군집화하여 제공하고 있다.",
+   "guideline": "관련 있거나 유사한 필터링 컨트롤을 군집화하여 제공한다.",
+   "idx": 199
+  },
+  {
+   "section": "pattern",
+   "component": "필터링·정렬",
+   "no": 8,
+   "text": "정렬 컨트롤은 대상 목록 오른쪽 상단에 배치하고 있다.",
+   "guideline": "인라인 형식의 정렬을 사용할 때를 제외하고 정렬 컨트롤은 대상 목록 오른쪽 상단에 배치한다.",
+   "idx": 200
+  },
+  {
+   "section": "pattern",
+   "component": "필터링·정렬",
+   "no": 9,
+   "text": "날짜, 시간을 기준으로 한 필터링은 범위를 입력할 수 있도록 제공하고 있다.",
+   "guideline": "날짜, 시간을 기준으로 한 필터링은 범위를 입력할 수 있도록 제공한다.",
+   "idx": 201
+  },
+  {
+   "section": "service",
+   "component": "방문 – 방문",
+   "no": 1,
+   "text": "통합 검색 기능을 제공하고 있다.",
+   "guideline": "적용된 필터링·정렬 옵션을 한 번에 해제할 수 있는 기능을 제공한다. 10.적용된 필터링 옵션을 한 번에 해제할 수 있는 기능을 제공하고 있다. 플랫폼에 대한 고려 사항 모든 필터링·정렬 컨트롤을 표시하기에 화면 너비가 충분하지 않은 경우, 필터링 및 정렬 컨트롤 버튼을 축약하여 제공한다. 11.필터링·정렬 컨트롤 버튼을 축약하여 제공할 경우, 필터링을 우선 배치하고 있다. 용례",
+   "idx": 202
+  },
+  {
+   "section": "service",
+   "component": "검색 – 개요",
+   "no": 1,
+   "text": "메인 화면에 시급하거나 중요한 정보를 사용자가 빠르게 인지할 수 있도록 제공하고 있다.",
+   "guideline": "시급하거나 중요한 정보를 사용자가 빠르게 인지할 수 있도록 제공한다.",
+   "idx": 203
+  },
+  {
+   "section": "service",
+   "component": "검색 – 개요",
+   "no": 2,
+   "text": "메인 화면에 최신 정보를 제공하고 있다.",
+   "guideline": "최신의 정확한 정보를 제공한다.",
+   "idx": 204
+  },
+  {
+   "section": "service",
+   "component": "검색 – 개요",
+   "no": 3,
+   "text": "메인 화면에 정확한 정보를 제공하고 있다.",
+   "guideline": null,
+   "idx": 205
+  },
+  {
+   "section": "service",
+   "component": "검색 – 검색 기능 찾기",
+   "no": 1,
+   "text": "서비스 내 모든 화면에서 통합 검색 기능을 실행할 수 있다.",
+   "guideline": "서비스 내 모든 화면에서 통합 검색 기능을 실행할 수 있도록 한다.",
+   "idx": 206
+  },
+  {
+   "section": "service",
+   "component": "검색 – 검색어 입력",
+   "no": 1,
+   "text": "검색 실행 버튼, 검색어 삭제 버튼을 제공하고 있다. P F E N/A 5) 검색 – 검색 결과 확인 □ □ □ □ 스코프 필터를 사용하는 경우, ‘전체’ 옵션을 제공한다.",
+   "guideline": "구조",
+   "idx": 207
+  },
+  {
+   "section": "service",
+   "component": "검색 – 검색어 입력",
+   "no": 2,
+   "text": "스코프 필터에 ‘전체’ 옵션을 제공하고 있다.",
+   "guideline": null,
+   "idx": 208
+  },
+  {
+   "section": "service",
+   "component": "검색 – 검색어 입력",
+   "no": 3,
+   "text": "스코프 필터의 기본 옵션을 '전체'로 제공하고 있다.",
+   "guideline": null,
+   "idx": 209
+  },
+  {
+   "section": "service",
+   "component": "검색 – 검색어 입력",
+   "no": 4,
+   "text": "검색어 입력 필드에 레이블을 제공하고 있다.",
+   "guideline": "통합 검색이 아닌 검색에는 입력 필드에 레이블을 제공한다.",
+   "idx": 210
+  },
+  {
+   "section": "service",
+   "component": "검색 – 검색어 입력",
+   "no": 5,
+   "text": "검색어 입력 필드의 레이블은 검색 대상/방법을 명확하게 표현하고 있다.",
+   "guideline": null,
+   "idx": 211
+  },
+  {
+   "section": "service",
+   "component": "검색 – 검색어 입력",
+   "no": 6,
+   "text": "검색어 입력 필드의 레이블이나 도움말을 플레이스홀더로 제공하지 않고 있다.",
+   "guideline": "플레이스홀더를 사용하는 경우, 유도 문구 외에 검색에 대한 단서나 레이블을 포함해서는 안 된다.",
+   "idx": 212
+  },
+  {
+   "section": "service",
+   "component": "검색 – 검색어 입력",
+   "no": 7,
+   "text": "검색 실행에 대한 상호작용을 적절하게 구현하고 있다.",
+   "guideline": "상호작용 가이드라인",
+   "idx": 213
+  },
+  {
+   "section": "service",
+   "component": "검색 – 검색어 입력",
+   "no": 8,
+   "text": "실시간 검색어 입력 도움의 출현 방식에 대한 상호작용을 적절하게 구현하고 있다.",
+   "guideline": null,
+   "idx": 214
+  },
+  {
+   "section": "service",
+   "component": "검색 – 검색어 입력",
+   "no": 9,
+   "text": "실시간 검색어 입력 도움의 탐색에 대한 상호작용을 적절하게 구현하고 있다.",
+   "guideline": null,
+   "idx": 215
+  },
+  {
+   "section": "service",
+   "component": "검색 – 검색어 입력",
+   "no": 1,
+   "text": "검색 결과 화면에 검색어 입력 필드를 유지하고 있다.",
+   "guideline": "검색 결과 화면에 검색어 입력 필드를 유지한다.",
+   "idx": 216
+  },
+  {
+   "section": "service",
+   "component": "검색 – 검색어 입력",
+   "no": 2,
+   "text": "사용자가 재검색을 시도하지 않는 한 검색어 입력 필드에 검색어를 유지하고 있다.",
+   "guideline": "사용자가 재검색을 시도하지 않는 한 검색어 입력 필드에 검색어를 유지한다.",
+   "idx": 217
+  },
+  {
+   "section": "service",
+   "component": "검색 – 검색어 입력",
+   "no": 3,
+   "text": "검색 결과 화면에 검색 결과 수를 표시하고 있다.",
+   "guideline": "검색 결과 수를 표시한다.",
+   "idx": 218
+  },
+  {
+   "section": "service",
+   "component": "검색 – 검색어 입력",
+   "no": 4,
+   "text": "검색 결과 화면의 주제별 탭에 검색 결과 수를 표시하고 있다.",
+   "guideline": null,
+   "idx": 219
+  },
+  {
+   "section": "service",
+   "component": "검색 – 검색어 입력",
+   "no": 5,
+   "text": "검색 결과가 없는 상태에 대한 정보를 명확하게 제공하고 있다.",
+   "guideline": "검색 결과가 없는 경우, 결과를 명확하게 알리고 적절한 대안을 제공한다.",
+   "idx": 220
+  },
+  {
+   "section": "service",
+   "component": "검색 – 검색어 입력",
+   "no": 6,
+   "text": "검색 결과가 없는 경우, 대안적인 행동에 대한 안내를 제공하고 있다.",
+   "guideline": null,
+   "idx": 221
+  },
+  {
+   "section": "service",
+   "component": "검색 – 검색어 입력",
+   "no": 7,
+   "text": "검색 결과 화면에 검색 기간 필터를 제공하고 있다.",
+   "guideline": "기본 정렬, 필터 컨트롤을 제공한다.",
+   "idx": 222
+  },
+  {
+   "section": "service",
+   "component": "검색 – 검색어 입력",
+   "no": 8,
+   "text": "검색 결과 화면에 기본 정렬 컨트롤을 제공하고 있다.",
+   "guideline": null,
+   "idx": 223
+  },
+  {
+   "section": "service",
+   "component": "검색 – 검색어 입력",
+   "no": 9,
+   "text": "스코프 필터를 사용하는 경우 결과 화면 상단에 설정된 범위를 명시적으로 표시하고 있다.",
+   "guideline": "스코프 필터를 사용하는 경우 결과 화면 상단에 설정된 범위를 명시적으로 표시한다.",
+   "idx": 224
+  },
+  {
+   "section": "service",
+   "component": "검색 – 검색 결과 이용",
+   "no": 1,
+   "text": "검색 결과 항목에 제목, 설명, 인덱스를 제공하고 있다.",
+   "guideline": "구조",
+   "idx": 225
+  },
+  {
+   "section": "service",
+   "component": "검색 – 검색 결과 이용",
+   "no": 2,
+   "text": "검색 결과 항목에 검색어와 일치하는 항목을 강조 표시하고 있다.",
+   "guideline": "검색어와 일치하는 항목을 강조 표시한다.",
+   "idx": 226
+  },
+  {
+   "section": "service",
+   "component": "검색 – 재검색",
+   "no": 1,
+   "text": "검색 종료 시 다른 화면 또는 다른 탐색 수단에 빠르게 접근할 수 있다.",
+   "guideline": "검색 과업 맥락에서 벗어나 다른 화면 또는 다른 탐색 수단에 빠르게 접근할 수 있도록 해야 한다.",
+   "idx": 227
+  },
+  {
+   "section": "service",
+   "component": "검색 – 검색 종료",
+   "no": 1,
+   "text": "재검색 과정에서 상세 검색 컨트롤을 숨기지 않고 있다.",
+   "guideline": "상세 검색 컨트롤을 숨기지 않는다.",
+   "idx": 228
+  },
+  {
+   "section": "service",
+   "component": "검색 – 검색 종료",
+   "no": 2,
+   "text": "사용자가 설정한 상세 검색 조건을 유지하고 있다.",
+   "guideline": "사용자가 설정한 상세 검색 조건을 유지한다.",
+   "idx": 229
+  },
+  {
+   "section": "service",
+   "component": "로그인 – 로그인 기능 찾기",
+   "no": 1,
+   "text": "로그인 링크를 모든 화면에서 일관된 위치에 배치하고 있다.",
+   "guideline": "로그인 링크는 모든 화면에서 일관된 위치에 주목도 있게 배치한다.",
+   "idx": 230
+  },
+  {
+   "section": "service",
+   "component": "로그인 – 로그인 기능 찾기",
+   "no": 2,
+   "text": "로그인 링크가 항상 '로그인' 화면으로 연결되고 있다.",
+   "guideline": "로그인 링크는 항상 ‘로그인’ 화면으로 연결되어야 한다.",
+   "idx": 231
+  },
+  {
+   "section": "service",
+   "component": "로그인 – 로그인 기능 찾기",
+   "no": 3,
+   "text": "작은 화면 너비에서 로그인 링크를 숨기지 않고 있다.",
+   "guideline": "플랫폼에 대한 고려 사항 화면 너비가 충분하지 않은 경우에도 로그인 링크를 직관적으로 인지할 수 있는 형태로 표현한다.",
+   "idx": 232
+  },
+  {
+   "section": "service",
+   "component": "로그인 – 로그인 방식 확인·선택",
+   "no": 1,
+   "text": "로그인 관련 도움말, 회원 가입 링크를 제공하고 있다.",
+   "guideline": "구조",
+   "idx": 233
+  },
+  {
+   "section": "service",
+   "component": "로그인 – 로그인 방식 확인·선택",
+   "no": 2,
+   "text": "사용자의 다양한 이용 환경을 고려한 로그인 도움말 정보를 제공하고 있다.",
+   "guideline": "도움말 정보는 사용자의 다양한 이용 환경을 고려하여 작성한다.",
+   "idx": 234
+  },
+  {
+   "section": "service",
+   "component": "로그인 – 로그인 정보 입력",
+   "no": 1,
+   "text": "로그인 관련 도움말, 회원 가입 링크를 제공하고 있다.",
+   "guideline": "구조",
+   "idx": 235
+  },
+  {
+   "section": "service",
+   "component": "로그인 – 로그인 정보 입력",
+   "no": 2,
+   "text": "아이디 형식에 대한 단서를 사전에 제공하고 있다.",
+   "guideline": "아이디 형식에 대한 단서를 사전에 제공한다.",
+   "idx": 236
+  },
+  {
+   "section": "service",
+   "component": "로그인 – 로그인 정보 입력",
+   "no": 3,
+   "text": "비밀번호는 기본적으로 숨기고 있다.",
+   "guideline": "비밀번호를 표시할 수 있는 옵션을 제공한다.",
+   "idx": 237
+  },
+  {
+   "section": "service",
+   "component": "로그인 – 로그인 정보 입력",
+   "no": 4,
+   "text": "비밀번호를 표시할 수 있는 옵션을 제공하고 있다.",
+   "guideline": null,
+   "idx": 238
+  },
+  {
+   "section": "service",
+   "component": "로그인 – 로그인 정보 입력",
+   "no": 5,
+   "text": "아이디와 비밀번호 입력 필드에서 복사 및 붙여넣기 기능을 사용할 수 있다.",
+   "guideline": "복사/붙여넣기를 제한하지 않는다.",
+   "idx": 239
+  },
+  {
+   "section": "service",
+   "component": "로그인 – 로그인 정보 입력",
+   "no": 6,
+   "text": "아이디/비밀번호 찾기 링크를 제공하고 있다.",
+   "guideline": "아이디/비밀번호 찾기 링크를 제공한다.",
+   "idx": 240
+  },
+  {
+   "section": "service",
+   "component": "로그인 – 로그인 정보 입력",
+   "no": 7,
+   "text": "로그인 오류 메시지를 명확하게 제공하고 있다. P F E N/A 12) 로그인 – 서비스 이용 13) 신청 – 신청 대상 탐색 □ □ □ □ 상호작용 가이드라인",
+   "guideline": "오류 메시지는 명확하고 간결하게 제공한다.",
+   "idx": 241
+  },
+  {
+   "section": "service",
+   "component": "로그인 – 로그인 정보 입력",
+   "no": 8,
+   "text": "로그인 폼을 제출하기 전 가능한 한 많은 사용자 데이터의 유효성을 검사하고 있다.",
+   "guideline": null,
+   "idx": 242
+  },
+  {
+   "section": "service",
+   "component": "로그인 – 로그인 정보 입력",
+   "no": 9,
+   "text": "사용자가 로그인 폼을 제출하였을 때 오류가 발생한 경우 해당 항목으로 초점을 이동시키고 있다.",
+   "guideline": null,
+   "idx": 243
+  },
+  {
+   "section": "service",
+   "component": "로그인 – 로그인 정보 입력",
+   "no": 1,
+   "text": "로그인 세션이 만료되기 전에 유지 시간에 제한이 있음을 안내하고 있다.",
+   "guideline": "사용자에게 로그인 세션이 만료되기 전에 유지 시간에 제한이 있음을 안내한다.",
+   "idx": 244
+  },
+  {
+   "section": "service",
+   "component": "로그인 – 로그인 정보 입력",
+   "no": 2,
+   "text": "로그인 만료 안내 모달을 세션이 만료되기 최소 20초 전에 제공하고 있다.",
+   "guideline": "로그인 세션 시간 만료에 대한 안내는 세션이 만료되기 최소 20초 전에 제공한다.",
+   "idx": 245
+  },
+  {
+   "section": "service",
+   "component": "로그인 – 로그인 정보 입력",
+   "no": 3,
+   "text": "로그인 만료 안내 모달에 시간 연장하기 버튼과 로그아웃하기 버튼을 제공하고 있다.",
+   "guideline": "로그인 만료 안내 모달에 시간 연장하기 버튼과 로그아웃하기 버튼을 제공한다.",
+   "idx": 246
+  },
+  {
+   "section": "service",
+   "component": "로그인 – 로그인 정보 입력",
+   "no": 1,
+   "text": "신청 정보 목록에 신청 상태 정보를 명확하게 인지할 수 있도록 표현하고 있다.",
+   "guideline": "신청 상태 정보를 명확하게 인지할 수 있도록 표현한다.",
+   "idx": 247
+  },
+  {
+   "section": "service",
+   "component": "로그인 – 로그인 정보 입력",
+   "no": 2,
+   "text": "신청 정보 목록의 제목에 공식적인 서비스 명칭을 사용하고 있다.",
+   "guideline": "제목에 공식적인 서비스 명칭을 사용한다.",
+   "idx": 248
+  },
+  {
+   "section": "service",
+   "component": "로그인 – 로그인 정보 입력",
+   "no": 3,
+   "text": "신청 정보 목록의 제목에 말줄임표를 사용하지 않고 있다.",
+   "guideline": "제목에 말줄임표를 사용하지 않는다.",
+   "idx": 249
+  },
+  {
+   "section": "service",
+   "component": "신청 – 서비스 정보 확인",
+   "no": 1,
+   "text": "신청 서비스 정보 확인 화면에서 이해하기 어려운 단어에 대한 설명을 제공하고 있다.",
+   "guideline": "상세 정보는 정확하고 최신화된 상태로 제공한다.",
+   "idx": 250
+  },
+  {
+   "section": "service",
+   "component": "신청 – 서비스 정보 확인",
+   "no": 2,
+   "text": "신청 서비스 정보 확인 화면에서 상세 정보를 정확하게 제공하고 있다.",
+   "guideline": null,
+   "idx": 251
+  },
+  {
+   "section": "service",
+   "component": "신청 – 서비스 정보 확인",
+   "no": 3,
+   "text": "신청 서비스 정보 확인 화면에서 상세 정보를 최신화된 상태로 제공하고 있다.",
+   "guideline": null,
+   "idx": 252
+  },
+  {
+   "section": "service",
+   "component": "신청 – 서비스 정보 확인",
+   "no": 4,
+   "text": "신청 서비스 정보 확인 화면에서 서비스를 신청할 수 있는 모든 채널에 대한 정보를 제공하고 있다.",
+   "guideline": "서비스를 신청할 수 있는 모든 채널과 제약 사항에 대한 정보를 제공한다.",
+   "idx": 253
+  },
+  {
+   "section": "service",
+   "component": "신청 – 서비스 정보 확인",
+   "no": 5,
+   "text": "신청 서비스 정보 확인 화면에서 제약 사항에 대한 정보를 제공하고 있다.",
+   "guideline": "온라인으로 신청할 수 없는 상황에 대해 명확하게 인지 가능하도록 표현한다.",
+   "idx": 254
+  },
+  {
+   "section": "service",
+   "component": "신청 – 서비스 정보 확인",
+   "no": 6,
+   "text": "신청 서비스 정보 확인 화면에서 신청에 필요한 모든 서식과 서류에 대해 안내하고 빠르게 접근할 수 있는 수단을 제공하고 있다.",
+   "guideline": "사용자가 신청 과업을 완료하는 데 필요한 모든 서식과 서류에 대해 안내하고 빠르게 접근할 수 있는 수단을 제공한다.",
+   "idx": 255
+  },
+  {
+   "section": "service",
+   "component": "신청 – 서비스 정보 확인",
+   "no": 7,
+   "text": "신청 서비스 정보 확인 화면에서 신청 과정, 처리 절차에 대한 정보를 제공하고 있다.",
+   "guideline": "신청 과정과 처리 절차에 대한 정보를 제공한다.",
+   "idx": 256
+  },
+  {
+   "section": "service",
+   "component": "신청 – 서비스 정보 확인",
+   "no": 8,
+   "text": "신청 서비스 정보 확인 화면에서 기본 정보를 첫 번째 탭에 제공하고 있다.",
+   "guideline": "기본 정보는 첫 번째 탭에서 확인 가능하도록 제공한다.",
+   "idx": 257
+  },
+  {
+   "section": "service",
+   "component": "신청 – 유의 사항·자격 확인",
+   "no": 1,
+   "text": "신청 과정에서 신청서 작성 중간 또는 최종 단계에서 작성을 중단해야 하는 상황에 대해 명확하게 안내하고 있다.",
+   "guideline": "신청서 작성 중간이나 최종 단계에서 작성을 중단해야 하는 상황에 대해 사용자에게 명확하게 안내한다.",
+   "idx": 258
+  },
+  {
+   "section": "service",
+   "component": "신청 – 신청서 작성",
+   "no": 1,
+   "text": "신청서 작성폼에 단계 표시기를 제공하고 있다.",
+   "guideline": "구조",
+   "idx": 259
+  },
+  {
+   "section": "service",
+   "component": "신청 – 신청서 작성",
+   "no": 2,
+   "text": "한 단계 내에서의 신청 서식 섹션을 탭이나 아코디언으로 구분하지 않고 있다.",
+   "guideline": "한 단계 내에서의 신청 서식 섹션을 탭이나 아코디언으로 구분하지 않는다.",
+   "idx": 260
+  },
+  {
+   "section": "service",
+   "component": "신청 – 신청서 작성",
+   "no": 3,
+   "text": "신청서 작성 과정에서 값의 변경이 이전 항목에 영향을 미치는 상황에 대해 사용자에게 안내하고 있다.",
+   "guideline": "값의 변경이 이전에 작성한 항목 또는 이전 단계에 영향을 미치는 상황에 대해 사용자에게 안내해야 한다.",
+   "idx": 261
+  },
+  {
+   "section": "service",
+   "component": "신청 – 신청서 작성",
+   "no": 4,
+   "text": "신청서 작성 화면에 신청서 작성에 대해 도움받을 수 있는 문의처를 제공하고 있다.",
+   "guideline": "신청서 작성에 대해 도움받을 수 있는 다양한 수단을 제공한다.",
+   "idx": 262
+  },
+  {
+   "section": "service",
+   "component": "신청 – 신청서 작성",
+   "no": 5,
+   "text": "신청서 작성 과정에서 도움말은 정확한 내용으로 제공하고 있다.",
+   "guideline": "도움말은 정확한 내용으로 제공한다.",
+   "idx": 263
+  },
+  {
+   "section": "service",
+   "component": "신청 – 신청서 작성",
+   "no": 6,
+   "text": "신청서 작성폼의 초기화 버튼을 다른 버튼과 명확하게 구분하고 있다.",
+   "guideline": "초기화 버튼은 다른 버튼과 명확하게 구분한다.",
+   "idx": 264
+  },
+  {
+   "section": "service",
+   "component": "신청 – 확인·확정",
+   "no": 1,
+   "text": "신청서 제출에 확인·확정 단계를 제공하고 있다.",
+   "guideline": "신청 취소/철회, 제출된 신청 서식 수정이 불가능한 경우 확인·확정 단계를 포함해야 한다.",
+   "idx": 265
+  },
+  {
+   "section": "service",
+   "component": "신청 – 확인·확정",
+   "no": 2,
+   "text": "신청 취소/수정 불가한 사항에 대해 사용자에게 명확하게 안내하고 있다.",
+   "guideline": "취소/수정 불가한 사항에 대해 사용자에게 명확하게 안내해야 한다.",
+   "idx": 266
+  },
+  {
+   "section": "service",
+   "component": "신청 – 확인·확정",
+   "no": 3,
+   "text": "신청서 제출 확인·확정 과정에서 행동을 취소할 수 있는 수단을 제공하고 있다.",
+   "guideline": "행동을 확정, 취소할 수 있는 버튼을 모두 제공한다.",
+   "idx": 267
+  },
+  {
+   "section": "service",
+   "component": "신청 – 완료",
+   "no": 1,
+   "text": "모든 신청 과업에 완료 단계를 제공하고 있다.",
+   "guideline": "모든 신청 과업에는 완료 단계를 제공한다.",
+   "idx": 268
+  },
+  {
+   "section": "service",
+   "component": "신청 – 신청 결과 확인",
+   "no": 1,
+   "text": "신청 상세 내역을 제공하고 있다.",
+   "guideline": "신청 내역을 제공한다.",
+   "idx": 269
+  },
+  {
+   "section": "service",
+   "component": "신청 – 신청 결과 확인",
+   "no": 2,
+   "text": "신청 이력을 제공하고 있다.",
+   "guideline": "신청 이력을 제공한다.",
+   "idx": 270
+  },
+  {
+   "section": "service",
+   "component": "신청 – 신청 결과 확인",
+   "no": 3,
+   "text": "신청 과정과 관련하여 현재 진행 상태에 대한 정보를 제공하고 있다.",
+   "guideline": "신청 처리 절차 및 현재 진행 상태에 대한 정보를 제공한다.",
+   "idx": 271
+  },
+  {
+   "section": "service",
+   "component": "정책 정보 확인 – 정보 확인",
+   "no": 1,
+   "text": "정책 정보 상세 화면에서 상세 정보를 정확하게 제공하고 있다.",
+   "guideline": "상세 정보는 정확하고 최신화된 상태로 제공한다.",
+   "idx": 272
+  },
+  {
+   "section": "service",
+   "component": "정책 정보 확인 – 정보 확인",
+   "no": 2,
+   "text": "정책 정보 상세 화면에서 상세 정보를 최신화된 상태로 제공하고 있다.",
+   "guideline": null,
+   "idx": 273
+  },
+  {
+   "section": "service",
+   "component": "정책 정보 확인 – 정보 확인",
+   "no": 3,
+   "text": "준수 기준 가. 스타일",
+   "guideline": null,
+   "idx": 274
+  }
+ ]
+}

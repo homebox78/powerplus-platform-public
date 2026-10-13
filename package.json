@@ -1,0 +1,27 @@
+{
+  "name": "powerplus-platform",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "powerPlus — SI 실무자 올인원 플랫폼 (powerAssets·powerDeck·powerMock·powerGuide·powerMCP). pnpm 모노레포",
+  "packageManager": "pnpm@11.11.0",
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "scripts": {
+    "dev": "pnpm --filter @pp/web dev",
+    "build": "pnpm -r --filter './apps/*' --filter './packages/*' build",
+    "db:migrate": "node db/scripts/migrate.mjs",
+    "db:seed": "node db/scripts/seed.mjs",
+    "legacy:powerplus": "node db/migrate-legacy/powerplus-assets.mjs",
+    "leak-audit": "node scripts/leak-audit.mjs",
+    "lint": "pnpm -r lint",
+    "typecheck": "pnpm -r typecheck",
+    "test": "pnpm -r test"
+  },
+  "devDependencies": {
+    "mysql2": "^3.24.4",
+    "sharp": "^0.35.5",
+    "typescript": "^5.9.3"
+  }
+}

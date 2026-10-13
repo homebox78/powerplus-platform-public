@@ -1,0 +1,247 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>{{TITLE}} — 발표 대본</title>
+<!-- 서체는 장표와 같다: 본문 Asta Sans, 제목 G마켓 산스. 인터넷이 되면 CDN 에서, 안 되면 이 PC 에 설치된 것을 쓴다(없으면 아래 안내 띠에 무료 내려받기 링크) -->
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Asta+Sans:wght@300..800&display=swap">
+<style>
+@font-face{font-family:"Gmarket Sans";font-weight:700;font-display:swap;src:local("G마켓 산스 TTF Bold"),local("GmarketSansTTFBold"),local("GmarketSansBold"),url("https://cdn.jsdelivr.net/gh/projectnoonnu/noonfonts_2001@1.1/GmarketSansBold.woff") format("woff")}
+@font-face{font-family:"Gmarket Sans";font-weight:500;font-display:swap;src:local("G마켓 산스 TTF Medium"),local("GmarketSansTTFMedium"),local("GmarketSansMedium"),url("https://cdn.jsdelivr.net/gh/projectnoonnu/noonfonts_2001@1.1/GmarketSansMedium.woff") format("woff")}
+/* powerPlus·powerDeck 과 같은 디자인 토큰(설치 마법사 양식) */
+:root{--ink:#1c2733;--ink2:#566070;--muted:#98a2b0;--line:#e6eaef;--orange:#e8703a;--orange-d:#c43e1c;--soft:#fff1e8;--bar:#f4f6f9;--panel:#f7f9fb;--foot:#fafbfc;--track:#eaeef2;
+  --win:#fff;--page:radial-gradient(1200px 600px at 15% -10%,#ffe9dc 0%,transparent 60%),radial-gradient(900px 500px at 110% 110%,#ffe3d6 0%,transparent 55%),#eef1f5;
+  --todo:#465160;--past:#c3cad4;--read:#c43e1c;--stage:#f1f4f8;--fs:27px;
+  --body:"Asta Sans","Pretendard Variable",Pretendard,"Malgun Gothic","맑은 고딕",system-ui,sans-serif;--head:"Gmarket Sans","Asta Sans","Malgun Gothic",sans-serif}
+body.dark{--ink:#eef2f7;--ink2:#aab4c3;--muted:#7b8696;--line:#273244;--soft:#3a2418;--bar:#1b2432;--panel:#161e2b;--foot:#141b27;--track:#273244;
+  --win:#10161f;--page:#0a0f17;--todo:#b7c0cd;--past:#465264;--read:#ff9d6c;--stage:#0c1119}
+*{box-sizing:border-box}html,body{height:100%;margin:0}
+body{background:var(--page);color:var(--ink);font-family:var(--body);-webkit-font-smoothing:antialiased;padding:18px;display:flex}
+button{font-family:inherit;cursor:pointer}a{color:inherit}
+#win{flex:1;min-width:0;display:flex;flex-direction:column;background:var(--win);border-radius:16px;overflow:hidden;box-shadow:0 30px 70px -30px rgba(28,39,51,.45),0 0 0 1px rgba(28,39,51,.06)}
+body.full{padding:0}body.full #win{border-radius:0}
+
+/* 머리 */
+header{flex:none;height:46px;display:flex;align-items:center;gap:12px;padding:0 16px;background:var(--bar);border-bottom:1px solid var(--line)}
+.dots{display:flex;gap:7px;flex:none}.dots i{width:11px;height:11px;border-radius:50%;background:#ff5f57}.dots i:nth-child(2){background:#febc2e}.dots i:nth-child(3){background:#28c840}
+header b{font-size:13.5px;font-weight:700;letter-spacing:-.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tag{flex:none;font-size:11px;font-weight:700;color:var(--orange-d);background:var(--soft);border-radius:999px;padding:4px 10px}
+body.dark .tag{color:#ffb38a}
+.sp{flex:1}
+.stat{flex:none;font-size:12px;font-weight:600;color:var(--ink2);font-variant-numeric:tabular-nums}
+.stat em{font-style:normal;font-weight:800;color:var(--orange-d)}body.dark .stat em{color:#ff9d6c}
+.ic{width:30px;height:30px;border-radius:8px;border:1px solid var(--line);background:var(--win);color:var(--ink2);display:inline-flex;align-items:center;justify-content:center;flex:none}
+.ic:hover{background:var(--bar);color:var(--ink)}.ic svg{width:15px;height:15px}
+#fontnote{flex:none;display:flex;align-items:center;gap:10px;padding:8px 16px;background:#fff7e6;border-bottom:1px solid #f3dfb5;color:#8a5a0a;font-size:12px;font-weight:600}
+#fontnote a{font-weight:800;color:var(--orange-d);text-underline-offset:2px}#fontnote button{margin-left:auto;border:0;background:transparent;color:#8a5a0a;font-size:15px;line-height:1}
+#fontnote[hidden]{display:none}
+body.dark #fontnote{background:#2b2110;border-color:#4a3a18;color:#e9c98a}
+
+/* 몸 */
+main{flex:1;min-height:0;display:flex;overflow:hidden}
+#stage{flex:1.15;min-width:0;display:flex;flex-direction:column;background:var(--stage);border-right:1px solid var(--line);padding:22px 24px 14px}
+#pic{flex:1;min-height:0;display:flex;align-items:center;justify-content:center}
+#pic img{max-width:100%;max-height:100%;display:block;border-radius:10px;background:#fff;box-shadow:0 18px 44px -18px rgba(28,39,51,.45),0 0 0 1px rgba(28,39,51,.07)}
+#thumbs{flex:none;display:flex;gap:6px;overflow-x:auto;padding:14px 2px 4px;scrollbar-width:thin}
+#thumbs button{flex:none;min-width:34px;height:30px;padding:0 9px;border-radius:9px;border:1.5px solid var(--line);background:var(--win);color:var(--ink2);font-weight:700;font-size:12px;font-variant-numeric:tabular-nums}
+#thumbs button:hover{background:var(--bar)}
+#thumbs button.done{color:#1a9c5b;border-color:#bfe6d0;background:#f1faf5}body.dark #thumbs button.done{background:#12261c;border-color:#1f4a33}
+#thumbs button.on{color:#fff;border-color:transparent;background:linear-gradient(140deg,#e8703a,#c43e1c);box-shadow:0 5px 12px rgba(196,62,28,.3)}
+
+#side{flex:1;min-width:340px;display:flex;flex-direction:column;min-height:0;overflow:hidden}
+#shead{flex:none;padding:18px 28px 13px;border-bottom:1px solid var(--line)}
+#shead small{display:block;font-size:11.5px;font-weight:800;color:var(--orange-d);letter-spacing:.02em}body.dark #shead small{color:#ff9d6c}
+#stitle{font-family:var(--head);font-size:16px;font-weight:700;letter-spacing:-.01em;margin-top:5px;line-height:1.5;word-break:keep-all}
+#lines{flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;scroll-behavior:smooth;position:relative;padding:14px 22px 16px 18px;scrollbar-width:thin;scrollbar-color:var(--line) transparent}
+.ln{position:relative;font-size:var(--fs);line-height:1.55;font-weight:500;letter-spacing:-.02em;padding:3px 12px 3px 16px;border-radius:10px;cursor:pointer;color:var(--todo);word-break:keep-all;transition:color .2s,background .2s}
+.ln:hover{background:var(--panel)}
+.ln b{font-weight:800}
+.ln.past{color:var(--past)}
+.ln.cur{background:var(--soft);color:var(--ink)}
+.ln.cur::before{content:"";position:absolute;left:4px;top:9px;bottom:9px;width:4px;border-radius:4px;background:linear-gradient(180deg,#e8703a,#c43e1c)}
+.ln.cur .f{color:var(--read)}
+.ln.cur .f.hot{color:var(--orange)}body.dark .ln.cur .f.hot{color:#ffc09b}
+.ln.rest{height:.85em;padding:0;cursor:default;background:transparent}
+.ln.rest.cur::before{display:none}
+
+/* 바닥 */
+footer{flex:none;background:var(--foot);border-top:1px solid var(--line);padding:12px 18px 13px}
+#bar{position:relative;height:8px;border-radius:6px;background:var(--track);margin-bottom:12px}
+#bar i{display:block;height:100%;width:0;border-radius:6px;background:linear-gradient(90deg,#e8703a,#c43e1c);transition:width .25s linear}
+#bar u{position:absolute;top:-2px;bottom:-2px;width:2px;background:var(--foot);border-radius:1px}
+.ctl{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.btn{height:38px;padding:0 14px;border-radius:10px;border:1.5px solid var(--line);background:var(--win);color:var(--ink2);font-weight:700;font-size:13px;display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+.btn:hover{background:var(--bar)}.btn svg{width:14px;height:14px}
+#play{min-width:112px;justify-content:center;border:0;color:#fff;font-weight:800;font-size:13.5px;background:linear-gradient(140deg,#e8703a,#c43e1c);box-shadow:0 5px 14px rgba(196,62,28,.3)}
+#play:hover{filter:brightness(1.05)}
+.sep{width:1px;height:22px;background:var(--line);margin:0 6px}
+.opt{display:inline-flex;align-items:center;gap:7px;font-size:12px;font-weight:600;color:var(--ink2);white-space:nowrap}
+.opt output{min-width:58px;font-variant-numeric:tabular-nums;color:var(--ink);font-weight:700}
+/* 슬라이더 — 지난 쪽은 주황, 남은 쪽은 여린 회색 */
+input[type=range]{-webkit-appearance:none;appearance:none;width:108px;height:6px;border-radius:6px;outline:none;cursor:pointer;background:linear-gradient(90deg,#e8703a var(--p,50%),var(--track) var(--p,50%))}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:16px;height:16px;border-radius:50%;background:#e8703a;border:2.5px solid #fff;box-shadow:0 1px 5px rgba(28,39,51,.3)}
+input[type=range]::-moz-range-thumb{width:13px;height:13px;border-radius:50%;background:#e8703a;border:2.5px solid #fff;box-shadow:0 1px 5px rgba(28,39,51,.3)}
+input[type=range]::-moz-range-track{background:transparent}
+#goal{width:52px;height:30px;border-radius:8px;border:1.5px solid var(--line);background:var(--win);color:var(--ink);text-align:center;font-weight:700;font-family:inherit;font-size:12.5px}
+.sw{cursor:pointer}.sw input{accent-color:#e8703a;width:15px;height:15px}
+.keys{margin-left:auto;display:flex;align-items:center;gap:14px;font-size:11.5px;font-weight:600;color:var(--muted)}
+.keys span{display:inline-flex;align-items:center;gap:5px;white-space:nowrap}
+kbd{min-width:22px;height:21px;padding:0 6px;border-radius:6px;border:1px solid var(--line);border-bottom-width:2px;background:var(--win);color:var(--ink2);font-family:inherit;font-size:11px;font-weight:700;display:inline-flex;align-items:center;justify-content:center}
+@media(max-width:1180px){.keys{display:none}}
+@media(max-width:900px){body{padding:0}#win{border-radius:0}main{flex-direction:column}#stage{flex:none;height:40vh;border-right:0;border-bottom:1px solid var(--line)}}
+</style></head><body>
+<div id="win">
+<header>
+  <span class="dots"><i></i><i></i><i></i></span>
+  <b>{{TITLE}}</b><span class="tag">발표 대본 연습</span><span class="sp"></span>
+  <span class="stat" id="cSlide"></span>
+  <span class="stat">경과 <em id="cEl">0:00</em> / 예상 <span id="cTot"></span></span>
+  <button class="ic" id="dark" title="어두운 화면 (발표장용)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg></button>
+  <button class="ic" id="full" title="전체 화면 (F)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H3v5M16 3h5v5M8 21H3v-5M16 21h5v-5"/></svg></button>
+</header>
+<div id="fontnote" hidden>
+  <span>장표와 같은 서체(<span id="fmiss"></span>)를 불러오지 못해 기본 서체로 보입니다. 인터넷에 연결하거나 서체를 설치하세요 — 무료:</span>
+  <a href="https://fonts.google.com/specimen/Asta+Sans" target="_blank" rel="noopener">Asta Sans 받기</a>
+  <a href="https://corp.gmarket.com/fonts/" target="_blank" rel="noopener">G마켓 산스 받기</a>
+  <button id="fclose" title="닫기">×</button>
+</div>
+<main>
+  <div id="stage"><div id="pic"><img id="img" alt=""></div><div id="thumbs"></div></div>
+  <div id="side"><div id="shead"><small id="sno"></small><div id="stitle"></div></div><div id="lines"></div></div>
+</main>
+<footer>
+  <div id="bar"><i></i></div>
+  <div class="ctl">
+    <button class="btn" id="prevS"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg>이전 장</button>
+    <button class="btn" id="play">▶ 시작</button>
+    <button class="btn" id="nextS">다음 장<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></button>
+    <button class="btn" id="reset">처음부터</button>
+    <span class="sep"></span>
+    <label class="opt">속도 <input id="spd" type="range" min="3" max="9" step="0.05"><output id="spdV"></output></label>
+    <label class="opt">목표 <input id="goal" type="number" min="1" max="120" placeholder="분">분에 맞추기</label>
+    <label class="opt" title="가장 큰 글자 크기 — 대본이 길면 한 화면에 들어가게 자동으로 줄어듭니다">글자 <input id="fs" type="range" min="18" max="46" step="1"></label>
+    <label class="opt sw"><input id="auto" type="checkbox" checked>장 자동 넘김</label>
+    <span class="keys"><span><kbd>Space</kbd>시작·멈춤</span><span><kbd>↑</kbd><kbd>↓</kbd>줄</span><span><kbd>←</kbd><kbd>→</kbd>장</span><span><kbd>F</kbd>전체 화면</span></span>
+  </div>
+</footer>
+</div>
+<script>
+const D = "{{DATA}}";
+const $ = (i) => document.getElementById(i);
+const S = D.slides, GAP = 0.45, SGAP = 1.2;
+let si = 0, li = 0, t = 0, playing = false, last = 0, elapsed = 0;
+const ls = (k, d) => { try { return localStorage.getItem(k) ?? d; } catch { return d; } };
+const sv = (k, v) => { try { localStorage.setItem(k, v); } catch {} };
+let cps = +ls("pd_cps", 5.5);
+const len = (s) => [...s.replace(/[\s*]/g, "")].length;   // 쉼표·강조 표시(**)는 읽는 글자가 아니다
+const REST = 1.0;   // 빈 줄 = 쉼(숨 고르는 자리)
+const dur = (s) => (s === "" ? REST : Math.max(0.8, len(s) / cps));
+const fmt = (x) => Math.floor(x / 60) + ":" + String(Math.floor(x % 60)).padStart(2, "0");
+const slideDur = (s) => s.lines.reduce((b, l) => b + dur(l) + GAP, 0) + SGAP;
+const total = () => S.reduce((a, s) => a + slideDur(s), 0);
+function before() { let a = 0; for (let i = 0; i < si; i++) a += slideDur(S[i]); for (let j = 0; j < li; j++) a += dur(S[si].lines[j]) + GAP; return a + t; }
+function ticks() {   // 진행 막대에 장 경계를 표시
+  const bar = $("bar"); [...bar.querySelectorAll("u")].forEach((u) => u.remove());
+  let a = 0; const tot = total();
+  S.slice(0, -1).forEach((s) => { a += slideDur(s); const u = document.createElement("u"); u.style.left = (a / tot * 100) + "%"; bar.appendChild(u); });
+}
+function drawSlide() {
+  const s = S[si];
+  $("img").src = s.img || ""; $("sno").textContent = s.n + "쪽"; $("stitle").textContent = s.title;
+  $("cSlide").innerHTML = "<em>" + (si + 1) + "</em> / " + S.length + "장";
+  $("lines").innerHTML = "";
+  s.lines.forEach((l, i) => {
+    const d = document.createElement("div"); d.className = l === "" ? "ln rest" : "ln";
+    // **강조** 로 감싼 말은 굵게, 나머지는 보통 굵기 — 힘줘 말할 곳이 눈에 들어오게
+    l.split("**").forEach((seg, k) => [...seg].forEach((c) => { const sp = document.createElement(k % 2 ? "b" : "span"); sp.textContent = c; d.appendChild(sp); }));
+    if (l !== "") d.onclick = () => { li = i; t = 0; paint(true); };
+    $("lines").appendChild(d);
+  });
+  [...$("thumbs").children].forEach((b, i) => { b.className = i === si ? "on" : i < si ? "done" : ""; });
+  $("lines").scrollTop = 0;
+  fit();
+  paint(true);
+}
+// 한 장의 대본이 한 화면에 다 보이게 글자를 맞춘다 — 글자 슬라이더 값이 가장 큰 크기, 넘치면 들어갈 때까지 줄인다(15px 까지).
+// 다 보이면 글은 움직이지 않고 읽는 줄 표시만 내려간다
+function fit() {
+  const box = $("lines"); let f = +$("fs").value;
+  box.style.setProperty("--fs", f + "px");
+  while (box.scrollHeight > box.clientHeight + 1 && f > 15) { f -= 1; box.style.setProperty("--fs", f + "px"); }
+}
+function paint(scroll) {
+  const els = [...$("lines").children], line = S[si].lines[li], n = els[li] ? els[li].children.length : 0;
+  const p = Math.min(1, t / dur(line)), k = Math.floor(p * n);
+  els.forEach((e, i) => {
+    e.className = "ln" + (S[si].lines[i] === "" ? " rest" : "") + (i < li ? " past" : i === li ? " cur" : "");
+    [...e.children].forEach((c, j) => { c.className = i === li && j < k ? (j >= k - 2 ? "f hot" : "f") : ""; });
+  });
+  // 글자를 가장 작게 해도 한 화면에 안 들어가는 긴 대본만: 읽는 줄이 아래쪽(70%)을 넘을 때 문장 묶음 단위로 한 번 넘긴다
+  if (scroll && els[li] && $("lines").scrollHeight > $("lines").clientHeight + 1) {
+    const box = $("lines"), el = els[li], top = el.offsetTop - box.scrollTop;
+    if (top < 6 || top + el.offsetHeight > box.clientHeight * 0.7) {
+      let k0 = li; while (k0 > 0 && S[si].lines[k0 - 1] !== "") k0--;
+      box.scrollTop = Math.max(0, els[k0].offsetTop - 14);
+    }
+  }
+  $("bar").firstElementChild.style.width = Math.min(100, before() / total() * 100) + "%";
+  $("cTot").textContent = fmt(total()); $("cEl").textContent = fmt(elapsed);
+}
+function step(now) {
+  if (!playing) return;
+  const dt = Math.min(0.1, (now - last) / 1000); last = now; t += dt; elapsed += dt;
+  const line = S[si].lines[li];
+  if (t >= dur(line) + GAP) {
+    if (li < S[si].lines.length - 1) { li++; t = 0; paint(true); }
+    else if (t >= dur(line) + GAP + SGAP) {
+      if (si < S.length - 1 && $("auto").checked) { si++; li = 0; t = 0; drawSlide(); }
+      else { setPlay(false); t = dur(line); }
+    }
+  } else paint(false);
+  requestAnimationFrame(step);
+}
+function setPlay(v) { playing = v; $("play").textContent = v ? "❚❚ 멈춤" : "▶ 시작"; if (v) { last = performance.now(); requestAnimationFrame(step); } }
+function go(s, l) { si = Math.max(0, Math.min(S.length - 1, s)); li = l; t = 0; drawSlide(); }
+function line(d) { let n = li + d; while (n >= 0 && n < S[si].lines.length && S[si].lines[n] === "") n += d; if (n < 0) { if (si > 0) go(si - 1, S[si - 1].lines.length - 1); } else if (n >= S[si].lines.length) { if (si < S.length - 1) go(si + 1, 0); } else { li = n; t = 0; paint(true); } }
+S.forEach((s, i) => { const b = document.createElement("button"); b.textContent = s.n; b.title = s.title; b.onclick = () => go(i, 0); $("thumbs").appendChild(b); });
+$("play").onclick = () => setPlay(!playing);
+$("prevS").onclick = () => go(si - 1, 0); $("nextS").onclick = () => go(si + 1, 0);
+$("reset").onclick = () => { setPlay(false); elapsed = 0; go(0, 0); };
+const fill = (el) => el.style.setProperty("--p", ((el.value - el.min) / (el.max - el.min) * 100) + "%");   // 슬라이더의 지난 쪽 길이
+const showSpd = () => { $("spd").value = cps; fill($("spd")); $("spdV").textContent = cps.toFixed(1) + "자/초"; ticks(); };
+showSpd();
+// 목표 시간(분)을 적으면 전체가 그 시간에 끝나는 속도로 맞춘다 (줄·장 사이 쉼은 그대로)
+$("goal").onchange = (e) => {
+  const m = +e.target.value; if (!m) return;
+  const chars = S.reduce((a, s) => a + s.lines.reduce((b, l) => b + len(l), 0), 0), rest = S.reduce((a, s) => a + s.lines.reduce((b, l) => b + GAP + (l === "" ? REST : 0), 0) + SGAP, 0);
+  cps = Math.max(3, Math.min(9, chars / Math.max(10, m * 60 - rest))); sv("pd_cps", cps); showSpd(); paint(false);
+};
+$("spd").oninput = (e) => { cps = +e.target.value; sv("pd_cps", cps); showSpd(); paint(false); };
+const fs = +ls("pd_fs", 27); $("fs").value = fs; fill($("fs")); document.documentElement.style.setProperty("--fs", fs + "px");
+$("fs").oninput = (e) => { fill(e.target); sv("pd_fs", e.target.value); fit(); paint(true); };
+addEventListener("resize", () => { fit(); paint(true); });
+if (ls("pd_dark", "0") === "1") document.body.classList.add("dark");
+$("dark").onclick = () => sv("pd_dark", document.body.classList.toggle("dark") ? "1" : "0");
+const full = () => document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen?.();
+$("full").onclick = full;
+document.addEventListener("fullscreenchange", () => document.body.classList.toggle("full", !!document.fullscreenElement));
+addEventListener("keydown", (e) => {
+  if (e.target.id === "goal") return;
+  if (e.code === "Space") { setPlay(!playing); e.preventDefault(); }
+  else if (e.key === "ArrowDown") { line(1); e.preventDefault(); } else if (e.key === "ArrowUp") { line(-1); e.preventDefault(); }
+  else if (e.key === "ArrowRight" || e.key === "PageDown") go(si + 1, 0); else if (e.key === "ArrowLeft" || e.key === "PageUp") go(si - 1, 0);
+  else if (e.key === "f" || e.key === "F") full();
+});
+// 서체가 실제로 쓰이는지 잰다 — 같은 글을 기준 서체만으로 그렸을 때와 폭이 같으면 그 서체는 없는 것
+function hasFont(family, weight) {
+  const c = document.createElement("canvas").getContext("2d"), txt = "가나다라 Proposal 0123";
+  c.font = `${weight} 40px monospace`; const a = c.measureText(txt).width;
+  c.font = `${weight} 40px "${family}", monospace`; return c.measureText(txt).width !== a;
+}
+function fontCheck() {
+  const miss = [["Asta Sans", 500], ["Gmarket Sans", 700]].filter(([f, w]) => !hasFont(f, w)).map(([f]) => (f === "Gmarket Sans" ? "G마켓 산스" : f));
+  $("fmiss").textContent = miss.join(" · "); $("fontnote").hidden = !miss.length || ls("pd_fontnote", "") === "x";
+}
+$("fclose").onclick = () => { $("fontnote").hidden = true; sv("pd_fontnote", "x"); };
+(document.fonts && document.fonts.ready ? document.fonts.ready : Promise.resolve()).then(() => setTimeout(fontCheck, 1500));
+drawSlide();
+</script></body></html>

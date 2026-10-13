@@ -1,0 +1,527 @@
+[
+  {
+    "idx": 22,
+    "scope": "site",
+    "verdict": null,
+    "evidence": "사이트가 모든 화면의 문서 맨 앞(건너뛰기 링크 다음, 헤더 위)에 <Masthead />를 넣어야 한다.",
+    "fix": null
+  },
+  {
+    "idx": 23,
+    "scope": "kit",
+    "verdict": "?",
+    "evidence": "react/masthead.tsx·vue/Masthead.vue: KRDS 원형(krds/examples/masthead.html)에는 없는 '공식 누리집 확인 방법' 펼침 버튼·본문을 기본(collapsible=true)으로 붙이고 css/parts/g-gov.css 의 hb-masthead-* 스타일을 더한다. 문구 줄 자체는 KRDS CSS 그대로라 '스타일 변형'인지 판단이 갈린다.",
+    "fix": "KRDS 원형과 같게 collapsible 기본값을 false 로 두고, 펼침은 KRDS 가이드가 허용하는 형태인지 확인 후 선택 옵션으로만 제공."
+  },
+  {
+    "idx": 24,
+    "scope": "kit",
+    "verdict": "P",
+    "evidence": "react/masthead.tsx·vue/Masthead.vue: 기본 문구가 KRDS 원문 '이 누리집은 대한민국 공식 전자정부 누리집입니다.'와 동일(text 프롭으로 바꿀 수는 있음).",
+    "fix": null
+  },
+  {
+    "idx": 25,
+    "scope": "site",
+    "verdict": null,
+    "evidence": "사이트 공통 레이아웃에 넣어 모든 화면에 공식 배너가 나오게 해야 한다.",
+    "fix": null
+  },
+  {
+    "idx": 26,
+    "scope": "site",
+    "verdict": null,
+    "evidence": "사이트가 logoSrc 로 상위 기관 로고를 넘겨야 한다(키트는 로고를 그리지 않고 이미지로만 받는다).",
+    "fix": null
+  },
+  {
+    "idx": 27,
+    "scope": "kit",
+    "verdict": "F",
+    "evidence": "react/identifier.tsx·vue/Identifier.vue: logoSrc 하나만 받아 로고를 1개만 그린다. 관련 기관 2개 이상을 계층 순서로 배치할 방법이 없다.",
+    "fix": "logos 배열(순서=계층) 프롭을 추가해 여러 로고를 순서대로 그리게 한다."
+  },
+  {
+    "idx": 28,
+    "scope": "kit",
+    "verdict": "P",
+    "evidence": "react/identifier.tsx·vue/Identifier.vue: KRDS 원형과 같은 고정 마크업(.logo → .ban-txt), 문구 기본값 '이 누리집은 {orgName} 누리집입니다.'로 배치·안내 문구가 일정.",
+    "fix": null
+  },
+  {
+    "idx": 29,
+    "scope": "site",
+    "verdict": null,
+    "evidence": "Footer 의 logoSrc·contacts·copyright 는 선택 프롭이다. 사이트가 로고·연락처·저작권을 모두 채워야 한다.",
+    "fix": null
+  },
+  {
+    "idx": 30,
+    "scope": "site",
+    "verdict": null,
+    "evidence": "사이트 공통 레이아웃 맨 아래에 같은 Footer 를 두어야 한다.",
+    "fix": null
+  },
+  {
+    "idx": 31,
+    "scope": "kit",
+    "verdict": "P",
+    "evidence": "react/footer.tsx·vue/Footer.vue: 관련 사이트 → 로고 → 주소·연락처 → 링크·SNS → 정책 링크·저작권 → 식별자 순서가 마크업에 고정.",
+    "fix": null
+  },
+  {
+    "idx": 32,
+    "scope": "site",
+    "verdict": null,
+    "evidence": "사이트가 policyLinks 에 개인정보처리방침을 넣어야 한다(point:true 로 강조 스타일 제공, g-gov.css).",
+    "fix": null
+  },
+  {
+    "idx": 33,
+    "scope": "site",
+    "verdict": null,
+    "evidence": "전자상거래가 있으면 사이트가 policyLinks 에 이용약관을 넣어야 한다.",
+    "fix": null
+  },
+  {
+    "idx": 34,
+    "scope": "site",
+    "verdict": null,
+    "evidence": "사이트가 links 에 자주 찾는 링크를 넣어야 한다.",
+    "fix": null
+  },
+  {
+    "idx": 35,
+    "scope": "site",
+    "verdict": null,
+    "evidence": "사이트가 푸터 링크를 기본 내비게이션과 같은 구성으로 넣어야 한다.",
+    "fix": null
+  },
+  {
+    "idx": 36,
+    "scope": "site",
+    "verdict": null,
+    "evidence": "사이트가 contacts 에 최신 연락처를 넣고 유지해야 한다.",
+    "fix": null
+  },
+  {
+    "idx": 37,
+    "scope": "site",
+    "verdict": null,
+    "evidence": "사이트가 각 링크 href 를 레이블과 맞는 페이지로 지정해야 한다.",
+    "fix": null
+  },
+  {
+    "idx": 38,
+    "scope": "kit",
+    "verdict": "P",
+    "evidence": "react/header.tsx·vue/Header.vue: KRDS #krds-header 마크업·원본 CSS 그대로 쓰고, g-gov.css 는 로고 이미지 자리·static 옵션만 보정. 홈박스 층(css/style/homebox.css)에는 헤더 전용 규칙이 없다(무채색 토큰만 전역 교체).",
+    "fix": null
+  },
+  {
+    "idx": 39,
+    "scope": "kit",
+    "verdict": "P",
+    "evidence": "react/header.tsx·vue/Header.vue: .header-branding 안 첫 요소가 로고(dist/kit.css #krds-header .header-branding flex row, header-actions 는 margin-left:auto).",
+    "fix": null
+  },
+  {
+    "idx": 40,
+    "scope": "kit",
+    "verdict": "P",
+    "evidence": "react/header.tsx·vue/Header.vue: 유틸리티 → 로고 → 통합검색·로그인·회원가입·전체메뉴 → 메인 메뉴(children) 순서가 마크업에 고정.",
+    "fix": null
+  },
+  {
+    "idx": 41,
+    "scope": "kit",
+    "verdict": "P",
+    "evidence": "dist/kit.css #krds-header .header-utility·.utility-list: justify-content:flex-end 로 헤더 위쪽 오른쪽에 놓인다.",
+    "fix": null
+  },
+  {
+    "idx": 42,
+    "scope": "kit",
+    "verdict": "P",
+    "evidence": "dist/kit.css #krds-header .header-utility .utility-list > li:not(:first-child)::before: 1px 세로 구분선을 그린다(React 는 항목마다 li 로 감쌈. Vue 는 utility 슬롯 내용을 사이트가 li 로 넣어야 구분선이 붙음).",
+    "fix": null
+  },
+  {
+    "idx": 43,
+    "scope": "site",
+    "verdict": null,
+    "evidence": "키트는 utilityLinks 개수를 제한하지 않는다. 사이트가 4개 이하로 넣어야 한다.",
+    "fix": null
+  },
+  {
+    "idx": 44,
+    "scope": "kit",
+    "verdict": "P",
+    "evidence": "react/language-switcher.tsx: 드롭다운 버튼·목록에 ico-global·ico-toggle·ico-go 아이콘만 쓰고 국기 이미지는 없다.",
+    "fix": null
+  },
+  {
+    "idx": 45,
+    "scope": "kit",
+    "verdict": "P",
+    "evidence": "react/header.tsx·vue/Header.vue: btn-navi 아이콘 버튼마다 '통합검색·로그인·회원가입·전체메뉴' 글자 레이블이 보인다.",
+    "fix": null
+  },
+  {
+    "idx": 46,
+    "scope": "kit",
+    "verdict": "P",
+    "evidence": "dist/kit.css #krds-header: position:sticky; top:0 — 스크롤해도 뷰포트 위에 붙는다(sticky=false 일 때만 hb-header--static 로 해제).",
+    "fix": null
+  },
+  {
+    "idx": 47,
+    "scope": "site",
+    "verdict": null,
+    "evidence": "반복 영역이 없는 단순 화면이면 사이트가 SkipLink 를 넣지 않아야 한다.",
+    "fix": null
+  },
+  {
+    "idx": 48,
+    "scope": "site",
+    "verdict": null,
+    "evidence": "사이트 공통 레이아웃 문서 맨 앞에 SkipLink 를 넣어야 한다.",
+    "fix": null
+  },
+  {
+    "idx": 49,
+    "scope": "site",
+    "verdict": null,
+    "evidence": "키트는 links 배열 개수를 제한하지 않는다. 사이트가 3개 이내로 넣어야 한다.",
+    "fix": null
+  },
+  {
+    "idx": 50,
+    "scope": "kit",
+    "verdict": "P",
+    "evidence": "react/skip-link.tsx·vue/SkipLink.vue: 기본은 '본문 바로가기'(#contents) 한 개. links 로 여러 개를 줄 때 순서는 사이트 몫.",
+    "fix": null
+  },
+  {
+    "idx": 51,
+    "scope": "site",
+    "verdict": null,
+    "evidence": "사이트가 href 대상(#contents 등) id 를 본문 영역에 실제로 두어야 한다.",
+    "fix": null
+  },
+  {
+    "idx": 52,
+    "scope": "kit",
+    "verdict": "P",
+    "evidence": "dist/kit.css #krds-skip-link: 평소 a:not(:focus) 로 화면 밖 숨김, 초점을 받으면 화면 맨 위 고정 막대로 보이고 포커스 윤곽(box-shadow outline-inset) 표시. 네이티브 <a href> 라 Enter 로 이동.",
+    "fix": null
+  },
+  {
+    "idx": 53,
+    "scope": "kit",
+    "verdict": "P",
+    "evidence": "dist/kit.css .gnb-sub-content > ul(grid) 링크·e-nav.css .krds-main-menu-mobile button.gnb-sub-trigger{text-align:left} — 드롭다운 레이블이 왼쪽 정렬.",
+    "fix": null
+  },
+  {
+    "idx": 54,
+    "scope": "kit",
+    "verdict": "F",
+    "evidence": "dist/kit.css .krds-main-menu .gnb-toggle-wrap: position:absolute 에 max-height 가 없어 PC 드롭다운이 항목이 많으면 뷰포트를 넘는다(모바일 .gnb-wrap 은 화면 높이 안에서 gnb-body overflow-y:auto 로 통과).",
+    "fix": "PC .gnb-toggle-wrap 에 max-height: calc(100vh - 헤더 아래 위치) 를 준다."
+  },
+  {
+    "idx": 55,
+    "scope": "kit",
+    "verdict": "F",
+    "evidence": "dist/kit.css .krds-main-menu .gnb-toggle-wrap·.gnb-sub-list: overflow 설정이 없어 PC 드롭다운 안 스크롤이 생기지 않는다(모바일은 gnb-body overflow-y:auto 로 스크롤됨).",
+    "fix": "PC .gnb-toggle-wrap 에 max-height 와 overflow-y:auto(또는 목록 칸만 스크롤)를 추가한다."
+  },
+  {
+    "idx": 56,
+    "scope": "kit",
+    "verdict": "F",
+    "evidence": "react/navigation-menu.tsx·vue/NavigationMenu.vue: 현재 페이지를 품은 1뎁스에 'selected' 클래스를 붙이지만 dist/kit.css 에 .gnb-main-trigger.selected 규칙이 없어 화면상 구분이 안 된다. 하위 링크 .active(aria-current=page)와 열림 .active 는 스타일 있음.",
+    "fix": ".krds-main-menu .gnb-main-trigger.selected 에 선택 표시(밑줄 막대·글자색)를 추가하고 1뎁스 버튼에도 현재 위치를 알리는 sr-only 문구를 붙인다."
+  },
+  {
+    "idx": 57,
+    "scope": "kit",
+    "verdict": "P",
+    "evidence": "react/navigation-menu.tsx SubContent·vue/internal/NavigationMenuSub.vue: 드롭다운마다 <h2 class=\"sub-title\"> 제목. 모바일 MobileMenu 도 묶음마다 h2.sub-title.",
+    "fix": null
+  },
+  {
+    "idx": 58,
+    "scope": "kit",
+    "verdict": "P",
+    "evidence": "react/navigation-menu.tsx(1뎁스→groups→links)·mobile-menu.tsx(1→2→3뎁스) 데이터 구조가 최대 3수준까지만 지원. Vue 동일.",
+    "fix": null
+  },
+  {
+    "idx": 59,
+    "scope": "site",
+    "verdict": null,
+    "evidence": "메뉴 레이블 문구는 사이트가 쉬운 용어로 정해야 한다.",
+    "fix": null
+  },
+  {
+    "idx": 60,
+    "scope": "kit",
+    "verdict": "?",
+    "evidence": "react/navigation-menu.tsx·vue/NavigationMenu.vue: 1뎁스 판은 클릭(aria-expanded)으로만 열려 통과지만, 열린 판 안의 2뎁스 버튼은 onMouseEnter/@mouseenter 로 오른쪽 목록을 바꿔 펼친다 — 이것이 금지 대상 '마우스오버 확장'에 해당하는지 판단이 갈린다.",
+    "fix": "2뎁스의 onMouseEnter/@mouseenter 를 빼고 클릭·포커스로만 전환한다."
+  },
+  {
+    "idx": 61,
+    "scope": "kit",
+    "verdict": "P",
+    "evidence": "react/navigation-menu.tsx·vue/NavigationMenu.vue: ul.gnb-menu 에 1뎁스 전부를 한 줄로 그린다. MobileMenu 는 왼쪽 menu-wrap 에 1뎁스 전체 목록.",
+    "fix": null
+  },
+  {
+    "idx": 62,
+    "scope": "site",
+    "verdict": null,
+    "evidence": "1수준 사이트에서는 사이트가 브레드크럼을 넣지 않아야 한다.",
+    "fix": null
+  },
+  {
+    "idx": 63,
+    "scope": "site",
+    "verdict": null,
+    "evidence": "메인·랜딩 페이지에는 사이트가 브레드크럼을 넣지 않아야 한다.",
+    "fix": null
+  },
+  {
+    "idx": 64,
+    "scope": "site",
+    "verdict": null,
+    "evidence": "진행 단계 표시에는 브레드크럼 대신 step-indicator 를 써야 한다(사이트 몫).",
+    "fix": null
+  },
+  {
+    "idx": 65,
+    "scope": "kit",
+    "verdict": "P",
+    "evidence": "dist/kit.css .krds-breadcrumb-wrap .breadcrumb li:not(:last-child)::after: 항목 사이 화살표 구분자를 그린다(React/Vue 같은 ol.breadcrumb 마크업).",
+    "fix": null
+  },
+  {
+    "idx": 66,
+    "scope": "site",
+    "verdict": null,
+    "evidence": "사이트가 첫 항목을 <BreadcrumbItem home> 홈 링크로 넣어야 한다(home 이면 집 아이콘).",
+    "fix": null
+  },
+  {
+    "idx": 67,
+    "scope": "site",
+    "verdict": null,
+    "evidence": "항목 구성은 사이트가 넣는다. 키트 BreadcrumbPage 는 현재 화면을 aria-current=page 로 표시한다 — KRDS 규칙에 맞게 마지막 항목을 무엇으로 둘지 사이트가 정해야 한다.",
+    "fix": null
+  },
+  {
+    "idx": 68,
+    "scope": "site",
+    "verdict": null,
+    "evidence": "사이트가 브레드크럼 바로 뒤에 본문 제목(h1/h2)을 두어야 한다.",
+    "fix": null
+  },
+  {
+    "idx": 69,
+    "scope": "site",
+    "verdict": null,
+    "evidence": "사이트가 현재 화면까지의 전체 계층을 항목으로 넣어야 한다.",
+    "fix": null
+  },
+  {
+    "idx": 70,
+    "scope": "kit",
+    "verdict": "P",
+    "evidence": "dist/kit.css .krds-breadcrumb-wrap .breadcrumb li a.txt{text-decoration:underline} — 링크 항목에 밑줄, 현재 항목(span)은 밑줄 없음. React·Vue 모두 링크는 a.txt.",
+    "fix": null
+  },
+  {
+    "idx": 71,
+    "scope": "kit",
+    "verdict": "P",
+    "evidence": "react/side-navigation.tsx·vue/SideNavigation.vue: 현재 항목에 aria-current=page + active/selected 클래스, dist/kit.css .lnb-btn.selected(글자색·굵게)·1뎁스 링크 active 하단 막대(::before).",
+    "fix": null
+  },
+  {
+    "idx": 72,
+    "scope": "site",
+    "verdict": null,
+    "evidence": "키트는 4뎁스(옆으로 덮는 판)까지 지원한다. 사이트가 2수준 이하로 구성해야 한다.",
+    "fix": null
+  },
+  {
+    "idx": 73,
+    "scope": "kit",
+    "verdict": "P",
+    "evidence": "react/side-navigation.tsx·vue/SideNavigation.vue: 하위가 있으면 펼침 버튼(aria-expanded·aria-controls), dist/kit.css .lnb-submenu 0fr→.lnb-item.active 1fr 로 펼친다.",
+    "fix": null
+  },
+  {
+    "idx": 74,
+    "scope": "kit",
+    "verdict": "P",
+    "evidence": "dist/kit.css: 2뎁스 .lnb-btn(굵게·하단선) vs 3뎁스 .lnb-submenu .lnb-btn(보통 굵기·안쪽 여백·'•' 머리표)로 계층이 구분된다.",
+    "fix": null
+  },
+  {
+    "idx": 75,
+    "scope": "kit",
+    "verdict": "F",
+    "evidence": "dist/kit.css·css/parts/e-nav.css: .krds-side-navigation 을 작은 화면에서 숨기는 미디어쿼리가 없다(키트만 쓰면 모바일에도 그대로 보인다).",
+    "fix": "@media (max-width:1023px) 에서 숨기는 옵션(예: hideOnMobile 기본 true)을 추가하거나 레이아웃 클래스로 숨김을 제공."
+  },
+  {
+    "idx": 76,
+    "scope": "kit",
+    "verdict": "P",
+    "evidence": "react/side-navigation.tsx·vue/SideNavigation.vue: 링크는 <a href>, 펼침은 <button> 이라 Tab 순서대로 탐색, dist/kit.css .lnb-btn:focus 윤곽 스타일.",
+    "fix": null
+  },
+  {
+    "idx": 77,
+    "scope": "kit",
+    "verdict": "P",
+    "evidence": "react/side-navigation.tsx·vue/SideNavigation.vue: 항목이 네이티브 <a href> 로 해당 화면으로 이동하고 현재 화면은 aria-current=page.",
+    "fix": null
+  },
+  {
+    "idx": 78,
+    "scope": "kit",
+    "verdict": "P",
+    "evidence": "react/side-navigation.tsx·vue/SideNavigation.vue: 펼침 버튼 aria-expanded 토글, 닫힌 하위는 visibility:hidden 으로 탭 순서에서 빠짐, 4뎁스 판은 Esc·제목 버튼으로 닫고 원래 버튼에 포커스 복귀.",
+    "fix": null
+  },
+  {
+    "idx": 79,
+    "scope": "site",
+    "verdict": null,
+    "evidence": "계층 구조가 있는 긴 콘텐츠에만 사이트가 InPageNavigation 을 넣어야 한다.",
+    "fix": null
+  },
+  {
+    "idx": 80,
+    "scope": "kit",
+    "verdict": "P",
+    "evidence": "react/in-page-navigation.tsx·vue/InPageNavigation.vue: 제목(.quick-title, nav aria-labelledby), 보이는 구역 항목에 .active + aria-current=location, dist/kit.css a.active 선택 배경.",
+    "fix": null
+  },
+  {
+    "idx": 81,
+    "scope": "kit",
+    "verdict": "P",
+    "evidence": "dist/kit.css .krds-in-page-navigation-type: --krds-in-page-navigation--width:160px 고정 너비(작은 화면 767px 이하 100%).",
+    "fix": null
+  },
+  {
+    "idx": 82,
+    "scope": "kit",
+    "verdict": "P",
+    "evidence": "dist/kit.css .krds-in-page-navigation-area: position:fixed, right 를 본문 오른쪽 기준으로 계산(position=static 옵션일 때만 문서 흐름).",
+    "fix": null
+  },
+  {
+    "idx": 83,
+    "scope": "site",
+    "verdict": null,
+    "evidence": "사이트가 label 을 연결된 섹션 제목과 같게 넣어야 한다.",
+    "fix": null
+  },
+  {
+    "idx": 84,
+    "scope": "kit",
+    "verdict": "P",
+    "evidence": "react/in-page-navigation.tsx·vue/InPageNavigation.vue: items 가 평면 목록(1수준)만 지원해 3수준을 넘을 수 없다.",
+    "fix": null
+  },
+  {
+    "idx": 85,
+    "scope": "kit",
+    "verdict": "P",
+    "evidence": "dist/kit.css @media (max-width:767px) .krds-in-page-navigation-area{position:static;width:100%} — 작은 화면에서 흐름 안 배치로 바뀐다. 단 제목과 본문 사이 위치는 사이트가 마크업을 그 자리에 두어야 한다.",
+    "fix": null
+  },
+  {
+    "idx": 86,
+    "scope": "kit",
+    "verdict": "P",
+    "evidence": "react/in-page-navigation.tsx·vue/InPageNavigation.vue: 목록이 네이티브 <a href=\"#id\"> 라 Tab·Enter 로 탐색, 현재 항목 aria-current.",
+    "fix": null
+  },
+  {
+    "idx": 87,
+    "scope": "kit",
+    "verdict": "P",
+    "evidence": "react/in-page-navigation.tsx·vue/InPageNavigation.vue: 누르면 scrollIntoView(움직임 줄이기면 auto) 후 구역에 tabindex=-1 을 주고 포커스 이동, 주소 해시 갱신.",
+    "fix": null
+  },
+  {
+    "idx": 88,
+    "scope": "site",
+    "verdict": null,
+    "evidence": "사이트가 무한 스크롤과 함께 쓰지 않아야 한다.",
+    "fix": null
+  },
+  {
+    "idx": 89,
+    "scope": "kit",
+    "verdict": "P",
+    "evidence": "react/pagination.tsx·vue/Pagination.vue: 이전·다음 버튼과, paginationRange 가 1쪽·마지막 쪽 번호를 항상 표시해 첫/마지막으로 바로 이동 가능.",
+    "fix": null
+  },
+  {
+    "idx": 90,
+    "scope": "kit",
+    "verdict": "P",
+    "evidence": "react/pagination.tsx paginationRange: 마지막 번호(total)를 항상 출력해 전체 쪽 수가 보인다. Vue 동일 범위 계산.",
+    "fix": null
+  },
+  {
+    "idx": 91,
+    "scope": "kit",
+    "verdict": "F",
+    "evidence": "react/pagination.tsx·vue/Pagination.vue 는 현재 쪽에 .active·aria-current=page·sr-only '현재페이지'를 붙인다(KRDS 원형은 진한 채움으로 통과). 그러나 기본 홈박스 층 css/style/homebox.css 가 현재 쪽을 흰 바탕 + #e4e4e7 1px 테두리 + 굵기 500 으로 바꿔, 테두리 대비가 약 1.2:1 로 WCAG 1.4.11(3:1) 미달이라 강조가 약하다.",
+    "fix": "홈박스 층에서 현재 쪽을 진한 채움(primary 또는 gray-90 배경·흰 글자) 또는 3:1 이상 테두리 + 굵게(700)로 바꾼다."
+  },
+  {
+    "idx": 92,
+    "scope": "kit",
+    "verdict": "P",
+    "evidence": "dist/kit.css .krds-pagination{display:flex;justify-content:center;width:100%} — 가운데 정렬. 목록 바로 아래 두는 것은 사이트 몫.",
+    "fix": null
+  },
+  {
+    "idx": 93,
+    "scope": "site",
+    "verdict": null,
+    "evidence": "사이트가 한 화면에 Pagination 을 하나만 두어야 한다.",
+    "fix": null
+  },
+  {
+    "idx": 94,
+    "scope": "kit",
+    "verdict": "P",
+    "evidence": "react/pagination.tsx paginationRange(기본 siblings=2): 1 + … + 5개 + … + 끝 = 최대 9개로 10개 이내. 단 siblings 를 3 이상으로 주면 11개 이상이 되므로 기본값 사용 시에만 통과.",
+    "fix": null
+  },
+  {
+    "idx": 95,
+    "scope": "kit",
+    "verdict": "P",
+    "evidence": "dist/kit.css @media (max-width:767px) .krds-pagination{flex-wrap:wrap} .page-links{width:100%} .page-navi.next{order:1} — 이전/다음이 윗줄, 숫자 목록이 아랫줄로 세로 배치.",
+    "fix": null
+  },
+  {
+    "idx": 96,
+    "scope": "kit",
+    "verdict": "F",
+    "evidence": "react/pagination.tsx·vue/Pagination.vue: paginationRange 가 화면 너비와 무관하게 같은 개수(기본 최대 9개)를 그린다. 작은 화면 최대 7개 규칙을 지키는 코드가 없다.",
+    "fix": "작은 화면(≤767px)에서 siblings=1(최대 7개)로 줄이도록 matchMedia 로 전환하거나 mobileSiblings 프롭을 추가하고 siblings 상한도 둔다."
+  }
+]

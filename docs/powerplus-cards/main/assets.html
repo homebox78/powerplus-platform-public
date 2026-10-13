@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>powerAssets</title>
+<style>
+html,body{margin:0;height:100%;overflow:hidden;background:#ECEBE8}
+.wrap{position:relative;width:100%;height:100%;overflow:hidden;background:radial-gradient(120% 95% at 48% 38%,#FAF9F7 0%,#EDEBE8 62%,#E3E1DD 100%)}
+.stage{position:absolute;left:50%;top:50%;width:1200px;height:670px;transform-origin:50% 50%;perspective:2600px;perspective-origin:50% 42%}
+.scene{position:absolute;left:672px;top:300px;transform-style:preserve-3d;transform:rotateX(55deg) rotateZ(-40deg) scale3d(1.08,1.08,1.08)}
+.blk{position:absolute;width:0;height:0;transform-style:preserve-3d}
+.lift{position:absolute;transform-style:preserve-3d}
+.blk i,.blk b{position:absolute;left:calc(var(--w)/-2);top:calc(var(--h)/-2);width:var(--w);height:var(--h);border-radius:var(--r)}
+.blk i{background:var(--side)}
+.blk b{background:var(--top);overflow:hidden;box-shadow:inset 0 2px 0 rgba(255,255,255,.6),inset 0 -4px 8px rgba(0,0,0,.06)}
+.sh{position:absolute;left:calc(var(--w)/-2 - 20px);top:calc(var(--h)/-2 - 20px);width:calc(var(--w) + 40px);height:calc(var(--h) + 40px);border-radius:calc(var(--r) + 14px);background:radial-gradient(closest-side,rgba(70,55,40,.26),rgba(70,55,40,0));transform:translate3d(14px,16px,0)}
+.l{--top:linear-gradient(140deg,#FFFFFF,#ECE9E4);--side:#D3CFC8}
+.g{--top:linear-gradient(140deg,#D2CFC9,#B8B4AE);--side:#9A968F}
+.d{--top:linear-gradient(140deg,#3E3C3A,#222120);--side:#121110}
+.o{--top:linear-gradient(140deg,#F2803F,#D9561C);--side:#A9421A}
+.p{position:absolute;border-radius:6px}
+.t{position:absolute;white-space:nowrap;font-family:"Pretendard","Apple SD Gothic Neo","Malgun Gothic",sans-serif;font-weight:700;letter-spacing:-.02em}
+.ly{position:absolute;inset:0}
+
+</style>
+</head>
+<body>
+<div class="wrap"><div class="stage" id="st"><div class="scene" id="sc"></div></div></div>
+<script>
+const sc=document.getElementById('sc');
+// 두께 있는 블록 하나: x,y(바닥 평면), w,h, r(둥글기), d(두께), k(색), top(윗면 내용)
+function blk(o){ const k=document.createElement('div'); k.className='blk '+(o.k||'l');
+  k.style.cssText=`left:${o.x}px;top:${o.y}px;--w:${o.w}px;--h:${o.h}px;--r:${o.r??16}px`;
+  let L=''; for(let z=0;z<o.d-2;z+=4) L+=`<i style="transform:translateZ(${z}px)"></i>`;
+  k.innerHTML=(o.noShadow?'':'<div class="sh"></div>')+`<div class="lift">${L}<b style="transform:translateZ(${o.d}px)">${o.top||''}</b></div>`;
+  (o.parent||sc).appendChild(k); k.lift=k.querySelector('.lift'); k.sh=k.querySelector('.sh'); k.top=k.querySelector('b'); return k; }
+const bar=(x,y,w,h,c,r)=>`<div class="p" style="left:${x}px;top:${y}px;width:${w}px;height:${h}px;background:${c};border-radius:${r??Math.min(h/2,8)}px"></div>`;
+const lab=(x,y,t,sz,c,w)=>`<div class="t" style="left:${x}px;top:${y}px;font-size:${sz}px;color:${c};font-weight:${w||700}">${t}</div>`;
+const pop=(el,a,b,T,e)=>anim(el,[{offset:0,transform:'scale(0)'},{offset:a,transform:'scale(0)',easing:e||'cubic-bezier(.3,1.5,.5,1)'},{offset:Math.min(a+.06,b),transform:'scale(1)'},{offset:b,transform:'scale(1)',easing:'ease-in'},{offset:Math.min(b+.05,1),transform:'scale(0)'},{offset:1,transform:'scale(0)'}],T);
+const fade=(el,a,b,T)=>anim(el,[{offset:0,opacity:0},{offset:a,opacity:0},{offset:Math.min(a+.04,b),opacity:1},{offset:b,opacity:1},{offset:Math.min(b+.04,1),opacity:0},{offset:1,opacity:0}],T);
+const anim=(el,frames,dur,opt={})=>el&&el.animate(frames,Object.assign({duration:dur*1000,iterations:Infinity},opt));
+
+const T=8, GL='#8F8A83';
+// 종류별 기호: 아이콘 · 일러스트 · 사진 · 장표
+const G={
+ icon:`<div class="p" style="left:34px;top:34px;width:42px;height:42px;border-radius:12px;border:5px solid ${GL};box-sizing:border-box"></div>`,
+ ill:`<div class="p" style="left:30px;top:52px;width:50px;height:26px;border-radius:26px 26px 6px 6px;background:${GL}"></div><div class="p" style="left:44px;top:30px;width:22px;height:22px;border-radius:11px;background:${GL}"></div>`,
+ photo:`<div class="p" style="left:28px;top:32px;width:54px;height:44px;border-radius:8px;background:#D9D5CF"></div><div class="p" style="left:34px;top:54px;width:42px;height:16px;clip-path:polygon(0 100%,35% 20%,60% 70%,80% 40%,100% 100%);background:${GL};border-radius:0"></div>`,
+ slide:`<div class="p" style="left:26px;top:34px;width:58px;height:40px;border-radius:6px;border:4px solid ${GL};box-sizing:border-box"></div><div class="p" style="left:34px;top:44px;width:24px;height:5px;background:${GL}"></div>`
+};
+const L=[['icon','l'],['ill','l'],['photo','g'],['slide','l'],['icon','g'],['photo','l'],['ill','d'],['slide','l'],['icon','l']];
+const tiles=L.map(([g,k],n)=>{ const c=n%3, r=Math.floor(n/3), x=-380+c*124, y=-124+r*124;
+  const b=blk({x,y,w:110,h:110,r:24,d:18,k,top:G[g].replaceAll(GL,k==='d'?'#EEEBE6':k==='g'?'#6E6A64':GL)}); b.px=x; b.py=y;
+  anim(b.lift,[{transform:'translateZ(0px)'},{transform:'translateZ(10px)'},{transform:'translateZ(0px)'}],3.2,{easing:'ease-in-out',delay:-(c*.25+r*.18)*1000}); return b; });
+// AI 로 만든 에셋 표시: 검은 별 표지
+[2,6].forEach((n,i)=>{ const t=tiles[n]; const m=blk({x:t.px+40,y:t.py-40,w:34,h:34,r:17,d:10,k:'d',noShadow:true,top:'<svg viewBox="0 0 24 24" style="position:absolute;left:7px;top:7px;width:20px;height:20px"><path d="M12 3l2 6.5L20.5 12 14 14l-2 7-2-7-6.5-2L10 9.5z" fill="#fff"/></svg>'});
+  m.lift.style.transform='translateZ(32px)'; pop(m,.56+i*.06,.9,T); });
+// 슬라이드 판 (PowerPoint)
+const sl=blk({x:200,y:0,w:400,h:260,r:20,d:20,k:'l',top:bar(0,0,400,30,'#2B2A28',0)+bar(28,62,150,14,'#2B2A28')+bar(28,92,150,8,'#D3CEC6')+bar(28,108,130,8,'#D3CEC6')+bar(28,124,140,8,'#D3CEC6')+
+  '<div class="p hole" style="left:206px;top:56px;width:168px;height:168px;border:3px dashed #C9C2B8;border-radius:16px"></div>'});
+// 고른 아이콘 하나(주황 점)가 들려 슬라이드 빈칸으로
+const src=tiles[0], DX=200+90-src.px, DY=4-src.py;
+const fly=blk({x:src.px,y:src.py,w:110,h:110,r:24,d:18,k:'l',top:G.icon+'<div class="p" style="left:62px;top:40px;width:10px;height:10px;border-radius:5px;background:#E2622B"></div>'});
+const EZ='cubic-bezier(.5,0,.25,1)';
+anim(fly,[{offset:0,transform:'translate(0px,0px) scale(0)'},{offset:.14,transform:'translate(0px,0px) scale(0)'},{offset:.141,transform:'translate(0px,0px) scale(1)',easing:EZ},{offset:.42,transform:`translate(${DX}px,${DY}px) scale(1.4)`},{offset:.86,transform:`translate(${DX}px,${DY}px) scale(1.4)`,easing:'ease-in'},{offset:.92,transform:`translate(${DX}px,${DY}px) scale(0)`},{offset:1,transform:`translate(${DX}px,${DY}px) scale(0)`}],T);
+anim(fly.lift,[{offset:0,transform:'translateZ(0px)'},{offset:.14,transform:'translateZ(0px)',easing:'ease-out'},{offset:.28,transform:'translateZ(140px)',easing:'ease-in'},{offset:.42,transform:'translateZ(22px)'},{offset:1,transform:'translateZ(22px)'}],T);
+anim(src,[{offset:0,transform:'scale(1)'},{offset:.14,transform:'scale(1)'},{offset:.145,transform:'scale(0)'},{offset:.9,transform:'scale(0)',easing:'cubic-bezier(.3,1.5,.5,1)'},{offset:.97,transform:'scale(1)'},{offset:1,transform:'scale(1)'}],T);
+anim(sl.top.querySelector('.hole'),[{offset:0,opacity:1},{offset:.4,opacity:1},{offset:.43,opacity:0},{offset:.9,opacity:0},{offset:.95,opacity:1},{offset:1,opacity:1}],T);
+anim(sl.lift,[{offset:0,transform:'translateZ(0px)'},{offset:.42,transform:'translateZ(0px)'},{offset:.45,transform:'translateZ(-8px)'},{offset:.5,transform:'translateZ(0px)'},{offset:1,transform:'translateZ(0px)'}],T);
+
+const st=document.getElementById('st');
+function fit(){const s=Math.max(innerWidth/1200,innerHeight/670);st.style.transform=`translate(-50%,-50%) scale(${s})`;}
+addEventListener('resize',fit); fit();
+</script>
+</body>
+</html>

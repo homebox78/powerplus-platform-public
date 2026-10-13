@@ -1,0 +1,397 @@
+/* ─────────────────────────────────────────────────────────────
+ * B 묶음(입력) — KRDS 에 없는 모양만.
+ *   레이블 단독, 필수 표시, 입력 그룹(앞뒤 붙임), 직접 만든 선택 상자 목록,
+ *   슬라이더, 인증번호 칸, 끌어다 놓기 상태.
+ * 값은 전부 KRDS 토큰. 요소 전역 선택자 없이 클래스로만.
+ * ───────────────────────────────────────────────────────────── */
+
+/* ── 레이블 ── */
+.hb-label {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--krds-gap-1);
+  font-size: var(--krds-pc-font-size-label-medium);
+  font-weight: var(--krds-font-weight-bold);
+  color: var(--krds-light-color-text-basic);
+}
+.hb-label.is-disabled {
+  color: var(--krds-light-color-text-disabled);
+}
+.hb-required {
+  color: var(--krds-light-color-text-danger);
+  font-weight: var(--krds-font-weight-bold);
+}
+.hb-optional {
+  font-weight: var(--krds-font-weight-regular);
+  color: var(--krds-light-color-text-subtle);
+  font-size: var(--krds-pc-font-size-label-small);
+}
+
+/* 입력 칸 오류 표시 — 폼그룹(.is-error) 밖에서 단독으로 쓸 때 */
+.krds-input[aria-invalid="true"],
+.krds-form-select[aria-invalid="true"] {
+  border-color: var(--krds-light-color-input-border-error);
+  border-width: 2px;
+}
+
+/* 필드 묶음(fieldset) 제목 */
+.hb-fieldset {
+  border: 0;
+  margin: 0;
+  padding: 0;
+  min-width: 0;
+}
+.hb-fieldset-legend {
+  padding: 0;
+  margin-bottom: var(--krds-gap-5);
+  font-size: var(--krds-pc-font-size-label-large);
+  font-weight: var(--krds-font-weight-bold);
+  color: var(--krds-light-color-text-basic);
+}
+
+/* ── 입력 그룹: 앞·뒤에 글자·아이콘·버튼 붙이기 ── */
+.hb-input-group {
+  --hb-ig-h: var(--krds-size-height-8);
+  --hb-ig-r: var(--krds-radius-medium3);
+  --hb-ig-fs: var(--krds-pc-font-size-label-large);
+  display: flex;
+  align-items: center;
+  width: 100%;
+  height: var(--hb-ig-h);
+  border: 1px solid var(--krds-light-color-input-border);
+  border-radius: var(--hb-ig-r);
+  background-color: var(--krds-light-color-input-surface);
+  font-size: var(--hb-ig-fs);
+  transition: var(--krds-transition-base);
+}
+.hb-input-group.small { --hb-ig-h: var(--krds-size-height-6); --hb-ig-r: var(--krds-radius-medium1); --hb-ig-fs: var(--krds-pc-font-size-label-small); }
+.hb-input-group.medium { --hb-ig-h: var(--krds-size-height-7); --hb-ig-r: var(--krds-radius-medium2); --hb-ig-fs: var(--krds-pc-font-size-label-medium); }
+.hb-input-group:focus-within {
+  border-color: var(--krds-light-color-input-border-active);
+  box-shadow: inset 0 0 0 1px var(--krds-light-color-input-border-active);
+}
+.hb-input-group.is-error {
+  border-color: var(--krds-light-color-input-border-error);
+  box-shadow: inset 0 0 0 1px var(--krds-light-color-input-border-error);
+}
+.hb-input-group.is-disabled {
+  background-color: var(--krds-light-color-input-surface-disabled);
+  border-color: var(--krds-light-color-input-border-disabled);
+}
+.hb-input-group-input {
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 100%;
+  padding: 0 var(--krds-padding-6);
+  border: 0;
+  background: transparent;
+  font: inherit;
+  color: var(--krds-light-color-text-basic);
+}
+.hb-input-group-input:focus {
+  outline: none;
+}
+.hb-input-group-input::placeholder {
+  color: var(--krds-light-color-text-disabled);
+}
+.hb-input-group-input:disabled {
+  color: var(--krds-light-color-text-disabled-on);
+}
+.hb-input-group-addon {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: var(--krds-gap-2);
+  height: 100%;
+  color: var(--krds-light-color-text-subtle);
+}
+.hb-input-group-addon.start { padding-left: var(--krds-padding-6); order: -1; }
+.hb-input-group-addon.start + .hb-input-group-input { padding-left: var(--krds-padding-3); }
+.hb-input-group-addon.end { padding-right: var(--krds-padding-4); }
+.hb-input-group-addon.end.text { padding-right: var(--krds-padding-6); }
+.hb-input-group-text {
+  white-space: nowrap;
+  color: var(--krds-light-color-text-subtle);
+}
+.hb-input-group-addon .krds-btn {
+  flex: none;
+}
+
+/* 여러 줄 입력 옆에 붙이는 그룹은 높이 자동 */
+.hb-input-group.is-multiline {
+  height: auto;
+  flex-direction: column;
+  align-items: stretch;
+}
+.hb-input-group.is-multiline .hb-input-group-input {
+  min-height: 96px;
+  padding: var(--krds-padding-3) var(--krds-padding-6);
+  resize: none;
+}
+.hb-input-group.is-multiline .hb-input-group-addon.end {
+  justify-content: flex-end;
+  padding: 0 var(--krds-padding-4) var(--krds-padding-3);
+}
+
+/* ── 선택 상자(직접 만든 목록) ── */
+.hb-select {
+  position: relative;
+  width: 100%;
+}
+.hb-select.is-sort {
+  display: inline-block;
+  width: auto;
+}
+.hb-select .krds-form-select,
+.hb-select .krds-form-select-sort {
+  display: flex;
+  align-items: center;
+  text-align: left;
+  cursor: pointer;
+  background-repeat: no-repeat;
+}
+.hb-select .krds-form-select[disabled] {
+  cursor: not-allowed;
+}
+.hb-select-value {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.hb-select .krds-form-select.has-value {
+  color: var(--krds-light-color-text-basic);
+}
+.hb-select-list {
+  position: absolute;
+  z-index: 50;
+  top: calc(100% + 4px);
+  left: 0;
+  min-width: 100%;
+  max-height: 280px;
+  overflow-y: auto;
+  margin: 0;
+  padding: var(--krds-padding-2);
+  list-style: none;
+  background-color: var(--krds-light-color-surface-white);
+  border: 1px solid var(--krds-light-color-border-gray);
+  border-radius: var(--krds-radius-medium2);
+  box-shadow: 0 4px 16px var(--krds-light-color-alpha-shadow2);
+}
+.hb-select-list.is-up {
+  top: auto;
+  bottom: calc(100% + 4px);
+}
+.hb-select-list[hidden] {
+  display: none;
+}
+.hb-select-option {
+  position: relative;
+  display: flex;
+  align-items: center;
+  min-height: 40px;
+  padding: var(--krds-padding-2) 36px var(--krds-padding-2) var(--krds-padding-4);
+  border-radius: var(--krds-radius-small2);
+  font-size: var(--krds-pc-font-size-label-medium);
+  color: var(--krds-light-color-text-basic);
+  cursor: pointer;
+  white-space: nowrap;
+}
+.hb-select-option.is-active {
+  background-color: var(--krds-light-color-surface-gray-subtler);
+  outline: 2px solid var(--krds-light-color-border-primary);
+  outline-offset: -2px;
+}
+.hb-select-option[aria-selected="true"] {
+  font-weight: var(--krds-font-weight-bold);
+  color: var(--krds-light-color-text-primary);
+  background-color: var(--krds-light-color-surface-primary-subtler);
+}
+.hb-select-option[aria-selected="true"]::after {
+  content: "";
+  position: absolute;
+  right: var(--krds-padding-4);
+  top: 50%;
+  width: 6px;
+  height: 11px;
+  margin-top: -7px;
+  border: solid currentColor;
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+}
+.hb-select-option[aria-disabled="true"] {
+  color: var(--krds-light-color-text-disabled);
+  cursor: not-allowed;
+}
+
+/* ── 슬라이더 (input[type=range]) ── */
+.hb-slider {
+  --hb-slider-pct: 50%;
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 24px;
+  margin: 0;
+  background: transparent;
+  cursor: pointer;
+}
+.hb-slider:focus {
+  outline: none;
+}
+.hb-slider::-webkit-slider-runnable-track {
+  height: 6px;
+  border-radius: var(--krds-radius-max);
+  background: linear-gradient(to right, var(--krds-light-color-element-primary) var(--hb-slider-pct), var(--krds-light-color-background-gray-subtle) var(--hb-slider-pct));
+}
+.hb-slider::-moz-range-track {
+  height: 6px;
+  border-radius: var(--krds-radius-max);
+  background: var(--krds-light-color-background-gray-subtle);
+}
+.hb-slider::-moz-range-progress {
+  height: 6px;
+  border-radius: var(--krds-radius-max);
+  background: var(--krds-light-color-element-primary);
+}
+.hb-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 24px;
+  height: 24px;
+  margin-top: -9px;
+  border: 2px solid var(--krds-light-color-element-primary);
+  border-radius: 50%;
+  background: var(--krds-light-color-surface-white);
+  box-shadow: 0 1px 4px var(--krds-light-color-alpha-shadow2);
+}
+.hb-slider::-moz-range-thumb {
+  width: 20px;
+  height: 20px;
+  border: 2px solid var(--krds-light-color-element-primary);
+  border-radius: 50%;
+  background: var(--krds-light-color-surface-white);
+  box-shadow: 0 1px 4px var(--krds-light-color-alpha-shadow2);
+}
+.hb-slider:focus-visible::-webkit-slider-thumb {
+  box-shadow: 0 0 0 4px var(--krds-light-color-border-primary-light);
+}
+.hb-slider:focus-visible::-moz-range-thumb {
+  box-shadow: 0 0 0 4px var(--krds-light-color-border-primary-light);
+}
+.hb-slider:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+.hb-slider-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: var(--krds-gap-2);
+  width: 100%;
+}
+.hb-slider-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: var(--krds-gap-3);
+}
+.hb-slider-output {
+  font-size: var(--krds-pc-font-size-label-medium);
+  font-weight: var(--krds-font-weight-bold);
+  color: var(--krds-light-color-text-primary);
+}
+.hb-slider-marks {
+  display: flex;
+  justify-content: space-between;
+  font-size: var(--krds-pc-font-size-label-xsmall);
+  color: var(--krds-light-color-text-subtle);
+}
+
+/* ── 인증번호 칸 ── */
+.hb-otp {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--krds-gap-2);
+}
+.hb-otp-slot.krds-input {
+  width: 48px;
+  padding: 0;
+  text-align: center;
+  font-weight: var(--krds-font-weight-bold);
+}
+.hb-otp-sep {
+  display: inline-block;
+  width: 10px;
+  height: 2px;
+  margin: 0 var(--krds-gap-1);
+  background-color: var(--krds-light-color-border-gray-dark);
+}
+
+/* ── 파일 올리기: 끌어다 놓는 중 ── */
+.krds-file-upload .file-upload.hb-dragover {
+  border-color: var(--krds-light-color-border-primary);
+  background-color: var(--krds-light-color-surface-primary-subtler);
+}
+
+/* ── 날짜 입력: 기간 ── */
+.hb-date-range {
+  display: flex;
+  align-items: center;
+  gap: var(--krds-gap-3);
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.hb-date-range > li {
+  flex: 1 1 0;
+  min-width: 0;
+}
+.hb-date-range > li.mark {
+  flex: none;
+  color: var(--krds-light-color-text-subtle);
+}
+
+/* ── 데모에서 쓰는 한 줄 배치 ── */
+.hb-form-row {
+  display: flex;
+  align-items: center;
+  gap: var(--krds-gap-3);
+  width: 100%;
+}
+.hb-form-row > .hb-grow {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.hb-form-row > .hb-fixed {
+  flex: none;
+}
+
+/* 체크박스 일부 선택(indeterminate) — 전체 선택 체크박스에서 하위가 일부만 골라졌을 때.
+   KRDS 는 체크 표시만 있어 가로 막대를 따로 그린다. 색은 선택됨과 같은 토큰. */
+.krds-form-check input[type=checkbox]:indeterminate:not(:checked) ~ label:before {
+  background-color: var(--krds-form-check--checkbox-button-color-element-checked);
+  border-color: var(--krds-form-check--button-color-border-checked);
+}
+.krds-form-check input[type=checkbox]:indeterminate:not(:checked) ~ label:after {
+  background-color: var(--krds-form-check--checkbox-check-color-element-checked);
+  -webkit-mask-image: linear-gradient(transparent 42%, #000 42%, #000 58%, transparent 58%);
+  mask-image: linear-gradient(transparent 42%, #000 42%, #000 58%, transparent 58%);
+  -webkit-mask-size: 70% 100%;
+  mask-size: 70% 100%;
+}
+.krds-form-check input[type=checkbox]:indeterminate:not(:checked):disabled ~ label:after {
+  background-color: var(--krds-form-check--checkbox-check-color-element-disabled);
+}
+
+/* ── 날짜 입력: 칸 + 형식 안내·오류 문구 ── */
+.hb-date-input {
+  display: flex;
+  flex-direction: column;
+  gap: var(--krds-gap-2);
+  width: 100%;
+  min-width: 0;
+}
+.hb-date-input > .form-hint,
+.hb-date-input > .form-hint-invalid {
+  margin: 0;
+}

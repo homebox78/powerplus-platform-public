@@ -1,0 +1,224 @@
+/* SOLIDEO powerGuide 토큰 → Tailwind CSS v4 @theme (자동 생성 — 손으로 고치지 마세요)
+ * 원본: solideo-tokens.flat.json (버전 1.3.2) · 생성기: scripts/build-tailwind-theme.mjs
+ * 쓰는 법: @import "tailwindcss"; 다음 줄에 이 파일을 @import 하면 bg-blue-500 · text-h1 · rounded-md · shadow-2 같은 유틸리티가 생긴다.
+ * 간격은 Tailwind 기본(--spacing 배수)을 덮지 않고 이름 붙은 값(p-4 = 16px 등 정본 값)만 더한다. */
+@theme {
+  /* 색 */
+  --color-static-black: #14161A;
+  --color-static-white: #FFFFFF;
+  --color-gray-25: #F8F9FA;
+  --color-gray-50: #F2F4F6;
+  --color-gray-75: #ECEFF2;
+  --color-gray-100: #E5E9ED;
+  --color-gray-150: #D3D8DE;
+  --color-gray-200: #C4CAD2;
+  --color-gray-250: #B5BCC5;
+  --color-gray-300: #A7AEB9;
+  --color-gray-350: #98A0AC;
+  --color-gray-400: #848D9A;
+  --color-gray-450: #737C89;
+  --color-gray-500: #68707C;
+  --color-gray-550: #5B626D;
+  --color-gray-600: #4F555F;
+  --color-gray-650: #454A52;
+  --color-gray-700: #3A3E45;
+  --color-gray-750: #2E3238;
+  --color-gray-800: #23262A;
+  --color-gray-850: #1D1F23;
+  --color-gray-900: #16181B;
+  --color-crimson-100: #FCE9EF;
+  --color-crimson-150: #FADCE5;
+  --color-crimson-200: #F2AEC1;
+  --color-crimson-300: #E77E9F;
+  --color-crimson-400: #D74E79;
+  --color-crimson-500: #C12554;
+  --color-crimson-600: #A01C46;
+  --color-crimson-700: #741333;
+  --color-crimson-800: #360817;
+  --color-ink-100: #E9EEF0;
+  --color-ink-150: #D8E0E4;
+  --color-ink-200: #AFBEC5;
+  --color-ink-300: #86A0AA;
+  --color-ink-400: #5D7F8C;
+  --color-ink-500: #3F626F;
+  --color-ink-600: #2C4954;
+  --color-ink-700: #1B303A;
+  --color-ink-800: #0E1A20;
+  --color-green-100: #E6F4EC;
+  --color-green-150: #D2ECDD;
+  --color-green-200: #96D4B3;
+  --color-green-300: #4CB783;
+  --color-green-400: #1E9A62;
+  --color-green-500: #12805C;
+  --color-green-600: #0D6449;
+  --color-green-700: #08402F;
+  --color-green-800: #04261C;
+  --color-blue-100: #E8EFFF;
+  --color-blue-150: #D8E4FF;
+  --color-blue-200: #A9C0FF;
+  --color-blue-300: #7A9CFF;
+  --color-blue-400: #5580FF;
+  --color-blue-500: #3C6AFF;
+  --color-blue-600: #2A50CC;
+  --color-blue-700: #1B3689;
+  --color-blue-800: #0D1C4A;
+  --color-amber-100: #FEF3E6;
+  --color-amber-150: #FCE8D2;
+  --color-amber-200: #F7C68F;
+  --color-amber-300: #EFA451;
+  --color-amber-400: #DC7C12;
+  --color-amber-500: #B95E04;
+  --color-amber-600: #944A03;
+  --color-amber-700: #633102;
+  --color-amber-800: #331901;
+  --color-red-100: #FDECEB;
+  --color-red-150: #FBDCDA;
+  --color-red-200: #F4ABA5;
+  --color-red-300: #EC7C74;
+  --color-red-400: #E1544A;
+  --color-red-500: #D93025;
+  --color-red-600: #B0241B;
+  --color-red-700: #7A1812;
+  --color-red-800: #400C09;
+  --color-opacity-black-5: rgba(20,22,26,0.05);
+  --color-opacity-black-10: rgba(20,22,26,0.1);
+  --color-opacity-black-15: rgba(20,22,26,0.15);
+  --color-opacity-black-25: rgba(20,22,26,0.25);
+  --color-opacity-black-40: rgba(20,22,26,0.4);
+  --color-opacity-black-65: rgba(20,22,26,0.65);
+  --color-opacity-black-80: rgba(20,22,26,0.8);
+  --color-opacity-white-10: rgba(255,255,255,0.1);
+  --color-opacity-white-25: rgba(255,255,255,0.25);
+  --color-opacity-white-65: rgba(255,255,255,0.65);
+  --color-opacity-white-80: rgba(255,255,255,0.8);
+  --color-text-primary: #16181B;
+  --color-text-secondary: #4F555F;
+  --color-text-tertiary: #68707C;
+  --color-text-disabled: #98A0AC;
+  --color-text-inverse: #FFFFFF;
+  --color-text-accent: #A01C46;
+  --color-text-critical: #B0241B;
+  --color-text-positive: #0D6449;
+  --color-text-caution: #944A03;
+  --color-text-info: #2A50CC;
+  --color-bg-primary: #FFFFFF;
+  --color-bg-secondary: #F8F9FA;
+  --color-bg-tertiary: #F2F4F6;
+  --color-bg-inverse: #1B303A;
+  --color-bg-dim: rgba(20,22,26,0.65);
+  --color-fill-primary: #16181B;
+  --color-fill-secondary: #E5E9ED;
+  --color-fill-tertiary: #F2F4F6;
+  --color-fill-accent: #C12554;
+  --color-fill-accent-hover: #A01C46;
+  --color-fill-accent-pressed: #741333;
+  --color-fill-accent-subtle: #FCE9EF;
+  --color-fill-disabled: #E5E9ED;
+  --color-fill-critical: #D93025;
+  --color-fill-critical-subtle: #FDECEB;
+  --color-fill-positive-subtle: #E6F4EC;
+  --color-fill-caution-subtle: #FEF3E6;
+  --color-fill-info-subtle: #E8EFFF;
+  --color-border-primary: #D3D8DE;
+  --color-border-secondary: #E5E9ED;
+  --color-border-strong: #848D9A;
+  --color-border-accent: #C12554;
+  --color-border-critical: #D93025;
+  --color-border-focus: #3C6AFF;
+  --color-icon-primary: #16181B;
+  --color-icon-secondary: #4F555F;
+  --color-icon-tertiary: #848D9A;
+  --color-icon-accent: #C12554;
+  --color-icon-inverse: #FFFFFF;
+  --color-accent-primary: #C12554;
+  --color-accent-secondary: #1B303A;
+
+  /* 간격(p-4 · gap-6 …) */
+  --spacing-1: 4px;
+  --spacing-2: 8px;
+  --spacing-3: 12px;
+  --spacing-4: 16px;
+  --spacing-5: 20px;
+  --spacing-6: 24px;
+  --spacing-8: 32px;
+  --spacing-10: 40px;
+  --spacing-12: 48px;
+  --spacing-16: 64px;
+  --spacing-20: 80px;
+  --spacing-24: 96px;
+
+  /* 모서리(rounded-md …) */
+  --radius-xs: 2px;
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 20px;
+  --radius-full: 999px;
+
+  /* 글자 크기(text-h1 …) */
+  --text-display: 3.5rem;
+  --text-h1: 2.5rem;
+  --text-h2: 1.75rem;
+  --text-h3: 1.25rem;
+  --text-h4: 1.125rem;
+  --text-body-lg: 1.125rem;
+  --text-body: 1rem;
+  --text-sm: 0.875rem;
+  --text-xs: 0.75rem;
+
+  /* 굵기(font-bold …) */
+  --font-weight-regular: 400;
+  --font-weight-medium: 500;
+  --font-weight-bold: 700;
+  --font-weight-black: 800;
+
+  /* 글꼴(font-sans …) */
+  --font-sans: "Pretendard", "Pretendard Variable", "Noto Sans KR", -apple-system, BlinkMacSystemFont, "Malgun Gothic", sans-serif;
+  --font-mono: "Pretendard", "Pretendard Variable", "Noto Sans KR", -apple-system, BlinkMacSystemFont, "Malgun Gothic", sans-serif;
+
+  /* 줄 간격(leading-normal …) */
+  --leading-tight: 1.25;
+  --leading-normal: 1.5;
+  --leading-loose: 1.7;
+
+  /* 자간(tracking-tight) */
+  --tracking-tight: -0.02em;
+
+  /* 그림자(shadow-2 …) */
+  --shadow-1: 0 1px 2px rgba(20,22,26,.05), 0 1px 3px rgba(20,22,26,.05);
+  --shadow-2: 0 2px 8px rgba(20,22,26,.10);
+  --shadow-3: 0 8px 24px rgba(20,22,26,.10);
+  --shadow-4: 0 16px 48px rgba(20,22,26,.15);
+
+  /* 움직임 곡선(ease-standard …) */
+  --ease-standard: cubic-bezier(.2,0,.2,1);
+  --ease-decelerate: cubic-bezier(0,0,.2,1);
+
+  /* 화면 폭 구간(tablet: · desktop: · wide:) */
+  --breakpoint-tablet: 600px;
+  --breakpoint-desktop: 900px;
+  --breakpoint-wide: 1280px;
+}
+
+/* 테마 이름공간이 없는 정본 값(레이아웃·지속 시간·부품 치수) — var(--layout-max) 처럼 쓴다 */
+:root {
+  --duration-fast: 120ms;
+  --duration-base: 200ms;
+  --duration-slow: 320ms;
+  --layout-max: 1280px;
+  --layout-gutter: 24px;
+  --layout-sidebar: 240px;
+  --layout-header: 72px;
+  --layout-content: 848px;
+  --component-control-height-sm: 32px;
+  --component-control-height-md: 40px;
+  --component-control-height-lg: 48px;
+  --component-control-radius: 4px;
+  --component-control-padding-x: 16px;
+  --component-control-font-size: 0.875rem;
+  --component-control-target-min: 24px;
+  --component-button-font-weight: 700;
+  --component-badge-height: 22px;
+  --component-badge-radius: 999px;
+  --component-badge-padding-x: 8px;
+}

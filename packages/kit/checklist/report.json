@@ -1,0 +1,2478 @@
+{
+ "at": "2026-10-12T07:14:29.474Z",
+ "summary": {
+  "의도": 8,
+  "P": 86,
+  "수정됨": 25,
+  "?": 7,
+  "사이트": 148
+ },
+ "rows": [
+  {
+   "idx": 1,
+   "section": "style",
+   "component": "색상|정부 상징",
+   "text": "디지털 정부 디자인 시스템의 Primary, Secondary, Gray, System 색상 팔레트와 색상값을 사용하고 있다.",
+   "verdict": "의도",
+   "evidence": "홈박스 층(css/style/homebox.css)이 --krds-color-light-gray-5~95 를 zinc(#fafafa~#09090b)로 덮어 KRDS Gray 팔레트 값이 아니다. Primary·Secondary·System 색은 건드리지 않으며, KRDS 원형 모드(data-hb-style=\"krds\")에서는 dist/css/tokens.css 의 KRDS 팔레트 그대로라 통과한다.",
+   "fix": "홈박스 스타일은 무채색을 zinc 로 바꾼 의도된 차이 — 정부 상징 사이트는 KRDS 원형 모드(data-hb-style=\"krds\")로 낸다"
+  },
+  {
+   "idx": 2,
+   "section": "style",
+   "component": "색상|정부 상징",
+   "text": "디지털 정부 디자인 시스템의 각 컴포넌트에 정의된 상호작용 상태 표현 색상과 방식을 적용하고 있다.",
+   "verdict": "의도",
+   "evidence": "홈박스 층이 secondary·tertiary 버튼을 흰 바탕+zinc 테두리로 바꾸고 hover/active 를 gray-10/20, 포커스를 배경 변화 대신 3px 링(--hb-ring)으로 바꿔 KRDS 컴포넌트별 상호작용 색·방식과 다르다. KRDS 원형 모드는 KRDS 컴포넌트 CSS 그대로라 통과.",
+   "fix": "위와 같음 — 정부 상징 사이트는 KRDS 원형 모드"
+  },
+  {
+   "idx": 3,
+   "section": "style",
+   "component": "색상|정부 상징",
+   "text": "디지털 정부 디자인 시스템에 정의된 배경 색상을 사용하고 있다.",
+   "verdict": "의도",
+   "evidence": "배경 계열(--krds-light-color-surface-gray-subtle 등)이 --krds-color-light-gray-* 를 참조하는데 홈박스 층이 이를 zinc 로 바꾸고, 버튼·표 머리·모달에 #fff 를 직접 쓴다. KRDS 원형 모드는 KRDS 배경 토큰 그대로라 통과.",
+   "fix": "위와 같음 — 정부 상징 사이트는 KRDS 원형 모드"
+  },
+  {
+   "idx": 4,
+   "section": "style",
+   "component": "색상|자체 상징",
+   "text": "상호작용 상태를 표현할 때, 기본 상태 색상을 기준으로 한 증·감 규칙을 적용하고 있다.",
+   "verdict": "P",
+   "evidence": "홈박스 층도 기본 상태 기준 단계 증가(secondary 버튼 hover gray-10 → active gray-20, 페이지네이션 hover gray-10 → pressed gray-20)를 지키고, 주색 버튼·토글은 KRDS 토큰의 hover/pressed 단계(a-action.css .hb-toggle:hover/active)를 쓴다.",
+   "fix": null
+  },
+  {
+   "idx": 5,
+   "section": "style",
+   "component": "색상|자체 상징",
+   "text": "시스템 상태를 표현할 때, 시스템 색상의 색상 범주와 의미 체계를 따르고 있다.",
+   "verdict": "P",
+   "evidence": "danger·warning·success·information 계열 토큰은 홈박스 층이 덮지 않고, 오류 문구(form-hint-invalid)·필수 표시(.hb-required = text-danger)·오류 테두리(input-border-error)가 KRDS 시스템 색 의미대로 쓰인다(b-form.css).",
+   "fix": null
+  },
+  {
+   "idx": 6,
+   "section": "style",
+   "component": "색상|공통",
+   "text": "배경 색상을 일관성 있게 표현하고 있다.",
+   "verdict": "P",
+   "evidence": "부품 CSS(css/parts/*.css)에 직접 색값이 0건이고 배경은 전부 KRDS surface/background 토큰을 거치므로 부품 사이 배경 표현이 일관된다(홈박스 층은 토큰 값만 바꿈).",
+   "fix": null
+  },
+  {
+   "idx": 7,
+   "section": "style",
+   "component": "색상|공통",
+   "text": "액션, 선택, 입력 컴포넌트의 테두리를 일관성 있게 표현하고 있다.",
+   "verdict": "수정됨",
+   "evidence": "홈박스 층에서 버튼·입력·선택 테두리는 --hb-border(gray-20)인데 토글 outline(a-action.css .hb-toggle.outline)은 border-gray-dark 를 그대로 써 액션·선택 컴포넌트 테두리 농도가 다르다. KRDS 원형 모드는 KRDS 토큰 조합 그대로(검수 별도 필요).",
+   "fix": "토글 outline 테두리를 --hb-border 로 통일 (homebox.css)"
+  },
+  {
+   "idx": 8,
+   "section": "style",
+   "component": "색상|공통",
+   "text": "텍스트 색상을 일관성 있게 표현하고 있다.",
+   "verdict": "P",
+   "evidence": "본문·레이블·도움말 글자색이 text-basic/subtle/disabled/danger 토큰으로만 지정되고(.hb-kit color:text-basic, .hb-optional text-subtle), 부품 CSS 에 직접 색값이 없다.",
+   "fix": null
+  },
+  {
+   "idx": 9,
+   "section": "style",
+   "component": "서체|공통",
+   "text": "Title과 Heading 텍스트를 본문보다 굵거나 크게 표현하고 있다.",
+   "verdict": "P",
+   "evidence": "제목류(.hb-sheet-title heading-small·bold, .hb-card-title heading-xsmall·bold, .hb-fieldset-legend label-large·bold)가 본문(body-medium 17px, regular)보다 굵거나 크다.",
+   "fix": null
+  },
+  {
+   "idx": 10,
+   "section": "style",
+   "component": "서체|공통",
+   "text": "서체 사용 규칙을 일관되게 적용하고 있다.",
+   "verdict": "의도",
+   "evidence": "홈박스 층이 KRDS 타입 토큰을 우회해 버튼·입력·탭 14px, 아코디언 15px, 모달 제목 18px, 굵기 500 을 직접 값으로 지정해 KRDS 타입 스케일과 섞인다. KRDS 원형 모드는 토큰 스케일만 쓰므로 통과.",
+   "fix": "홈박스 스타일의 14px 컨트롤 글자는 의도된 차이 — 규격 준수 대상은 KRDS 원형 모드"
+  },
+  {
+   "idx": 11,
+   "section": "style",
+   "component": "서체|공통",
+   "text": "여러 줄로 구성된 텍스트의 행간을 텍스트 크기의 1.5배 이상으로 표현하고 있다.",
+   "verdict": "P",
+   "evidence": "dist/kit.css 의 .hb-kit 기본 line-height 1.5, 토스트·오버레이 본문 1.5. 1.4 는 한 줄 제목(.hb-sheet-title, .hb-card-title)에만 쓰인다.",
+   "fix": null
+  },
+  {
+   "idx": 12,
+   "section": "style",
+   "component": "서체|정부 상징",
+   "text": "본문의 기본 텍스트 크기를 16px 이상으로 표현하고 있다.",
+   "verdict": "의도",
+   "evidence": ".hb-kit 본문은 17px(body-medium)이지만 홈박스 층이 입력·버튼·탭·표 머리 글자를 13~14px 로 낮춰 16px 미만이 된다. KRDS 원형 모드에서는 입력·레이블이 KRDS 크기(15~19px)라 본문 기준 통과.",
+   "fix": "위와 같음"
+  },
+  {
+   "idx": 13,
+   "section": "style",
+   "component": "서체|정부 상징",
+   "text": "고딕 계열 서체를 사용하고 있다.",
+   "verdict": "P",
+   "evidence": ".hb-kit font-family = --krds-font-family-base(Pretendard GOV, 고딕 계열) — dist/kit.css @font-face 3종.",
+   "fix": null
+  },
+  {
+   "idx": 14,
+   "section": "style",
+   "component": "서체|정부 상징",
+   "text": "서체의 굵기를 2가지로 구분하여 표현하고 있다.",
+   "verdict": "수정됨",
+   "evidence": "홈박스 층이 버튼·탭·배지·표 머리에 font-weight 500 을 써 Regular·Bold 외 세 번째 굵기가 생긴다. KRDS 원형 모드도 css/parts/a-action.css .hb-kbd 에 font-weight:500 직접값이 남아 있어 엄밀히는 3가지.",
+   "fix": ".hb-kbd 굵기 500 → --krds-font-weight-regular (a-action.css)"
+  },
+  {
+   "idx": 15,
+   "section": "style",
+   "component": "서체|자체 상징",
+   "text": "Pretendard GOV 서체를 사용하고 있다.",
+   "verdict": "P",
+   "evidence": "dist/kit.css @font-face font-family:\"Pretendard GOV\" (Regular·Medium·Bold subset woff2)를 번들하고 .hb-kit 기본 글꼴로 쓴다.",
+   "fix": null
+  },
+  {
+   "idx": 16,
+   "section": "style",
+   "component": "서체|자체 상징",
+   "text": "본문의 기본 텍스트 크기를 17px 이상으로 표현하고 있다.",
+   "verdict": "의도",
+   "evidence": "기본 본문(.hb-kit)은 17px 이지만 홈박스 층의 컨트롤·표·탭 글자가 13~15px 이다. KRDS 원형 모드는 body-medium 17px 과 KRDS 컴포넌트 크기를 그대로 써 통과.",
+   "fix": "위와 같음"
+  },
+  {
+   "idx": 17,
+   "section": "style",
+   "component": "서체|자체 상징",
+   "text": "디지털 정부 디자인 시스템에 정의된 서체 사용 규격을 적용하고 있다.",
+   "verdict": "의도",
+   "evidence": "홈박스 층이 KRDS 서체 규격(크기·굵기 토큰)을 직접 px·500 으로 덮는다. KRDS 원형 모드는 dist/css/tokens.css 규격 그대로라 통과.",
+   "fix": "위와 같음"
+  },
+  {
+   "idx": 18,
+   "section": "style",
+   "component": "서체|자체 상징",
+   "text": "각 서체 굵기에 맞는 폰트 파일을 사용하고 있다.",
+   "verdict": "P",
+   "evidence": "400·500·700 굵기마다 별도 파일(PretendardGOV-Regular/Medium/Bold.subset.woff2)을 @font-face 로 연결해 가짜 굵게가 생기지 않는다(dist/fonts, dist/kit.css).",
+   "fix": null
+  },
+  {
+   "idx": 19,
+   "section": "style",
+   "component": "형태|자체 상징",
+   "text": "디지털 정부 디자인 시스템에 정의된 형태 규칙 및 규격을 사용하고 있다.",
+   "verdict": "의도",
+   "evidence": "홈박스 층이 --krds-radius-* 를 4~16px 로, 버튼·입력 높이를 28~48px 로 바꿔 KRDS 형태 규격과 다르다. KRDS 원형 모드는 --krds-radius-*(number 토큰)·KRDS 높이 그대로라 통과.",
+   "fix": "홈박스 스타일의 모서리·높이는 의도된 차이 — KRDS 원형 모드에서 통과"
+  },
+  {
+   "idx": 20,
+   "section": "style",
+   "component": "형태|공통",
+   "text": "컨테이너 크기가 커질수록 둥글기 값이 커지도록 표현하고 있다.",
+   "verdict": "P",
+   "evidence": "홈박스 층 반경이 xsmall 4 → small 6 → medium 8~10 → large 12 → xlarge 16, 버튼 small 6·medium 8·xlarge 10, 모달 12 로 컨테이너가 클수록 커진다(KRDS 원형도 radius 토큰이 크기순 증가).",
+   "fix": null
+  },
+  {
+   "idx": 21,
+   "section": "style",
+   "component": "형태|공통",
+   "text": "컨테이너의 둥글기 사용에도 내부 콘텐츠가 가려지거나 잘림 없이 표시되고 있다.",
+   "verdict": "?",
+   "evidence": "반경과 overflow 조합으로 잘림이 생기는지는 코드만으로 확인 불가 — a11y-report.json 은 axe·키보드 검사라 시각 잘림을 보지 않는다.",
+   "fix": "미리보기 전 부품을 두 모드로 캡처해 모서리 안쪽 글자·아이콘·포커스 링 잘림을 이미지로 확인하는 검사를 추가한다."
+  },
+  {
+   "idx": 22,
+   "section": "component",
+   "component": "공식 배너",
+   "text": "공식 배너를 모든 화면의 최상단에 제공하고 있다.",
+   "verdict": "사이트",
+   "evidence": "사이트가 모든 화면의 문서 맨 앞(건너뛰기 링크 다음, 헤더 위)에 <Masthead />를 넣어야 한다.",
+   "fix": null
+  },
+  {
+   "idx": 23,
+   "section": "component",
+   "component": "공식 배너",
+   "text": "공식 배너의 스타일을 변형하지 않고 있다.",
+   "verdict": "?",
+   "evidence": "react/masthead.tsx·vue/Masthead.vue: KRDS 원형(krds/examples/masthead.html)에는 없는 '공식 누리집 확인 방법' 펼침 버튼·본문을 기본(collapsible=true)으로 붙이고 css/parts/g-gov.css 의 hb-masthead-* 스타일을 더한다. 문구 줄 자체는 KRDS CSS 그대로라 '스타일 변형'인지 판단이 갈린다.",
+   "fix": "Masthead collapsible 기본값 false — KRDS 원형과 같이 문구만, 펼침은 선택"
+  },
+  {
+   "idx": 24,
+   "section": "component",
+   "component": "공식 배너",
+   "text": "공식 배너의 텍스트를 변형하지 않고 있다.",
+   "verdict": "P",
+   "evidence": "react/masthead.tsx·vue/Masthead.vue: 기본 문구가 KRDS 원문 '이 누리집은 대한민국 공식 전자정부 누리집입니다.'와 동일(text 프롭으로 바꿀 수는 있음).",
+   "fix": null
+  },
+  {
+   "idx": 25,
+   "section": "component",
+   "component": "공식 배너",
+   "text": "공식 배너를 웹사이트의 모든 화면에 제공하고 있다.",
+   "verdict": "사이트",
+   "evidence": "사이트 공통 레이아웃에 넣어 모든 화면에 공식 배너가 나오게 해야 한다.",
+   "fix": null
+  },
+  {
+   "idx": 26,
+   "section": "component",
+   "component": "운영기관 식별자",
+   "text": "운영기관 식별자의 로고 영역에 상위 기관의 로고를 제공하고 있다.",
+   "verdict": "사이트",
+   "evidence": "사이트가 logoSrc 로 상위 기관 로고를 넘겨야 한다(키트는 로고를 그리지 않고 이미지로만 받는다).",
+   "fix": null
+  },
+  {
+   "idx": 27,
+   "section": "component",
+   "component": "운영기관 식별자",
+   "text": "관련 기관이 2개 이상 존재하는 경우 운영기관 식별자에 기관의 계층 수준에 따라 로고를 순서대로 배치하고 있다.",
+   "verdict": "수정됨",
+   "evidence": "react/identifier.tsx·vue/Identifier.vue: logoSrc 하나만 받아 로고를 1개만 그린다. 관련 기관 2개 이상을 계층 순서로 배치할 방법이 없다.",
+   "fix": "Identifier logos prop — 운영기관 로고 여러 개를 나란히(공동 운영) (identifier.tsx·Identifier.vue)"
+  },
+  {
+   "idx": 28,
+   "section": "component",
+   "component": "운영기관 식별자",
+   "text": "운영기관 식별자에 안내 텍스트와 요소의 배치를 일관되게 제공하고 있다.",
+   "verdict": "P",
+   "evidence": "react/identifier.tsx·vue/Identifier.vue: KRDS 원형과 같은 고정 마크업(.logo → .ban-txt), 문구 기본값 '이 누리집은 {orgName} 누리집입니다.'로 배치·안내 문구가 일정.",
+   "fix": null
+  },
+  {
+   "idx": 29,
+   "section": "component",
+   "component": "푸터",
+   "text": "푸터에 서비스 로고, 연락처, 저작권 정보를 제공하고 있다.",
+   "verdict": "사이트",
+   "evidence": "Footer 의 logoSrc·contacts·copyright 는 선택 프롭이다. 사이트가 로고·연락처·저작권을 모두 채워야 한다.",
+   "fix": null
+  },
+  {
+   "idx": 30,
+   "section": "component",
+   "component": "푸터",
+   "text": "푸터를 모든 화면에서 일관된 위치에 제공하고 있다.",
+   "verdict": "사이트",
+   "evidence": "사이트 공통 레이아웃 맨 아래에 같은 Footer 를 두어야 한다.",
+   "fix": null
+  },
+  {
+   "idx": 31,
+   "section": "component",
+   "component": "푸터",
+   "text": "푸터 섹션의 정보를 일관된 순서로 제공하고 있다.",
+   "verdict": "P",
+   "evidence": "react/footer.tsx·vue/Footer.vue: 관련 사이트 → 로고 → 주소·연락처 → 링크·SNS → 정책 링크·저작권 → 식별자 순서가 마크업에 고정.",
+   "fix": null
+  },
+  {
+   "idx": 32,
+   "section": "component",
+   "component": "푸터",
+   "text": "푸터에 개인 정보 처리 방침을 표시하고 있다.",
+   "verdict": "사이트",
+   "evidence": "사이트가 policyLinks 에 개인정보처리방침을 넣어야 한다(point:true 로 강조 스타일 제공, g-gov.css).",
+   "fix": null
+  },
+  {
+   "idx": 33,
+   "section": "component",
+   "component": "푸터",
+   "text": "전자상거래가 포함된 경우 푸터에 이용약관을 표시하고 있다.",
+   "verdict": "사이트",
+   "evidence": "전자상거래가 있으면 사이트가 policyLinks 에 이용약관을 넣어야 한다.",
+   "fix": null
+  },
+  {
+   "idx": 34,
+   "section": "component",
+   "component": "푸터",
+   "text": "푸터에 사용자들이 빈번하게 찾는 링크를 배치하고 있다.",
+   "verdict": "사이트",
+   "evidence": "사이트가 links 에 자주 찾는 링크를 넣어야 한다.",
+   "fix": null
+  },
+  {
+   "idx": 35,
+   "section": "component",
+   "component": "푸터",
+   "text": "푸터의 서비스 내비게이션이 기본 내비게이션과 동일하게 제공되고 있다.",
+   "verdict": "사이트",
+   "evidence": "사이트가 푸터 링크를 기본 내비게이션과 같은 구성으로 넣어야 한다.",
+   "fix": null
+  },
+  {
+   "idx": 36,
+   "section": "component",
+   "component": "푸터",
+   "text": "푸터에 최신 연락처 정보를 정확하게 제공하고 있다.",
+   "verdict": "사이트",
+   "evidence": "사이트가 contacts 에 최신 연락처를 넣고 유지해야 한다.",
+   "fix": null
+  },
+  {
+   "idx": 37,
+   "section": "component",
+   "component": "푸터",
+   "text": "푸터의 각종 링크는 링크 레이블에 명시된 정확한 페이지로 연결되고 있다.",
+   "verdict": "사이트",
+   "evidence": "사이트가 각 링크 href 를 레이블과 맞는 페이지로 지정해야 한다.",
+   "fix": null
+  },
+  {
+   "idx": 38,
+   "section": "component",
+   "component": "헤더",
+   "text": "헤더의 스타일 수정을 최소화하고 있다.",
+   "verdict": "P",
+   "evidence": "react/header.tsx·vue/Header.vue: KRDS #krds-header 마크업·원본 CSS 그대로 쓰고, g-gov.css 는 로고 이미지 자리·static 옵션만 보정. 홈박스 층(css/style/homebox.css)에는 헤더 전용 규칙이 없다(무채색 토큰만 전역 교체).",
+   "fix": null
+  },
+  {
+   "idx": 39,
+   "section": "component",
+   "component": "헤더",
+   "text": "서비스 로고를 헤더의 왼쪽 상단에 제공하고 있다.",
+   "verdict": "P",
+   "evidence": "react/header.tsx·vue/Header.vue: .header-branding 안 첫 요소가 로고(dist/kit.css #krds-header .header-branding flex row, header-actions 는 margin-left:auto).",
+   "fix": null
+  },
+  {
+   "idx": 40,
+   "section": "component",
+   "component": "헤더",
+   "text": "헤더의 내부 컴포넌트를 일관된 순서로 제공하고 있다.",
+   "verdict": "P",
+   "evidence": "react/header.tsx·vue/Header.vue: 유틸리티 → 로고 → 통합검색·로그인·회원가입·전체메뉴 → 메인 메뉴(children) 순서가 마크업에 고정.",
+   "fix": null
+  },
+  {
+   "idx": 41,
+   "section": "component",
+   "component": "헤더",
+   "text": "유틸리티 링크 그룹은 헤더 우측 상단에 제공하고 있다.",
+   "verdict": "P",
+   "evidence": "dist/kit.css #krds-header .header-utility·.utility-list: justify-content:flex-end 로 헤더 위쪽 오른쪽에 놓인다.",
+   "fix": null
+  },
+  {
+   "idx": 42,
+   "section": "component",
+   "component": "헤더",
+   "text": "헤더에서 유틸리티 링크 그룹을 디바이더로 구분하고 있다.",
+   "verdict": "P",
+   "evidence": "dist/kit.css #krds-header .header-utility .utility-list > li:not(:first-child)::before: 1px 세로 구분선을 그린다(React 는 항목마다 li 로 감쌈. Vue 는 utility 슬롯 내용을 사이트가 li 로 넣어야 구분선이 붙음).",
+   "fix": null
+  },
+  {
+   "idx": 43,
+   "section": "component",
+   "component": "헤더",
+   "text": "헤더에 4개 이하의 유틸리티 링크를 사용하고 있다.",
+   "verdict": "사이트",
+   "evidence": "키트는 utilityLinks 개수를 제한하지 않는다. 사이트가 4개 이하로 넣어야 한다.",
+   "fix": null
+  },
+  {
+   "idx": 44,
+   "section": "component",
+   "component": "헤더",
+   "text": "언어 설정을 위한 드롭다운 메뉴에 국기를 사용하지 않는다.",
+   "verdict": "P",
+   "evidence": "react/language-switcher.tsx: 드롭다운 버튼·목록에 ico-global·ico-toggle·ico-go 아이콘만 쓰고 국기 이미지는 없다.",
+   "fix": null
+  },
+  {
+   "idx": 45,
+   "section": "component",
+   "component": "헤더",
+   "text": "헤더의 아이콘 버튼/링크에 텍스트 레이블을 제공하고 있다.",
+   "verdict": "P",
+   "evidence": "react/header.tsx·vue/Header.vue: btn-navi 아이콘 버튼마다 '통합검색·로그인·회원가입·전체메뉴' 글자 레이블이 보인다.",
+   "fix": null
+  },
+  {
+   "idx": 46,
+   "section": "component",
+   "component": "헤더",
+   "text": "화면을 위로 스크롤 했을 때 헤더를 뷰포트 상단에 고정하고 있다.",
+   "verdict": "P",
+   "evidence": "dist/kit.css #krds-header: position:sticky; top:0 — 스크롤해도 뷰포트 위에 붙는다(sticky=false 일 때만 hb-header--static 로 해제).",
+   "fix": null
+  },
+  {
+   "idx": 47,
+   "section": "component",
+   "component": "건너뛰기 링크",
+   "text": "반복되는 영역이 없는 단순한 화면에 건너뛰기 링크를 생략하고 있다.",
+   "verdict": "사이트",
+   "evidence": "반복 영역이 없는 단순 화면이면 사이트가 SkipLink 를 넣지 않아야 한다.",
+   "fix": null
+  },
+  {
+   "idx": 48,
+   "section": "component",
+   "component": "건너뛰기 링크",
+   "text": "건너뛰기 링크를 웹사이트의 모든 화면에 제공하고 있다.",
+   "verdict": "사이트",
+   "evidence": "사이트 공통 레이아웃 문서 맨 앞에 SkipLink 를 넣어야 한다.",
+   "fix": null
+  },
+  {
+   "idx": 49,
+   "section": "component",
+   "component": "건너뛰기 링크",
+   "text": "건너뛰기 링크의 개수를 3개 이내로 제공하고 있다.",
+   "verdict": "사이트",
+   "evidence": "키트는 links 배열 개수를 제한하지 않는다. 사이트가 3개 이내로 넣어야 한다.",
+   "fix": null
+  },
+  {
+   "idx": 50,
+   "section": "component",
+   "component": "건너뛰기 링크",
+   "text": "건너뛰기 링크에 화면의 핵심 영역으로 이동하는 링크를 첫 번째 항목으로 제공하고 있다.",
+   "verdict": "P",
+   "evidence": "react/skip-link.tsx·vue/SkipLink.vue: 기본은 '본문 바로가기'(#contents) 한 개. links 로 여러 개를 줄 때 순서는 사이트 몫.",
+   "fix": null
+  },
+  {
+   "idx": 51,
+   "section": "component",
+   "component": "건너뛰기 링크",
+   "text": "건너뛰기 링크는 적절한 목적지에 연결되어 있다.",
+   "verdict": "사이트",
+   "evidence": "사이트가 href 대상(#contents 등) id 를 본문 영역에 실제로 두어야 한다.",
+   "fix": null
+  },
+  {
+   "idx": 52,
+   "section": "component",
+   "component": "건너뛰기 링크",
+   "text": "건너뛰기 링크의 탐색, 이동에 대한 상호작용을 적절하게 구현하고 있다.",
+   "verdict": "P",
+   "evidence": "dist/kit.css #krds-skip-link: 평소 a:not(:focus) 로 화면 밖 숨김, 초점을 받으면 화면 맨 위 고정 막대로 보이고 포커스 윤곽(box-shadow outline-inset) 표시. 네이티브 <a href> 라 Enter 로 이동.",
+   "fix": null
+  },
+  {
+   "idx": 53,
+   "section": "component",
+   "component": "메인 메뉴",
+   "text": "메인 메뉴 드롭다운 영역 내에서 레이블은 좌측으로 정렬하고 있다.",
+   "verdict": "P",
+   "evidence": "dist/kit.css .gnb-sub-content > ul(grid) 링크·e-nav.css .krds-main-menu-mobile button.gnb-sub-trigger{text-align:left} — 드롭다운 레이블이 왼쪽 정렬.",
+   "fix": null
+  },
+  {
+   "idx": 54,
+   "section": "component",
+   "component": "메인 메뉴",
+   "text": "메인 메뉴 드롭다운 영역의 최대 높이가 뷰포트를 초과하지 않고 있다.",
+   "verdict": "수정됨",
+   "evidence": "dist/kit.css .krds-main-menu .gnb-toggle-wrap: position:absolute 에 max-height 가 없어 PC 드롭다운이 항목이 많으면 뷰포트를 넘는다(모바일 .gnb-wrap 은 화면 높이 안에서 gnb-body overflow-y:auto 로 통과).",
+   "fix": "메인 메뉴 펼침 판 max-height: calc(100vh - 160px) + 판 안 스크롤 (e-nav.css)"
+  },
+  {
+   "idx": 55,
+   "section": "component",
+   "component": "메인 메뉴",
+   "text": "메인 메뉴의 링크 목록 수가 많아 드롭다운 메뉴 영역을 넘어가는 경우 드롭다운 영역 스크롤을 제공하고 있다.",
+   "verdict": "수정됨",
+   "evidence": "dist/kit.css .krds-main-menu .gnb-toggle-wrap·.gnb-sub-list: overflow 설정이 없어 PC 드롭다운 안 스크롤이 생기지 않는다(모바일은 gnb-body overflow-y:auto 로 스크롤됨).",
+   "fix": "54 와 같은 규칙으로 판 안에서 스크롤"
+  },
+  {
+   "idx": 56,
+   "section": "component",
+   "component": "메인 메뉴",
+   "text": "메인 메뉴 링크의 활성화 상태, 선택 상태가 명확히 구분되도록 표현하고 있다.",
+   "verdict": "수정됨",
+   "evidence": "react/navigation-menu.tsx·vue/NavigationMenu.vue: 현재 페이지를 품은 1뎁스에 'selected' 클래스를 붙이지만 dist/kit.css 에 .gnb-main-trigger.selected 규칙이 없어 화면상 구분이 안 된다. 하위 링크 .active(aria-current=page)와 열림 .active 는 스타일 있음.",
+   "fix": "현재 위치 1뎁스(.gnb-main-trigger.selected)에 주색 글자 + 아래 막대 (e-nav.css)"
+  },
+  {
+   "idx": 57,
+   "section": "component",
+   "component": "메인 메뉴",
+   "text": "메인 메뉴 드롭다운 영역에 제목을 제공하고 있다.",
+   "verdict": "P",
+   "evidence": "react/navigation-menu.tsx SubContent·vue/internal/NavigationMenuSub.vue: 드롭다운마다 <h2 class=\"sub-title\"> 제목. 모바일 MobileMenu 도 묶음마다 h2.sub-title.",
+   "fix": null
+  },
+  {
+   "idx": 58,
+   "section": "component",
+   "component": "메인 메뉴",
+   "text": "메인 메뉴를 3수준 이하로 제공하고 있다.",
+   "verdict": "P",
+   "evidence": "react/navigation-menu.tsx(1뎁스→groups→links)·mobile-menu.tsx(1→2→3뎁스) 데이터 구조가 최대 3수준까지만 지원. Vue 동일.",
+   "fix": null
+  },
+  {
+   "idx": 59,
+   "section": "component",
+   "component": "메인 메뉴",
+   "text": "메인 메뉴 링크명에 이해하기 쉬운 용어를 사용하고 있다.",
+   "verdict": "사이트",
+   "evidence": "메뉴 레이블 문구는 사이트가 쉬운 용어로 정해야 한다.",
+   "fix": null
+  },
+  {
+   "idx": 60,
+   "section": "component",
+   "component": "메인 메뉴",
+   "text": "마우스오버를 사용하여 드롭다운 목록을 확장하지 않는다.",
+   "verdict": "?",
+   "evidence": "react/navigation-menu.tsx·vue/NavigationMenu.vue: 1뎁스 판은 클릭(aria-expanded)으로만 열려 통과지만, 열린 판 안의 2뎁스 버튼은 onMouseEnter/@mouseenter 로 오른쪽 목록을 바꿔 펼친다 — 이것이 금지 대상 '마우스오버 확장'에 해당하는지 판단이 갈린다.",
+   "fix": "2뎁스의 onMouseEnter/@mouseenter 를 빼고 클릭·포커스로만 전환한다."
+  },
+  {
+   "idx": 61,
+   "section": "component",
+   "component": "메인 메뉴",
+   "text": "메인 메뉴의 1수준 메뉴 전체를 확인할 수 있도록 표현하고 있다.",
+   "verdict": "P",
+   "evidence": "react/navigation-menu.tsx·vue/NavigationMenu.vue: ul.gnb-menu 에 1뎁스 전부를 한 줄로 그린다. MobileMenu 는 왼쪽 menu-wrap 에 1뎁스 전체 목록.",
+   "fix": null
+  },
+  {
+   "idx": 62,
+   "section": "component",
+   "component": "브레드크럼",
+   "text": "탐색 계층 구조가 1수준인 사이트에 브레드크럼을 사용하지 않고 있다.",
+   "verdict": "사이트",
+   "evidence": "1수준 사이트에서는 사이트가 브레드크럼을 넣지 않아야 한다.",
+   "fix": null
+  },
+  {
+   "idx": 63,
+   "section": "component",
+   "component": "브레드크럼",
+   "text": "브레드크럼을 메인 또는 랜딩 페이지에서 사용하지 않고 있다.",
+   "verdict": "사이트",
+   "evidence": "메인·랜딩 페이지에는 사이트가 브레드크럼을 넣지 않아야 한다.",
+   "fix": null
+  },
+  {
+   "idx": 64,
+   "section": "component",
+   "component": "브레드크럼",
+   "text": "브레드크럼을 진행 상황 표시를 위해 사용하지 않고 있다.",
+   "verdict": "사이트",
+   "evidence": "진행 단계 표시에는 브레드크럼 대신 step-indicator 를 써야 한다(사이트 몫).",
+   "fix": null
+  },
+  {
+   "idx": 65,
+   "section": "component",
+   "component": "브레드크럼",
+   "text": "브레드크럼에 구분자를 제공하고 있다.",
+   "verdict": "P",
+   "evidence": "dist/kit.css .krds-breadcrumb-wrap .breadcrumb li:not(:last-child)::after: 항목 사이 화살표 구분자를 그린다(React/Vue 같은 ol.breadcrumb 마크업).",
+   "fix": null
+  },
+  {
+   "idx": 66,
+   "section": "component",
+   "component": "브레드크럼",
+   "text": "브레드크럼의 가장 첫 번째 항목으로 메인 화면 링크를 제공하고 있다.",
+   "verdict": "사이트",
+   "evidence": "사이트가 첫 항목을 <BreadcrumbItem home> 홈 링크로 넣어야 한다(home 이면 집 아이콘).",
+   "fix": null
+  },
+  {
+   "idx": 67,
+   "section": "component",
+   "component": "브레드크럼",
+   "text": "브레드크럼의 가장 마지막 항목으로 현재 화면의 상위 화면 링크를 제공하고 있다.",
+   "verdict": "사이트",
+   "evidence": "항목 구성은 사이트가 넣는다. 키트 BreadcrumbPage 는 현재 화면을 aria-current=page 로 표시한다 — KRDS 규칙에 맞게 마지막 항목을 무엇으로 둘지 사이트가 정해야 한다.",
+   "fix": null
+  },
+  {
+   "idx": 68,
+   "section": "component",
+   "component": "브레드크럼",
+   "text": "브레드크럼과 본문 제목 사이에 다른 요소를 제공하지 않고 있다.",
+   "verdict": "사이트",
+   "evidence": "사이트가 브레드크럼 바로 뒤에 본문 제목(h1/h2)을 두어야 한다.",
+   "fix": null
+  },
+  {
+   "idx": 69,
+   "section": "component",
+   "component": "브레드크럼",
+   "text": "브레드크럼에 현재 화면의 전체 정보 계층 구조를 표시하고 있다.",
+   "verdict": "사이트",
+   "evidence": "사이트가 현재 화면까지의 전체 계층을 항목으로 넣어야 한다.",
+   "fix": null
+  },
+  {
+   "idx": 70,
+   "section": "component",
+   "component": "브레드크럼",
+   "text": "브레드크럼 텍스트 경로가 링크임을 인지할 수 있는 시각적 단서를 제공하고 있다.",
+   "verdict": "P",
+   "evidence": "dist/kit.css .krds-breadcrumb-wrap .breadcrumb li a.txt{text-decoration:underline} — 링크 항목에 밑줄, 현재 항목(span)은 밑줄 없음. React·Vue 모두 링크는 a.txt.",
+   "fix": null
+  },
+  {
+   "idx": 71,
+   "section": "component",
+   "component": "사이드 메뉴",
+   "text": "사이드 메뉴에서 현재 탐색 중인 화면에 대한 링크를 강조 표시하고 있다.",
+   "verdict": "P",
+   "evidence": "react/side-navigation.tsx·vue/SideNavigation.vue: 현재 항목에 aria-current=page + active/selected 클래스, dist/kit.css .lnb-btn.selected(글자색·굵게)·1뎁스 링크 active 하단 막대(::before).",
+   "fix": null
+  },
+  {
+   "idx": 72,
+   "section": "component",
+   "component": "사이드 메뉴",
+   "text": "사이드 메뉴 링크 목록의 계층 구조를 최대 2개 수준까지 사용하고 있다.",
+   "verdict": "사이트",
+   "evidence": "키트는 4뎁스(옆으로 덮는 판)까지 지원한다. 사이트가 2수준 이하로 구성해야 한다.",
+   "fix": null
+  },
+  {
+   "idx": 73,
+   "section": "component",
+   "component": "사이드 메뉴",
+   "text": "사이드 메뉴에서 하위 수준 메뉴를 확장 가능한 영역으로 제공하고 있다.",
+   "verdict": "P",
+   "evidence": "react/side-navigation.tsx·vue/SideNavigation.vue: 하위가 있으면 펼침 버튼(aria-expanded·aria-controls), dist/kit.css .lnb-submenu 0fr→.lnb-item.active 1fr 로 펼친다.",
+   "fix": null
+  },
+  {
+   "idx": 74,
+   "section": "component",
+   "component": "사이드 메뉴",
+   "text": "사이드 메뉴의 계층 구조를 명확하게 구분하여 표현한다.",
+   "verdict": "P",
+   "evidence": "dist/kit.css: 2뎁스 .lnb-btn(굵게·하단선) vs 3뎁스 .lnb-submenu .lnb-btn(보통 굵기·안쪽 여백·'•' 머리표)로 계층이 구분된다.",
+   "fix": null
+  },
+  {
+   "idx": 75,
+   "section": "component",
+   "component": "사이드 메뉴",
+   "text": "작은 화면 너비에서 사이드 메뉴를 표시하지 않고 있다.",
+   "verdict": "수정됨",
+   "evidence": "dist/kit.css·css/parts/e-nav.css: .krds-side-navigation 을 작은 화면에서 숨기는 미디어쿼리가 없다(키트만 쓰면 모바일에도 그대로 보인다).",
+   "fix": "사이드 메뉴는 1023px 이하에서 숨김, 보이려면 .hb-show-mobile (e-nav.css)"
+  },
+  {
+   "idx": 76,
+   "section": "component",
+   "component": "사이드 메뉴",
+   "text": "사이드 메뉴 링크 탐색에 대한 상호작용을 적절하게 구현하고 있다.",
+   "verdict": "P",
+   "evidence": "react/side-navigation.tsx·vue/SideNavigation.vue: 링크는 <a href>, 펼침은 <button> 이라 Tab 순서대로 탐색, dist/kit.css .lnb-btn:focus 윤곽 스타일.",
+   "fix": null
+  },
+  {
+   "idx": 77,
+   "section": "component",
+   "component": "사이드 메뉴",
+   "text": "사이드 메뉴 링크 관련 화면으로 이동에 대한 상호작용을 적절하게 구현하고 있다.",
+   "verdict": "P",
+   "evidence": "react/side-navigation.tsx·vue/SideNavigation.vue: 항목이 네이티브 <a href> 로 해당 화면으로 이동하고 현재 화면은 aria-current=page.",
+   "fix": null
+  },
+  {
+   "idx": 78,
+   "section": "component",
+   "component": "사이드 메뉴",
+   "text": "사이드 메뉴 영역 확장 및 축소에 대한 상호작용을 적절하게 구현하고 있다.",
+   "verdict": "P",
+   "evidence": "react/side-navigation.tsx·vue/SideNavigation.vue: 펼침 버튼 aria-expanded 토글, 닫힌 하위는 visibility:hidden 으로 탭 순서에서 빠짐, 4뎁스 판은 Esc·제목 버튼으로 닫고 원래 버튼에 포커스 복귀.",
+   "fix": null
+  },
+  {
+   "idx": 79,
+   "section": "component",
+   "component": "콘텐츠 내 탐색",
+   "text": "콘텐츠 내 탐색을 계층 구조가 없는 콘텐츠에 사용하지 않고 있다.",
+   "verdict": "사이트",
+   "evidence": "계층 구조가 있는 긴 콘텐츠에만 사이트가 InPageNavigation 을 넣어야 한다.",
+   "fix": null
+  },
+  {
+   "idx": 80,
+   "section": "component",
+   "component": "콘텐츠 내 탐색",
+   "text": "콘텐츠 내 탐색에 제목, 활성화 상태 인디케이터를 제공하고 있다.",
+   "verdict": "P",
+   "evidence": "react/in-page-navigation.tsx·vue/InPageNavigation.vue: 제목(.quick-title, nav aria-labelledby), 보이는 구역 항목에 .active + aria-current=location, dist/kit.css a.active 선택 배경.",
+   "fix": null
+  },
+  {
+   "idx": 81,
+   "section": "component",
+   "component": "콘텐츠 내 탐색",
+   "text": "콘텐츠 내 탐색을 적절한 너비로 표현하고 있다.",
+   "verdict": "P",
+   "evidence": "dist/kit.css .krds-in-page-navigation-type: --krds-in-page-navigation--width:160px 고정 너비(작은 화면 767px 이하 100%).",
+   "fix": null
+  },
+  {
+   "idx": 82,
+   "section": "component",
+   "component": "콘텐츠 내 탐색",
+   "text": "콘텐츠 내 탐색을 본문 우측에 표시하고 있다.",
+   "verdict": "P",
+   "evidence": "dist/kit.css .krds-in-page-navigation-area: position:fixed, right 를 본문 오른쪽 기준으로 계산(position=static 옵션일 때만 문서 흐름).",
+   "fix": null
+  },
+  {
+   "idx": 83,
+   "section": "component",
+   "component": "콘텐츠 내 탐색",
+   "text": "콘텐츠 내 탐색 텍스트는 연결된 섹션 제목과 일치하고 있다.",
+   "verdict": "사이트",
+   "evidence": "사이트가 label 을 연결된 섹션 제목과 같게 넣어야 한다.",
+   "fix": null
+  },
+  {
+   "idx": 84,
+   "section": "component",
+   "component": "콘텐츠 내 탐색",
+   "text": "콘텐츠 내 탐색을 3수준 이하로 제공하고 있다.",
+   "verdict": "P",
+   "evidence": "react/in-page-navigation.tsx·vue/InPageNavigation.vue: items 가 평면 목록(1수준)만 지원해 3수준을 넘을 수 없다.",
+   "fix": null
+  },
+  {
+   "idx": 85,
+   "section": "component",
+   "component": "콘텐츠 내 탐색",
+   "text": "작은 화면 너비에서 콘텐츠 내 탐색을 제목과 본문 사이에 배치하고 있다.",
+   "verdict": "P",
+   "evidence": "dist/kit.css @media (max-width:767px) .krds-in-page-navigation-area{position:static;width:100%} — 작은 화면에서 흐름 안 배치로 바뀐다. 단 제목과 본문 사이 위치는 사이트가 마크업을 그 자리에 두어야 한다.",
+   "fix": null
+  },
+  {
+   "idx": 86,
+   "section": "component",
+   "component": "콘텐츠 내 탐색",
+   "text": "콘텐츠 내 탐색의 목록 탐색에 대한 상호작용을 적절하게 구현하고 있다.",
+   "verdict": "P",
+   "evidence": "react/in-page-navigation.tsx·vue/InPageNavigation.vue: 목록이 네이티브 <a href=\"#id\"> 라 Tab·Enter 로 탐색, 현재 항목 aria-current.",
+   "fix": null
+  },
+  {
+   "idx": 87,
+   "section": "component",
+   "component": "콘텐츠 내 탐색",
+   "text": "콘텐츠 내 탐색 링크의 콘텐츠 섹션 이동에 대한 상호작용을 적절하게 구현하고 있다.",
+   "verdict": "P",
+   "evidence": "react/in-page-navigation.tsx·vue/InPageNavigation.vue: 누르면 scrollIntoView(움직임 줄이기면 auto) 후 구역에 tabindex=-1 을 주고 포커스 이동, 주소 해시 갱신.",
+   "fix": null
+  },
+  {
+   "idx": 88,
+   "section": "component",
+   "component": "페이지네이션",
+   "text": "페이지네이션을 무한 스크롤 기능과 함께 사용하지 않고 있다.",
+   "verdict": "사이트",
+   "evidence": "사이트가 무한 스크롤과 함께 쓰지 않아야 한다.",
+   "fix": null
+  },
+  {
+   "idx": 89,
+   "section": "component",
+   "component": "페이지네이션",
+   "text": "페이지네이션에 첫/마지막 화면, 이전/다음 화면으로 이동할 수 있는 수단을 제공하고 있다.",
+   "verdict": "P",
+   "evidence": "react/pagination.tsx·vue/Pagination.vue: 이전·다음 버튼과, paginationRange 가 1쪽·마지막 쪽 번호를 항상 표시해 첫/마지막으로 바로 이동 가능.",
+   "fix": null
+  },
+  {
+   "idx": 90,
+   "section": "component",
+   "component": "페이지네이션",
+   "text": "페이지네이션에 전체 화면 수를 표시하고 있다.",
+   "verdict": "P",
+   "evidence": "react/pagination.tsx paginationRange: 마지막 번호(total)를 항상 출력해 전체 쪽 수가 보인다. Vue 동일 범위 계산.",
+   "fix": null
+  },
+  {
+   "idx": 91,
+   "section": "component",
+   "component": "페이지네이션",
+   "text": "페이지네이션 번호 링크에 현재 화면 숫자를 강조하여 표현하고 있다.",
+   "verdict": "수정됨",
+   "evidence": "react/pagination.tsx·vue/Pagination.vue 는 현재 쪽에 .active·aria-current=page·sr-only '현재페이지'를 붙인다(KRDS 원형은 진한 채움으로 통과). 그러나 기본 홈박스 층 css/style/homebox.css 가 현재 쪽을 흰 바탕 + #e4e4e7 1px 테두리 + 굵기 500 으로 바꿔, 테두리 대비가 약 1.2:1 로 WCAG 1.4.11(3:1) 미달이라 강조가 약하다.",
+   "fix": "현재 쪽 = gray-90 채움 + 흰 글자 + 굵게 (homebox.css)"
+  },
+  {
+   "idx": 92,
+   "section": "component",
+   "component": "페이지네이션",
+   "text": "페이지네이션을 콘텐츠 목록 하단에 중앙 정렬하여 제공하고 있다.",
+   "verdict": "P",
+   "evidence": "dist/kit.css .krds-pagination{display:flex;justify-content:center;width:100%} — 가운데 정렬. 목록 바로 아래 두는 것은 사이트 몫.",
+   "fix": null
+  },
+  {
+   "idx": 93,
+   "section": "component",
+   "component": "페이지네이션",
+   "text": "페이지네이션을 한 화면에 하나만 사용하고 있다.",
+   "verdict": "사이트",
+   "evidence": "사이트가 한 화면에 Pagination 을 하나만 두어야 한다.",
+   "fix": null
+  },
+  {
+   "idx": 94,
+   "section": "component",
+   "component": "페이지네이션",
+   "text": "숫자 링크 목록 유형의 페이지네이션에 말줄임표를 포함하여 10개 이내의 항목을 표시하고 있다.",
+   "verdict": "P",
+   "evidence": "react/pagination.tsx paginationRange(기본 siblings=2): 1 + … + 5개 + … + 끝 = 최대 9개로 10개 이내. 단 siblings 를 3 이상으로 주면 11개 이상이 되므로 기본값 사용 시에만 통과.",
+   "fix": null
+  },
+  {
+   "idx": 95,
+   "section": "component",
+   "component": "페이지네이션",
+   "text": "작은 화면 너비에서 숫자 링크 목록 유형의 페이지네이션에 이전/다음 버튼, 숫자 링크 목록을 수직으로 배치하고 있다.",
+   "verdict": "P",
+   "evidence": "dist/kit.css @media (max-width:767px) .krds-pagination{flex-wrap:wrap} .page-links{width:100%} .page-navi.next{order:1} — 이전/다음이 윗줄, 숫자 목록이 아랫줄로 세로 배치.",
+   "fix": null
+  },
+  {
+   "idx": 96,
+   "section": "component",
+   "component": "페이지네이션",
+   "text": "작은 화면 너비에서 숫자 링크 목록 유형의 페이지네이션에 말줄임표를 포함하여 최대 7개 링크를 표시하고 있다.",
+   "verdict": "수정됨",
+   "evidence": "react/pagination.tsx·vue/Pagination.vue: paginationRange 가 화면 너비와 무관하게 같은 개수(기본 최대 9개)를 그린다. 작은 화면 최대 7개 규칙을 지키는 코드가 없다.",
+   "fix": "Pagination mobileSiblings — 좁은 화면에서 현재 쪽 앞뒤 수를 줄여 표시 (pagination.tsx·Pagination.vue)"
+  },
+  {
+   "idx": 97,
+   "section": "component",
+   "component": "링크",
+   "text": "인라인 링크를 주변 텍스트와 동일한 크기로 제공하고 있다.",
+   "verdict": "수정됨",
+   "evidence": "react/link.tsx·vue/Link.vue 는 size 기본 large 로 .krds-btn.link 가 고정 글자 크기(홈박스 층에선 --krds-button--pc-font-size-large 14px)와 좌우 padding 4px·inline-block 을 준다. 주변 글자 크기를 이어받는 선택지가 없다.",
+   "fix": "Link size=\"inherit\" — 주변 글자 크기·줄을 따르는 본문 안 링크"
+  },
+  {
+   "idx": 98,
+   "section": "component",
+   "component": "링크",
+   "text": "링크를 색상만으로 구분하지 않고 있다.",
+   "verdict": "P",
+   "evidence": "react/link.tsx·vue/Link.vue 기본 underline=\"always\" 로 span.underline 밑줄이 항상 붙는다(dist/kit.css .krds-btn.link .underline). 단 tone=basic+underline=none 조합은 색·밑줄이 모두 사라지므로 본문 안에서는 쓰지 않게 안내가 필요하다.",
+   "fix": null
+  },
+  {
+   "idx": 99,
+   "section": "component",
+   "component": "링크",
+   "text": "링크 레이블은 연결된 목적지 정보를 정확하게 반영하고 있다.",
+   "verdict": "사이트",
+   "evidence": "링크 글자를 목적지를 예측할 수 있게 사이트가 쓴다(예: '자세히' 대신 '2026 청년 주거 지원 안내 보기').",
+   "fix": null
+  },
+  {
+   "idx": 100,
+   "section": "component",
+   "component": "링크",
+   "text": "이메일 주소를 링크로 제공하고 있다.",
+   "verdict": "사이트",
+   "evidence": "이메일 주소는 <Link href=\"mailto:…\"> 로 사이트가 링크를 건다(키트는 href 를 그대로 전달).",
+   "fix": null
+  },
+  {
+   "idx": 101,
+   "section": "component",
+   "component": "링크",
+   "text": "전화번호 정보를 링크로 제공하고 있다.",
+   "verdict": "사이트",
+   "evidence": "전화번호는 <Link href=\"tel:…\"> 로 사이트가 링크를 건다(키트는 href 를 그대로 전달).",
+   "fix": null
+  },
+  {
+   "idx": 102,
+   "section": "component",
+   "component": "링크",
+   "text": "외부 서비스로 이동하는 링크를 분명하게 구분하고 있다.",
+   "verdict": "P",
+   "evidence": "react/link.tsx·vue/Link.vue 의 external 이 target=_blank·rel=noopener 와 함께 이동 아이콘(ico-go)과 화면낭독용 '(새 창 열림)' 문구를 붙여 외부 링크를 눈과 낭독 모두로 구분한다.",
+   "fix": null
+  },
+  {
+   "idx": 103,
+   "section": "component",
+   "component": "링크",
+   "text": "외부 서비스로 이동하는 링크를 일관된 방식으로 표현하고 있다.",
+   "verdict": "P",
+   "evidence": "외부 링크 표시가 external 속성 하나로만 만들어져 React·Vue 모두 같은 아이콘·같은 문구로 일관되게 나온다(react/link.tsx external 분기, vue/Link.vue template).",
+   "fix": null
+  },
+  {
+   "idx": 104,
+   "section": "component",
+   "component": "링크",
+   "text": "링크가 레이블에 명시된 정확한 목적지로 연결되고 있다.",
+   "verdict": "사이트",
+   "evidence": "링크 href 가 글자에 적힌 목적지로 바로 가게 사이트가 연결한다.",
+   "fix": null
+  },
+  {
+   "idx": 105,
+   "section": "component",
+   "component": "링크",
+   "text": "링크 탐색에 대한 상호작용을 적절하게 구현하고 있다.",
+   "verdict": "P",
+   "evidence": "실제 <a> 요소라 Tab 이동·Enter 실행이 브라우저 기본으로 되고, 홈박스 층 :focus-visible 링(css/style/homebox.css)과 a11y-report.json link 데모 포커스 6/6 표시·axe 0건(React·Vue)을 확인했다.",
+   "fix": null
+  },
+  {
+   "idx": 106,
+   "section": "component",
+   "component": "버튼",
+   "text": "그룹으로 제공될 때 모든 버튼의 크기를 동일하게 제공하고 있다.",
+   "verdict": "사이트",
+   "evidence": "같은 묶음의 버튼 size 를 사이트가 같게 준다(react/button-group.tsx 주석에 명시, 키트는 강제하지 않음).",
+   "fix": null
+  },
+  {
+   "idx": 107,
+   "section": "component",
+   "component": "버튼",
+   "text": "한 화면에 최상위 수준의 강조 버튼은 한 번만 사용하고 있다.",
+   "verdict": "사이트",
+   "evidence": "variant=\"primary\" 버튼을 한 화면에 한 번만 쓰도록 사이트가 배치한다.",
+   "fix": null
+  },
+  {
+   "idx": 108,
+   "section": "component",
+   "component": "버튼",
+   "text": "버튼 그룹을 수직으로 배열할 때 최상위 수준의 강조 버튼을 첫 번째로 배치하고 있다.",
+   "verdict": "사이트",
+   "evidence": "세로 ButtonGroup(orientation=vertical)에서 primary 버튼을 첫째로 사이트가 둔다.",
+   "fix": null
+  },
+  {
+   "idx": 109,
+   "section": "component",
+   "component": "버튼",
+   "text": "버튼의 텍스트 레이블이 동사형으로 제공되고 있다.",
+   "verdict": "사이트",
+   "evidence": "버튼 글자를 '신청하기'·'검색'처럼 동사형으로 사이트가 쓴다.",
+   "fix": null
+  },
+  {
+   "idx": 110,
+   "section": "component",
+   "component": "버튼",
+   "text": "버튼 실행 시 사용자의 두 번째 인터랙션이 무시되도록 구현하고 있다.",
+   "verdict": "수정됨",
+   "evidence": "react/button.tsx·vue/Button.vue 에 처리 중(loading/pending) 상태가 없어 눌린 뒤 두 번째 클릭을 막는 장치가 없다. 사이트가 disabled 를 직접 관리해야 한다.",
+   "fix": "Button loading prop + onClick 이 Promise 를 돌려주면 끝날 때까지 스피너·aria-busy·다시 누름 막기 (button.tsx·Button.vue)"
+  },
+  {
+   "idx": 111,
+   "section": "component",
+   "component": "버튼",
+   "text": "버튼 탐색에 대한 상호작용을 적절하게 구현하고 있다.",
+   "verdict": "P",
+   "evidence": "실제 <button> 이라 Tab 으로 들어가고, 홈박스 층 .krds-btn:focus-visible 3px 링(css/style/homebox.css)이 두께 변화 없이 보인다. a11y-report.json button 데모 포커스 12/12 표시·axe 0건(React·Vue).",
+   "fix": null
+  },
+  {
+   "idx": 112,
+   "section": "component",
+   "component": "버튼",
+   "text": "버튼 실행에 대한 상호작용을 적절하게 구현하고 있다.",
+   "verdict": "P",
+   "evidence": "react/button.tsx 가 type 기본값을 \"button\" 으로 줘 폼 안에서 뜻하지 않은 제출을 막고, Enter·Space 실행은 네이티브 버튼 동작을 쓴다(vue/Button.vue 도 as=button 이면 type=button).",
+   "fix": null
+  },
+  {
+   "idx": 113,
+   "section": "component",
+   "component": "라디오 버튼",
+   "text": "여러 개의 옵션을 선택하는 데 라디오 버튼을 사용하지 않고 있다.",
+   "verdict": "사이트",
+   "evidence": "여러 개를 고르는 곳에는 라디오 대신 체크박스를 사이트가 쓴다.",
+   "fix": null
+  },
+  {
+   "idx": 114,
+   "section": "component",
+   "component": "라디오 버튼",
+   "text": "옵션의 개수가 많은 경우에 라디오 버튼을 사용하지 않고 있다.",
+   "verdict": "사이트",
+   "evidence": "옵션이 많으면 라디오 대신 셀렉트 등을 사이트가 고른다.",
+   "fix": null
+  },
+  {
+   "idx": 115,
+   "section": "component",
+   "component": "라디오 버튼",
+   "text": "라디오 버튼 옵션을 가나다순으로 정렬하고 있다.",
+   "verdict": "사이트",
+   "evidence": "RadioGroupItem 순서를 사이트가 가나다순으로 둔다(키트는 넣은 순서 그대로 그린다).",
+   "fix": null
+  },
+  {
+   "idx": 116,
+   "section": "component",
+   "component": "라디오 버튼",
+   "text": "라디오 버튼 옵션을 수직으로 배치하고 있다.",
+   "verdict": "수정됨",
+   "evidence": "react/radio-group.tsx·vue/RadioGroup.vue 는 column 을 줄 때만 .chk-column(세로)이고 기본은 .krds-check-area 가로 배치(dist/kit.css display:flex 행 방향)다. KRDS 는 세로 배치가 기본이다.",
+   "fix": "RadioGroup column 기본값 true (가로는 column={false}, 칩 fill 은 예외)"
+  },
+  {
+   "idx": 117,
+   "section": "component",
+   "component": "라디오 버튼",
+   "text": "라디오 버튼 레이블을 양식의 오른쪽에 배치하고 있다.",
+   "verdict": "P",
+   "evidence": "input 다음에 label 이 오고 원형 표시는 label::before 로 그려져(dist/kit.css .krds-form-check input[type=radio] ~ label:before) 레이블 글자가 표시 오른쪽에 온다. React·Vue 마크업 동일.",
+   "fix": null
+  },
+  {
+   "idx": 118,
+   "section": "component",
+   "component": "라디오 버튼",
+   "text": "라디오 버튼 옵션을 수평으로 배치하는 경우 옵션 간 간격을 충분하게 제공하고 있다.",
+   "verdict": "P",
+   "evidence": "가로 배치 때 옵션 사이 간격이 .krds-check-area gap var(--krds-gap-6)=20px(dist/kit.css)로 확보된다.",
+   "fix": null
+  },
+  {
+   "idx": 119,
+   "section": "component",
+   "component": "라디오 버튼",
+   "text": "라디오 버튼의 특정 옵션을 기본 선택값으로 제공하지 않고 있다.",
+   "verdict": "사이트",
+   "evidence": "정확한 값이 중요한 항목은 defaultValue 를 주지 않도록 사이트가 쓴다(키트 기본값은 선택 없음. 데모는 defaultValue 를 준다).",
+   "fix": null
+  },
+  {
+   "idx": 120,
+   "section": "component",
+   "component": "라디오 버튼",
+   "text": "라디오 버튼에 선택을 되돌릴 수 있는 방법을 제공하고 있다.",
+   "verdict": "사이트",
+   "evidence": "'해당 없음'·'잘 모름' 옵션을 사이트가 필요한 곳에 넣는다.",
+   "fix": null
+  },
+  {
+   "idx": 121,
+   "section": "component",
+   "component": "라디오 버튼",
+   "text": "라디오 버튼 탐색에 대한 상호작용을 적절하게 구현하고 있다.",
+   "verdict": "P",
+   "evidence": "같은 name 의 실제 input[type=radio] 라 방향키 이동·선택과 묶음당 Tab 하나가 브라우저 기본으로 되고(react/radio-group.tsx·vue/RadioGroupItem.vue), input:focus ~ label 윤곽이 보인다. a11y-report.json radio-group 포커스 3/3(선택된 항목만 Tab 대상) 표시·axe 0건.",
+   "fix": null
+  },
+  {
+   "idx": 122,
+   "section": "component",
+   "component": "셀렉트",
+   "text": "여러 개의 옵션을 선택하는 데 셀렉트를 사용하지 않고 있다.",
+   "verdict": "사이트",
+   "evidence": "키트 Select 는 한 개만 고르는 콤보박스라 여러 개 선택에는 체크박스를 사이트가 쓴다.",
+   "fix": null
+  },
+  {
+   "idx": 123,
+   "section": "component",
+   "component": "셀렉트",
+   "text": "옵션의 개수가 많은 경우에 셀렉트를 사용하지 않고 있다.",
+   "verdict": "사이트",
+   "evidence": "옵션이 매우 많으면 Combobox(검색) 등을 사이트가 고른다.",
+   "fix": null
+  },
+  {
+   "idx": 124,
+   "section": "component",
+   "component": "셀렉트",
+   "text": "셀렉트에 선택값을 제공하고 있다.",
+   "verdict": "P",
+   "evidence": "react/select.tsx·vue/Select.vue 가 값이 없으면 placeholder('선택하세요' 기본)를, 고르면 고른 항목 이름을 버튼에 보이고, 목록 항목에 aria-selected 와 체크 표시(dist/kit.css .hb-select-option[aria-selected=true]::after)를 준다.",
+   "fix": null
+  },
+  {
+   "idx": 125,
+   "section": "component",
+   "component": "셀렉트",
+   "text": "셀렉트에 레이블을 제공하고 있다.",
+   "verdict": "사이트",
+   "evidence": "Select 에 aria-label·aria-labelledby 를 주거나 Field·FieldLabel 안에 넣어 사이트가 레이블을 단다(주지 않으면 콤보박스 이름이 비어 있다).",
+   "fix": null
+  },
+  {
+   "idx": 126,
+   "section": "component",
+   "component": "셀렉트",
+   "text": "셀렉트 옵션 값을 변경했을 때 폼이 제출되지 않도록 구현하고 있다.",
+   "verdict": "P",
+   "evidence": "선택 상자는 type=\"button\" 버튼과 숨은 input 으로만 되어 있고 값이 바뀔 때 onValueChange/v-model 만 알린다. submit 을 부르는 코드가 없다(react/select.tsx, vue/Select.vue).",
+   "fix": null
+  },
+  {
+   "idx": 127,
+   "section": "component",
+   "component": "셀렉트",
+   "text": "셀렉트 목록 확장 및 축소에 대한 상호작용을 적절하게 구현하고 있다.",
+   "verdict": "P",
+   "evidence": "aria-expanded·aria-controls 를 갖춘 combobox 버튼으로 클릭·↓↑·Enter·Space 로 열고 Esc 로 닫으며 포커스를 버튼에 돌려주고, 포커스가 밖으로 나가면 닫힌다. 아래 자리가 모자라면 위로 연다(react/select.tsx onKeyDown·onBlur·useLayoutEffect, vue/Select.vue 동일).",
+   "fix": null
+  },
+  {
+   "idx": 128,
+   "section": "component",
+   "component": "셀렉트",
+   "text": "셀렉트 탐색에 대한 상호작용을 적절하게 구현하고 있다.",
+   "verdict": "P",
+   "evidence": "열린 상태에서 ↑↓·Home/End·PageUp/Down·글자 입력 찾기로 aria-activedescendant 가 움직이고 비활성 항목은 건너뛴다. a11y-report.json select 홈박스 스타일 포커스 9/9 표시(KRDS 원형 스타일에서는 오류 상태 1건 미표시).",
+   "fix": null
+  },
+  {
+   "idx": 129,
+   "section": "component",
+   "component": "셀렉트",
+   "text": "셀렉트 옵션 선택에 대한 상호작용을 적절하게 구현하고 있다.",
+   "verdict": "P",
+   "evidence": "Enter·Space·클릭으로 고르면 값이 바뀌고 목록이 닫히며, Tab 은 고르고 다음 칸으로 간다. aria-disabled 항목은 선택되지 않는다(react/select.tsx choose/close, vue/Select.vue).",
+   "fix": null
+  },
+  {
+   "idx": 130,
+   "section": "component",
+   "component": "체크박스",
+   "text": "한 개의 옵션을 선택하는 데 체크박스를 사용하지 않고 있다.",
+   "verdict": "사이트",
+   "evidence": "하나만 고르는 곳에는 라디오나 스위치를 사이트가 쓴다.",
+   "fix": null
+  },
+  {
+   "idx": 131,
+   "section": "component",
+   "component": "체크박스",
+   "text": "체크박스 옵션을 가나다순으로 정렬하고 있다.",
+   "verdict": "사이트",
+   "evidence": "Checkbox 순서를 사이트가 가나다순으로 둔다.",
+   "fix": null
+  },
+  {
+   "idx": 132,
+   "section": "component",
+   "component": "체크박스",
+   "text": "체크박스 옵션을 수직으로 배치하고 있다.",
+   "verdict": "수정됨",
+   "evidence": "react/checkbox.tsx CheckboxGroup·vue/CheckboxGroup.vue 는 column 을 줄 때만 세로이고 기본은 가로(.krds-check-area flex 행) 배치다.",
+   "fix": "CheckboxGroup column 기본값 true"
+  },
+  {
+   "idx": 133,
+   "section": "component",
+   "component": "체크박스",
+   "text": "체크박스 레이블을 양식의 오른쪽에 배치하고 있다.",
+   "verdict": "P",
+   "evidence": "input 다음 label, 상자 표시는 label::before 라 레이블이 상자 오른쪽에 온다(dist/kit.css .krds-form-check input[type=checkbox] ~ label:before). React·Vue 동일.",
+   "fix": null
+  },
+  {
+   "idx": 134,
+   "section": "component",
+   "component": "체크박스",
+   "text": "체크박스에서 전체 선택 옵션이 제공되는 경우 중간 상태를 명확하게 표현하고 있다.",
+   "verdict": "수정됨",
+   "evidence": "react/checkbox.tsx·vue/Checkbox.vue 에 indeterminate 속성이 없고, dist/kit.css 에 :indeterminate 모양 규칙도 없다. react/data-table.tsx 가 input.indeterminate 를 켜지만 화면에는 선택 안 됨과 똑같이 보인다.",
+   "fix": "Checkbox indeterminate — 일부 선택 상태(aria-checked=mixed) (checkbox.tsx·Checkbox.vue)"
+  },
+  {
+   "idx": 135,
+   "section": "component",
+   "component": "체크박스",
+   "text": "체크박스 탐색에 대한 상호작용을 적절하게 구현하고 있다.",
+   "verdict": "P",
+   "evidence": "실제 input[type=checkbox] 라 Tab 이동이 기본으로 되고 input:focus ~ label 윤곽이 보인다. a11y-report.json checkbox 포커스 6/6 표시·axe 0건(React·Vue, 두 스타일 모두).",
+   "fix": null
+  },
+  {
+   "idx": 136,
+   "section": "component",
+   "component": "체크박스",
+   "text": "체크박스 옵션 선택 및 선택 해제에 대한 상호작용을 적절하게 구현하고 있다.",
+   "verdict": "P",
+   "evidence": "Space·레이블 클릭으로 켜고 끄는 네이티브 동작에 onCheckedChange(React)·v-model(Vue)이 연결되고, 켜짐 상태는 채움색+체크 아이콘으로 보인다(dist/kit.css :checked 규칙).",
+   "fix": null
+  },
+  {
+   "idx": 137,
+   "section": "component",
+   "component": "태그",
+   "text": "태그 레이블을 간결하게 제공하고 있다.",
+   "verdict": "사이트",
+   "evidence": "태그 글자를 짧고 정확하게 사이트가 쓴다.",
+   "fix": null
+  },
+  {
+   "idx": 138,
+   "section": "component",
+   "component": "태그",
+   "text": "대화형 태그와 비대화형 태그를 같은 그룹에 혼용하지 않고 있다.",
+   "verdict": "사이트",
+   "evidence": "TagGroup 하나에 링크 태그(href)와 삭제 태그(onRemove)·일반 태그를 섞지 않게 사이트가 나눈다(키트는 섞어도 막지 않는다).",
+   "fix": null
+  },
+  {
+   "idx": 139,
+   "section": "component",
+   "component": "태그",
+   "text": "태그 탐색에 대한 상호작용을 적절하게 구현하고 있다.",
+   "verdict": "P",
+   "evidence": "링크 태그는 <a>, 삭제 태그는 안의 <button class=\"btn-delete\"> 만 Tab 대상이고 일반 태그는 포커스를 받지 않는다(react/tag.tsx·vue/Tag.vue). a11y-report.json tag 포커스 8/8 표시·axe 0건.",
+   "fix": null
+  },
+  {
+   "idx": 140,
+   "section": "component",
+   "component": "태그",
+   "text": "태그 실행에 대한 상호작용을 적절하게 구현하고 있다.",
+   "verdict": "P",
+   "evidence": "링크 태그가 실제 <a href> 라 Enter 로 이동한다(react/tag.tsx, vue/Tag.vue).",
+   "fix": null
+  },
+  {
+   "idx": 141,
+   "section": "component",
+   "component": "태그",
+   "text": "태그 삭제에 대한 상호작용을 적절하게 구현하고 있다.",
+   "verdict": "수정됨",
+   "evidence": "삭제 버튼을 누르면 onRemove/emit('remove') 만 부르고 포커스를 옮기지 않는다. 버튼이 사라지며 포커스가 문서 처음으로 날아가고, 삭제 사실을 알리는 aria-live 도 없다(react/tag.tsx, vue/Tag.vue·TagGroup.vue).",
+   "fix": "Tag 삭제 뒤 다음 태그(없으면 묶음)로 포커스 + \"…을(를) 삭제했습니다\" 알림 (tag.tsx·Tag.vue·TagGroup.vue)"
+  },
+  {
+   "idx": 142,
+   "section": "component",
+   "component": "날짜 입력 필드",
+   "text": "날짜 입력 필드를 상대적인 날짜 입력에 사용하지 않고 있다.",
+   "verdict": "사이트",
+   "evidence": "'3일 후' 같은 상대 날짜에는 날짜 입력 대신 다른 방식을 사이트가 쓴다.",
+   "fix": null
+  },
+  {
+   "idx": 143,
+   "section": "component",
+   "component": "날짜 입력 필드",
+   "text": "날짜 입력 필드에 레이블을 제공하고 어떤 날짜를 입력해야 하는지 명확하게 설명하고 있다.",
+   "verdict": "사이트",
+   "evidence": "DatePicker label·hint 나 Field+FieldLabel 로 무슨 날짜인지 사이트가 적는다(DateInput 단독은 레이블이 없어 Field 나 aria-label 이 필요하다).",
+   "fix": null
+  },
+  {
+   "idx": 144,
+   "section": "component",
+   "component": "날짜 입력 필드",
+   "text": "다중 날짜 입력 필드에 '년', '월', '일' 레이블을 제공하고 있다.",
+   "verdict": "?",
+   "evidence": "키트에는 '년'·'월'·'일' 칸을 나눈 다중 날짜 입력 부품이 없다(DateInput·DatePicker 는 YYYY.MM.DD 한 칸). 해당 형태를 쓸 수 없어 판정할 대상이 없다.",
+   "fix": "년·월·일 세 칸과 각 칸 레이블(년·월·일)을 가진 날짜 분리 입력 부품을 추가한다."
+  },
+  {
+   "idx": 145,
+   "section": "component",
+   "component": "날짜 입력 필드",
+   "text": "날짜 입력 필드에 도움말 텍스트로 날짜 입력 형식을 안내하고 있다.",
+   "verdict": "수정됨",
+   "evidence": "DatePicker·DateRangePicker(React·Vue)는 hint 기본 문구로 'YYYY.MM.DD 형식…' 을 도움말로 보인다. 그러나 DateInput·DateRangeInput(react/date-input.tsx, vue/DateInput.vue)은 형식을 placeholder \"YYYY.MM.DD\" 로만 알려 입력하면 안내가 사라진다.",
+   "fix": "DateInput 아래 형식 안내(hint) 기본 표시, aria-describedby 로 연결 (date-input.tsx·DateInput.vue)"
+  },
+  {
+   "idx": 146,
+   "section": "component",
+   "component": "날짜 입력 필드",
+   "text": "문서에 표시된 날짜를 정확하게 요청할 때 원본 형식과 동일한 구성의 날짜 입력 필드를 사용하고 있다.",
+   "verdict": "사이트",
+   "evidence": "문서에 적힌 날짜를 받을 때 원본과 같은 구성으로 사이트가 고른다(키트에는 YYYY.MM.DD 한 칸 형식만 있어 년·월·일 분리형이 필요하면 따로 만들어야 한다).",
+   "fix": null
+  },
+  {
+   "idx": 147,
+   "section": "component",
+   "component": "날짜 입력 필드",
+   "text": "날짜 입력 필드에 사용자가 대략적인 날짜를 입력할 수 있도록 제공하고 있다.",
+   "verdict": "수정됨",
+   "evidence": "DateInput 은 8자리가 다 차야 값을 넘기고(toIsoDate), DatePicker 의 parseDate(react/date-utils.ts)도 연·월·일이 다 있어야 받는다. '2024년 3월' 같은 대략적 날짜를 받을 방법이 없다.",
+   "fix": "틀린 날짜·기간 순서 뒤집힘이면 오류 문구(role=alert) + aria-invalid (date-input.tsx·DateInput.vue·DateRangeInput.vue)"
+  },
+  {
+   "idx": 148,
+   "section": "component",
+   "component": "날짜 입력 필드",
+   "text": "날짜 입력 필드에 사용자가 자주, 반복적으로 입력하는 날짜는 자동 완성되도록 구현하고 있다.",
+   "verdict": "수정됨",
+   "evidence": "react/date-input.tsx·vue/DateInput.vue 가 autocomplete=\"off\" 를 기본으로 넣어 생년월일 같은 자동 완성을 막는다(속성으로 덮을 수는 있음). DatePicker·DateRangePicker 입력칸은 autoComplete 속성을 받지도 않는다.",
+   "fix": "DateInput 의 autocomplete=\"off\" 기본값 제거 (React·Vue)"
+  },
+  {
+   "idx": 149,
+   "section": "component",
+   "component": "날짜 입력 필드",
+   "text": "날짜 입력 필드의 데이터 입력에 대한 상호작용을 적절하게 구현하고 있다.",
+   "verdict": "수정됨",
+   "evidence": "DatePicker 는 없는 날짜면 '없는 날짜입니다…' 문구와 aria-invalid 를 주지만, DateInput(react/date-input.tsx·vue/DateInput.vue)은 틀린 날짜일 때 테두리 색과 aria-invalid 만 바꾸고 이유를 글로 알려 주지 않는다. 숫자 자동 점 찍기·달력 버튼·포커스 표시는 정상(a11y-report.json date-input 8/8).",
+   "fix": "DateInput precision=\"month\"·\"year\" — 연·월만 받는 대략적인 날짜 입력"
+  },
+  {
+   "idx": 150,
+   "section": "component",
+   "component": "텍스트 영역",
+   "text": "텍스트 영역에 레이블을 제공하고 있다.",
+   "verdict": "사이트",
+   "evidence": "Field+FieldLabel 이나 aria-label 로 사이트가 레이블을 단다(Textarea 는 Field 안에서 id 를 자동으로 받는다).",
+   "fix": null
+  },
+  {
+   "idx": 151,
+   "section": "component",
+   "component": "텍스트 영역",
+   "text": "텍스트 영역의 레이블이나 도움말을 플레이스홀더로 제공하지 않고 있다.",
+   "verdict": "사이트",
+   "evidence": "placeholder 를 레이블·도움말 대신 쓰지 않도록 사이트가 FieldLabel·FieldDescription 을 쓴다(키트 주석 예시는 placeholder 만 쓰고 있어 예시 보강 권장).",
+   "fix": null
+  },
+  {
+   "idx": 152,
+   "section": "component",
+   "component": "텍스트 영역",
+   "text": "텍스트 영역에 복사 및 붙여넣기 기능을 사용할 수 있다.",
+   "verdict": "P",
+   "evidence": "react/textarea.tsx·vue/Textarea.vue 에 onPaste/onCopy 차단이나 user-select 제한이 없고 네이티브 textarea 를 그대로 쓴다.",
+   "fix": null
+  },
+  {
+   "idx": 153,
+   "section": "component",
+   "component": "텍스트 영역",
+   "text": "텍스트 영역에 입력 가능한 글자 수의 제한이 있는 경우 사용자에게 글자 수 정보를 제공하고 있다.",
+   "verdict": "P",
+   "evidence": "showCount 와 maxLength 를 주면 '입력한 글자 수 N/최대' 가 보이고 aria-describedby 로 입력칸 설명에 연결된다(react/textarea.tsx, vue/Textarea.vue).",
+   "fix": "글자 수가 한도에 가까울 때 aria-live 로 알려 주면 더 좋다."
+  },
+  {
+   "idx": 154,
+   "section": "component",
+   "component": "텍스트 영역",
+   "text": "텍스트 영역에서 데이터 입력에 대한 상호작용을 적절하게 구현하고 있다.",
+   "verdict": "P",
+   "evidence": "네이티브 textarea 에 Field 연결(id·aria-describedby·aria-invalid·required)이 자동으로 붙고, 홈박스 층 textarea:focus 링(css/style/homebox.css)이 보인다. a11y-report.json textarea 2/2 표시·axe 0건.",
+   "fix": null
+  },
+  {
+   "idx": 155,
+   "section": "component",
+   "component": "텍스트 영역",
+   "text": "텍스트 영역에서 스크롤에 대한 상호작용을 적절하게 구현하고 있다.",
+   "verdict": "P",
+   "evidence": "textarea.krds-input 은 높이 144px 고정·overflow 기본(auto)이라 내용이 넘치면 안에서 스크롤되고 키보드·휠 스크롤이 네이티브로 된다(dist/kit.css textarea.krds-input). 크기 조절은 resize:none 으로 막혀 있다.",
+   "fix": null
+  },
+  {
+   "idx": 156,
+   "section": "component",
+   "component": "텍스트 영역",
+   "text": "텍스트 입력 필드가 기본적으로 크기가 전체 섹션 영역을 차지하도록 구현하고 있다.",
+   "verdict": "P",
+   "evidence": ".krds-input 과 .textarea-wrap 이 width:100% 라 텍스트 영역이 놓인 칸 폭을 가득 채운다(dist/kit.css).",
+   "fix": null
+  },
+  {
+   "idx": 157,
+   "section": "component",
+   "component": "텍스트 입력 필드",
+   "text": "텍스트 입력 필드가 기본적으로 크기가 전체 섹션 영역을 차지하도록 구현하고 있다.",
+   "verdict": "P",
+   "evidence": ".krds-input 이 width:100%(dist/kit.css) 라 Input 이 놓인 칸 폭을 가득 채운다. React·Vue 동일.",
+   "fix": null
+  },
+  {
+   "idx": 158,
+   "section": "component",
+   "component": "텍스트 입력 필드",
+   "text": "텍스트 입력 필드에 레이블을 제공하고 있다.",
+   "verdict": "사이트",
+   "evidence": "Field+FieldLabel(htmlFor 자동)이나 aria-label 로 사이트가 레이블을 단다.",
+   "fix": null
+  },
+  {
+   "idx": 159,
+   "section": "component",
+   "component": "텍스트 입력 필드",
+   "text": "텍스트 입력 필드의 레이블이나 도움말을 플레이스홀더로 제공하지 않고 있다.",
+   "verdict": "사이트",
+   "evidence": "placeholder 를 레이블·도움말 대신 쓰지 않도록 사이트가 FieldLabel·FieldDescription 을 쓴다.",
+   "fix": null
+  },
+  {
+   "idx": 160,
+   "section": "component",
+   "component": "텍스트 입력 필드",
+   "text": "텍스트 입력 필드에 복사 및 붙여넣기 기능을 사용할 수 있다.",
+   "verdict": "P",
+   "evidence": "react/input.tsx·vue/Input.vue 에 붙여넣기·복사 차단 코드가 없다. PasswordInput 도 막지 않는다.",
+   "fix": null
+  },
+  {
+   "idx": 161,
+   "section": "component",
+   "component": "텍스트 입력 필드",
+   "text": "텍스트 입력 필드에 사용자가 자주, 반복적으로 입력하는 값은 자동 완성될 수 있도록 구현하고 있다.",
+   "verdict": "사이트",
+   "evidence": "이름·이메일·주소 칸에 autoComplete(name·email·street-address 등)를 사이트가 준다(Input 은 속성을 그대로 넘기고 막지 않는다).",
+   "fix": null
+  },
+  {
+   "idx": 162,
+   "section": "component",
+   "component": "텍스트 입력 필드",
+   "text": "텍스트 입력 필드에서 데이터 입력에 대한 상호작용을 적절하게 구현하고 있다.",
+   "verdict": "P",
+   "evidence": "네이티브 input 에 Field 연결이 자동으로 붙고 포커스 링이 보인다. ClearableInput 은 지운 뒤 입력칸으로 포커스를 돌려주고 PasswordInput 버튼은 aria-pressed 로 상태를 알린다(react/input.tsx). a11y-report.json input 12/12 표시·axe 0건.",
+   "fix": null
+  },
+  {
+   "idx": 163,
+   "section": "component",
+   "component": "파일 업로드",
+   "text": "모달 레이아웃에서 다중 파일 업로드를 사용하지 않고 있다.",
+   "verdict": "사이트",
+   "evidence": "모달 안에서는 multiple=false 로 한 파일만 받게 사이트가 쓴다.",
+   "fix": null
+  },
+  {
+   "idx": 164,
+   "section": "component",
+   "component": "파일 업로드",
+   "text": "파일 업로드에 파일 항목, 삭제 버튼을 제공하고 있다.",
+   "verdict": "P",
+   "evidence": "파일마다 항목(이름·형식·크기)과 '삭제 {파일명}' 버튼, 전체 파일 삭제 버튼을 준다(react/file-upload.tsx·vue/FileUpload.vue).",
+   "fix": "삭제 뒤 포커스가 숨은 input(React)·없음(Vue)으로 가 사실상 사라진다 — 다음 항목이나 파일선택 버튼으로 옮기면 좋다."
+  },
+  {
+   "idx": 165,
+   "section": "component",
+   "component": "파일 업로드",
+   "text": "파일 업로드에 레이블을 제공하고 있다.",
+   "verdict": "수정됨",
+   "evidence": "title 은 선택 속성이고, 있어도 h3 로만 그려져 '파일선택' 버튼과 연결(aria-labelledby·aria-describedby)이 없다. 버튼 이름은 어느 칸의 파일인지 모르는 '파일선택' 뿐이다(react/file-upload.tsx, vue/FileUpload.vue).",
+   "fix": "FileUpload 안내 문구를 허용 형식·용량·개수로 자동 생성, 파일선택 버튼이 제목·안내를 aria-describedby 로 읽음"
+  },
+  {
+   "idx": 166,
+   "section": "component",
+   "component": "파일 업로드",
+   "text": "파일 업로드에서 파일 유형, 파일 크기, 파일 개수 제한에 대해 안내하고 있다.",
+   "verdict": "수정됨",
+   "evidence": "accept·maxSize·maxFiles 를 받지만 안내 문구로 보이지 않는다. 안내는 description 을 사이트가 직접 써야 하고, 개수는 파일을 넣은 뒤에야 'N개 / 최대' 로 나온다(react/file-upload.tsx, vue/FileUpload.vue).",
+   "fix": "accept 에 맞지 않는 파일은 형식 오류 항목 + 허용 형식 안내 (file-upload.tsx·FileUpload.vue)"
+  },
+  {
+   "idx": 167,
+   "section": "component",
+   "component": "파일 업로드",
+   "text": "파일 업로드에서 파일이 업로드된 후에도 파일 선택 버튼을 기본 상태로 유지하고 있다.",
+   "verdict": "P",
+   "evidence": "파일을 넣은 뒤에도 '파일선택' 버튼 모양·이름이 바뀌지 않고 disabled 속성으로만 비활성화된다(react/file-upload.tsx·vue/FileUpload.vue 파일선택 버튼).",
+   "fix": null
+  },
+  {
+   "idx": 168,
+   "section": "component",
+   "component": "파일 업로드",
+   "text": "파일 업로드의 파일 선택 버튼을 적절한 강조 수준으로 표현하고 있다.",
+   "verdict": "?",
+   "evidence": "'파일선택' 버튼이 variant 없는 krds-btn medium 이라 기본 규칙에서 주색 채움(primary)으로 칠해진다(dist/kit.css .krds-btn 배경). 같은 화면의 제출 버튼과 강조 수준이 겹치는지는 KRDS 원문 예시와 대조가 필요하다.",
+   "fix": "파일선택 버튼을 secondary(보조)로 바꾸거나 variant 속성으로 고를 수 있게 한다."
+  },
+  {
+   "idx": 169,
+   "section": "component",
+   "component": "파일 업로드",
+   "text": "파일 업로드에서 파일을 자동으로 제출하지 않고 있다.",
+   "verdict": "P",
+   "evidence": "파일을 고르면 목록에만 추가하고 폼 제출을 부르지 않는다. upload 콜백을 줄 때만 파일별 업로드를 부른다(react/file-upload.tsx add, vue/FileUpload.vue).",
+   "fix": null
+  },
+  {
+   "idx": 170,
+   "section": "component",
+   "component": "파일 업로드",
+   "text": "파일 업로드에서 오류 상태에 대한 구체적인 오류 메시지를 제공하고 있다.",
+   "verdict": "수정됨",
+   "evidence": "용량 초과는 '20MB 미만의 파일만…' 처럼 구체적이지만, 끌어다 놓은 파일은 accept 형식을 검사하지 않아 허용 안 된 형식도 오류 없이 들어가고, 개수 초과는 화면낭독용(sr-only) 알림으로만 나온다. 업로드 실패 문구도 원인 없이 일반적이다(react/file-upload.tsx, vue/FileUpload.vue).",
+   "fix": "개수 초과 시 목록 위 오류 문구 + 알림, upload 거부 사유(Error message)를 그대로 표시"
+  },
+  {
+   "idx": 171,
+   "section": "component",
+   "component": "파일 업로드",
+   "text": "파일 업로드에서 업로드된 파일 이름을 한 줄 텍스트로 제공하고 있다.",
+   "verdict": "수정됨",
+   "evidence": "PC 에서는 .file-name 이 -webkit-line-clamp:1 로 한 줄이지만, 767px 이하에서 display:flex 로 바뀌어 한 줄 제한이 풀리고 긴 이름이 여러 줄로 감긴다(dist/kit.css .krds-file-upload .file-list .upload-list .file-info .file-name 모바일 규칙).",
+   "fix": "모바일에서도 파일 이름 한 줄 + 말줄임 (e-nav.css)"
+  },
+  {
+   "idx": 172,
+   "section": "pattern",
+   "component": "개인 식별 정보 입력",
+   "text": "입력이 필요한 개인 식별 정보의 용도를 명확하게 설명하고 있다.",
+   "verdict": "사이트",
+   "evidence": "키트는 FieldDescription(aria-describedby 자동 연결)을 제공할 뿐, 개인정보를 왜 받는지 설명 문구는 사이트가 써야 한다.",
+   "fix": null
+  },
+  {
+   "idx": 173,
+   "section": "pattern",
+   "component": "개인 식별 정보 입력",
+   "text": "개인 식별 정보 입력 필드에 복사 및 붙여넣기 기능을 사용할 수 있다.",
+   "verdict": "P",
+   "evidence": "Input 은 네이티브 input 이라 복사·붙여넣기를 막지 않고, InputOTP(react/input-otp.tsx)는 onPaste 로 붙여넣은 값을 칸마다 나눠 채운다.",
+   "fix": null
+  },
+  {
+   "idx": 174,
+   "section": "pattern",
+   "component": "개인 식별 정보 입력",
+   "text": "개인 식별 정보 입력에 기본값을 설정하지 않고 있다.",
+   "verdict": "사이트",
+   "evidence": "Input·DateInput 은 defaultValue 를 강제하지 않는다(기본값 없음). 개인정보 필드에 기본값을 넣지 않는 것은 사이트 책임.",
+   "fix": null
+  },
+  {
+   "idx": 175,
+   "section": "pattern",
+   "component": "개인 식별 정보 입력",
+   "text": "개인 식별 정보 입력 영역/필드의 플레이스홀더가 실제 입력과 구분되고 있다.",
+   "verdict": "P",
+   "evidence": "placeholder 색은 --krds-light-color-text-disabled, 입력값은 input-text(홈박스 층은 gray-90)로 달라 구분된다(dist/css/kit.css). DateInput 은 'YYYY.MM.DD' 형식 예시 placeholder.",
+   "fix": null
+  },
+  {
+   "idx": 176,
+   "section": "pattern",
+   "component": "개인 식별 정보 입력",
+   "text": "이름 입력 필드에 모든 문자의 입력과 표시를 지원하고 있다.",
+   "verdict": "P",
+   "evidence": "Input(react/input.tsx)은 type=text 기본이며 pattern·문자 제한이 없어 모든 문자 입력이 가능하다. .hb-kit 은 word-break:keep-all·overflow-wrap:break-word 로 표시.",
+   "fix": null
+  },
+  {
+   "idx": 177,
+   "section": "pattern",
+   "component": "개인 식별 정보 입력",
+   "text": "이름 입력 필드에 입력 형식에 대한 정확한 설명을 제공하고 있다.",
+   "verdict": "사이트",
+   "evidence": "이름 입력 형식 설명(예: 주민등록상 이름)은 사이트가 FieldDescription 으로 제공해야 한다(데모 preview/demos/react/field.tsx 에 예시 있음).",
+   "fix": null
+  },
+  {
+   "idx": 178,
+   "section": "pattern",
+   "component": "개인 식별 정보 입력",
+   "text": "이름 입력 필드에 입력 가능한 글자 수를 적절하게 구성하고 있다.",
+   "verdict": "사이트",
+   "evidence": "maxLength 는 Input 에 전달 가능하나 이름 필드 글자 수 설정은 사이트가 정한다.",
+   "fix": null
+  },
+  {
+   "idx": 179,
+   "section": "pattern",
+   "component": "개인 식별 정보 입력",
+   "text": "이름 입력 필드의 너비를 최대 글자 수 길이에 맞추어 제공하고 있다.",
+   "verdict": "사이트",
+   "evidence": "입력 칸 너비는 사이트 레이아웃이 최대 글자 수에 맞춰 지정해야 한다(키트는 크기(size)와 className 만 제공).",
+   "fix": null
+  },
+  {
+   "idx": 180,
+   "section": "pattern",
+   "component": "개인 식별 정보 입력",
+   "text": "이름 입력에 단일 텍스트 입력 필드를 사용하고 있다.",
+   "verdict": "사이트",
+   "evidence": "성·이름을 나누지 않고 Input 하나로 받는 것은 사이트 폼 설계에 달려 있다.",
+   "fix": null
+  },
+  {
+   "idx": 181,
+   "section": "pattern",
+   "component": "입력폼",
+   "text": "입력폼에 제목을 제공하고 있다.",
+   "verdict": "사이트",
+   "evidence": "키트는 FieldSet legend(.hb-fieldset-legend)를 제공하지만 입력폼 제목은 사이트가 넣어야 한다.",
+   "fix": null
+  },
+  {
+   "idx": 182,
+   "section": "pattern",
+   "component": "입력폼",
+   "text": "입력폼 내부의 콘텐츠를 하나의 열에 수직으로 정렬하고 있다.",
+   "verdict": "사이트",
+   "evidence": "Field(.form-group)·FieldSet(.fieldset)은 세로 배치지만, 폼을 한 열로 구성할지는 사이트 레이아웃이 정한다.",
+   "fix": null
+  },
+  {
+   "idx": 183,
+   "section": "pattern",
+   "component": "입력폼",
+   "text": "입력폼과 입력폼, 콘텐츠와 콘텐츠 사이에 충분한 간격을 제공하고 있다.",
+   "verdict": "?",
+   "evidence": "FieldSet 이 KRDS .fieldset 세로 간격과 legend 아래 gap-5 를 주지만, 필드 사이 간격이 KRDS 권장값을 만족하는지 실측 근거가 없다.",
+   "fix": "field 데모를 두 모드로 렌더해 필드 간·그룹 간 간격을 getBoundingClientRect 로 재고 KRDS 폼 레이아웃 값과 대조한다."
+  },
+  {
+   "idx": 184,
+   "section": "pattern",
+   "component": "입력폼",
+   "text": "입력폼의 액션 버튼은 일관된 위치에 배치하고 정렬하고 있다.",
+   "verdict": "사이트",
+   "evidence": "제출·취소 버튼 위치와 정렬은 사이트 폼마다 일관되게 배치해야 한다(키트에 폼 액션 영역 부품 없음).",
+   "fix": null
+  },
+  {
+   "idx": 185,
+   "section": "pattern",
+   "component": "입력폼",
+   "text": "입력폼에 비활성화 상태의 입력폼 제출 버튼을 사용하고 있다.",
+   "verdict": "사이트",
+   "evidence": "Button 은 disabled 를 지원할 뿐, 제출 버튼을 비활성화할지(KRDS 는 지양 권고)는 사이트 흐름이 정한다.",
+   "fix": null
+  },
+  {
+   "idx": 186,
+   "section": "pattern",
+   "component": "입력폼",
+   "text": "입력폼의 입력 관련 컴포넌트 주변에 레이블과 설명을 제공하고 있다.",
+   "verdict": "P",
+   "evidence": "Field(react/field.tsx)의 FieldLabel(htmlFor 자동)·FieldDescription·FieldMessage 가 입력 요소에 id·aria-describedby·aria-invalid 를 자동 연결한다.",
+   "fix": null
+  },
+  {
+   "idx": 187,
+   "section": "pattern",
+   "component": "입력폼",
+   "text": "입력폼의 입력 필드에 입력값의 단위를 표시하고 있다.",
+   "verdict": "P",
+   "evidence": "InputGroup 이 입력 앞뒤에 단위·아이콘을 붙이는 부품을 제공한다(preview/demos/react/input-group.tsx 금액 '원' 예시, b-form.css .hb-input-group).",
+   "fix": null
+  },
+  {
+   "idx": 188,
+   "section": "pattern",
+   "component": "입력폼",
+   "text": "입력폼에 필수 입력 항목과 선택 입력 항목을 명확하게 구분하고 있다.",
+   "verdict": "P",
+   "evidence": "FieldLabel 이 필수면 빨간 * + 화면낭독용 '(필수)', optional 이면 '(선택)' 을 붙여 색만으로 구분하지 않는다(react/field.tsx, b-form.css .hb-required/.hb-optional).",
+   "fix": null
+  },
+  {
+   "idx": 189,
+   "section": "pattern",
+   "component": "입력폼",
+   "text": "입력폼에 필수 또는 선택 입력 항목은 일관성 있는 방식으로 구분하고 있다.",
+   "verdict": "P",
+   "evidence": "필수·선택 표시가 FieldLabel 한 곳에서 같은 방식으로 생성돼 부품 간 일관된다(사이트는 required/optional 속성만 일관되게 쓰면 됨).",
+   "fix": null
+  },
+  {
+   "idx": 190,
+   "section": "pattern",
+   "component": "첨부파일",
+   "text": "첨부파일 링크 주변에 파일 다운로드를 유발할 수 있음에 대한 사전 안내를 제공하고 있다.",
+   "verdict": "수정됨",
+   "evidence": "첨부파일 다운로드 링크 부품이 없다 — Link(react/link.tsx)는 external(새 창) 안내만 있고 download 안내 옵션이 없으며, FileUpload 는 업로드 전용.",
+   "fix": "Link download — 다운로드 아이콘(ico-down) + 화면낭독용 \"다운로드\" (link.tsx·Link.vue)"
+  },
+  {
+   "idx": 191,
+   "section": "pattern",
+   "component": "첨부파일",
+   "text": "첨부파일의 크기와 형식 정보를 표시하고 있다.",
+   "verdict": "수정됨",
+   "evidence": "FileUpload 목록은 '파일명 [확장자, 크기]'(fileLabel)를 표시하지만, 다운로드용 첨부파일 링크에 크기·형식을 붙이는 부품이 없다.",
+   "fix": "Link download 에 [형식, 크기] 꼬리표 — 형식은 href 확장자, fileSize 로 크기"
+  },
+  {
+   "idx": 192,
+   "section": "pattern",
+   "component": "첨부파일",
+   "text": "인라인 링크 유형의 첨부파일 레이블 텍스트는 주변 콘텐츠와 비슷한 크기로 제공하고 있다.",
+   "verdict": "?",
+   "evidence": "Link 는 size(기본 large) 고정 글자 크기를 가져 인라인 문장 안에서 주변 글자 크기를 상속하는지 확인하지 못했다.",
+   "fix": "Link size=\"inherit\" 로 인라인 첨부 링크가 주변 글자를 따른다"
+  },
+  {
+   "idx": 193,
+   "section": "pattern",
+   "component": "필터링·정렬",
+   "text": "필터링·정렬 컨트롤을 숨기지 않고 있다.",
+   "verdict": "사이트",
+   "evidence": "필터·정렬 컨트롤을 숨기지 않는 것은 사이트 목록 화면 설계 책임.",
+   "fix": null
+  },
+  {
+   "idx": 194,
+   "section": "pattern",
+   "component": "필터링·정렬",
+   "text": "선택된 필터링·정렬 옵션이 명확하게 구분되도록 표현하고 있다.",
+   "verdict": "P",
+   "evidence": "ToggleGroup 켜짐 상태가 주색+굵게+체크 표시(a-action.css .hb-toggle[data-state=on]::before)로 색 외 단서가 있고, DataTable 정렬 머리칸은 aria-sort 와 방향 아이콘(f-data.css .hb-sort-btn.is-ascending/descending)으로 구분된다.",
+   "fix": null
+  },
+  {
+   "idx": 195,
+   "section": "pattern",
+   "component": "필터링·정렬",
+   "text": "필터링·정렬 조건이 적용되었음을 확인할 수 있는 명확한 시각적 단서를 제공하고 있다.",
+   "verdict": "사이트",
+   "evidence": "적용된 조건 요약(적용 칩·결과 건수)은 사이트가 표시해야 한다. 키트는 Tag·Chip 부품을 제공.",
+   "fix": null
+  },
+  {
+   "idx": 196,
+   "section": "pattern",
+   "component": "필터링·정렬",
+   "text": "필터링·정렬 실행 버튼에 레이블을 제공하고 있다.",
+   "verdict": "사이트",
+   "evidence": "필터 실행 버튼의 문구는 사이트가 정한다(Button 은 글자 레이블을 받는다).",
+   "fix": null
+  },
+  {
+   "idx": 197,
+   "section": "pattern",
+   "component": "필터링·정렬",
+   "text": "모든 필터링·정렬 컨트롤에 그룹 헤딩을 제공하고 있다.",
+   "verdict": "사이트",
+   "evidence": "키트는 FieldSet legend·ToggleGroup aria-label 을 제공하지만 그룹 헤딩 텍스트는 사이트가 넣어야 한다.",
+   "fix": null
+  },
+  {
+   "idx": 198,
+   "section": "pattern",
+   "component": "필터링·정렬",
+   "text": "필터링·정렬 컨트롤 레이블은 간결하고 정확한 내용으로 제공하고 있다.",
+   "verdict": "사이트",
+   "evidence": "필터·정렬 레이블 문구는 사이트 콘텐츠.",
+   "fix": null
+  },
+  {
+   "idx": 199,
+   "section": "pattern",
+   "component": "필터링·정렬",
+   "text": "관련 있거나 유사한 필터링 컨트롤을 군집화하여 제공하고 있다.",
+   "verdict": "사이트",
+   "evidence": "유사 필터의 군집화는 사이트 화면 구성.",
+   "fix": null
+  },
+  {
+   "idx": 200,
+   "section": "pattern",
+   "component": "필터링·정렬",
+   "text": "정렬 컨트롤은 대상 목록 오른쪽 상단에 배치하고 있다.",
+   "verdict": "사이트",
+   "evidence": "Select variant='sort'(krds-form-select-sort)를 목록 오른쪽 위에 두는 배치는 사이트가 한다.",
+   "fix": null
+  },
+  {
+   "idx": 201,
+   "section": "pattern",
+   "component": "필터링·정렬",
+   "text": "날짜, 시간을 기준으로 한 필터링은 범위를 입력할 수 있도록 제공하고 있다.",
+   "verdict": "P",
+   "evidence": "DateRangeInput(react/date-input.tsx)이 시작일~종료일 범위 입력을 제공하고 종료일이 앞서면 오류 표시한다.",
+   "fix": null
+  },
+  {
+   "idx": 202,
+   "section": "service",
+   "component": "방문 – 방문",
+   "text": "통합 검색 기능을 제공하고 있다.",
+   "verdict": "사이트",
+   "evidence": null,
+   "fix": null
+  },
+  {
+   "idx": 203,
+   "section": "service",
+   "component": "검색 – 개요",
+   "text": "메인 화면에 시급하거나 중요한 정보를 사용자가 빠르게 인지할 수 있도록 제공하고 있다.",
+   "verdict": "사이트",
+   "evidence": null,
+   "fix": null
+  },
+  {
+   "idx": 204,
+   "section": "service",
+   "component": "검색 – 개요",
+   "text": "메인 화면에 최신 정보를 제공하고 있다.",
+   "verdict": "사이트",
+   "evidence": null,
+   "fix": null
+  },
+  {
+   "idx": 205,
+   "section": "service",
+   "component": "검색 – 개요",
+   "text": "메인 화면에 정확한 정보를 제공하고 있다.",
+   "verdict": "사이트",
+   "evidence": null,
+   "fix": null
+  },
+  {
+   "idx": 206,
+   "section": "service",
+   "component": "검색 – 검색 기능 찾기",
+   "text": "서비스 내 모든 화면에서 통합 검색 기능을 실행할 수 있다.",
+   "verdict": "사이트",
+   "evidence": null,
+   "fix": null
+  },
+  {
+   "idx": 207,
+   "section": "service",
+   "component": "검색 – 검색어 입력",
+   "text": "검색 실행 버튼, 검색어 삭제 버튼을 제공하고 있다. P F E N/A 5) 검색 – 검색 결과 확인 □ □ □ □ 스코프 필터를 사용하는 경우, ‘전체’ 옵션을 제공한다.",
+   "verdict": "사이트",
+   "evidence": null,
+   "fix": null
+  },
+  {
+   "idx": 208,
+   "section": "service",
+   "component": "검색 – 검색어 입력",
+   "text": "스코프 필터에 ‘전체’ 옵션을 제공하고 있다.",
+   "verdict": "사이트",
+   "evidence": null,
+   "fix": null
+  },
+  {
+   "idx": 209,
+   "section": "service",
+   "component": "검색 – 검색어 입력",
+   "text": "스코프 필터의 기본 옵션을 '전체'로 제공하고 있다.",
+   "verdict": "사이트",
+   "evidence": null,
+   "fix": null
+  },
+  {
+   "idx": 210,
+   "section": "service",
+   "component": "검색 – 검색어 입력",
+   "text": "검색어 입력 필드에 레이블을 제공하고 있다.",
+   "verdict": "사이트",
+   "evidence": null,
+   "fix": null
+  },
+  {
+   "idx": 211,
+   "section": "service",
+   "component": "검색 – 검색어 입력",
+   "text": "검색어 입력 필드의 레이블은 검색 대상/방법을 명확하게 표현하고 있다.",
+   "verdict": "사이트",
+   "evidence": null,
+   "fix": null
+  },
+  {
+   "idx": 212,
+   "section": "service",
+   "component": "검색 – 검색어 입력",
+   "text": "검색어 입력 필드의 레이블이나 도움말을 플레이스홀더로 제공하지 않고 있다.",
+   "verdict": "사이트",
+   "evidence": null,
+   "fix": null
+  },
+  {
+   "idx": 213,
+   "section": "service",
+   "component": "검색 – 검색어 입력",
+   "text": "검색 실행에 대한 상호작용을 적절하게 구현하고 있다.",
+   "verdict": "사이트",
+   "evidence": null,
+   "fix": null
+  },
+  {
+   "idx": 214,
+   "section": "service",
+   "component": "검색 – 검색어 입력",
+   "text": "실시간 검색어 입력 도움의 출현 방식에 대한 상호작용을 적절하게 구현하고 있다.",
+   "verdict": "사이트",
+   "evidence": null,
+   "fix": null
+  },
+  {
+   "idx": 215,
+   "section": "service",
+   "component": "검색 – 검색어 입력",
+   "text": "실시간 검색어 입력 도움의 탐색에 대한 상호작용을 적절하게 구현하고 있다.",
+   "verdict": "사이트",
+   "evidence": null,
+   "fix": null
+  },
+  {
+   "idx": 216,
+   "section": "service",
+   "component": "검색 – 검색어 입력",
+   "text": "검색 결과 화면에 검색어 입력 필드를 유지하고 있다.",
+   "verdict": "사이트",
+   "evidence": null,
+   "fix": null
+  },
+  {
+   "idx": 217,
+   "section": "service",
+   "component": "검색 – 검색어 입력",
+   "text": "사용자가 재검색을 시도하지 않는 한 검색어 입력 필드에 검색어를 유지하고 있다.",
+   "verdict": "사이트",
+   "evidence": null,
+   "fix": null
+  },
+  {
+   "idx": 218,
+   "section": "service",
+   "component": "검색 – 검색어 입력",
+   "text": "검색 결과 화면에 검색 결과 수를 표시하고 있다.",
+   "verdict": "사이트",
+   "evidence": null,
+   "fix": null
+  },
+  {
+   "idx": 219,
+   "section": "service",
+   "component": "검색 – 검색어 입력",
+   "text": "검색 결과 화면의 주제별 탭에 검색 결과 수를 표시하고 있다.",
+   "verdict": "사이트",
+   "evidence": null,
+   "fix": null
+  },
+  {
+   "idx": 220,
+   "section": "service",
+   "component": "검색 – 검색어 입력",
+   "text": "검색 결과가 없는 상태에 대한 정보를 명확하게 제공하고 있다.",
+   "verdict": "사이트",
+   "evidence": null,
+   "fix": null
+  },
+  {
+   "idx": 221,
+   "section": "service",
+   "component": "검색 – 검색어 입력",
+   "text": "검색 결과가 없는 경우, 대안적인 행동에 대한 안내를 제공하고 있다.",
+   "verdict": "사이트",
+   "evidence": null,
+   "fix": null
+  },
+  {
+   "idx": 222,
+   "section": "service",
+   "component": "검색 – 검색어 입력",
+   "text": "검색 결과 화면에 검색 기간 필터를 제공하고 있다.",
+   "verdict": "사이트",
+   "evidence": null,
+   "fix": null
+  },
+  {
+   "idx": 223,
+   "section": "service",
+   "component": "검색 – 검색어 입력",
+   "text": "검색 결과 화면에 기본 정렬 컨트롤을 제공하고 있다.",
+   "verdict": "사이트",
+   "evidence": null,
+   "fix": null
+  },
+  {
+   "idx": 224,
+   "section": "service",
+   "component": "검색 – 검색어 입력",
+   "text": "스코프 필터를 사용하는 경우 결과 화면 상단에 설정된 범위를 명시적으로 표시하고 있다.",
+   "verdict": "사이트",
+   "evidence": null,
+   "fix": null
+  },
+  {
+   "idx": 225,
+   "section": "service",
+   "component": "검색 – 검색 결과 이용",
+   "text": "검색 결과 항목에 제목, 설명, 인덱스를 제공하고 있다.",
+   "verdict": "사이트",
+   "evidence": null,
+   "fix": null
+  },
+  {
+   "idx": 226,
+   "section": "service",
+   "component": "검색 – 검색 결과 이용",
+   "text": "검색 결과 항목에 검색어와 일치하는 항목을 강조 표시하고 있다.",
+   "verdict": "사이트",
+   "evidence": null,
+   "fix": null
+  },
+  {
+   "idx": 227,
+   "section": "service",
+   "component": "검색 – 재검색",
+   "text": "검색 종료 시 다른 화면 또는 다른 탐색 수단에 빠르게 접근할 수 있다.",
+   "verdict": "사이트",
+   "evidence": null,
+   "fix": null
+  },
+  {
+   "idx": 228,
+   "section": "service",
+   "component": "검색 – 검색 종료",
+   "text": "재검색 과정에서 상세 검색 컨트롤을 숨기지 않고 있다.",
+   "verdict": "사이트",
+   "evidence": null,
+   "fix": null
+  },
+  {
+   "idx": 229,
+   "section": "service",
+   "component": "검색 – 검색 종료",
+   "text": "사용자가 설정한 상세 검색 조건을 유지하고 있다.",
+   "verdict": "사이트",
+   "evidence": null,
+   "fix": null
+  },
+  {
+   "idx": 230,
+   "section": "service",
+   "component": "로그인 – 로그인 기능 찾기",
+   "text": "로그인 링크를 모든 화면에서 일관된 위치에 배치하고 있다.",
+   "verdict": "사이트",
+   "evidence": null,
+   "fix": null
+  },
+  {
+   "idx": 231,
+   "section": "service",
+   "component": "로그인 – 로그인 기능 찾기",
+   "text": "로그인 링크가 항상 '로그인' 화면으로 연결되고 있다.",
+   "verdict": "사이트",
+   "evidence": null,
+   "fix": null
+  },
+  {
+   "idx": 232,
+   "section": "service",
+   "component": "로그인 – 로그인 기능 찾기",
+   "text": "작은 화면 너비에서 로그인 링크를 숨기지 않고 있다.",
+   "verdict": "사이트",
+   "evidence": null,
+   "fix": null
+  },
+  {
+   "idx": 233,
+   "section": "service",
+   "component": "로그인 – 로그인 방식 확인·선택",
+   "text": "로그인 관련 도움말, 회원 가입 링크를 제공하고 있다.",
+   "verdict": "사이트",
+   "evidence": null,
+   "fix": null
+  },
+  {
+   "idx": 234,
+   "section": "service",
+   "component": "로그인 – 로그인 방식 확인·선택",
+   "text": "사용자의 다양한 이용 환경을 고려한 로그인 도움말 정보를 제공하고 있다.",
+   "verdict": "사이트",
+   "evidence": null,
+   "fix": null
+  },
+  {
+   "idx": 235,
+   "section": "service",
+   "component": "로그인 – 로그인 정보 입력",
+   "text": "로그인 관련 도움말, 회원 가입 링크를 제공하고 있다.",
+   "verdict": "사이트",
+   "evidence": null,
+   "fix": null
+  },
+  {
+   "idx": 236,
+   "section": "service",
+   "component": "로그인 – 로그인 정보 입력",
+   "text": "아이디 형식에 대한 단서를 사전에 제공하고 있다.",
+   "verdict": "사이트",
+   "evidence": null,
+   "fix": null
+  },
+  {
+   "idx": 237,
+   "section": "service",
+   "component": "로그인 – 로그인 정보 입력",
+   "text": "비밀번호는 기본적으로 숨기고 있다.",
+   "verdict": "사이트",
+   "evidence": null,
+   "fix": null
+  },
+  {
+   "idx": 238,
+   "section": "service",
+   "component": "로그인 – 로그인 정보 입력",
+   "text": "비밀번호를 표시할 수 있는 옵션을 제공하고 있다.",
+   "verdict": "사이트",
+   "evidence": null,
+   "fix": null
+  },
+  {
+   "idx": 239,
+   "section": "service",
+   "component": "로그인 – 로그인 정보 입력",
+   "text": "아이디와 비밀번호 입력 필드에서 복사 및 붙여넣기 기능을 사용할 수 있다.",
+   "verdict": "사이트",
+   "evidence": null,
+   "fix": null
+  },
+  {
+   "idx": 240,
+   "section": "service",
+   "component": "로그인 – 로그인 정보 입력",
+   "text": "아이디/비밀번호 찾기 링크를 제공하고 있다.",
+   "verdict": "사이트",
+   "evidence": null,
+   "fix": null
+  },
+  {
+   "idx": 241,
+   "section": "service",
+   "component": "로그인 – 로그인 정보 입력",
+   "text": "로그인 오류 메시지를 명확하게 제공하고 있다. P F E N/A 12) 로그인 – 서비스 이용 13) 신청 – 신청 대상 탐색 □ □ □ □ 상호작용 가이드라인",
+   "verdict": "사이트",
+   "evidence": null,
+   "fix": null
+  },
+  {
+   "idx": 242,
+   "section": "service",
+   "component": "로그인 – 로그인 정보 입력",
+   "text": "로그인 폼을 제출하기 전 가능한 한 많은 사용자 데이터의 유효성을 검사하고 있다.",
+   "verdict": "사이트",
+   "evidence": null,
+   "fix": null
+  },
+  {
+   "idx": 243,
+   "section": "service",
+   "component": "로그인 – 로그인 정보 입력",
+   "text": "사용자가 로그인 폼을 제출하였을 때 오류가 발생한 경우 해당 항목으로 초점을 이동시키고 있다.",
+   "verdict": "사이트",
+   "evidence": null,
+   "fix": null
+  },
+  {
+   "idx": 244,
+   "section": "service",
+   "component": "로그인 – 로그인 정보 입력",
+   "text": "로그인 세션이 만료되기 전에 유지 시간에 제한이 있음을 안내하고 있다.",
+   "verdict": "사이트",
+   "evidence": null,
+   "fix": null
+  },
+  {
+   "idx": 245,
+   "section": "service",
+   "component": "로그인 – 로그인 정보 입력",
+   "text": "로그인 만료 안내 모달을 세션이 만료되기 최소 20초 전에 제공하고 있다.",
+   "verdict": "사이트",
+   "evidence": null,
+   "fix": null
+  },
+  {
+   "idx": 246,
+   "section": "service",
+   "component": "로그인 – 로그인 정보 입력",
+   "text": "로그인 만료 안내 모달에 시간 연장하기 버튼과 로그아웃하기 버튼을 제공하고 있다.",
+   "verdict": "사이트",
+   "evidence": null,
+   "fix": null
+  },
+  {
+   "idx": 247,
+   "section": "service",
+   "component": "로그인 – 로그인 정보 입력",
+   "text": "신청 정보 목록에 신청 상태 정보를 명확하게 인지할 수 있도록 표현하고 있다.",
+   "verdict": "사이트",
+   "evidence": null,
+   "fix": null
+  },
+  {
+   "idx": 248,
+   "section": "service",
+   "component": "로그인 – 로그인 정보 입력",
+   "text": "신청 정보 목록의 제목에 공식적인 서비스 명칭을 사용하고 있다.",
+   "verdict": "사이트",
+   "evidence": null,
+   "fix": null
+  },
+  {
+   "idx": 249,
+   "section": "service",
+   "component": "로그인 – 로그인 정보 입력",
+   "text": "신청 정보 목록의 제목에 말줄임표를 사용하지 않고 있다.",
+   "verdict": "사이트",
+   "evidence": null,
+   "fix": null
+  },
+  {
+   "idx": 250,
+   "section": "service",
+   "component": "신청 – 서비스 정보 확인",
+   "text": "신청 서비스 정보 확인 화면에서 이해하기 어려운 단어에 대한 설명을 제공하고 있다.",
+   "verdict": "사이트",
+   "evidence": null,
+   "fix": null
+  },
+  {
+   "idx": 251,
+   "section": "service",
+   "component": "신청 – 서비스 정보 확인",
+   "text": "신청 서비스 정보 확인 화면에서 상세 정보를 정확하게 제공하고 있다.",
+   "verdict": "사이트",
+   "evidence": null,
+   "fix": null
+  },
+  {
+   "idx": 252,
+   "section": "service",
+   "component": "신청 – 서비스 정보 확인",
+   "text": "신청 서비스 정보 확인 화면에서 상세 정보를 최신화된 상태로 제공하고 있다.",
+   "verdict": "사이트",
+   "evidence": null,
+   "fix": null
+  },
+  {
+   "idx": 253,
+   "section": "service",
+   "component": "신청 – 서비스 정보 확인",
+   "text": "신청 서비스 정보 확인 화면에서 서비스를 신청할 수 있는 모든 채널에 대한 정보를 제공하고 있다.",
+   "verdict": "사이트",
+   "evidence": null,
+   "fix": null
+  },
+  {
+   "idx": 254,
+   "section": "service",
+   "component": "신청 – 서비스 정보 확인",
+   "text": "신청 서비스 정보 확인 화면에서 제약 사항에 대한 정보를 제공하고 있다.",
+   "verdict": "사이트",
+   "evidence": null,
+   "fix": null
+  },
+  {
+   "idx": 255,
+   "section": "service",
+   "component": "신청 – 서비스 정보 확인",
+   "text": "신청 서비스 정보 확인 화면에서 신청에 필요한 모든 서식과 서류에 대해 안내하고 빠르게 접근할 수 있는 수단을 제공하고 있다.",
+   "verdict": "사이트",
+   "evidence": null,
+   "fix": null
+  },
+  {
+   "idx": 256,
+   "section": "service",
+   "component": "신청 – 서비스 정보 확인",
+   "text": "신청 서비스 정보 확인 화면에서 신청 과정, 처리 절차에 대한 정보를 제공하고 있다.",
+   "verdict": "사이트",
+   "evidence": null,
+   "fix": null
+  },
+  {
+   "idx": 257,
+   "section": "service",
+   "component": "신청 – 서비스 정보 확인",
+   "text": "신청 서비스 정보 확인 화면에서 기본 정보를 첫 번째 탭에 제공하고 있다.",
+   "verdict": "사이트",
+   "evidence": null,
+   "fix": null
+  },
+  {
+   "idx": 258,
+   "section": "service",
+   "component": "신청 – 유의 사항·자격 확인",
+   "text": "신청 과정에서 신청서 작성 중간 또는 최종 단계에서 작성을 중단해야 하는 상황에 대해 명확하게 안내하고 있다.",
+   "verdict": "사이트",
+   "evidence": null,
+   "fix": null
+  },
+  {
+   "idx": 259,
+   "section": "service",
+   "component": "신청 – 신청서 작성",
+   "text": "신청서 작성폼에 단계 표시기를 제공하고 있다.",
+   "verdict": "사이트",
+   "evidence": null,
+   "fix": null
+  },
+  {
+   "idx": 260,
+   "section": "service",
+   "component": "신청 – 신청서 작성",
+   "text": "한 단계 내에서의 신청 서식 섹션을 탭이나 아코디언으로 구분하지 않고 있다.",
+   "verdict": "사이트",
+   "evidence": null,
+   "fix": null
+  },
+  {
+   "idx": 261,
+   "section": "service",
+   "component": "신청 – 신청서 작성",
+   "text": "신청서 작성 과정에서 값의 변경이 이전 항목에 영향을 미치는 상황에 대해 사용자에게 안내하고 있다.",
+   "verdict": "사이트",
+   "evidence": null,
+   "fix": null
+  },
+  {
+   "idx": 262,
+   "section": "service",
+   "component": "신청 – 신청서 작성",
+   "text": "신청서 작성 화면에 신청서 작성에 대해 도움받을 수 있는 문의처를 제공하고 있다.",
+   "verdict": "사이트",
+   "evidence": null,
+   "fix": null
+  },
+  {
+   "idx": 263,
+   "section": "service",
+   "component": "신청 – 신청서 작성",
+   "text": "신청서 작성 과정에서 도움말은 정확한 내용으로 제공하고 있다.",
+   "verdict": "사이트",
+   "evidence": null,
+   "fix": null
+  },
+  {
+   "idx": 264,
+   "section": "service",
+   "component": "신청 – 신청서 작성",
+   "text": "신청서 작성폼의 초기화 버튼을 다른 버튼과 명확하게 구분하고 있다.",
+   "verdict": "사이트",
+   "evidence": null,
+   "fix": null
+  },
+  {
+   "idx": 265,
+   "section": "service",
+   "component": "신청 – 확인·확정",
+   "text": "신청서 제출에 확인·확정 단계를 제공하고 있다.",
+   "verdict": "사이트",
+   "evidence": null,
+   "fix": null
+  },
+  {
+   "idx": 266,
+   "section": "service",
+   "component": "신청 – 확인·확정",
+   "text": "신청 취소/수정 불가한 사항에 대해 사용자에게 명확하게 안내하고 있다.",
+   "verdict": "사이트",
+   "evidence": null,
+   "fix": null
+  },
+  {
+   "idx": 267,
+   "section": "service",
+   "component": "신청 – 확인·확정",
+   "text": "신청서 제출 확인·확정 과정에서 행동을 취소할 수 있는 수단을 제공하고 있다.",
+   "verdict": "사이트",
+   "evidence": null,
+   "fix": null
+  },
+  {
+   "idx": 268,
+   "section": "service",
+   "component": "신청 – 완료",
+   "text": "모든 신청 과업에 완료 단계를 제공하고 있다.",
+   "verdict": "사이트",
+   "evidence": null,
+   "fix": null
+  },
+  {
+   "idx": 269,
+   "section": "service",
+   "component": "신청 – 신청 결과 확인",
+   "text": "신청 상세 내역을 제공하고 있다.",
+   "verdict": "사이트",
+   "evidence": null,
+   "fix": null
+  },
+  {
+   "idx": 270,
+   "section": "service",
+   "component": "신청 – 신청 결과 확인",
+   "text": "신청 이력을 제공하고 있다.",
+   "verdict": "사이트",
+   "evidence": null,
+   "fix": null
+  },
+  {
+   "idx": 271,
+   "section": "service",
+   "component": "신청 – 신청 결과 확인",
+   "text": "신청 과정과 관련하여 현재 진행 상태에 대한 정보를 제공하고 있다.",
+   "verdict": "사이트",
+   "evidence": null,
+   "fix": null
+  },
+  {
+   "idx": 272,
+   "section": "service",
+   "component": "정책 정보 확인 – 정보 확인",
+   "text": "정책 정보 상세 화면에서 상세 정보를 정확하게 제공하고 있다.",
+   "verdict": "사이트",
+   "evidence": null,
+   "fix": null
+  },
+  {
+   "idx": 273,
+   "section": "service",
+   "component": "정책 정보 확인 – 정보 확인",
+   "text": "정책 정보 상세 화면에서 상세 정보를 최신화된 상태로 제공하고 있다.",
+   "verdict": "사이트",
+   "evidence": null,
+   "fix": null
+  },
+  {
+   "idx": 274,
+   "section": "service",
+   "component": "정책 정보 확인 – 정보 확인",
+   "text": "준수 기준 가. 스타일",
+   "verdict": "사이트",
+   "evidence": null,
+   "fix": null
+  }
+ ]
+}

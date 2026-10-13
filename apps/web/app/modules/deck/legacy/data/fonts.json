@@ -1,0 +1,114 @@
+{
+  "_doc": "장표 서체 목록 — 새 변환에서 고른다. 줄을 지우면 선택지에서 빠진다(파일은 worker/fonts). title = 키메시지·표지·목차·간지 큰 글자, body = 본문 굵기 4단계(옅음·본문·강조·굵음). 첫 줄이 기본값. weights = 4단계에 쓴 굵기(옅음·본문·강조·굵음 ↔ a시월구일 1~4).",
+  "title": [
+    {
+      "id": "gmarket",
+      "name": "G마켓 산스",
+      "face": "G마켓 산스 TTF Bold",
+      "file": "GmarketSansTTFBold.ttf"
+    },
+    {
+      "id": "paperlogy",
+      "name": "페이퍼로지",
+      "face": "Paperlogy 8 ExtraBold",
+      "file": "Paperlogy-8ExtraBold.ttf"
+    },
+    {
+      "id": "hana",
+      "name": "하나서체",
+      "face": "Hana2.0 B",
+      "file": "Hana2-Bold.ttf"
+    },
+    {
+      "id": "mbc",
+      "name": "MBC 1961",
+      "face": "MBC 1961 Medium",
+      "file": "MBC1961-Medium.ttf"
+    }
+  ],
+  "body": [
+    {
+      "id": "siwol",
+      "name": "a시월구일",
+      "faces": [
+        "a시월구일1",
+        "a시월구일2",
+        "a시월구일3",
+        "a시월구일4"
+      ],
+      "files": null,
+      "weights": [
+        1,
+        2,
+        3,
+        4
+      ]
+    },
+    {
+      "id": "pretendard",
+      "name": "프리텐다드",
+      "faces": [
+        "Pretendard ExtraLight",
+        "Pretendard",
+        "Pretendard SemiBold",
+        "Pretendard ExtraBold"
+      ],
+      "files": [
+        "Pretendard-ExtraLight.ttf",
+        "Pretendard-Regular.ttf",
+        "Pretendard-SemiBold.ttf",
+        "Pretendard-ExtraBold.ttf"
+      ],
+      "weights": [
+        200,
+        400,
+        600,
+        800
+      ]
+    },
+    {
+      "id": "wanted",
+      "name": "원티드 산스",
+      "faces": [
+        "Wanted Sans",
+        "Wanted Sans Medium",
+        "Wanted Sans SemiBold",
+        "Wanted Sans ExtraBold"
+      ],
+      "files": [
+        "WantedSans-Regular.ttf",
+        "WantedSans-Medium.ttf",
+        "WantedSans-SemiBold.ttf",
+        "WantedSans-ExtraBold.ttf"
+      ],
+      "weights": [
+        400,
+        500,
+        600,
+        800
+      ]
+    },
+    {
+      "id": "a2z",
+      "name": "에이투지체",
+      "faces": [
+        "A2Z 2 ExtraLight",
+        "A2Z 4 Regular",
+        "A2Z 6 SemiBold",
+        "A2Z 7 Bold"
+      ],
+      "files": [
+        "A2Z-2ExtraLight.ttf",
+        "A2Z-4Regular.ttf",
+        "A2Z-6SemiBold.ttf",
+        "A2Z-7Bold.ttf"
+      ],
+      "weights": [
+        200,
+        400,
+        600,
+        700
+      ]
+    }
+  ]
+}

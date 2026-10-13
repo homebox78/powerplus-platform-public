@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>powerDeck</title>
+<style>
+html,body{margin:0;height:100%;overflow:hidden;background:#ECEBE8}
+.wrap{position:relative;width:100%;height:100%;overflow:hidden;background:radial-gradient(120% 95% at 48% 38%,#FAF9F7 0%,#EDEBE8 62%,#E3E1DD 100%)}
+.stage{position:absolute;left:50%;top:50%;width:1200px;height:670px;transform-origin:50% 50%;perspective:2600px;perspective-origin:50% 42%}
+.scene{position:absolute;left:693px;top:340px;transform-style:preserve-3d;transform:rotateX(55deg) rotateZ(-40deg) scale3d(1.07,1.07,1.07)}
+.blk{position:absolute;width:0;height:0;transform-style:preserve-3d}
+.lift{position:absolute;transform-style:preserve-3d}
+.blk i,.blk b{position:absolute;left:calc(var(--w)/-2);top:calc(var(--h)/-2);width:var(--w);height:var(--h);border-radius:var(--r)}
+.blk i{background:var(--side)}
+.blk b{background:var(--top);overflow:hidden;box-shadow:inset 0 2px 0 rgba(255,255,255,.6),inset 0 -4px 8px rgba(0,0,0,.06)}
+.sh{position:absolute;left:calc(var(--w)/-2 - 20px);top:calc(var(--h)/-2 - 20px);width:calc(var(--w) + 40px);height:calc(var(--h) + 40px);border-radius:calc(var(--r) + 14px);background:radial-gradient(closest-side,rgba(70,55,40,.26),rgba(70,55,40,0));transform:translate3d(14px,16px,0)}
+.l{--top:linear-gradient(140deg,#FFFFFF,#ECE9E4);--side:#D3CFC8}
+.g{--top:linear-gradient(140deg,#D2CFC9,#B8B4AE);--side:#9A968F}
+.d{--top:linear-gradient(140deg,#3E3C3A,#222120);--side:#121110}
+.o{--top:linear-gradient(140deg,#F2803F,#D9561C);--side:#A9421A}
+.p{position:absolute;border-radius:6px}
+.t{position:absolute;white-space:nowrap;font-family:"Pretendard","Apple SD Gothic Neo","Malgun Gothic",sans-serif;font-weight:700;letter-spacing:-.02em}
+.ly{position:absolute;inset:0}
+
+</style>
+</head>
+<body>
+<div class="wrap"><div class="stage" id="st"><div class="scene" id="sc"></div></div></div>
+<script>
+const sc=document.getElementById('sc');
+// 두께 있는 블록 하나: x,y(바닥 평면), w,h, r(둥글기), d(두께), k(색), top(윗면 내용)
+function blk(o){ const k=document.createElement('div'); k.className='blk '+(o.k||'l');
+  k.style.cssText=`left:${o.x}px;top:${o.y}px;--w:${o.w}px;--h:${o.h}px;--r:${o.r??16}px`;
+  let L=''; for(let z=0;z<o.d-2;z+=4) L+=`<i style="transform:translateZ(${z}px)"></i>`;
+  k.innerHTML=(o.noShadow?'':'<div class="sh"></div>')+`<div class="lift">${L}<b style="transform:translateZ(${o.d}px)">${o.top||''}</b></div>`;
+  (o.parent||sc).appendChild(k); k.lift=k.querySelector('.lift'); k.sh=k.querySelector('.sh'); k.top=k.querySelector('b'); return k; }
+const bar=(x,y,w,h,c,r)=>`<div class="p" style="left:${x}px;top:${y}px;width:${w}px;height:${h}px;background:${c};border-radius:${r??Math.min(h/2,8)}px"></div>`;
+const lab=(x,y,t,sz,c,w)=>`<div class="t" style="left:${x}px;top:${y}px;font-size:${sz}px;color:${c};font-weight:${w||700}">${t}</div>`;
+const pop=(el,a,b,T,e)=>anim(el,[{offset:0,transform:'scale(0)'},{offset:a,transform:'scale(0)',easing:e||'cubic-bezier(.3,1.5,.5,1)'},{offset:Math.min(a+.06,b),transform:'scale(1)'},{offset:b,transform:'scale(1)',easing:'ease-in'},{offset:Math.min(b+.05,1),transform:'scale(0)'},{offset:1,transform:'scale(0)'}],T);
+const fade=(el,a,b,T)=>anim(el,[{offset:0,opacity:0},{offset:a,opacity:0},{offset:Math.min(a+.04,b),opacity:1},{offset:b,opacity:1},{offset:Math.min(b+.04,1),opacity:0},{offset:1,opacity:0}],T);
+const anim=(el,frames,dur,opt={})=>el&&el.animate(frames,Object.assign({duration:dur*1000,iterations:Infinity},opt));
+
+const T=9, DK='#2B2A28', GR='#E6E3DE', LN='#D3CEC6';
+// 단계 키 4개: 차례로 검게 켜진다
+const ST=[.13,.25,.37,.49];
+ST.forEach((t,i)=>{ const k=blk({x:-400,y:-150+i*84,w:90,h:64,r:16,d:16,k:'l',top:'<div class="ly on" style="background:linear-gradient(140deg,#3E3C3A,#222120);opacity:0"></div>'});
+  anim(k.top.querySelector('.on'),[{offset:0,opacity:0},{offset:t,opacity:0},{offset:t+.03,opacity:1},{offset:.9,opacity:1},{offset:.95,opacity:0},{offset:1,opacity:0}],T);
+  anim(k.lift,[{offset:0,transform:'translateZ(0px)'},{offset:t,transform:'translateZ(0px)'},{offset:t+.03,transform:'translateZ(18px)'},{offset:t+.08,transform:'translateZ(0px)'},{offset:1,transform:'translateZ(0px)'}],T); });
+// 장표: 자료 → 기획 → 화면설계 → 디자인
+const S=[
+ [0,1,2,3,4,5,6,7].map(r=>bar(26,26+r*22,r%3==2?200:300,8,LN)).join(''),
+ bar(26,26,180,16,DK)+[0,1,2].map(r=>bar(26,70+r*40,14,14,'#8F8A83',7)+bar(52,72+r*40,220,10,LN)).join(''),
+ `<div class="p" style="left:26px;top:22px;width:180px;height:18px;border:2px dashed #B9B3AA"></div>`+[0,1,2].map(c=>`<div class="p" style="left:${26+c*104}px;top:58px;width:92px;height:96px;border:2px dashed #B9B3AA"></div>`).join('')+`<div class="p" style="left:26px;top:168px;width:300px;height:16px;border:2px dashed #B9B3AA"></div>`,
+ bar(26,24,200,16,DK)+bar(26,66,140,104,'#F1EEEA',10)+[0,1,2,3].map(c=>bar(46+c*28,150-(c+1)*16,18,(c+1)*16,c==3?'#E2622B':'#BDB8B1',4)).join('')+bar(184,66,150,30,GR,8)+bar(184,104,150,30,GR,8)+bar(184,142,150,30,GR,8)
+];
+const slide=blk({x:-60,y:-20,w:360,h:226,r:18,d:20,k:'l',top:S.map(h=>`<div class="ly">${h}</div>`).join('')});
+const LT=[[.12,.25],[.25,.37],[.37,.49],[.49,.9]];
+[...slide.top.children].forEach((el,i)=>anim(el,[{offset:0,opacity:0},{offset:LT[i][0],opacity:0},{offset:LT[i][0]+.025,opacity:1},{offset:LT[i][1],opacity:1},{offset:Math.min(LT[i][1]+.025,1),opacity:0},{offset:1,opacity:0}],T));
+// 자료 한 장이 떨어져 스며든다
+const doc=blk({x:-60,y:-20,w:170,h:214,r:12,d:12,k:'g',noShadow:true,top:[0,1,2,3,4].map(r=>bar(20,26+r*24,r==4?80:130,8,'#9F9B95')).join('')});
+anim(doc.lift,[{offset:0,transform:'translateZ(260px)'},{offset:.02,transform:'translateZ(260px)',easing:'cubic-bezier(.5,0,.8,.6)'},{offset:.1,transform:'translateZ(22px)'},{offset:1,transform:'translateZ(22px)'}],T);
+anim(doc,[{offset:0,transform:'scale(1)'},{offset:.1,transform:'scale(1)',easing:'ease-in'},{offset:.14,transform:'scale(0)'},{offset:1,transform:'scale(0)'}],T);
+// 대본 말풍선
+pop(blk({x:300,y:-140,w:200,h:120,r:26,d:16,k:'d',top:bar(24,30,140,8,'#6E6A65')+bar(24,50,120,8,'#6E6A65')+bar(24,70,90,8,'#6E6A65')}),.56,.9,T);
+// 링크 하나로 공유 + 팀 의견 핀
+pop(blk({x:300,y:40,w:180,h:56,r:28,d:14,k:'l',top:'<div class="p" style="left:22px;top:20px;width:34px;height:16px;border-radius:8px;border:4px solid #6E6A65;box-sizing:border-box"></div>'+bar(70,24,86,8,LN)}),.64,.9,T);
+[[-160,-90,.70],[40,30,.74],[120,-100,.78]].forEach(([x,y,t])=>{ const c=blk({x,y,w:48,h:48,r:24,d:12,k:'d',noShadow:true,top:'<div class="p" style="left:17px;top:17px;width:14px;height:14px;border-radius:7px;background:#EEEBE6"></div>'});
+  c.lift.style.transform='translateZ(40px)'; pop(c,t,.9,T); });
+
+const st=document.getElementById('st');
+function fit(){const s=Math.max(innerWidth/1200,innerHeight/670);st.style.transform=`translate(-50%,-50%) scale(${s})`;}
+addEventListener('resize',fit); fit();
+</script>
+</body>
+</html>

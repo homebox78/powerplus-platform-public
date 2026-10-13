@@ -1,0 +1,14 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": { "jsx": "preserve" },
+  "include": [
+    "vue/**/*.ts",
+    "vue/**/*.vue",
+    "preview/VueApp.vue",
+    "preview/vue-demo.ts",
+    "preview/skins.ts",
+    "preview/shims.d.ts",
+    "preview/demos/registry.ts",
+    "preview/demos/vue"
+  ]
+}

@@ -1,0 +1,42 @@
+/* 미리보기 화면 틀(부품 스타일 아님) */
+.pv-wrap { max-width: 1200px; margin: 0 auto; padding: 40px 24px 80px; }
+.pv-head { display: flex; flex-wrap: wrap; gap: 16px; align-items: center; justify-content: space-between; padding-bottom: 24px; border-bottom: 1px solid var(--krds-light-color-border-gray-light); }
+.pv-head h1 { font-size: 28px; font-weight: 700; }
+.pv-head small { font-size: 15px; font-weight: 400; color: var(--krds-light-color-text-subtle); margin-left: 8px; }
+.pv-tools { display: flex; gap: 12px; align-items: center; font-size: 15px; }
+.pv-row.pv-row-flat { margin: 0; gap: 6px; }
+.pv-tools a { color: var(--krds-light-color-text-primary); text-decoration: underline; }
+.pv-sec { padding: 40px 0; border-bottom: 1px solid var(--krds-light-color-border-gray-light); }
+.pv-sec h2 { font-size: 22px; font-weight: 700; margin-bottom: 20px; }
+.pv-row { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin-bottom: 16px; }
+.pv-mt { margin-top: 32px; }
+.pv-foot { padding-top: 32px; font-size: 13px; color: var(--krds-light-color-text-subtle); }
+
+/* 카탈로그 틀 */
+.pv-shell { display: grid; grid-template-columns: 240px minmax(0, 1fr); min-height: 100vh; }
+.pv-nav { position: sticky; top: 0; height: 100vh; overflow-y: auto; padding: 24px 16px; border-right: 1px solid var(--krds-light-color-border-gray-light); background: #f7f8fa; }
+.pv-brand { font-size: 17px; font-weight: 700; margin-bottom: 16px; }
+.pv-brand small { font-weight: 400; color: var(--krds-light-color-text-subtle); margin-left: 4px; }
+.pv-search input { width: 100%; height: 40px; padding: 0 12px; border: 1px solid var(--krds-light-color-border-gray); border-radius: 8px; font: inherit; font-size: 15px; background: #fff; }
+.pv-count { margin: 8px 0 16px; font-size: 13px; color: var(--krds-light-color-text-subtle); }
+.pv-group { margin-bottom: 16px; }
+.pv-group-title { font-size: 13px; font-weight: 700; color: var(--krds-light-color-text-subtle); margin-bottom: 4px; }
+.pv-group a { display: block; padding: 4px 8px; border-radius: 6px; font-size: 15px; color: inherit; text-decoration: none; }
+.pv-group a:hover { background: #eef0f3; }
+.pv-main { padding: 32px 40px 80px; min-width: 0; }
+.pv-src { font-size: 12px; font-weight: 500; color: var(--krds-light-color-text-subtle); border: 1px solid var(--krds-light-color-border-gray-light); border-radius: 999px; padding: 2px 8px; vertical-align: middle; margin-left: 6px; }
+.pv-note { font-size: 14px; color: var(--krds-light-color-text-subtle); margin: -12px 0 16px; }
+.pv-sec { scroll-margin-top: 16px; }
+.pv-demo > * + * { margin-top: 16px; }
+@media (max-width: 800px) { .pv-shell { grid-template-columns: 1fr; } .pv-nav { position: static; height: auto; } .pv-main { padding: 24px 16px; } }
+/* 사이트 /kit 안에 넣을 때(?embed=1) — 목록은 사이트 사이드바, 여기선 본문만 */
+.pv-embed { grid-template-columns: 1fr; }
+.pv-embed .pv-main { padding: 24px 32px 64px; }
+
+/* ?bare=1 — 부품만. 문서 화면(powerGuide)이 제목·설명을 따로 그린다 */
+.pv-bare { grid-template-columns: 1fr; min-height: 100vh; background: transparent; }
+.pv-bare .pv-head, .pv-bare .pv-sec > h2, .pv-bare .pv-note, .pv-bare .pv-foot { display: none; }
+.pv-bare .pv-main { padding: 40px 32px; display: flex; align-items: center; justify-content: center; min-height: 100vh; box-sizing: border-box; }
+.pv-bare .pv-sec { width: 100%; max-width: 720px; margin: 0; padding: 0; border: 0; }
+.pv-bare.pv-wide .pv-sec { max-width: none; }
+.pv-bare.pv-wide .pv-main { align-items: flex-start; }

@@ -1,0 +1,320 @@
+/* ─────────────────────────────────────────────────────────────
+ * powerGuide 스타일 층 — KRDS 부품 위에 얹는 깔끔한 제품 UI 톤 (2026-09-25, 이름 변경 2026-10-08)
+ *
+ * KRDS 는 구조·접근성·주색 체계만 가져오고, 겉모습은 요즘 제품 UI 에 맞춘다.
+ *  - 무채색 = zinc (KRDS 회색은 푸른기가 돌아 관공서 느낌이 강하다)
+ *  - 높이 한 단계씩 낮게(버튼·입력 36px 기본), 글자 14px·굵기 500
+ *  - 모서리 6~12px, 얕은 그림자(shadow-xs), 두께 변하지 않는 링 포커스
+ *  - 탭 = 회색 트랙 위 흰 알약(세그먼트), 아코디언 = 배경 없는 구분선형
+ * 주색(primary·secondary)은 건드리지 않는다 — 스킨·theme.css 가 그대로 바꾼다.
+ *
+ * 끄기: <html data-hb-style="krds"> → KRDS 원형 그대로.
+ * 범위: 아래 $S 접두 = :root:not([data-hb-style="krds"]) .hb-kit
+ *       (레이어 부품도 .hb-kit 을 달고 body 에 붙으므로 문서 루트 기준으로 건다)
+ * ───────────────────────────────────────────────────────────── */
+
+/* ── 토큰: 무채색·모서리·그림자 */
+:root:not([data-hb-style="krds"]) .hb-kit {
+  --krds-color-light-gray-5: #fafafa;
+  --krds-color-light-gray-10: #f4f4f5;
+  --krds-color-light-gray-20: #e4e4e7;
+  --krds-color-light-gray-30: #d4d4d8;
+  --krds-color-light-gray-40: #a1a1aa;
+  --krds-color-light-gray-50: #71717a;
+  --krds-color-light-gray-60: #52525b;
+  --krds-color-light-gray-70: #3f3f46;
+  --krds-color-light-gray-80: #27272a;
+  --krds-color-light-gray-90: #18181b;
+  --krds-color-light-gray-95: #09090b;
+
+  --krds-radius-xsmall1: 4px; --krds-radius-xsmall2: 4px; --krds-radius-xsmall3: 4px;
+  --krds-radius-small1: 6px; --krds-radius-small2: 6px; --krds-radius-small3: 6px;
+  --krds-radius-medium1: 8px; --krds-radius-medium2: 8px; --krds-radius-medium3: 8px; --krds-radius-medium4: 10px;
+  --krds-radius-large1: 12px; --krds-radius-large2: 12px;
+  --krds-radius-xlarge1: 16px; --krds-radius-xlarge2: 16px;
+
+  --hb-shadow-xs: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --hb-shadow-sm: 0 1px 3px 0 rgb(0 0 0 / 0.08), 0 1px 2px -1px rgb(0 0 0 / 0.08);
+  --hb-shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+  --hb-ring: color-mix(in oklab, var(--krds-color-light-primary-50) 30%, transparent);
+  --hb-border: var(--krds-color-light-gray-20);
+
+  letter-spacing: -0.01em;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ── 버튼: 36px 기본·500·얕은 그림자 */
+:root:not([data-hb-style="krds"]) .hb-kit .krds-btn {
+  --krds-button--size-height-xsmall: 28px; --krds-button--padding-x-xsmall: 10px;
+  --krds-button--size-height-small: 32px;  --krds-button--padding-x-small: 12px;
+  --krds-button--size-height-medium: 36px; --krds-button--padding-x-medium: 16px;
+  --krds-button--size-height-large: 40px;  --krds-button--padding-x-large: 20px;
+  --krds-button--size-height-xlarge: 44px; --krds-button--padding-x-xlarge: 24px;
+  --krds-button--pc-font-size-xsmall: 12px; --krds-button--pc-font-size-small: 13px;
+  --krds-button--pc-font-size-medium: 14px; --krds-button--pc-font-size-large: 14px; --krds-button--pc-font-size-xlarge: 15px;
+  --krds-button--font-weight-xsmall: 500; --krds-button--font-weight-small: 500; --krds-button--font-weight-medium: 500;
+  --krds-button--font-weight-large: 500; --krds-button--font-weight-xlarge: 500;
+  --krds-button--radius-xsmall: var(--krds-radius-small1); --krds-button--radius-small: var(--krds-radius-small1); --krds-button--radius-medium: var(--krds-radius-medium1);
+  --krds-button--radius-large: var(--krds-radius-medium1); --krds-button--radius-xlarge: var(--krds-radius-medium4);
+  transition: background-color .15s, border-color .15s, box-shadow .15s, color .15s;
+}
+:root:not([data-hb-style="krds"]) .hb-kit .krds-btn.primary { box-shadow: var(--hb-shadow-xs); }
+:root:not([data-hb-style="krds"]) .hb-kit .krds-btn.secondary,
+:root:not([data-hb-style="krds"]) .hb-kit .krds-btn.tertiary {
+  background-color: #fff;
+  border-color: var(--hb-border);
+  color: var(--krds-color-light-gray-90);
+  box-shadow: var(--hb-shadow-xs);
+}
+:root:not([data-hb-style="krds"]) .hb-kit .krds-btn.secondary:hover,
+:root:not([data-hb-style="krds"]) .hb-kit .krds-btn.tertiary:hover,
+:root:not([data-hb-style="krds"]) .hb-kit .krds-btn.text:hover { background-color: var(--krds-color-light-gray-10); }
+:root:not([data-hb-style="krds"]) .hb-kit .krds-btn.secondary:active,
+:root:not([data-hb-style="krds"]) .hb-kit .krds-btn.tertiary:active { background-color: var(--krds-color-light-gray-20); }
+:root:not([data-hb-style="krds"]) .hb-kit .krds-btn.secondary:not(.icon) .svg-icon,
+:root:not([data-hb-style="krds"]) .hb-kit .krds-btn.tertiary:not(.icon) .svg-icon { background-color: var(--krds-color-light-gray-90); }
+/* 버튼 묶음의 글자 칸·아이콘 버튼 — 다른 버튼과 같은 높이(36)·같은 테두리색(2026-10-09) */
+:root:not([data-hb-style="krds"]) .hb-kit .hb-button-group-text.medium,
+:root:not([data-hb-style="krds"]) .hb-kit .hb-button-group > .krds-btn.icon.medium { height: 36px; }
+:root:not([data-hb-style="krds"]) .hb-kit .hb-button-group > .krds-btn.icon.medium { width: 36px; }
+:root:not([data-hb-style="krds"]) .hb-kit .hb-button-group-text,
+:root:not([data-hb-style="krds"]) .hb-kit .hb-button-group > .krds-btn.icon { border-color: var(--hb-border); box-shadow: var(--hb-shadow-xs); }
+:root:not([data-hb-style="krds"]) .hb-kit .hb-button-group-text { border-radius: var(--krds-radius-medium1); font-size: 14px; }
+:root:not([data-hb-style="krds"]) .hb-kit .hb-button-group > .krds-btn.icon { border-radius: var(--krds-radius-medium1); }
+:root:not([data-hb-style="krds"]) .hb-kit .hb-button-group.horizontal > :not(:first-child) { border-top-left-radius: 0; border-bottom-left-radius: 0; }
+:root:not([data-hb-style="krds"]) .hb-kit .hb-button-group.horizontal > :not(:last-child) { border-top-right-radius: 0; border-bottom-right-radius: 0; }
+:root:not([data-hb-style="krds"]) .hb-kit .hb-button-group.vertical > :not(:first-child) { border-top-left-radius: 0; border-top-right-radius: 0; }
+:root:not([data-hb-style="krds"]) .hb-kit .hb-button-group.vertical > :not(:last-child) { border-bottom-left-radius: 0; border-bottom-right-radius: 0; }
+/* 포커스를 배경색 변화 대신 링으로 (두께가 변하지 않는다) */
+:root:not([data-hb-style="krds"]) .hb-kit :is(.krds-btn, .btn-tab, .btn-accordion, .page-link, .page-navi):focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--hb-ring);
+}
+
+/* ── 입력·선택·텍스트 영역: 1px 테두리 유지 + 링 포커스 */
+:root:not([data-hb-style="krds"]) .hb-kit :is(.krds-input, .krds-form-select) {
+  --krds-input--size-height-small: 32px; --krds-input--size-height-medium: 36px;
+  --krds-input--size-height-large: 40px; --krds-input--size-height-xlarge: 48px;
+  --krds-input--pc-font-size-small: 13px; --krds-input--pc-font-size-medium: 14px; --krds-input--pc-font-size-large: 14px;
+  --krds-input--padding-x: 12px;
+  --krds-input--color-border: var(--hb-border);
+  --krds-input--color-text: var(--krds-color-light-gray-90);
+  box-shadow: var(--hb-shadow-xs);
+  transition: border-color .15s, box-shadow .15s;
+}
+:root:not([data-hb-style="krds"]) .hb-kit :is(.krds-input, .krds-form-select, textarea):focus,
+:root:not([data-hb-style="krds"]) .hb-kit .krds-input.focus {
+  border-width: 1px;
+  border-color: var(--krds-color-light-primary-50);
+  box-shadow: 0 0 0 3px var(--hb-ring);
+  outline: none;
+}
+
+/* ── 탭: 회색 트랙 + 흰 알약 (선형 .line 은 얇은 밑줄) */
+:root:not([data-hb-style="krds"]) .hb-kit .tab:not(.line) > ul {
+  width: auto;
+  max-width: 100%;
+  gap: 2px;
+  padding: 3px;
+  background: var(--krds-color-light-gray-10);
+  border-radius: var(--krds-radius-medium4);
+}
+:root:not([data-hb-style="krds"]) .hb-kit .tab.full:not(.line) > ul { width: 100%; }
+:root:not([data-hb-style="krds"]) .hb-kit .tab:not(.line) .btn-tab {
+  height: 32px;
+  min-width: 0;
+  padding: 0 14px;
+  border: 0;
+  border-radius: var(--krds-radius-small1);
+  background: transparent;
+  color: var(--krds-color-light-gray-50);
+  font-size: 14px;
+  font-weight: 500;
+}
+:root:not([data-hb-style="krds"]) .hb-kit .tab:not(.line) :is(.active .btn-tab, .btn-tab[aria-selected="true"], .btn-tab[data-state="active"]) {
+  background: #fff;
+  color: var(--krds-color-light-gray-90);
+  box-shadow: var(--hb-shadow-sm);
+}
+:root:not([data-hb-style="krds"]) .hb-kit .tab:not(.line) .btn-tab:not(:disabled):hover { background: transparent; color: var(--krds-color-light-gray-90); }
+:root:not([data-hb-style="krds"]) .hb-kit .tab:not(.line) :is(.active .btn-tab, .btn-tab[aria-selected="true"], .btn-tab[data-state="active"]):hover { background: #fff; }
+:root:not([data-hb-style="krds"]) .hb-kit .tab.line .btn-tab { font-size: 14px; font-weight: 500; }
+
+/* ── 아코디언: 배경 없는 구분선형 */
+:root:not([data-hb-style="krds"]) .hb-kit .krds-accordion {
+  --krds-accordion--padding: 16px;
+  --krds-accordion--button-pc-font-size: 15px;
+  --krds-accordion--button-color-action: transparent;
+  --krds-accordion--button-color-action-hover: transparent;
+  --krds-accordion--button-color-action-pressed: transparent;
+  --krds-accordion--color-action-open: transparent;
+  --krds-accordion--button-color-text-open: var(--krds-color-light-gray-90);
+  padding: 0;
+  border-top: 0;
+}
+:root:not([data-hb-style="krds"]) .hb-kit .krds-accordion .accordion-item { padding: 0; border-bottom: 1px solid var(--hb-border); }
+:root:not([data-hb-style="krds"]) .hb-kit .krds-accordion .accordion-item:last-child { border-bottom: 0; }
+:root:not([data-hb-style="krds"]) .hb-kit .krds-accordion .btn-accordion { padding-left: 0; font-weight: 500; }
+:root:not([data-hb-style="krds"]) .hb-kit .krds-accordion .btn-accordion:hover { text-decoration: underline; text-underline-offset: 4px; }
+
+/* ── 배지: 작고 단단하게 */
+:root:not([data-hb-style="krds"]) .hb-kit .krds-badge {
+  --krds-badge--size-height: 22px;
+  --krds-badge--line-height: 20px;
+  --krds-badge--padding: 8px;
+  --krds-badge--radius: var(--krds-radius-small1);
+  --krds-badge--pc-font-size: 12px;
+  font-weight: 500;
+}
+
+/* ── 페이지네이션: 현재 쪽은 테두리 박스 */
+:root:not([data-hb-style="krds"]) .hb-kit .krds-pagination {
+  --krds-pagination--size-height: 36px;
+  --krds-pagination--radius: var(--krds-radius-medium1);
+  --krds-pagination--color-action-hover: var(--krds-color-light-gray-10);
+  --krds-pagination--color-action-pressed: var(--krds-color-light-gray-20);
+  --krds-pagination--color-action-active: var(--krds-color-light-gray-90); /* 91: 흰 바탕+연한 테두리는 비텍스트 대비 1.2:1 → 진한 채움 */
+  --krds-pagination--color-text-active: #fff;
+}
+:root:not([data-hb-style="krds"]) .hb-kit .krds-pagination .page-link.active,
+:root:not([data-hb-style="krds"]) .hb-kit .krds-pagination .page-link[aria-current="page"] {
+  border: 1px solid var(--krds-color-light-gray-90);
+  box-shadow: var(--hb-shadow-xs);
+  font-weight: 700;
+}
+
+/* ── 모달: 얇은 테두리·큰 그림자·어두운 배경 */
+:root:not([data-hb-style="krds"]) .hb-kit .krds-modal {
+  --krds-modal--wrap-radius: var(--krds-radius-large1);
+  --krds-modal--padding: 24px;
+  --krds-modal--header-pc-font-size: 18px;
+  --krds-modal--wrap-shadow: var(--hb-shadow-lg);
+  --krds-modal--wrap-color-border: var(--hb-border);
+  --krds-modal--color-dim: rgb(0 0 0 / 0.5);
+}
+
+/* ── 표: 머리 흰 바탕·얇은 선 */
+:root:not([data-hb-style="krds"]) .hb-kit .krds-table-wrap .tbl thead th {
+  background: #fff;
+  color: var(--krds-color-light-gray-50);
+  font-weight: 500;
+  font-size: 14px;
+}
+:root:not([data-hb-style="krds"]) .hb-kit .krds-table-wrap .tbl tbody tr:hover td { background: var(--krds-color-light-gray-5); }
+
+/* ── 제목: 살짝 조인 자간 */
+:root:not([data-hb-style="krds"]) .hb-kit :is(h1, h2, h3, h4) { letter-spacing: -0.02em; }
+
+/* ── 대비 보정 (axe color-contrast, 2026-09-25) — 흐린 회색 글자가 4.5:1 에 못 미치던 곳 */
+:root:not([data-hb-style="krds"]) .hb-kit .tab:not(.line) .btn-tab { color: var(--krds-color-light-gray-60); }
+:root:not([data-hb-style="krds"]) .hb-kit .krds-badge.bg-disabled { background-color: var(--krds-color-light-gray-60); color: #fff; }
+:root:not([data-hb-style="krds"]) .hb-kit .krds-badge.bg-light-disabled { color: var(--krds-color-light-gray-60); }
+:root:not([data-hb-style="krds"]) .hb-kit .krds-calendar-area { --krds-calendar--date-set-color-text-disabled: var(--krds-color-light-gray-60); }
+
+/* ── KRDS 체크리스트 보정 (2026-09-25) */
+/* 7 테두리 일관성: 토글 outline 도 같은 테두리 토큰 */
+:root:not([data-hb-style="krds"]) .hb-kit .hb-toggle.outline { border-color: var(--hb-border); }
+
+/* ─────────────────────────────────────────────────────────────
+ * powerGuide 전체 다듬기 (2026-10-08, 사용자 "KRDS 원형은 글자가 크고 투박하고 움직임이 유행에 안 맞다")
+ * 버튼·입력만 바꾸던 층을 모든 부품으로 넓힌다 — 글자 한 단계 작게, 높이 한 단계 낮게, 움직임 짧고 부드럽게.
+ * 전역 토큰은 :root 에 숫자로 박혀 있어 .hb-kit 에서 다시 선언하면 아래 부품이 모두 따라온다.
+ * ───────────────────────────────────────────────────────────── */
+:root:not([data-hb-style="krds"]) .hb-kit {
+  --krds-pc-font-size-body-large: 17px;   --krds-pc-font-size-body-medium: 15px;   --krds-pc-font-size-body-small: 14px;  --krds-pc-font-size-body-xsmall: 12px;
+  --krds-pc-font-size-label-large: 16px;  --krds-pc-font-size-label-medium: 14px;  --krds-pc-font-size-label-small: 13px; --krds-pc-font-size-label-xsmall: 12px;
+  --krds-pc-font-size-heading-xxsmall: 14px; --krds-pc-font-size-heading-xsmall: 15px; --krds-pc-font-size-heading-small: 17px;
+  --krds-pc-font-size-heading-medium: 20px;  --krds-pc-font-size-heading-large: 26px;  --krds-pc-font-size-heading-xlarge: 32px;
+  --krds-pc-font-size-display-small: 30px;   --krds-pc-font-size-display-medium: 38px; --krds-pc-font-size-display-large: 48px;
+  --krds-pc-font-size-navigation-title-medium: 20px; --krds-pc-font-size-navigation-title-small: 17px;
+  --krds-pc-font-size-navigation-depth-medium: 15px; --krds-pc-font-size-navigation-depth-medium-bold: 15px;
+  --krds-pc-font-size-navigation-depth-small: 14px;  --krds-pc-font-size-navigation-depth-small-bold: 14px;
+
+  --krds-mobile-font-size-body-large: 17px;  --krds-mobile-font-size-body-medium: 15px;  --krds-mobile-font-size-body-small: 14px;
+  --krds-mobile-font-size-label-large: 16px; --krds-mobile-font-size-label-medium: 14px; --krds-mobile-font-size-label-small: 13px;
+  --krds-mobile-font-size-heading-xsmall: 15px; --krds-mobile-font-size-heading-small: 17px; --krds-mobile-font-size-heading-medium: 19px;
+  --krds-mobile-font-size-heading-large: 22px;  --krds-mobile-font-size-heading-xlarge: 26px;
+  --krds-mobile-font-size-navigation-depth-medium: 15px; --krds-mobile-font-size-navigation-depth-small: 14px;
+
+  /* 높이 한 단계 낮게 (32→28, 40→36, 48→40, 56→48, 64→56) */
+  --krds-size-height-5: 28px; --krds-size-height-6: 36px; --krds-size-height-7: 40px;
+  --krds-size-height-8: 48px; --krds-size-height-9: 56px;
+
+  /* 움직임: 0.4s ease-in-out → 짧고 끝이 부드럽게 */
+  --krds-transition-base: 0.18s cubic-bezier(0.2, 0, 0, 1);
+  --hb-ease: cubic-bezier(0.2, 0, 0, 1);
+  font-weight: 400;
+}
+@media (prefers-reduced-motion: reduce) {
+  :root:not([data-hb-style="krds"]) .hb-kit { --krds-transition-base: 0s; }
+}
+
+/* ── 태그: 작은 알약, 테두리 연하게 */
+:root:not([data-hb-style="krds"]) .hb-kit .krds-tag-wrap {
+  --krds-btn-tag--size-height-small: 22px; --krds-btn-tag--size-height-medium: 26px; --krds-btn-tag--size-height-large: 30px;
+  --krds-btn-tag--padding-x-small: 8px;  --krds-btn-tag--padding-x-medium: 10px; --krds-btn-tag--padding-x-large: 12px;
+  --krds-btn-tag--pc-font-size-small: 12px; --krds-btn-tag--pc-font-size-medium: 13px; --krds-btn-tag--pc-font-size-large: 14px;
+  --krds-btn-tag--color-border: var(--hb-border);
+  --krds-btn-tag--color-action-hover: var(--krds-color-light-gray-10);
+}
+:root:not([data-hb-style="krds"]) .hb-kit .krds-tag-wrap :is(.krds-btn-tag, .krds-tag) { border-radius: 999px; font-weight: 500; }
+
+/* ── 칩: 36px·알약 */
+:root:not([data-hb-style="krds"]) .hb-kit .krds-form-chip {
+  --krds-form-chip--size-height-small: 28px; --krds-form-chip--size-height-medium: 32px; --krds-form-chip--size-height-large: 36px;
+  --krds-form-chip--padding-x-small: 10px; --krds-form-chip--padding-x-medium: 12px; --krds-form-chip--padding-x-large: 14px;
+  --krds-form-chip--radius-small: 999px; --krds-form-chip--radius-medium: 999px; --krds-form-chip--radius-large: 999px;
+  --krds-form-chip--color-border: var(--hb-border);
+  --krds-form-chip--pc-font-size-small: 12px; --krds-form-chip--pc-font-size-medium: 13px; --krds-form-chip--pc-font-size-large: 14px;
+}
+
+/* ── 체크박스·라디오: 18px, 모서리 4px */
+:root:not([data-hb-style="krds"]) .hb-kit .krds-form-check {
+  --krds-form-check--button-size-medium: 18px; --krds-form-check--button-size-large: 20px;
+  --krds-form-check--checkbox-button-radius-medium: 4px; --krds-form-check--checkbox-button-radius-large: 5px;
+  --krds-form-check--button-color-border: var(--krds-color-light-gray-30);
+  --krds-form-check--pc-font-size-medium: 14px; --krds-form-check--pc-font-size-large: 15px;
+  --krds-form-check--additional-text-pc-font-size-medium: 13px; --krds-form-check--additional-text-pc-font-size-large: 13px;
+  --krds-form-check--gap: 8px;
+}
+
+/* ── 셀렉트 테두리·글자 입력과 같게 */
+:root:not([data-hb-style="krds"]) .hb-kit .krds-form-select {
+  --krds-form-select--color-border: var(--hb-border);
+  --krds-form-select--pc-font-size-small: 13px; --krds-form-select--pc-font-size-medium: 14px; --krds-form-select--pc-font-size-large: 14px;
+  /* 높이는 입력과 같게(같은 줄 높이 통일) — 32·36·40, 화살표 작게 */
+  --krds-form-select--size-height-small: 32px; --krds-form-select--size-height-medium: 36px; --krds-form-select--size-height-large: 40px;
+  --krds-form-select--icon-size-small: 14px; --krds-form-select--icon-size-medium: 16px; --krds-form-select--icon-size-large: 18px;
+  --krds-form-select--padding-default: 12px;
+}
+
+/* ── 경로(브레드크럼)·단계·옆 메뉴: 글자 작게, 색 무채색 */
+:root:not([data-hb-style="krds"]) .hb-kit .krds-breadcrumb-wrap {
+  --krds-breadcrumb--pc-font-size: 13px;
+  --krds-breadcrumb--color-text: var(--krds-color-light-gray-60);
+}
+:root:not([data-hb-style="krds"]) .hb-kit .krds-side-navigation .btn-navi { border-radius: var(--krds-radius-small1); }
+
+/* ── 카드·구조 상자: 얇은 테두리 + 얕은 그림자, 호버는 테두리만 진하게(크게 키우지 않는다) */
+:root:not([data-hb-style="krds"]) .hb-kit :is(.krds-structured-list .structured-item, .krds-card, .card-wrap) {
+  border-color: var(--hb-border);
+  border-radius: var(--krds-radius-large1);
+  transition: border-color var(--krds-transition-base), box-shadow var(--krds-transition-base);
+}
+:root:not([data-hb-style="krds"]) .hb-kit :is(.krds-structured-list .structured-item, .krds-card):hover {
+  border-color: var(--krds-color-light-gray-40);
+  box-shadow: var(--hb-shadow-sm);
+}
+
+/* ── 툴팁: 작은 어두운 말풍선 */
+:root:not([data-hb-style="krds"]) .hb-kit :is(.krds-tooltip, .tooltip-popover) {
+  border-radius: var(--krds-radius-small1);
+  font-size: 12px;
+  box-shadow: var(--hb-shadow-lg);
+}
+
+/* ── 레이어(모달·드롭다운·팝오버)는 살짝 떠오르며 나타난다 */
+@keyframes hb-pop { from { opacity: 0; transform: translateY(4px) scale(.98); } to { opacity: 1; transform: none; } }
+:root:not([data-hb-style="krds"]) .hb-kit :is([role="dialog"], [role="menu"], [role="listbox"], .krds-modal .modal-content)[data-state="open"] {
+  animation: hb-pop var(--krds-transition-base) var(--hb-ease);
+}

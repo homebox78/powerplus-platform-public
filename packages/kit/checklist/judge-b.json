@@ -1,0 +1,527 @@
+[
+  {
+    "idx": 97,
+    "scope": "kit",
+    "verdict": "F",
+    "evidence": "react/link.tsx·vue/Link.vue 는 size 기본 large 로 .krds-btn.link 가 고정 글자 크기(홈박스 층에선 --krds-button--pc-font-size-large 14px)와 좌우 padding 4px·inline-block 을 준다. 주변 글자 크기를 이어받는 선택지가 없다.",
+    "fix": "size=\"inherit\"(또는 inline) 변형을 추가해 font-size:inherit·padding 0·display:inline 으로 본문 안 링크를 주변 글자와 같게 한다."
+  },
+  {
+    "idx": 98,
+    "scope": "kit",
+    "verdict": "P",
+    "evidence": "react/link.tsx·vue/Link.vue 기본 underline=\"always\" 로 span.underline 밑줄이 항상 붙는다(dist/kit.css .krds-btn.link .underline). 단 tone=basic+underline=none 조합은 색·밑줄이 모두 사라지므로 본문 안에서는 쓰지 않게 안내가 필요하다.",
+    "fix": null
+  },
+  {
+    "idx": 99,
+    "scope": "site",
+    "verdict": null,
+    "evidence": "링크 글자를 목적지를 예측할 수 있게 사이트가 쓴다(예: '자세히' 대신 '2026 청년 주거 지원 안내 보기').",
+    "fix": null
+  },
+  {
+    "idx": 100,
+    "scope": "site",
+    "verdict": null,
+    "evidence": "이메일 주소는 <Link href=\"mailto:…\"> 로 사이트가 링크를 건다(키트는 href 를 그대로 전달).",
+    "fix": null
+  },
+  {
+    "idx": 101,
+    "scope": "site",
+    "verdict": null,
+    "evidence": "전화번호는 <Link href=\"tel:…\"> 로 사이트가 링크를 건다(키트는 href 를 그대로 전달).",
+    "fix": null
+  },
+  {
+    "idx": 102,
+    "scope": "kit",
+    "verdict": "P",
+    "evidence": "react/link.tsx·vue/Link.vue 의 external 이 target=_blank·rel=noopener 와 함께 이동 아이콘(ico-go)과 화면낭독용 '(새 창 열림)' 문구를 붙여 외부 링크를 눈과 낭독 모두로 구분한다.",
+    "fix": null
+  },
+  {
+    "idx": 103,
+    "scope": "kit",
+    "verdict": "P",
+    "evidence": "외부 링크 표시가 external 속성 하나로만 만들어져 React·Vue 모두 같은 아이콘·같은 문구로 일관되게 나온다(react/link.tsx external 분기, vue/Link.vue template).",
+    "fix": null
+  },
+  {
+    "idx": 104,
+    "scope": "site",
+    "verdict": null,
+    "evidence": "링크 href 가 글자에 적힌 목적지로 바로 가게 사이트가 연결한다.",
+    "fix": null
+  },
+  {
+    "idx": 105,
+    "scope": "kit",
+    "verdict": "P",
+    "evidence": "실제 <a> 요소라 Tab 이동·Enter 실행이 브라우저 기본으로 되고, 홈박스 층 :focus-visible 링(css/style/homebox.css)과 a11y-report.json link 데모 포커스 6/6 표시·axe 0건(React·Vue)을 확인했다.",
+    "fix": null
+  },
+  {
+    "idx": 106,
+    "scope": "site",
+    "verdict": null,
+    "evidence": "같은 묶음의 버튼 size 를 사이트가 같게 준다(react/button-group.tsx 주석에 명시, 키트는 강제하지 않음).",
+    "fix": null
+  },
+  {
+    "idx": 107,
+    "scope": "site",
+    "verdict": null,
+    "evidence": "variant=\"primary\" 버튼을 한 화면에 한 번만 쓰도록 사이트가 배치한다.",
+    "fix": null
+  },
+  {
+    "idx": 108,
+    "scope": "site",
+    "verdict": null,
+    "evidence": "세로 ButtonGroup(orientation=vertical)에서 primary 버튼을 첫째로 사이트가 둔다.",
+    "fix": null
+  },
+  {
+    "idx": 109,
+    "scope": "site",
+    "verdict": null,
+    "evidence": "버튼 글자를 '신청하기'·'검색'처럼 동사형으로 사이트가 쓴다.",
+    "fix": null
+  },
+  {
+    "idx": 110,
+    "scope": "kit",
+    "verdict": "F",
+    "evidence": "react/button.tsx·vue/Button.vue 에 처리 중(loading/pending) 상태가 없어 눌린 뒤 두 번째 클릭을 막는 장치가 없다. 사이트가 disabled 를 직접 관리해야 한다.",
+    "fix": "loading(또는 pending) 속성을 추가해 실행 중에는 aria-disabled·aria-busy 를 켜고 클릭을 무시하며 스피너를 보이게 한다."
+  },
+  {
+    "idx": 111,
+    "scope": "kit",
+    "verdict": "P",
+    "evidence": "실제 <button> 이라 Tab 으로 들어가고, 홈박스 층 .krds-btn:focus-visible 3px 링(css/style/homebox.css)이 두께 변화 없이 보인다. a11y-report.json button 데모 포커스 12/12 표시·axe 0건(React·Vue).",
+    "fix": null
+  },
+  {
+    "idx": 112,
+    "scope": "kit",
+    "verdict": "P",
+    "evidence": "react/button.tsx 가 type 기본값을 \"button\" 으로 줘 폼 안에서 뜻하지 않은 제출을 막고, Enter·Space 실행은 네이티브 버튼 동작을 쓴다(vue/Button.vue 도 as=button 이면 type=button).",
+    "fix": null
+  },
+  {
+    "idx": 113,
+    "scope": "site",
+    "verdict": null,
+    "evidence": "여러 개를 고르는 곳에는 라디오 대신 체크박스를 사이트가 쓴다.",
+    "fix": null
+  },
+  {
+    "idx": 114,
+    "scope": "site",
+    "verdict": null,
+    "evidence": "옵션이 많으면 라디오 대신 셀렉트 등을 사이트가 고른다.",
+    "fix": null
+  },
+  {
+    "idx": 115,
+    "scope": "site",
+    "verdict": null,
+    "evidence": "RadioGroupItem 순서를 사이트가 가나다순으로 둔다(키트는 넣은 순서 그대로 그린다).",
+    "fix": null
+  },
+  {
+    "idx": 116,
+    "scope": "kit",
+    "verdict": "F",
+    "evidence": "react/radio-group.tsx·vue/RadioGroup.vue 는 column 을 줄 때만 .chk-column(세로)이고 기본은 .krds-check-area 가로 배치(dist/kit.css display:flex 행 방향)다. KRDS 는 세로 배치가 기본이다.",
+    "fix": "RadioGroup 의 column 기본값을 true 로 바꾸고 가로는 horizontal 같은 명시 속성으로만 켠다."
+  },
+  {
+    "idx": 117,
+    "scope": "kit",
+    "verdict": "P",
+    "evidence": "input 다음에 label 이 오고 원형 표시는 label::before 로 그려져(dist/kit.css .krds-form-check input[type=radio] ~ label:before) 레이블 글자가 표시 오른쪽에 온다. React·Vue 마크업 동일.",
+    "fix": null
+  },
+  {
+    "idx": 118,
+    "scope": "kit",
+    "verdict": "P",
+    "evidence": "가로 배치 때 옵션 사이 간격이 .krds-check-area gap var(--krds-gap-6)=20px(dist/kit.css)로 확보된다.",
+    "fix": null
+  },
+  {
+    "idx": 119,
+    "scope": "site",
+    "verdict": null,
+    "evidence": "정확한 값이 중요한 항목은 defaultValue 를 주지 않도록 사이트가 쓴다(키트 기본값은 선택 없음. 데모는 defaultValue 를 준다).",
+    "fix": null
+  },
+  {
+    "idx": 120,
+    "scope": "site",
+    "verdict": null,
+    "evidence": "'해당 없음'·'잘 모름' 옵션을 사이트가 필요한 곳에 넣는다.",
+    "fix": null
+  },
+  {
+    "idx": 121,
+    "scope": "kit",
+    "verdict": "P",
+    "evidence": "같은 name 의 실제 input[type=radio] 라 방향키 이동·선택과 묶음당 Tab 하나가 브라우저 기본으로 되고(react/radio-group.tsx·vue/RadioGroupItem.vue), input:focus ~ label 윤곽이 보인다. a11y-report.json radio-group 포커스 3/3(선택된 항목만 Tab 대상) 표시·axe 0건.",
+    "fix": null
+  },
+  {
+    "idx": 122,
+    "scope": "site",
+    "verdict": null,
+    "evidence": "키트 Select 는 한 개만 고르는 콤보박스라 여러 개 선택에는 체크박스를 사이트가 쓴다.",
+    "fix": null
+  },
+  {
+    "idx": 123,
+    "scope": "site",
+    "verdict": null,
+    "evidence": "옵션이 매우 많으면 Combobox(검색) 등을 사이트가 고른다.",
+    "fix": null
+  },
+  {
+    "idx": 124,
+    "scope": "kit",
+    "verdict": "P",
+    "evidence": "react/select.tsx·vue/Select.vue 가 값이 없으면 placeholder('선택하세요' 기본)를, 고르면 고른 항목 이름을 버튼에 보이고, 목록 항목에 aria-selected 와 체크 표시(dist/kit.css .hb-select-option[aria-selected=true]::after)를 준다.",
+    "fix": null
+  },
+  {
+    "idx": 125,
+    "scope": "site",
+    "verdict": null,
+    "evidence": "Select 에 aria-label·aria-labelledby 를 주거나 Field·FieldLabel 안에 넣어 사이트가 레이블을 단다(주지 않으면 콤보박스 이름이 비어 있다).",
+    "fix": null
+  },
+  {
+    "idx": 126,
+    "scope": "kit",
+    "verdict": "P",
+    "evidence": "선택 상자는 type=\"button\" 버튼과 숨은 input 으로만 되어 있고 값이 바뀔 때 onValueChange/v-model 만 알린다. submit 을 부르는 코드가 없다(react/select.tsx, vue/Select.vue).",
+    "fix": null
+  },
+  {
+    "idx": 127,
+    "scope": "kit",
+    "verdict": "P",
+    "evidence": "aria-expanded·aria-controls 를 갖춘 combobox 버튼으로 클릭·↓↑·Enter·Space 로 열고 Esc 로 닫으며 포커스를 버튼에 돌려주고, 포커스가 밖으로 나가면 닫힌다. 아래 자리가 모자라면 위로 연다(react/select.tsx onKeyDown·onBlur·useLayoutEffect, vue/Select.vue 동일).",
+    "fix": null
+  },
+  {
+    "idx": 128,
+    "scope": "kit",
+    "verdict": "P",
+    "evidence": "열린 상태에서 ↑↓·Home/End·PageUp/Down·글자 입력 찾기로 aria-activedescendant 가 움직이고 비활성 항목은 건너뛴다. a11y-report.json select 홈박스 스타일 포커스 9/9 표시(KRDS 원형 스타일에서는 오류 상태 1건 미표시).",
+    "fix": null
+  },
+  {
+    "idx": 129,
+    "scope": "kit",
+    "verdict": "P",
+    "evidence": "Enter·Space·클릭으로 고르면 값이 바뀌고 목록이 닫히며, Tab 은 고르고 다음 칸으로 간다. aria-disabled 항목은 선택되지 않는다(react/select.tsx choose/close, vue/Select.vue).",
+    "fix": null
+  },
+  {
+    "idx": 130,
+    "scope": "site",
+    "verdict": null,
+    "evidence": "하나만 고르는 곳에는 라디오나 스위치를 사이트가 쓴다.",
+    "fix": null
+  },
+  {
+    "idx": 131,
+    "scope": "site",
+    "verdict": null,
+    "evidence": "Checkbox 순서를 사이트가 가나다순으로 둔다.",
+    "fix": null
+  },
+  {
+    "idx": 132,
+    "scope": "kit",
+    "verdict": "F",
+    "evidence": "react/checkbox.tsx CheckboxGroup·vue/CheckboxGroup.vue 는 column 을 줄 때만 세로이고 기본은 가로(.krds-check-area flex 행) 배치다.",
+    "fix": "CheckboxGroup 의 column 기본값을 true 로 바꾼다."
+  },
+  {
+    "idx": 133,
+    "scope": "kit",
+    "verdict": "P",
+    "evidence": "input 다음 label, 상자 표시는 label::before 라 레이블이 상자 오른쪽에 온다(dist/kit.css .krds-form-check input[type=checkbox] ~ label:before). React·Vue 동일.",
+    "fix": null
+  },
+  {
+    "idx": 134,
+    "scope": "kit",
+    "verdict": "F",
+    "evidence": "react/checkbox.tsx·vue/Checkbox.vue 에 indeterminate 속성이 없고, dist/kit.css 에 :indeterminate 모양 규칙도 없다. react/data-table.tsx 가 input.indeterminate 를 켜지만 화면에는 선택 안 됨과 똑같이 보인다.",
+    "fix": "Checkbox 에 indeterminate 속성(React ref 로 el.indeterminate 설정, Vue 도 동일)을 추가하고 .krds-form-check input:indeterminate ~ label::before/::after 에 가로줄(−) 표시를 만든다."
+  },
+  {
+    "idx": 135,
+    "scope": "kit",
+    "verdict": "P",
+    "evidence": "실제 input[type=checkbox] 라 Tab 이동이 기본으로 되고 input:focus ~ label 윤곽이 보인다. a11y-report.json checkbox 포커스 6/6 표시·axe 0건(React·Vue, 두 스타일 모두).",
+    "fix": null
+  },
+  {
+    "idx": 136,
+    "scope": "kit",
+    "verdict": "P",
+    "evidence": "Space·레이블 클릭으로 켜고 끄는 네이티브 동작에 onCheckedChange(React)·v-model(Vue)이 연결되고, 켜짐 상태는 채움색+체크 아이콘으로 보인다(dist/kit.css :checked 규칙).",
+    "fix": null
+  },
+  {
+    "idx": 137,
+    "scope": "site",
+    "verdict": null,
+    "evidence": "태그 글자를 짧고 정확하게 사이트가 쓴다.",
+    "fix": null
+  },
+  {
+    "idx": 138,
+    "scope": "site",
+    "verdict": null,
+    "evidence": "TagGroup 하나에 링크 태그(href)와 삭제 태그(onRemove)·일반 태그를 섞지 않게 사이트가 나눈다(키트는 섞어도 막지 않는다).",
+    "fix": null
+  },
+  {
+    "idx": 139,
+    "scope": "kit",
+    "verdict": "P",
+    "evidence": "링크 태그는 <a>, 삭제 태그는 안의 <button class=\"btn-delete\"> 만 Tab 대상이고 일반 태그는 포커스를 받지 않는다(react/tag.tsx·vue/Tag.vue). a11y-report.json tag 포커스 8/8 표시·axe 0건.",
+    "fix": null
+  },
+  {
+    "idx": 140,
+    "scope": "kit",
+    "verdict": "P",
+    "evidence": "링크 태그가 실제 <a href> 라 Enter 로 이동한다(react/tag.tsx, vue/Tag.vue).",
+    "fix": null
+  },
+  {
+    "idx": 141,
+    "scope": "kit",
+    "verdict": "F",
+    "evidence": "삭제 버튼을 누르면 onRemove/emit('remove') 만 부르고 포커스를 옮기지 않는다. 버튼이 사라지며 포커스가 문서 처음으로 날아가고, 삭제 사실을 알리는 aria-live 도 없다(react/tag.tsx, vue/Tag.vue·TagGroup.vue).",
+    "fix": "TagGroup 이 삭제 뒤 다음(없으면 이전) 태그의 삭제 버튼이나 묶음으로 포커스를 옮기고, '복지 조건을 삭제했습니다' 같은 aria-live 알림을 둔다. 기본 removeLabel('삭제')도 태그 이름을 넣은 문구로."
+  },
+  {
+    "idx": 142,
+    "scope": "site",
+    "verdict": null,
+    "evidence": "'3일 후' 같은 상대 날짜에는 날짜 입력 대신 다른 방식을 사이트가 쓴다.",
+    "fix": null
+  },
+  {
+    "idx": 143,
+    "scope": "site",
+    "verdict": null,
+    "evidence": "DatePicker label·hint 나 Field+FieldLabel 로 무슨 날짜인지 사이트가 적는다(DateInput 단독은 레이블이 없어 Field 나 aria-label 이 필요하다).",
+    "fix": null
+  },
+  {
+    "idx": 144,
+    "scope": "kit",
+    "verdict": "?",
+    "evidence": "키트에는 '년'·'월'·'일' 칸을 나눈 다중 날짜 입력 부품이 없다(DateInput·DatePicker 는 YYYY.MM.DD 한 칸). 해당 형태를 쓸 수 없어 판정할 대상이 없다.",
+    "fix": "년·월·일 세 칸과 각 칸 레이블(년·월·일)을 가진 날짜 분리 입력 부품을 추가한다."
+  },
+  {
+    "idx": 145,
+    "scope": "kit",
+    "verdict": "F",
+    "evidence": "DatePicker·DateRangePicker(React·Vue)는 hint 기본 문구로 'YYYY.MM.DD 형식…' 을 도움말로 보인다. 그러나 DateInput·DateRangeInput(react/date-input.tsx, vue/DateInput.vue)은 형식을 placeholder \"YYYY.MM.DD\" 로만 알려 입력하면 안내가 사라진다.",
+    "fix": "DateInput 에도 기본 형식 도움말(form-hint)을 붙이거나 hint 속성을 받아 aria-describedby 로 연결한다."
+  },
+  {
+    "idx": 146,
+    "scope": "site",
+    "verdict": null,
+    "evidence": "문서에 적힌 날짜를 받을 때 원본과 같은 구성으로 사이트가 고른다(키트에는 YYYY.MM.DD 한 칸 형식만 있어 년·월·일 분리형이 필요하면 따로 만들어야 한다).",
+    "fix": null
+  },
+  {
+    "idx": 147,
+    "scope": "kit",
+    "verdict": "F",
+    "evidence": "DateInput 은 8자리가 다 차야 값을 넘기고(toIsoDate), DatePicker 의 parseDate(react/date-utils.ts)도 연·월·일이 다 있어야 받는다. '2024년 3월' 같은 대략적 날짜를 받을 방법이 없다.",
+    "fix": "precision=\"month\"|\"year\" 같은 선택지를 추가해 연·월만 입력해도 값으로 받게 한다."
+  },
+  {
+    "idx": 148,
+    "scope": "kit",
+    "verdict": "F",
+    "evidence": "react/date-input.tsx·vue/DateInput.vue 가 autocomplete=\"off\" 를 기본으로 넣어 생년월일 같은 자동 완성을 막는다(속성으로 덮을 수는 있음). DatePicker·DateRangePicker 입력칸은 autoComplete 속성을 받지도 않는다.",
+    "fix": "autocomplete 기본값을 빼고, DatePicker 에도 autoComplete(예: bday) 를 전달할 수 있게 한다."
+  },
+  {
+    "idx": 149,
+    "scope": "kit",
+    "verdict": "F",
+    "evidence": "DatePicker 는 없는 날짜면 '없는 날짜입니다…' 문구와 aria-invalid 를 주지만, DateInput(react/date-input.tsx·vue/DateInput.vue)은 틀린 날짜일 때 테두리 색과 aria-invalid 만 바꾸고 이유를 글로 알려 주지 않는다. 숫자 자동 점 찍기·달력 버튼·포커스 표시는 정상(a11y-report.json date-input 8/8).",
+    "fix": "DateInput 이 틀린 날짜일 때 form-hint-invalid 오류 문구를 내보내고 aria-describedby 로 연결한다."
+  },
+  {
+    "idx": 150,
+    "scope": "site",
+    "verdict": null,
+    "evidence": "Field+FieldLabel 이나 aria-label 로 사이트가 레이블을 단다(Textarea 는 Field 안에서 id 를 자동으로 받는다).",
+    "fix": null
+  },
+  {
+    "idx": 151,
+    "scope": "site",
+    "verdict": null,
+    "evidence": "placeholder 를 레이블·도움말 대신 쓰지 않도록 사이트가 FieldLabel·FieldDescription 을 쓴다(키트 주석 예시는 placeholder 만 쓰고 있어 예시 보강 권장).",
+    "fix": null
+  },
+  {
+    "idx": 152,
+    "scope": "kit",
+    "verdict": "P",
+    "evidence": "react/textarea.tsx·vue/Textarea.vue 에 onPaste/onCopy 차단이나 user-select 제한이 없고 네이티브 textarea 를 그대로 쓴다.",
+    "fix": null
+  },
+  {
+    "idx": 153,
+    "scope": "kit",
+    "verdict": "P",
+    "evidence": "showCount 와 maxLength 를 주면 '입력한 글자 수 N/최대' 가 보이고 aria-describedby 로 입력칸 설명에 연결된다(react/textarea.tsx, vue/Textarea.vue).",
+    "fix": "글자 수가 한도에 가까울 때 aria-live 로 알려 주면 더 좋다."
+  },
+  {
+    "idx": 154,
+    "scope": "kit",
+    "verdict": "P",
+    "evidence": "네이티브 textarea 에 Field 연결(id·aria-describedby·aria-invalid·required)이 자동으로 붙고, 홈박스 층 textarea:focus 링(css/style/homebox.css)이 보인다. a11y-report.json textarea 2/2 표시·axe 0건.",
+    "fix": null
+  },
+  {
+    "idx": 155,
+    "scope": "kit",
+    "verdict": "P",
+    "evidence": "textarea.krds-input 은 높이 144px 고정·overflow 기본(auto)이라 내용이 넘치면 안에서 스크롤되고 키보드·휠 스크롤이 네이티브로 된다(dist/kit.css textarea.krds-input). 크기 조절은 resize:none 으로 막혀 있다.",
+    "fix": null
+  },
+  {
+    "idx": 156,
+    "scope": "kit",
+    "verdict": "P",
+    "evidence": ".krds-input 과 .textarea-wrap 이 width:100% 라 텍스트 영역이 놓인 칸 폭을 가득 채운다(dist/kit.css).",
+    "fix": null
+  },
+  {
+    "idx": 157,
+    "scope": "kit",
+    "verdict": "P",
+    "evidence": ".krds-input 이 width:100%(dist/kit.css) 라 Input 이 놓인 칸 폭을 가득 채운다. React·Vue 동일.",
+    "fix": null
+  },
+  {
+    "idx": 158,
+    "scope": "site",
+    "verdict": null,
+    "evidence": "Field+FieldLabel(htmlFor 자동)이나 aria-label 로 사이트가 레이블을 단다.",
+    "fix": null
+  },
+  {
+    "idx": 159,
+    "scope": "site",
+    "verdict": null,
+    "evidence": "placeholder 를 레이블·도움말 대신 쓰지 않도록 사이트가 FieldLabel·FieldDescription 을 쓴다.",
+    "fix": null
+  },
+  {
+    "idx": 160,
+    "scope": "kit",
+    "verdict": "P",
+    "evidence": "react/input.tsx·vue/Input.vue 에 붙여넣기·복사 차단 코드가 없다. PasswordInput 도 막지 않는다.",
+    "fix": null
+  },
+  {
+    "idx": 161,
+    "scope": "site",
+    "verdict": null,
+    "evidence": "이름·이메일·주소 칸에 autoComplete(name·email·street-address 등)를 사이트가 준다(Input 은 속성을 그대로 넘기고 막지 않는다).",
+    "fix": null
+  },
+  {
+    "idx": 162,
+    "scope": "kit",
+    "verdict": "P",
+    "evidence": "네이티브 input 에 Field 연결이 자동으로 붙고 포커스 링이 보인다. ClearableInput 은 지운 뒤 입력칸으로 포커스를 돌려주고 PasswordInput 버튼은 aria-pressed 로 상태를 알린다(react/input.tsx). a11y-report.json input 12/12 표시·axe 0건.",
+    "fix": null
+  },
+  {
+    "idx": 163,
+    "scope": "site",
+    "verdict": null,
+    "evidence": "모달 안에서는 multiple=false 로 한 파일만 받게 사이트가 쓴다.",
+    "fix": null
+  },
+  {
+    "idx": 164,
+    "scope": "kit",
+    "verdict": "P",
+    "evidence": "파일마다 항목(이름·형식·크기)과 '삭제 {파일명}' 버튼, 전체 파일 삭제 버튼을 준다(react/file-upload.tsx·vue/FileUpload.vue).",
+    "fix": "삭제 뒤 포커스가 숨은 input(React)·없음(Vue)으로 가 사실상 사라진다 — 다음 항목이나 파일선택 버튼으로 옮기면 좋다."
+  },
+  {
+    "idx": 165,
+    "scope": "kit",
+    "verdict": "F",
+    "evidence": "title 은 선택 속성이고, 있어도 h3 로만 그려져 '파일선택' 버튼과 연결(aria-labelledby·aria-describedby)이 없다. 버튼 이름은 어느 칸의 파일인지 모르는 '파일선택' 뿐이다(react/file-upload.tsx, vue/FileUpload.vue).",
+    "fix": "title 을 필수로 하고 버튼에 aria-describedby(제목·안내 id)를 걸거나 '첨부 서류 파일 선택' 처럼 이름에 포함한다."
+  },
+  {
+    "idx": 166,
+    "scope": "kit",
+    "verdict": "F",
+    "evidence": "accept·maxSize·maxFiles 를 받지만 안내 문구로 보이지 않는다. 안내는 description 을 사이트가 직접 써야 하고, 개수는 파일을 넣은 뒤에야 'N개 / 최대' 로 나온다(react/file-upload.tsx, vue/FileUpload.vue).",
+    "fix": "description 이 없으면 accept·maxSize·maxFiles 로 '첨부 가능 형식: hwp, pdf · 파일당 20MB 미만 · 최대 10개' 를 자동으로 보인다."
+  },
+  {
+    "idx": 167,
+    "scope": "kit",
+    "verdict": "P",
+    "evidence": "파일을 넣은 뒤에도 '파일선택' 버튼 모양·이름이 바뀌지 않고 disabled 속성으로만 비활성화된다(react/file-upload.tsx·vue/FileUpload.vue 파일선택 버튼).",
+    "fix": null
+  },
+  {
+    "idx": 168,
+    "scope": "kit",
+    "verdict": "?",
+    "evidence": "'파일선택' 버튼이 variant 없는 krds-btn medium 이라 기본 규칙에서 주색 채움(primary)으로 칠해진다(dist/kit.css .krds-btn 배경). 같은 화면의 제출 버튼과 강조 수준이 겹치는지는 KRDS 원문 예시와 대조가 필요하다.",
+    "fix": "파일선택 버튼을 secondary(보조)로 바꾸거나 variant 속성으로 고를 수 있게 한다."
+  },
+  {
+    "idx": 169,
+    "scope": "kit",
+    "verdict": "P",
+    "evidence": "파일을 고르면 목록에만 추가하고 폼 제출을 부르지 않는다. upload 콜백을 줄 때만 파일별 업로드를 부른다(react/file-upload.tsx add, vue/FileUpload.vue).",
+    "fix": null
+  },
+  {
+    "idx": 170,
+    "scope": "kit",
+    "verdict": "F",
+    "evidence": "용량 초과는 '20MB 미만의 파일만…' 처럼 구체적이지만, 끌어다 놓은 파일은 accept 형식을 검사하지 않아 허용 안 된 형식도 오류 없이 들어가고, 개수 초과는 화면낭독용(sr-only) 알림으로만 나온다. 업로드 실패 문구도 원인 없이 일반적이다(react/file-upload.tsx, vue/FileUpload.vue).",
+    "fix": "add 에서 accept 형식을 검사해 '허용되지 않는 형식입니다(hwp, pdf 만)' 오류 항목을 만들고, 개수 초과 안내를 눈에 보이게 표시한다. upload 거부 사유를 메시지로 받을 수 있게 한다."
+  },
+  {
+    "idx": 171,
+    "scope": "kit",
+    "verdict": "F",
+    "evidence": "PC 에서는 .file-name 이 -webkit-line-clamp:1 로 한 줄이지만, 767px 이하에서 display:flex 로 바뀌어 한 줄 제한이 풀리고 긴 이름이 여러 줄로 감긴다(dist/kit.css .krds-file-upload .file-list .upload-list .file-info .file-name 모바일 규칙).",
+    "fix": "모바일 규칙에도 white-space:nowrap·overflow:hidden·text-overflow:ellipsis 를 걸어 한 줄로 유지한다."
+  }
+]

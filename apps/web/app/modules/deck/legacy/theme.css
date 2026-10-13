@@ -1,0 +1,32 @@
+/* powerDeck 옛 토큰 이름 → 플랫폼 토큰 연결 — 출처: powerDeck web/src/index.css @theme (계약 §4 매핑).
+   옛 화면이 text-ink2·text-muted·bg-panel·text-orange-d 같은 Tailwind 유틸리티로 수백 곳에서 쓰므로 이름은 남기고 값만 플랫폼(홈박스 톤)으로.
+   주황 계열(선택 상태·글자 강조·개수 배지)은 무채색으로 — 포인트 주황은 주 버튼(.btn-next·.bg-brand)과 진행 막대에만(사용자 2026-10-06 "강조색 남발하지 말고 중요한 곳에만"). app.css 가 이 파일을 @import 한다(유틸리티는 주 CSS 의 테마에서만 만들어진다). */
+@theme inline {
+  --color-ink2: var(--color-ink-3);
+  --color-ink3: var(--color-ink-2);
+  --color-dim: var(--color-ink-3);   /* 옛 muted — shadcn 의 muted(바탕색)와 이름이 겹쳐 덮였으므로 dim 으로 */
+  --color-faint: var(--color-ink-4);
+  --color-line-soft: var(--color-line-2);
+  --color-orange: var(--color-ink);
+  --color-orange-d: var(--color-ink);
+  --color-orange-soft: var(--color-ground-3);
+  --color-orange-tint: var(--color-ground-2);
+  --color-orange-line: var(--color-line-3);
+  --color-pd-ring: color-mix(in srgb, var(--color-ink) 12%, transparent);
+  --color-bar: var(--color-ground-3);
+  --color-bar-line: var(--color-line);
+  --color-panel: var(--color-ground-2);
+  --color-foot: var(--color-ground-2);
+  --color-side: var(--color-ground-2);
+  --color-track: var(--color-ground-3);
+  --color-off: var(--color-ground-4);
+  --color-off-ink: var(--color-ink-4);
+  --color-box: var(--color-line-3);
+}
+
+/* 상태 색 보조 단계(옛 화면의 옅은 빨강·초록·노랑 선/면) — 톤 통일 때 하드코딩 hex 를 이 이름으로 바꿨다. */
+@theme inline {
+  --color-warn-line: color-mix(in srgb, var(--color-warn) 30%, var(--color-ground));
+  --color-ok-line: color-mix(in srgb, var(--color-ok) 30%, var(--color-ground));
+  --color-mark-soft: color-mix(in srgb, var(--color-mark) 45%, var(--color-ground));
+}

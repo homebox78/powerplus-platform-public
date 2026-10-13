@@ -1,0 +1,70 @@
+// powerAssets 조회 — api/routes/assets.php 와 짝. 목록 봉투의 meta.hidden = 현재 플랜에서 안 보이는 수(업그레이드 안내 근거).
+import { queryOptions } from "@tanstack/react-query";
+import { apiFetch, apiList } from "@/lib/api";
+
+export type AssetCategory = "icon" | "photo" | "illust" | "diagram" | "logo" | "ppt" | "mockup_sample";
+export interface AssetItem {
+  id: string;
+  category: AssetCategory;
+  category_ko: string;
+  name: string | null;
+  alt: string | null;
+  w: number | null;
+  h: number | null;
+  visibility: string;
+  style_group: string | null;
+  slide_kind: "package" | "single" | null;
+  slide_page: string | null;
+  set: { id: string; name: string } | null;
+  ai_generated: boolean;
+  created_at: string;
+  thumb_url: string;
+  /** 목록에서만 — 카드에 보일 대표 키워드(최대 4) */
+  keywords?: string[];
+}
+export interface AssetDetail extends AssetItem {
+  tags: { ko: string[]; en: string[]; meta: string[] };
+  original_url: string;
+  slide_url?: string;
+  uses: number;
+}
+export interface AssetCategoryCount { id: AssetCategory; label: string; count: number; total: number }
+export interface AssetSet { id: string; name: string; style: string | null; category: string | null; count: number; total: number; cover_url: string | null; recent?: number; updated_at?: string | null }
+export interface AssetRequest { id: string; title: string; kind: string | null; detail: string | null; status: "new" | "done" | "rejected"; created_at: string }
+
+export interface AssetListParams { category?: string; q?: string; set?: string; sort?: "newest" | "popular" | "name"; page?: number; limit?: number }
+
+const qs = (p: Record<string, string | number | undefined>) => {
+  const u = new URLSearchParams();
+  for (const [k, v] of Object.entries(p)) if (v !== undefined && v !== "" ) u.set(k, String(v));
+  const s = u.toString();
+  return s ? `?${s}` : "";
+};
+
+export const assetCategoriesQuery = queryOptions({ queryKey: ["assets", "categories"], queryFn: () => apiFetch<AssetCategoryCount[]>("/assets/categories"), staleTime: 60_000 });
+export const assetListQuery = (p: AssetListParams) => queryOptions({ queryKey: ["assets", "items", p], queryFn: () => apiList<AssetItem>(`/assets/items${qs({ ...p })}`), staleTime: 30_000 });
+export const assetSetsQuery = (category?: string) => queryOptions({ queryKey: ["assets", "sets", category ?? ""], queryFn: () => apiFetch<AssetSet[]>(`/assets/sets${qs({ category })}`), staleTime: 60_000 });
+export const assetDetailQuery = (id: string | null) => queryOptions({ queryKey: ["assets", "item", id], queryFn: () => apiFetch<AssetDetail>(`/assets/items/${id}`), enabled: !!id });
+export const assetRequestsQuery = queryOptions({ queryKey: ["assets", "requests"], queryFn: () => apiFetch<AssetRequest[]>("/assets/requests") });
+
+export const CATEGORY_KO: Record<AssetCategory, string> = { icon: "아이콘", photo: "사진", illust: "일러스트", diagram: "다이어그램", logo: "로고", ppt: "장표", mockup_sample: "목업 샘플" };
+export const SORT_KO = { newest: "최신순", popular: "인기순", name: "이름순" } as const;
+export const REQUEST_STATUS_KO: Record<AssetRequest["status"], string> = { new: "접수", done: "등록됨", rejected: "보류" };
+
+/** 세트 이름(개발용 코드 "icon-flat-blue-glass") → 한글 표시 이름("플랫 · 파랑 · 유리").
+ *  아이콘·일러스트 접두는 떼고 낱말마다 번역, 모르는 낱말은 그대로 둔다. 사이트종합평가리포트 2-8. */
+const SET_WORD_KO: Record<string, string> = {
+  flat: "플랫", business: "비즈니스", doc: "문서", concept: "개념", hero: "히어로", keyvisual: "키비주얼", climate: "기후", glass: "유리", iso: "아이소", "3d": "입체", color: "컬러", blue: "파랑", green: "초록", yellow: "노랑", navy: "남색",
+  mint: "민트", lightblue: "하늘", softblue: "연파랑", pastel: "파스텔", clay: "클레이", soft: "부드러운", pale: "연한", gloss: "광택",
+  matte: "무광", line: "선", mono: "단색", duotone: "투톤", filled: "채움", light: "밝은", mixed: "혼합", misc: "기타", photo: "사진",
+  realistic: "실사", tech: "기술", device: "기기", drop: "물방울", badge: "배지", pedestal: "받침", people: "사람", scene: "장면",
+  standard: "기본", cheer: "응원", fullbody: "전신", control: "관제", building: "건물", faceless: "얼굴 없는", half: "반신",
+  char: "캐릭터", front: "정면", cute: "귀여운", kr: "한국", biz: "비즈니스", western: "서양", banner: "배너", objects: "사물", semi: "세미",
+  si: "SI", deck: "장표", handdrawn: "손그림", gradient: "그라데이션",
+};
+export function setLabel(code: string): string {
+  const words = code.replace(/^(icon|illust|photo|diagram|logo)-/, "").split("-").filter(Boolean);
+  const out: string[] = [];
+  for (const w of words) { const k = SET_WORD_KO[w.toLowerCase()] ?? w; if (!out.includes(k)) out.push(k); }
+  return out.join(" · ") || code;
+}

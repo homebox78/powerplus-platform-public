@@ -1,0 +1,253 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>{{TITLE}} — 발표 대본</title>
+<!-- 발표자가 들고 가는 대본 문서. 상단 타임라인·리허설 타이머, 구간별 대본(시작 시각·화면·남길 문장·말하는 법), 발표 전 점검, 어긋났을 때, 예상 질문. 인터넷 없이 열린다(서체만 인터넷이 되면 Pretendard) -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+<style>
+:root{--paper:#EDF1F5;--surface:#fff;--sunk:#E2E8F0;--ink:#23262E;--ink2:#4B5361;--muted:#79828F;--line:#D1DAE4;--soft:#E1E7EE;
+  --accent:#C43E1C;--accent-soft:#FBEEE4;--ok:#177F4C;--warn:#8C5A00;
+  --sans:"Pretendard Variable",Pretendard,-apple-system,"Apple SD Gothic Neo","Malgun Gothic",system-ui,sans-serif}
+*{box-sizing:border-box}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--sans);font-size:15px;line-height:1.75;-webkit-font-smoothing:antialiased}
+h1,h2,h3,h4{margin:0;text-wrap:balance}p{margin:0}ul{margin:0;padding:0;list-style:none}
+.wrap{max-width:1100px;margin:0 auto;padding:0 24px 96px}
+.num{font-variant-numeric:tabular-nums}
+
+/* 상단 고정 — 타임라인 + 리허설 타이머 */
+.bar{position:sticky;top:0;z-index:20;background:rgba(237,241,245,.92);backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+.bar__in{max-width:1100px;margin:0 auto;padding:12px 24px 14px;display:flex;flex-direction:column;gap:10px}
+.bar__top{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.brand{font-weight:800;font-size:16px;letter-spacing:-.01em;max-width:46ch;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.meta{font-size:11.5px;color:var(--muted);letter-spacing:.02em}
+.clock{margin-left:auto;display:flex;align-items:center;gap:10px}
+.clock__t{font-weight:700;font-size:22px;font-variant-numeric:tabular-nums;letter-spacing:-.02em;min-width:4.2ch;text-align:right}
+.clock__t.over{color:var(--accent)}
+.clock__now{font-size:12.5px;color:var(--ink2);min-width:13ch}
+.btn{font:inherit;font-size:12.5px;font-weight:600;border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:999px;padding:5px 14px;cursor:pointer}
+.btn:hover{border-color:var(--accent)}
+.btn--go{background:var(--ink);color:#fff;border-color:var(--ink)}.btn--go:hover{background:var(--accent);border-color:var(--accent)}
+.track{position:relative}
+.segs{display:flex;gap:2px;height:26px}
+.tseg{flex-grow:var(--w);flex-basis:0;min-width:0;background:var(--sunk);border-radius:2px;display:flex;align-items:center;justify-content:center;font-size:10.5px;color:var(--muted);overflow:hidden;white-space:nowrap;text-decoration:none;padding:0 4px}
+.tseg:hover{color:var(--ink)}
+.tseg.nocut{background:color-mix(in srgb,var(--accent) 18%,var(--sunk));color:var(--ink2)}
+.tseg.live{background:var(--accent);color:#fff}
+.tseg.spare{background:transparent;border:1px dashed var(--line)}
+.head{position:absolute;top:-4px;bottom:-4px;width:2px;background:var(--ink);left:0;border-radius:2px;pointer-events:none;transition:left .2s linear}
+.head::after{content:"";position:absolute;top:-3px;left:-3px;width:8px;height:8px;border-radius:50%;background:var(--ink)}
+.ticks{display:flex;margin-top:4px;font-size:10px;color:var(--muted);font-variant-numeric:tabular-nums}
+.ticks span{flex-basis:0;flex-grow:var(--w)}.ticks span:last-child{flex-grow:0}
+
+/* 표지 */
+.top{padding:36px 0 26px;display:grid;gap:16px}
+.kicker{font-size:11.5px;font-weight:700;letter-spacing:.14em;color:var(--accent)}
+.title{font-weight:800;font-size:clamp(26px,4vw,38px);line-height:1.3;letter-spacing:-.02em;word-break:keep-all}
+.lede{font-size:16px;line-height:1.85;color:var(--ink2);max-width:62ch;word-break:keep-all}
+.facts{display:flex;flex-wrap:wrap;border-top:1px solid var(--line);border-bottom:1px solid var(--line);margin:4px 0 0;padding:0}
+.fact{padding:12px 22px 12px 0;margin-right:22px;border-right:1px solid var(--soft)}.fact:last-child{border-right:0}
+.fact dt{font-size:10.5px;font-weight:600;letter-spacing:.08em;color:var(--muted)}
+.fact dd{margin:2px 0 0;font-size:15px;font-weight:600;font-variant-numeric:tabular-nums}
+.fact dd.warn{color:var(--accent)}
+
+/* 섹션 머리 */
+.rule{display:flex;align-items:baseline;gap:14px;margin:50px 0 20px}
+.rule h2{font-weight:800;font-size:21px;letter-spacing:-.01em;white-space:nowrap}
+.rule::after{content:"";flex:1;height:1px;background:var(--line)}
+.rule .note{font-size:11.5px;color:var(--muted);white-space:nowrap}
+
+/* 발표 전 점검 */
+.prep{display:grid;grid-template-columns:repeat(4,1fr);gap:0 26px}
+@media(max-width:900px){.prep{grid-template-columns:repeat(2,1fr)}}@media(max-width:560px){.prep{grid-template-columns:1fr}}
+.prep__col{padding:16px 0;border-top:1px solid var(--line)}
+.prep__when{font-size:11.5px;font-weight:800;letter-spacing:.06em;color:var(--accent);margin-bottom:8px}
+.chk{display:flex;gap:10px;align-items:flex-start;padding:5px 0;cursor:pointer;font-size:14px;line-height:1.6;word-break:keep-all}
+.chk input{margin-top:4px;accent-color:var(--accent);width:15px;height:15px;flex:none}
+.chk.done span{color:var(--muted);text-decoration:line-through}
+
+/* 구간 */
+.part{display:grid;grid-template-columns:180px 1fr;gap:30px;padding:24px 0 26px 2%;border-top:1px solid var(--line);scroll-margin-top:118px}
+.part:first-of-type{border-top:2px solid var(--ink)}
+.part.live{background:linear-gradient(to right,var(--accent-soft),transparent 78%)}
+.rail{display:flex;flex-direction:column;gap:8px;position:sticky;top:122px;align-self:start}
+.rail__t{font-weight:700;font-size:26px;letter-spacing:-.03em;font-variant-numeric:tabular-nums;line-height:1}
+.rail__d{font-size:11.5px;color:var(--muted)}
+.rail__keep{display:inline-block;align-self:start;font-size:11px;font-weight:700;color:var(--accent);border:1px solid currentColor;border-radius:999px;padding:1px 8px}
+.ph{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin-bottom:4px}
+.ph small{font-size:11.5px;font-weight:700;letter-spacing:.08em;color:var(--accent)}
+.ph h3{font-weight:800;font-size:23px;letter-spacing:-.02em}
+.aim{font-size:13.5px;color:var(--muted);margin-bottom:6px;word-break:keep-all}
+
+.slide{display:grid;grid-template-columns:76px 1fr;gap:16px;padding:18px 0;border-top:1px solid var(--soft)}
+.slide:first-of-type{border-top:0;padding-top:10px}
+.slide__t{font-size:13px;font-weight:600;color:var(--accent);font-variant-numeric:tabular-nums}
+.slide__t small{display:block;color:var(--muted);font-weight:500;font-size:11px}
+.slide__t small.over{color:var(--accent)}
+.sh{display:flex;gap:14px;align-items:flex-start}
+.sh__txt{flex:1;min-width:0}
+.slide h4{font-size:15.5px;font-weight:700;margin-bottom:8px;word-break:keep-all}
+.slide h4 em{font-style:normal;color:var(--muted);font-weight:600;margin-right:6px}
+.pic{flex:none;width:168px;border-radius:6px;box-shadow:0 0 0 1px var(--line),0 6px 16px -10px rgba(35,38,46,.5);background:#fff;cursor:zoom-in;display:block}
+.keep{font-size:13.5px;color:var(--ink2);margin-bottom:10px;word-break:keep-all}
+.keep b{color:var(--accent);font-weight:700;margin-right:4px}
+.cue{display:block;font-size:12.5px;line-height:1.7;color:var(--ink2);background:var(--sunk);border-radius:3px;padding:7px 11px;margin-bottom:12px;word-break:keep-all}
+.cue b{color:var(--accent);font-weight:600}
+.script{border-left:2px solid var(--accent);padding-left:18px;display:grid;gap:9px}
+.script p{font-size:16px;line-height:1.7;letter-spacing:-.005em;word-break:keep-all}
+.script p strong{font-weight:800}
+.script p.must{text-decoration:underline;text-decoration-color:var(--accent);text-decoration-thickness:2px;text-underline-offset:5px}
+.beat{color:var(--muted);font-size:13.5px;line-height:1.7;font-style:italic;margin-top:8px;word-break:keep-all}
+.beat + .beat{margin-top:2px}
+@media(max-width:820px){.part{grid-template-columns:1fr;gap:12px;padding-left:0}.rail{position:static;flex-direction:row;align-items:baseline;gap:12px;flex-wrap:wrap}.pic{width:120px}}
+@media(max-width:520px){.slide{grid-template-columns:1fr;gap:4px}.sh{flex-direction:column}.pic{width:100%}}
+
+/* 어긋났을 때 */
+table{width:100%;border-collapse:collapse;font-size:14px}
+th{text-align:left;font-size:11px;font-weight:700;letter-spacing:.06em;color:var(--muted);padding:8px 12px 8px 0;border-bottom:1px solid var(--ink)}
+td{padding:12px 12px 12px 0;border-bottom:1px solid var(--line);vertical-align:top;line-height:1.65;word-break:keep-all}
+td:first-child{font-weight:700;white-space:nowrap}td:nth-child(2){color:var(--ink2)}
+@media(max-width:640px){thead{display:none}tr{display:block;padding:10px 0;border-bottom:1px solid var(--line)}td{display:block;border:0;padding:2px 0}}
+
+/* 예상 질문 */
+.qa{display:grid;gap:0}
+.q{padding:16px 0;border-top:1px solid var(--line)}
+.q h4{font-size:15.5px;font-weight:700;display:flex;gap:10px;word-break:keep-all}
+.q h4 em{font-style:normal;color:var(--accent);font-variant-numeric:tabular-nums;flex:none}
+.q h4 small{margin-left:auto;font-weight:600;color:var(--muted);font-size:12px;white-space:nowrap}
+.q p{margin-top:6px;color:var(--ink2);word-break:keep-all}
+.q .need{margin-top:6px;font-size:13px;font-weight:600;color:var(--warn)}
+.empty{color:var(--muted);font-size:14px}
+.foot{margin-top:56px;padding-top:16px;border-top:1px solid var(--line);font-size:12px;color:var(--muted);display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap}
+
+#zoom{position:fixed;inset:0;z-index:50;background:rgba(20,22,28,.82);display:none;align-items:center;justify-content:center;padding:24px;cursor:zoom-out}
+#zoom.on{display:flex}#zoom img{max-width:100%;max-height:100%;border-radius:6px}
+
+@media print{.bar{position:static}.btn,.clock{display:none}.rail{position:static}.part{break-inside:avoid-page}body{background:#fff}}
+</style></head><body>
+<div class="bar"><div class="bar__in">
+  <div class="bar__top">
+    <span class="brand" id="brand"></span>
+    <span class="meta" id="meta"></span>
+    <div class="clock">
+      <span class="clock__now" id="now">리허설 전</span>
+      <span class="clock__t" id="clock">0:00</span>
+      <button class="btn btn--go" id="go">리허설 시작</button>
+      <button class="btn" id="reset">처음으로</button>
+    </div>
+  </div>
+  <div class="track"><div class="segs" id="segs"></div><i class="head" id="head"></i></div>
+  <div class="ticks" id="ticks"></div>
+</div></div>
+
+<div class="wrap">
+  <section class="top">
+    <div class="kicker" id="flow"></div>
+    <h1 class="title" id="thesis"></h1>
+    <p class="lede" id="lede"></p>
+    <dl class="facts" id="facts"></dl>
+  </section>
+
+  <div class="rule"><h2>발표 전 점검</h2><span class="note">체크는 이 브라우저에만 남습니다</span></div>
+  <div class="prep" id="prep"></div>
+
+  <div class="rule"><h2>대본</h2><span class="note">밑줄 친 문장은 시간이 모자라도 반드시 말한다</span></div>
+  <div id="parts"></div>
+
+  <div class="rule"><h2>어긋났을 때</h2><span class="note">멈추지 말고 다음 줄로 넘어간다</span></div>
+  <table><thead><tr><th>상황</th><th>조짐</th><th>그 자리에서 할 일</th></tr></thead><tbody id="recover"></tbody></table>
+
+  <div class="rule"><h2>예상 질문</h2><span class="note">각 30초 안에 끝낸다</span></div>
+  <div class="qa" id="qa"></div>
+
+  <div class="foot"><span id="footL"></span><span>수치는 발표 당일 아침 기준으로 다시 확인</span></div>
+</div>
+<div id="zoom"><img alt=""></div>
+
+<script>
+const D = "{{DATA}}";
+const $ = (i) => document.getElementById(i);
+const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const fmt = (x) => { x = Math.max(0, Math.round(x)); return Math.floor(x / 60) + ":" + String(x % 60).padStart(2, "0"); };
+const dur = (x) => (x >= 60 ? Math.floor(x / 60) + "분" + (x % 60 ? " " + (x % 60) + "초" : "") : x + "초");
+const strong = (s) => esc(s).replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>");
+const cue = (s) => esc(s).replace(/\[([^\]]+)\]/g, "<b>[$1]</b>");
+const plain = (s) => String(s).replace(/\*\*/g, "").replace(/\s+/g, "");
+const ls = (k, d) => { try { return localStorage.getItem(k) ?? d; } catch { return d; } };
+const sv = (k, v) => { try { localStorage.setItem(k, v); } catch {} };
+
+const P = D.parts, GOAL = Math.max(D.goal, D.total), SPARE = Math.max(0, D.goal - D.total);
+document.title = D.title + " — 발표 대본";
+$("brand").textContent = D.title + " · 발표 대본";
+$("meta").textContent = "목표 " + fmt(D.goal) + " · 대본 " + fmt(D.total) + " · " + D.count + "장 · " + D.made;
+$("flow").textContent = P.map((p) => p.name).join(" → ");
+$("thesis").textContent = D.thesis;
+$("lede").textContent = D.lede || "구간마다 시작 시각을 맞추며 읽습니다. 밑줄 친 남길 문장은 시간이 모자라도 빼지 않습니다.";
+if (!D.lede) $("lede").style.color = "var(--muted)";
+const facts = [["목표 시간", fmt(D.goal)], ["대본 길이", fmt(D.total)], [SPARE ? "여유" : "초과", SPARE ? fmt(SPARE) : "+" + fmt(D.total - D.goal), !SPARE && D.total > D.goal], ["장 수", D.count + "장"], ...D.facts.map((f) => [f.k, f.v])];
+$("facts").innerHTML = facts.map(([k, v, w]) => `<div class="fact"><dt>${esc(k)}</dt><dd class="${w ? "warn" : ""}">${esc(v)}</dd></div>`).join("");
+
+// 타임라인 — 구간 폭은 실제 읽는 시간, 끝은 여유
+$("segs").innerHTML = P.map((p, i) => `<a class="tseg${p.never_cut ? " nocut" : ""}" href="#p${i}" style="--w:${p.sec}" title="${esc(p.name)} · ${fmt(p.start)} · ${dur(p.sec)}">${esc(p.name)}</a>`).join("")
+  + (SPARE ? `<span class="tseg spare" style="--w:${SPARE}">여유</span>` : "");
+$("ticks").innerHTML = P.map((p) => `<span style="--w:${p.sec}">${fmt(p.start)}</span>`).join("") + (SPARE ? `<span style="--w:${SPARE}">${fmt(D.total)}</span>` : "") + `<span>${fmt(GOAL)}</span>`;
+
+// 발표 전 점검 — 체크는 작업마다 이 브라우저에 남는다
+const CK = "pd_doc_chk_" + D.id;
+let ck = {}; try { ck = JSON.parse(ls(CK, "{}")) || {}; } catch {}
+$("prep").innerHTML = Object.entries(D.checklist).map(([when, items], a) => `<div class="prep__col"><div class="prep__when">${esc(when)}</div><ul>`
+  + items.map((t, b) => `<li><label class="chk${ck[a + "." + b] ? " done" : ""}"><input type="checkbox" data-k="${a}.${b}"${ck[a + "." + b] ? " checked" : ""}><span>${esc(t)}</span></label></li>`).join("") + "</ul></div>").join("");
+$("prep").addEventListener("change", (e) => { const k = e.target.dataset.k; if (!k) return; ck[k] = e.target.checked; e.target.parentElement.classList.toggle("done", e.target.checked); sv(CK, JSON.stringify(ck)); });
+
+// 대본 — 구간 > 장. 빈 줄로 나뉜 줄 묶음이 한 문장(문단)
+$("parts").innerHTML = P.map((p, i) => `<section class="part" id="p${i}">
+  <div class="rail"><div class="rail__t">${fmt(p.start)}</div><div class="rail__d">${dur(p.sec)}</div>${p.never_cut ? '<span class="rail__keep">줄이지 않음</span>' : ""}</div>
+  <div><div class="ph"><small>구간 ${i + 1}</small><h3>${esc(p.name)}</h3></div>${p.aim ? `<div class="aim">${esc(p.aim)}</div>` : ""}
+  ${p.slides.map((s) => {
+    const paras = []; let cur = [];
+    s.lines.forEach((l) => { if (l === "") { if (cur.length) paras.push(cur.join(" ")); cur = []; } else cur.push(l); });
+    if (cur.length) paras.push(cur.join(" "));
+    const k = plain(s.keep || "");
+    const must = (t) => k.length > 6 && (plain(t).includes(k) || k.includes(plain(t)) && plain(t).length > k.length * 0.6);
+    const over = s.goal && s.sec > s.goal * 1.15;
+    return `<div class="slide"><div class="slide__t">${fmt(s.start)}<small class="${over ? "over" : ""}" title="${s.goal ? "배정 " + s.goal + "초" : ""}">${s.sec}초${over ? " · 김" : ""}</small></div>
+      <div><div class="sh"><div class="sh__txt"><h4><em>${s.n}쪽</em>${esc(s.title)}</h4>
+        ${s.keep ? `<div class="keep"><b>남길 문장</b>${esc(s.keep)}</div>` : ""}
+        ${s.screen || s.cues.length ? `<span class="cue">${s.screen ? "<b>화면</b> " + cue(s.screen) : ""}${s.cues.map((c) => "<br>" + cue(c)).join("")}</span>` : ""}</div>
+        ${s.img ? `<img class="pic" src="${s.img}" alt="${s.n}쪽" loading="lazy">` : ""}</div>
+        <div class="script">${paras.map((t) => `<p class="${must(t) ? "must" : ""}">${strong(t)}</p>`).join("")}</div>
+        ${s.notes.map((n) => `<p class="beat">— ${esc(n)}</p>`).join("")}
+        ${s.cut ? `<p class="beat">— 줄일 때: ${esc(s.cut)}</p>` : ""}
+      </div></div>`;
+  }).join("")}</div></section>`).join("");
+
+$("recover").innerHTML = D.recover.map((r) => `<tr><td>${esc(r.s)}</td><td>${esc(r.sign)}</td><td>${esc(r.act)}</td></tr>`).join("");
+$("qa").innerHTML = D.qa.length ? D.qa.map((q, i) => `<div class="q"><h4><em>Q${i + 1}</em><span>${esc(q.q)}</span>${q.slide ? `<small>${q.slide}쪽 근거</small>` : ""}</h4><p>${esc(q.a)}</p>${q.need ? `<div class="need">준비할 것: ${esc(q.need)}</div>` : ""}</div>`).join("")
+  : '<p class="empty">아직 예상 질문을 만들지 않았습니다. powerDeck 의 발표 대본 탭에서 \'예상 질문 만들기\'를 누르면 여기에 들어갑니다.</p>';
+$("footL").textContent = D.title + " · " + D.made;
+
+// 그림 크게 보기
+document.addEventListener("click", (e) => { if (e.target.classList?.contains("pic")) { $("zoom").firstElementChild.src = e.target.src; $("zoom").classList.add("on"); } });
+$("zoom").onclick = () => $("zoom").classList.remove("on");
+
+// 리허설 타이머 — 지금 어느 구간이어야 하는지, 남은 시간·초과
+let run = false, base = 0, acc = 0, timer = 0;
+const secs = P.map((p) => p.start);
+function tick() {
+  const t = acc + (run ? (performance.now() - base) / 1000 : 0);
+  const left = D.goal - t;
+  $("clock").textContent = left >= 0 ? fmt(left) : "+" + fmt(-left);
+  $("clock").classList.toggle("over", left < 0);
+  let k = -1; secs.forEach((s, i) => { if (t >= s) k = i; });
+  if (t >= D.total) k = -2;
+  $("now").textContent = !run && t === 0 ? "리허설 전" : k === -2 ? (left >= 0 ? "여유 시간" : "시간 초과") : "구간 " + (k + 1) + " · " + P[k].name;
+  [...$("segs").children].forEach((el, i) => el.classList.toggle("live", (run || t > 0) && (i === k || (k === -2 && el.classList.contains("spare")))));
+  document.querySelectorAll(".part").forEach((el, i) => el.classList.toggle("live", (run || t > 0) && i === k));
+  $("head").style.left = Math.min(100, (t / GOAL) * 100) + "%";
+}
+$("go").onclick = () => {
+  if (run) { acc += (performance.now() - base) / 1000; run = false; clearInterval(timer); $("go").textContent = "이어서"; }
+  else { base = performance.now(); run = true; timer = setInterval(tick, 250); $("go").textContent = "멈춤"; }
+  tick();
+};
+$("reset").onclick = () => { run = false; acc = 0; clearInterval(timer); $("go").textContent = "리허설 시작"; tick(); scrollTo({ top: 0, behavior: "smooth" }); };
+tick();
+</script></body></html>

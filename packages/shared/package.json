@@ -1,0 +1,26 @@
+{
+  "name": "@pp/shared",
+  "private": true,
+  "version": "0.0.1",
+  "type": "module",
+  "description": "출처: homebox-handoff packages/shared — taxonomy.json, zod 스키마, 타입, 플랜 한도 — web·worker·mcp 공용",
+  "exports": {
+    ".": "./src/index.ts",
+    "./taxonomy": "./src/taxonomy.ts",
+    "./taxonomy.json": "./taxonomy.json"
+  },
+  "scripts": {
+    "typecheck": "tsc",
+    "lint": "eslint .",
+    "test": "vitest run --passWithNoTests"
+  },
+  "dependencies": {
+    "zod": "^4.6.5"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.0",
+    "vitest": "^5.0.1",
+    "eslint": "^9.39.0",
+    "typescript-eslint": "^8.48.0"
+  }
+}

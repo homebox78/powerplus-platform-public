@@ -180,6 +180,17 @@ export const fetchAdminAssetTrash = (o: { page?: number }) => apiList<AdminAsset
 export const fetchAdminSets = (o: { category?: string; q?: string }) => apiFetch<AdminAssetSet[]>(`/admin/sets${qs(o)}`);
 export const fetchAdminRequests = (o: { status?: string; q?: string; page?: number }) => apiList<AdminAssetRequest>(`/admin/requests${qs(o)}`);
 export const fetchSearchQuality = (days: number) => apiFetch<SearchQuality>(`/admin/search-quality${qs({ days })}`);
+
+// powerGuide 현황 — api/routes/admin_guide.php 와 1:1. 내용 편집은 없다(코드가 정본)
+export interface GuideAdmin {
+  days: number;
+  files: Array<{ label: string; path: string; feeds: string; ok: boolean; size: number; updated_at: string | null }>;
+  counts: { components: number; by_source: { krds: number; shadcn: number; both: number }; tokens: number; krds_components: number; krds_patterns: number; checklist: number; kit_version: string; checklist_at: string | null };
+  groups: Array<{ id: string; label: string; count: number; krds: number; shadcn: number; both: number }>;
+  verdicts: Array<{ verdict: string; count: number }>;
+  usage: { total: number; keys: number; share: number; tools: Array<{ tool: string; calls: number; keys: number }>; daily: Array<{ day: string; calls: number }> };
+}
+export const fetchGuideAdmin = (days: number) => apiFetch<GuideAdmin>(`/admin/guide${qs({ days })}`);
 export const REQUEST_STATUS_KO: Record<RequestStatus, string> = { new: "새 요청", done: "처리 완료", rejected: "보류" };
 
 // ── 콘텐츠 운영(시안 상세·갤러리·커뮤니티·도움말) — api/routes/admin2.php 와 1:1

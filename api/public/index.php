@@ -48,7 +48,7 @@ if (in_array($method, ['POST', 'PUT', 'PATCH', 'DELETE'], true) && !str_starts_w
 }
 
 $router = new Router();
-foreach (['core', 'assets', 'deck', 'deck_kit', 'mock', 'mock_wire', 'guide', 'comm', 'info', 'saved', 'search', 'assist', 'addin', 'billing', 'admin', 'admin2', 'admin3', 'admin_bulk', 'admin_bulk2', 'admin_ai', 'me_bulk', 'admin_system', 'deck_checklist', 'site_checklist', 'policy', 'reports', 'chat'] as $mod) {
+foreach (['core', 'assets', 'deck', 'deck_kit', 'mock', 'mock_wire', 'guide', 'comm', 'info', 'saved', 'search', 'assist', 'addin', 'billing', 'admin', 'admin2', 'admin3', 'admin_bulk', 'admin_bulk2', 'admin_ai', 'admin_guide', 'me_bulk', 'admin_system', 'deck_checklist', 'site_checklist', 'policy', 'reports', 'chat'] as $mod) {
     $file = __DIR__ . "/../routes/{$mod}.php";
     if (is_file($file)) {
         (require $file)($router);

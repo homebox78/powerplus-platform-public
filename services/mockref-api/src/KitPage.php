@@ -108,6 +108,20 @@ final class KitPage
     // ── 공용 ─────────────────────────────────────────────
     private static function e(string $s): string { return htmlspecialchars($s, ENT_QUOTES, 'UTF-8'); }
 
+    // ── 높이 예산 (2026-10-14 D7) ─────────────────────────
+    // 레퍼런스 본문이 짧은 안내 화면(서울 상세 879px)인데 조립은 표·첨부·이전글·만족도를 늘 다 넣어 +75% 가 됐다.
+    // 레퍼런스 본문 높이(body_h)의 1.12배 안에서 덜 중요한 블록부터 뺀다. body_h 가 없으면 예산 없음(전부 넣는다).
+    private int $room = PHP_INT_MAX;
+    private array $cut = [];
+    // 유형별 꼭 남기는 본문 높이(px, 1920 렌더 실측) — 상세: 머리 116 + 문단 156 + 목록 단추 72 / 콘텐츠: 첫 절 256
+    private const BASE = ['board_view' => 344, 'content' => 256];
+    private function fits(string $what, int $h): bool
+    {
+        if ($this->room < $h) { $this->cut[] = $what; return false; }
+        $this->room -= $h;
+        return true;
+    }
+
     private function img(array $kinds, array $tags = [], int $seed = 0): ?array
     {
         $got = Samples::find($kinds, $tags, 1, $seed + crc32($this->p['org']), array_keys($this->used));
@@ -300,13 +314,16 @@ final class KitPage
         return '<div class="krds-pagination pg-paging"><span class="page-navi prev disabled">이전</span><div class="page-links">' . $links . '<span class="page-link link-dot"></span><a class="page-link" href="#">' . $last . '</a></div><a class="page-navi next" href="#">다음</a></div>';
     }
 
-    private function satisfaction(string $dept): string
+    private function satisfaction(string $dept, bool $withDept = true): string
     {
+        // 담당부서 줄은 render 가 본문보다 먼저 자리를 잡는다($withDept), 만족도 상자는 남은 자리가 있을 때만
+        $sat = $this->fits('satisfaction', $withDept ? 161 : 225); // 담당부서 줄이 없으면 위 여백 64 도 이 상자 몫
+        if (!$withDept && !$sat) { return ''; }
         $this->blocks[] = 'satisfaction';
         $opts = ['매우 만족', '만족', '보통', '불만족', '매우 불만족'];
         $r = implode('', array_map(fn ($o, $i) => '<div class="krds-form-check medium"><input type="radio" name="sat" id="sat' . $i . '" value="' . (5 - $i) . '"' . ($i === 0 ? ' checked' : '') . '><label for="sat' . $i . '">' . $o . '</label></div>', $opts, array_keys($opts)));
-        return '<section class="pg-bottom"><dl class="pg-dept"><div><dt>담당부서</dt><dd>' . self::e($dept) . '</dd></div><div><dt>연락처</dt><dd>' . self::e($this->p['phone']) . '</dd></div><div><dt>최종 수정일</dt><dd>' . $this->date(2) . '</dd></div></dl>'
-            . '<div class="pg-sat"><h3>이 페이지에서 제공하는 정보에 만족하십니까?</h3><div class="pg-sat-row"><fieldset><legend class="sr-only">만족도</legend>' . $r . '</fieldset><input type="text" class="krds-input medium" placeholder="의견을 남겨 주세요 (100자 이내)" aria-label="의견"><button type="button" class="krds-btn secondary medium">평가하기</button></div></div></section>';
+        return '<section class="pg-bottom">' . ($withDept ? '<dl class="pg-dept"><div><dt>담당부서</dt><dd>' . self::e($dept) . '</dd></div><div><dt>연락처</dt><dd>' . self::e($this->p['phone']) . '</dd></div><div><dt>최종 수정일</dt><dd>' . $this->date(2) . '</dd></div></dl>' : '')
+            . ($sat ? '<div class="pg-sat"><h3>이 페이지에서 제공하는 정보에 만족하십니까?</h3><div class="pg-sat-row"><fieldset><legend class="sr-only">만족도</legend>' . $r . '</fieldset><input type="text" class="krds-input medium" placeholder="의견을 남겨 주세요 (100자 이내)" aria-label="의견"><button type="button" class="krds-btn secondary medium">평가하기</button></div></div>' : '') . '</section>';
     }
 
     private function footer(): string
@@ -365,9 +382,9 @@ final class KitPage
         ];
         $table = '<div class="krds-table-wrap"><table class="tbl row pg-table"><caption>개요 — 구분, 내용</caption><colgroup><col style="width:160px"><col></colgroup><tbody><tr><th scope="row">기간</th><td>' . $this->date(6) . ' ~ ' . $this->date(0) . '</td></tr><tr><th scope="row">대상</th><td>' . self::e($this->p['resident']) . ' 누구나</td></tr><tr><th scope="row">방법</th><td>누리집 온라인 신청 또는 방문 접수</td></tr><tr><th scope="row">문의</th><td>' . self::e($this->depts()[0]) . ' ' . self::e($this->p['phone']) . '</td></tr></tbody></table></div>';
         return '<article class="pg-view"><header class="pg-view-head"><h3>' . self::e($t[0]) . '</h3><dl class="pg-view-info"><div><dt>작성자</dt><dd>' . self::e($this->depts()[0]) . '</dd></div><div><dt>등록일</dt><dd>' . $this->date(0) . '</dd></div><div><dt>조회수</dt><dd>1,840</dd></div></dl></header>'
-            . '<div class="pg-view-body"><p>' . self::e($paras[0]) . '</p>' . $table . '<p>' . self::e($paras[1]) . '</p></div>'
-            . '<div class="pg-attach"><strong>첨부파일</strong><ul><li>' . self::icon('clip') . '<a href="#">' . self::e($t[0]) . ' 안내문.hwpx</a><span>(245KB)</span><a href="#" class="krds-btn small secondary">미리보기</a><a href="#" class="krds-btn small secondary">내려받기</a></li><li>' . self::icon('clip') . '<a href="#">신청서 서식.pdf</a><span>(118KB)</span><a href="#" class="krds-btn small secondary">미리보기</a><a href="#" class="krds-btn small secondary">내려받기</a></li></ul></div>'
-            . '<dl class="pg-prevnext"><div><dt>이전글</dt><dd><a href="#">' . self::e($t[1]) . '</a></dd></div><div><dt>다음글</dt><dd><a href="#">' . self::e($t[2]) . '</a></dd></div></dl>'
+            . '<div class="pg-view-body"><p>' . self::e($paras[0]) . '</p>' . ($this->fits('table', 214) ? $table : '') . '<p>' . self::e($paras[1]) . '</p></div>'
+            . ($this->fits('attach', 111) ? '<div class="pg-attach"><strong>첨부파일</strong><ul><li>' . self::icon('clip') . '<a href="#">' . self::e($t[0]) . ' 안내문.hwpx</a><span>(245KB)</span><a href="#" class="krds-btn small secondary">미리보기</a><a href="#" class="krds-btn small secondary">내려받기</a></li><li>' . self::icon('clip') . '<a href="#">신청서 서식.pdf</a><span>(118KB)</span><a href="#" class="krds-btn small secondary">미리보기</a><a href="#" class="krds-btn small secondary">내려받기</a></li></ul></div>' : '')
+            . ($this->fits('prevnext', 112) ? '<dl class="pg-prevnext"><div><dt>이전글</dt><dd><a href="#">' . self::e($t[1]) . '</a></dd></div><div><dt>다음글</dt><dd><a href="#">' . self::e($t[2]) . '</a></dd></div></dl>' : '')
             . '<div class="pg-view-btns"><a href="#" class="krds-btn primary medium">목록</a></div></article>';
     }
 
@@ -540,11 +557,16 @@ final class KitPage
         $steps = ['신청서 작성', '서류 제출', '자격 검토', '결과 통보', '지원금 지급'];
         $st = implode('', array_map(fn ($s, $i) => '<li' . ($i === 0 ? ' class="active"' : '') . '><span class="step">' . ($i + 1) . '단계</span><span class="step-tit">' . $s . '</span></li>', $steps, array_keys($steps)));
         $img = $this->img(['infographic'], [], 11); // 절차 옆엔 안내 그래픽만 — 풍경 사진은 내용과 무관
+        // 우선순위: 표 > 절차 > 그림. $fig 가 정의되지 않아 '한눈에 보기' 제목만 있는 빈 절이 나왔다(2026-10-14) — 그림이 있고 자리가 있을 때만 절째로
+        $tbl = $this->fits('table', 275);
+        $steps = $this->fits('steps', 205);
+        $figH = $img && (int) ($img['w'] ?? 0) > 0 ? (int) round(1056 * (int) $img['h'] / (int) $img['w']) + 120 : 0;
+        $fig = $figH > 0 && $this->fits('figure', $figH) ? '<figure class="pg-fig"><img src="' . self::e($img['url']) . '" alt="' . self::e($img['alt']) . '" style="aspect-ratio:' . $img['w'] . '/' . $img['h'] . '"><figcaption>' . self::e($img['alt']) . '</figcaption></figure>' : '';
         return '<section class="pg-sec"><h3 class="pg-h3">추진 배경</h3><p>' . self::e("{$o}은(는) 주민의 생활 안정과 지역 경제 활성화를 위해 다음과 같이 지원 사업을 추진합니다.") . '</p>'
             . '<div class="pg-note" role="note"><strong>알려드립니다</strong><ul><li>신청 기간: ' . $this->date(10) . ' ~ ' . $this->date(0) . '</li><li>예산 소진 시 조기 마감될 수 있습니다.</li></ul></div></section>'
-            . '<section class="pg-sec"><h3 class="pg-h3">지원 대상 및 내용</h3><div class="krds-table-wrap"><table class="tbl col data pg-table"><caption>지원 대상 및 내용 — 구분, 대상, 지원 내용, 비고</caption><colgroup><col style="width:120px"><col><col><col style="width:140px"></colgroup><thead><tr><th scope="col">구분</th><th scope="col">대상</th><th scope="col">지원 내용</th><th scope="col">비고</th></tr></thead><tbody>'
-            . '<tr><td class="c">일반</td><td class="l">관내 거주 ' . self::e($this->p['resident']) . '</td><td class="l">1인당 최대 월 20만 원(최대 12개월)</td><td class="c">중복 불가</td></tr><tr><td class="c">우선</td><td class="l">청년·신혼부부·한부모 가구</td><td class="l">1인당 최대 월 30만 원(최대 12개월)</td><td class="c">서류 필요</td></tr><tr><td class="c">특례</td><td class="l">재난 피해 가구</td><td class="l">긴급 지원금 1회 100만 원</td><td class="c">심사 후 결정</td></tr></tbody></table></div></section>'
-            . '<section class="pg-sec"><h3 class="pg-h3">신청 절차</h3><div class="krds-step-wrap pg-steps"><ol>' . $st . '</ol></div></section>'
+            . ($tbl ? '<section class="pg-sec"><h3 class="pg-h3">지원 대상 및 내용</h3><div class="krds-table-wrap"><table class="tbl col data pg-table"><caption>지원 대상 및 내용 — 구분, 대상, 지원 내용, 비고</caption><colgroup><col style="width:120px"><col><col><col style="width:140px"></colgroup><thead><tr><th scope="col">구분</th><th scope="col">대상</th><th scope="col">지원 내용</th><th scope="col">비고</th></tr></thead><tbody>'
+            . '<tr><td class="c">일반</td><td class="l">관내 거주 ' . self::e($this->p['resident']) . '</td><td class="l">1인당 최대 월 20만 원(최대 12개월)</td><td class="c">중복 불가</td></tr><tr><td class="c">우선</td><td class="l">청년·신혼부부·한부모 가구</td><td class="l">1인당 최대 월 30만 원(최대 12개월)</td><td class="c">서류 필요</td></tr><tr><td class="c">특례</td><td class="l">재난 피해 가구</td><td class="l">긴급 지원금 1회 100만 원</td><td class="c">심사 후 결정</td></tr></tbody></table></div></section>' : '')
+            . ($steps ? '<section class="pg-sec"><h3 class="pg-h3">신청 절차</h3><div class="krds-step-wrap pg-steps"><ol>' . $st . '</ol></div></section>' : '')
             . ($fig !== '' ? '<section class="pg-sec"><h3 class="pg-h3">한눈에 보기</h3>' . $fig . '</section>' : '');
     }
 
@@ -553,6 +575,14 @@ final class KitPage
     {
         $m = $this->menus();
         $dept = $this->depts()[crc32($this->p['org']) % count($this->depts())];
+        // 높이 예산: 레퍼런스 본문 × 1.12 − 고정분(서브 비주얼 띠 + 본문 위아래 여백 128 + 경로·제목 줄 200) − 유형별 필수 본문.
+        // 담당부서 줄(위 여백 64 포함 123)은 본문 선택 블록보다 먼저 자리를 잡는다 — 레퍼런스 안내 화면에도 대개 있다
+        $visual = $this->subVisual($m);
+        $bodyH = (int) ($this->ref['body_h'] ?? 0);
+        if ($bodyH > 300) {
+            $this->room = (int) round($bodyH * 1.12) - (str_contains($visual, 'pg-visual--tint') ? 150 : 200) - 328 - (self::BASE[$this->type] ?? 0);
+        }
+        $withDept = $this->fits('dept', 123);
         $body = match ($this->type) {
             'board_list' => $this->boardList($m),
             'board_view' => $this->boardView($m),
@@ -563,13 +593,13 @@ final class KitPage
             'location' => $this->location(),
             default => $this->content($m),
         };
-        $html = $this->masthead() . $this->header($m) . $this->subVisual($m)
-            . '<div class="pg-inner pg-body">' . $this->lnb($m) . '<main id="content" class="pg-main">' . $this->titleBar($m) . $body . $this->satisfaction($dept) . '</main></div>'
+        $html = $this->masthead() . $this->header($m) . $visual
+            . '<div class="pg-inner pg-body">' . $this->lnb($m) . '<main id="content" class="pg-main">' . $this->titleBar($m) . $body . $this->satisfaction($dept, $withDept) . '</main></div>'
             . $this->footer();
         $doc = "<!doctype html>\n<html lang=\"ko\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"><title>" . self::e($m['page'] . ' | ' . $this->p['org']) . "</title>\n"
             . WebFont::head([WebFont::canonical((string) preg_replace("/^'([^']+)'.*/", '$1', (string) ($this->tok['font'] ?? '')))]) . "\n"
             . '<link rel="stylesheet" href="' . self::kitCss() . '">' . "\n<style>" . $this->skin() . CssPrune::prune(self::CSS, $html, 'pg-', ['pg-skip']) . MockSearch::CSS . "</style></head>\n<body class=\"hb-kit\">\n<a class=\"pg-skip\" href=\"#content\">본문 바로가기</a>\n{$html}\n<script>" . self::JS . "</script><script>" . MockSearch::JS . "</script>\n</body></html>";
-        return ['html' => $doc, 'composition' => ['layout' => 'kit_subpage', 'type' => $this->type, 'blocks' => $this->blocks, 'menu' => $m], 'samples' => array_values($this->samples)];
+        return ['html' => $doc, 'composition' => ['layout' => 'kit_subpage', 'type' => $this->type, 'blocks' => $this->blocks, 'menu' => $m] + ($this->cut ? ['cut_for_height' => $this->cut] : []), 'samples' => array_values($this->samples)];
     }
 
     /** 2차 스킨 — 레퍼런스 주색·글꼴·모서리를 KRDS 변수와 페이지 변수로 */

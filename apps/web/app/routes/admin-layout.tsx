@@ -3,7 +3,7 @@
 // 레이아웃 라우트 하나가 가드·메뉴, 본문은 <Outlet />. 화면이 없는 메뉴는 넣지 않는다. 노출은 역할 기준 — 서버도 같은 역할로 막는다.
 // 다른 작업자가 메뉴를 더할 땐 GROUPS 의 자기 줄만 추가한다(children 으로 하위 메뉴 가능).
 import { BrandName } from "@/components/hb/brand-name";
-import { BookOpenText, Scale, ChevronDown, ChevronRight, Coins, Contrast, ExternalLink, History, Images, Inbox, LayoutTemplate, ListChecks, LogOut, Mail, MessagesSquare, Moon, Presentation, ShieldCheck, Sparkles, Sun, Trash2, Users } from "lucide-react";
+import { BookOpenText, Scale, SwatchBook, ChevronDown, ChevronRight, Coins, Contrast, ExternalLink, History, Images, Inbox, LayoutTemplate, ListChecks, LogOut, Mail, MessagesSquare, Moon, Presentation, ShieldCheck, Sparkles, Sun, Trash2, Users } from "lucide-react";
 import { useTheme } from "next-themes";
 import { useEffect } from "react";
 import { Link, NavLink, Outlet, useLocation, useNavigate } from "react-router";
@@ -43,6 +43,8 @@ const GROUPS: Array<{ label: string; items: Item[] }> = [
       { to: "/admin/mockups", label: "시안", role: "admin" },
       { to: "/admin/mock/checklist", label: "개선 체크리스트", role: "curator" },
     ] },
+    // powerGuide 는 코드가 정본이라 편집 없이 현황(자료 상태·구성·MCP 이용)만(사용자 2026-10-14)
+    { to: "/admin/guide", label: "powerGuide", icon: SwatchBook, role: "curator" },
   ] },
   { label: "콘텐츠", items: [
     { to: "/admin/community", label: "커뮤니티", icon: MessagesSquare, role: "admin" },

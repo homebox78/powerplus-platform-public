@@ -168,7 +168,9 @@ function homebox_kit_subpage(array $sc, array $rows, array $site = []): array
         }
         $asset = Db::row('SELECT a.bucket, a.`key` FROM screens s JOIN assets a ON a.id = s.public_asset_id WHERE s.id = ?', [(int) $sc['id']]);
         $look = $asset ? Homebox\KitPage::probe(rtrim((string) Config::get('storage.dir', __DIR__ . '/../../storage'), '/\\') . '/' . $asset['bucket'] . '/' . $asset['key'], $hdrBottom, $foot) : [];
-        $k = Homebox\KitPage::build($kind, $tok, $persona, ['gnb' => $gnb, 'lnb' => $lnb, 'lnb_title' => $lnbTitle, 'title' => end($parts) ?: '', 'crumbs' => $parts, 'body' => $body] + $look);
+        // 레퍼런스 본문 높이(머리 아래 ~ 바닥 위) — 짧은 안내 화면이면 조립도 덜 중요한 블록을 빼 높이를 맞춘다(2026-10-14 D7 상세 본문 +75%)
+        $bodyH = ($foot !== null && $hdrBottom > 0) ? $foot[0] - $hdrBottom : 0;
+        $k = Homebox\KitPage::build($kind, $tok, $persona, ['gnb' => $gnb, 'lnb' => $lnb, 'lnb_title' => $lnbTitle, 'title' => end($parts) ?: '', 'crumbs' => $parts, 'body' => $body, 'body_h' => $bodyH] + $look);
         Homebox\Samples::remember(array_column($k['samples'], 'id'));
         // 주 메뉴·LNB·경로·탭에 남는 레퍼런스 기관명 — 서브 레퍼런스 기관과 메인 레퍼런스 기관(한 벌일 때) 둘 다 지운다(2026-10-12 build-leaks-real-org)
         foreach (array_unique(array_filter([(string) $sc['org_name'], (string) ($site['real'] ?? '')])) as $realName) {

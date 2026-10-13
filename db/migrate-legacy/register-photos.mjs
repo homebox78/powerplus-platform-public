@@ -23,6 +23,8 @@ const SETS = {
   flatkv: { cat: "illust", prefix: "flatkv-", set: "illust-keyvisual-flat", style: "keyvisual-flat", ko: ["키비주얼", "히어로", "메인비주얼", "배경", "플랫", "평면일러스트", "인물", "공공사업", "제안서", "AI이미지"], en: ["key visual", "hero", "background", "flat illustration", "people", "public project"] },
   // 기후위기 키비주얼(실사풍 시네마틱, 따뜻함↔차가움 대비 — 가뭄·폭우·폭염·한파) — set:"climate"
   climate: { cat: "photo", prefix: "climate-", set: "photo-keyvisual-climate", style: "keyvisual-climate-cinematic", ko: ["키비주얼", "히어로", "메인비주얼", "배경", "기후위기", "기후변화", "이상기후", "기후적응", "탄소중립", "환경", "AI이미지"], en: ["key visual", "hero", "background", "climate crisis", "climate change", "extreme weather", "climate adaptation"] },
+  // 제안서 장(章) 배경(인사말·목차·회사소개·비전·Q&A·맺음말 A/B, 밝은 실사·왼쪽 글자 자리) — set:"section"
+  section: { cat: "photo", set: "photo-section-keyvisual", style: "section-keyvisual-bright", ko: ["키비주얼", "배경", "섹션배경", "장표배경", "간지", "제안서", "발표자료", "AI이미지"], en: ["key visual", "background", "section background", "slide background", "proposal"] },
   illust: { set: "illust-doc-concept", style: "doc-concept-render", ko: ["일러스트", "개념이미지", "3D"], en: ["illustration", "concept", "3d render"] },
 };
 const norm = (t) => String(t).normalize("NFC").trim().toLowerCase().slice(0, 64);

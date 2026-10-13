@@ -349,42 +349,130 @@ flowchart LR
 
 ## 10. 폴더 구조
 
+pnpm 모노레포입니다. 화면(`apps`)·서버(`api`·`services`)·공용 패키지(`packages`)·장표 엔진(`engine`)·DB(`db`)를 한 저장소에 둡니다.
+
+### 10.1 최상위
+
 ```
 powerplus-platform/
-├─ apps/
-│  ├─ web/                  웹 화면 (React Router 7 SPA)
-│  │  └─ app/
-│  │     ├─ routes/         화면 하나 = 파일 하나 (홈·모듈·계정·관리자·문서)
-│  │     ├─ modules/        모듈별 화면 (assets · deck · mock · guide)
-│  │     ├─ components/     공통 부품 (shadcn/ui + 자체 hb 부품, 챗봇)
-│  │     └─ lib/            API 호출·권한·페이지 제목 등
-│  └─ addin/                PowerPoint 애드인 + 설치 프로그램
-├─ api/                     REST API (PHP 8)
-│  ├─ public/index.php      진입점
-│  ├─ routes/               모듈별 경로 (core · chat · assets · deck · mock · guide · admin …)
-│  ├─ src/Core/             인증·권한·감사 로그·메일·Jev·powerLLM·가림(Mask) 등 공통 기능
-│  ├─ src/Deck/             장표 AI 키·모델·예산(AiKeys), 와이어 배치·검사, 대본
-│  └─ bin/                  서버 CLI (테스트 계정·정리 작업)
-├─ services/
-│  └─ mockref-api/          powerMock 레퍼런스 API (수집 화면 분석·목업 조립·판정)
-├─ packages/
-│  ├─ mcp/                  powerMCP 서버 (도구 47개, 시안 판정 qa/)
-│  ├─ kit/                  powerGuide 부품 키트 (CSS · React · Vue · KRDS · 점검표)
-│  └─ shared/               모듈이 함께 쓰는 분류표·타입
-├─ engine/                  powerDeck 장표 엔진 (Python)
-│  ├─ design.py             요약·기획·와이어·시안 단계
-│  ├─ or_agent.py           pptx 제작 에이전트 (OpenRouter)
-│  ├─ known_errors.json     알려진 장표 오류 — 지침·체크리스트·회귀 시험의 단일 원천
-│  ├─ pipeline/             장표 정리 단계 (서체·색·아이콘·도식·줄바꿈 …)
-│  └─ skill/                장표 마감 규칙과 참고 자료
-├─ db/
-│  ├─ schema.sql            전체 스키마 (멱등)
-│  ├─ migrations/           증분 마이그레이션
-│  ├─ scripts/              migrate · seed
-│  └─ migrate-legacy/       기존 서비스 4개 → 새 DB 이관 스크립트
-├─ design/                  디자인 샘플 에셋
-├─ docs/                    기획·설계·점검 보고서·화면 캡처
-└─ scripts/                 배포·배포 전 자가 검사·백업·빌드 보조
+├─ apps/          사용자가 쓰는 프로그램 — 웹 화면, PowerPoint 애드인
+├─ api/           플랫폼 REST API (PHP) — 계정·권한·모듈 기능·관리자·챗봇·AI 호출
+├─ services/      powerMock 레퍼런스 API (PHP) — 관공서 화면 데이터·목업 조립
+├─ packages/      공용 패키지 — powerMCP 서버, powerGuide 부품 키트, 공용 분류표
+├─ engine/        powerDeck 장표 엔진 (Python) — 기획·시안·pptx 제작·마감
+├─ db/            스키마·마이그레이션·옛 서비스 데이터 이관
+├─ scripts/       배포·배포 전 자가 검사·백업·빌드 보조
+├─ docs/          기획·설계·점검 보고서·README 캡처
+├─ design/        디자인 샘플 에셋
+├─ README.md · LICENSE · CLAUDE.md(개발 지침)
+└─ package.json · pnpm-workspace.yaml · .env.example
+```
+
+### 10.2 모듈별 코드 위치
+
+| 모듈 | 화면 | API | 그 밖 |
+|:---:|---|---|---|
+| 공통(계정·권한) | `apps/web/app/routes` (login·account) | `api/src/Core` · `api/routes/core.php` | `db/schema.sql` |
+| 챗봇 | `apps/web/app/components/chat` | `api/routes/chat.php` · `assist.php` | `api/src/Core` 의 Jev·Llm·Concierge |
+| powerAssets | `apps/web/app/modules/assets` | `api/src/Assets` · `api/routes/assets.php` · `addin.php` | `apps/addin` |
+| powerDeck | `apps/web/app/modules/deck` | `api/src/Deck` · `api/routes/deck*.php` | `engine` |
+| powerMock | `apps/web/app/modules/mock` | `api/src/Mock` · `api/routes/mock*.php` | `services/mockref-api` · `packages/mcp/src/qa` |
+| powerGuide | `apps/web/app/modules/guide` | `api/src/Guide` · `api/routes/guide.php` | `packages/kit` |
+| powerMCP | `apps/web/app/routes/powermcp.tsx` · `docs.tsx` | 각 모듈 API 를 그대로 씀 | `packages/mcp` |
+| 관리자 | `apps/web/app/routes/admin-*.tsx` | `api/routes/admin*.php` | `apps/web/app/components/admin` |
+
+### 10.3 주요 폴더 상세
+
+**apps/**
+```
+apps/
+├─ web/                      웹 화면 (React Router 7 SPA · Vite)
+│  ├─ app/
+│  │  ├─ routes/             화면 하나 = 파일 하나 (홈·모듈·계정·관리자·문서·약관)
+│  │  ├─ modules/            모듈 화면 — assets · deck · mock · guide
+│  │  ├─ components/
+│  │  │  ├─ ui/              shadcn/ui 원본 부품
+│  │  │  ├─ hb/              자체 공통 부품 (버튼·태그·문장 분리·테스트 로그인 …)
+│  │  │  ├─ chat/            메인 챗봇
+│  │  │  └─ admin/           관리자 공통 (제목·정렬 머리)
+│  │  ├─ lib/                API 호출·로그인 상태·관리자 API·페이지 제목
+│  │  ├─ hooks/ · data/ · styles/
+│  │  └─ routes.ts           주소 → 화면 연결표
+│  └─ public/                정적 파일 — powerGuide 키트·토큰 산출물 (kit-files · guide-files)
+└─ addin/                    PowerPoint 애드인 (Office.js · Webpack)
+   ├─ src/taskpane/          작업창 화면
+   └─ installer/             설치 마법사 (WebView2)
+```
+
+**api/ · services/**
+```
+api/
+├─ public/index.php          진입점 — routes/*.php 를 읽어 경로 등록
+├─ routes/                   경로 묶음 (core · chat · assets · deck · mock · guide · admin* …)
+├─ src/
+│  ├─ Core/                  인증·권한(Access)·감사 로그·메일·포인트·가림(Mask)·Jev·powerLLM
+│  ├─ Assets/                검색(동의어·오타 교정)·문맥 고르기
+│  ├─ Deck/                  AI 키·모델·예산(AiKeys)·와이어 배치·대본·개선 체크리스트
+│  ├─ Mock/                  와이어 초안·다듬기·개선 체크리스트
+│  ├─ Guide/                 부품·토큰·KRDS 자료 읽기·코드 점검
+│  └─ Site/                  사이트 품질 체크리스트
+├─ data/                    서버가 읽는 자료 (KRDS 사본 data/guide 는 배포 때 build-guide-data 가 만듦)
+├─ bin/                      서버 CLI (테스트 계정·정리 작업)
+└─ config.example.php        설정 예시 (실제 config.php 는 저장소에 없음)
+
+services/mockref-api/        powerMock 레퍼런스 API — 수집 화면 분석·재현 묶음·섹션 코드·시안 보관
+```
+
+**packages/ · engine/**
+```
+packages/
+├─ mcp/                      powerMCP 서버 (Node · MCP SDK, 도구 47개)
+│  └─ src/
+│     ├─ index.ts            도구 정의
+│     ├─ tools/              모듈별 도구 묶음
+│     └─ qa/                 시안 판정 — 실제 렌더·게이트·동작·대비 검사
+├─ kit/                      powerGuide 부품 키트
+│  ├─ react/ · vue/ · css/   같은 부품의 React·Vue·CSS 판
+│  ├─ krds/ · checklist/     KRDS 대응·검증 체크리스트 판정
+│  └─ versions.json          키트 버전 기록
+└─ shared/                   모듈 공용 분류표·스키마
+
+engine/                      powerDeck 장표 엔진 (Python)
+├─ worker.py                 작업 대기열에서 일을 가져와 단계 실행
+├─ design.py                 자료 요약·기획·와이어·시안
+├─ or_agent.py · or_models.py                pptx 제작 에이전트 · 모델 능력표
+├─ sizeguard.py · vcenter.py · finalize.py …  결정적 마감 보정
+├─ known_errors.json         알려진 장표 오류 — 지침·체크리스트·회귀 시험의 단일 원천
+├─ pipeline/                 장표 정리 단계 (서체·색·아이콘·도식·줄바꿈 …)
+├─ skill/si-deck/            장표 마감 규칙과 참고 자료
+├─ reference-guide/          참고 장표에서 배운 디자인 지침
+├─ prompt*.md                단계별 AI 지시문
+└─ tests/                    회귀 시험
+```
+
+**db/ · scripts/ · docs/**
+```
+db/
+├─ schema.sql                전체 스키마 (멱등)
+├─ migrations/               증분 마이그레이션 (번호 순)
+├─ scripts/                  migrate · seed
+└─ migrate-legacy/           기존 서비스 4개 → 새 DB 이관
+
+scripts/
+├─ deploy.sh                 웹·API 배포 (첫 줄에서 preflight.sh 자가 검사)
+├─ deploy-engine.sh · deploy-mcp.sh · deploy-mockref.sh   엔진·MCP·레퍼런스 API 따로 배포
+├─ preflight.sh · preflight/ 배포 전 자가 검사
+├─ db-backup*.sh · db-restore-drill.sh                     백업·복구 훈련
+├─ build-*.mjs               powerGuide 자료·Tailwind 테마·설치 프로그램 빌드
+└─ leak-audit.mjs · responsive-audit.mjs                   권한 누출·반응형 점검
+
+docs/
+├─ PLAN.md · ARCHITECTURE.md · db-design.md                기획·설계
+├─ 오류-재발방지-체크리스트.md · 장표-기본규칙-오류체크리스트.md   재발 방지 기록
+├─ *-테스트보고서-*.md · 사이트-품질-*.md                   기능·MCP·사이트 품질 점검 결과
+├─ inventory/                기존 저장소 4개 기능 인벤토리
+├─ rfp-분석결과/              공개 입찰 공고 분석
+└─ screenshots/              README 화면 캡처
 ```
 
 ## 11. 로컬 실행

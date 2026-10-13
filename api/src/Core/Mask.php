@@ -14,7 +14,8 @@ namespace Pp\Core;
  */
 final class Mask
 {
-    private const NAME_KEYS = ['name', 'user_name', 'owner_name', 'author_name', 'author', 'display_name', 'requester_name', 'actor_name', 'member_name', 'real_name', 'nickname'];
+    // owner = 관리자 장표 작업·시안 행의 주인 이름(같은 행에 email·owner_email 이 있다) — 2026-10-14 공개 README 캡처에서 가려지지 않은 것 발견
+    private const NAME_KEYS = ['name', 'owner', 'user_name', 'owner_name', 'author_name', 'author', 'display_name', 'requester_name', 'actor_name', 'member_name', 'real_name', 'nickname'];
     private const PERSON_KEYS = ['handled_by', 'created_by', 'updated_by', 'reviewed_by', 'replied_by', 'user_name', 'owner_name', 'author_name', 'requester_name', 'actor_name', 'member_name', 'real_name'];
     private const EMAIL_RE = '/[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}/u';
     private const PHONE_RE = '/(?<![A-Za-z0-9])(01[016789]|0[2-6][0-9]?)[\s.\-]?(\d{3,4})[\s.\-]?(\d{4})(?![A-Za-z0-9])/';

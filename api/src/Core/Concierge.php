@@ -153,7 +153,14 @@ final class Concierge
     /** 검색어 — 부탁하는 말을 걷어낸다 */
     public static function query(string $text): string
     {
-        $t = (string) preg_replace(self::STOP, ' ', $text);
+        $t = $text;
+        // 아이콘·사진 등을 찾는 말이면 "제안서 표지에 어울리는 … 톤" 같은 쓰임새 말은 검색어가 아니다 — 남기면 낱말을 다 가진 에셋이 없어
+        // 검색이 낱말을 빼며 넓히다 흔한 "제안서" 만 남기고 "보안" 을 버렸다(2026-10-14 운영: 보안 아이콘 대신 무전기·반도체 장비).
+        // 장표 자체를 찾을 때("표지 장표 찾아줘")는 그대로 둔다.
+        if (preg_match('/아이콘|사진|일러스트|로고|다이어그램/u', $t)) {
+            $t = (string) preg_replace('/(제안서|발표\s?자료|장표|슬라이드|PPT|ppt|표지|간지|목차)(에|에서|용으로|용|의)?|(톤|느낌|분위기)(의|으로|로)?/u', ' ', $t);
+        }
+        $t = (string) preg_replace(self::STOP, ' ', $t);
         $t = (string) preg_replace('/[^\p{L}\p{N}\s]/u', ' ', $t);
         $t = trim((string) preg_replace('/\s+/u', ' ', $t));
         return mb_substr($t, 0, 60);

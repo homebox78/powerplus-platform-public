@@ -146,7 +146,7 @@ function AssetDialog({ id, onClose }: { id: string | null; onClose: () => void }
           <DialogDescription className="text-md text-ink-3">{a ? `${a.category_ko}${a.w && a.h ? ` · ${a.w}×${a.h}` : ""} · 등록 ${fmtDate(a.created_at)}` : "불러오는 중"}</DialogDescription>
         </DialogHeader>
         {a && (
-          <div className="grid grid-cols-1 gap-6 md:grid-cols-[1fr_300px]">
+          <div className="grid grid-cols-1 gap-6 md:grid-cols-[1fr_380px]">
             <div className="flex min-h-[320px] items-center justify-center rounded-panel bg-ground-3 p-[6%]"><span className="flex max-h-[60vh] items-center justify-center overflow-hidden rounded-md bg-white shadow-[0_1px_3px_rgba(0,0,0,0.08)]"><img src={a.original_url} alt={a.alt ?? ""} className="max-h-[60vh] max-w-full object-contain" /></span></div>
             <div className="flex flex-col gap-4 text-sm">
               <div className="flex flex-wrap gap-1.5">
@@ -157,11 +157,13 @@ function AssetDialog({ id, onClose }: { id: string | null; onClose: () => void }
               </div>
               {a.tags.ko.length > 0 && <div><div className="mb-1.5 font-semibold text-ink-3">키워드</div><p className="leading-[1.8] text-ink-3">{a.tags.ko.slice(0, 20).join(" · ")}</p></div>}
               <div className="mt-auto flex flex-col gap-2">
-                {!me && <Button asChild size="md"><Link to={loginNext()} onClick={onClose}><Lock aria-hidden />로그인 후 내려받기</Link></Button>}
+                <div className={`grid gap-2 ${a.set ? "grid-cols-2" : "grid-cols-1"}`}>
+                  {!me && <Button asChild size="md" className="px-3"><Link to={loginNext()} onClick={onClose}><Lock aria-hidden />로그인 후 내려받기</Link></Button>}
+                  {me && <Button asChild size="md" className="px-3" onClick={() => use.mutate()}><a href={a.original_url} download><Download aria-hidden />원본 내려받기</a></Button>}
+                  {a.set && <Button asChild size="md" className="px-3" variant="outline"><Link to={`/assets/browse?set=${a.set.id}`} onClick={onClose}>같은 스타일 세트 보기</Link></Button>}
+                  {me && a.slide_url && <Button asChild size="md" variant="outline" className="col-span-full" onClick={() => use.mutate()}><a href={a.slide_url} download>pptx 내려받기</a></Button>}
+                </div>
                 {!me && <p className="text-xs leading-[1.6] text-ink-4">비회원은 워터마크가 들어간 미리보기만 볼 수 있습니다.</p>}
-                {me && <Button asChild size="md" onClick={() => use.mutate()}><a href={a.original_url} download><Download aria-hidden />원본 내려받기</a></Button>}
-                {me && a.slide_url && <Button asChild size="md" variant="outline" onClick={() => use.mutate()}><a href={a.slide_url} download>pptx 내려받기</a></Button>}
-                {a.set && <Button asChild size="md" variant="outline"><Link to={`/assets/browse?set=${a.set.id}`} onClick={onClose}>같은 스타일 세트 보기</Link></Button>}
               </div>
             </div>
           </div>

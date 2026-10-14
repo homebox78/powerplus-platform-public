@@ -323,11 +323,33 @@ TONES = {
     "glass": {"label": "글래스 블루", "dark": "2A3F9D", "mid": "5B7CFA", "light": "E1E7FF", "head": ["3B5BDB", "7B97FF"], "badge": "FFFFFF", "badge_text": "3B5BDB", "proj": "E5EBFF", "accent": "#5B7CFA"},
 }
 THEMES = TONES   # 옛 이름(vtheme) 호환
+
+
+def _mix(a, b, t):
+    """hex a 에 b 를 t 만큼 섞는다"""
+    a, b = int(a, 16), int(b, 16)
+    return "".join(f"{round(((a >> k) & 255) * (1 - t) + ((b >> k) & 255) * t):02X}" for k in (16, 8, 0))
+
+
+# 색 계층(사용자 2026-10-14 "톤이 부담스럽다 — 상단 머리만 강조, 나머지는 같은 톤에서 차분하게, 글자는 차분한 검정, 강조만 파랑"):
+#   head = 본문·목차 맨 위 머리 띠(강조 허용) · point = 강조 어구·쪽 제목 번호·연도·작은 태그 · calm/calm2 = 띠 문구·표 머리·큰 색 면(톤 기운만 남긴 슬레이트)
+#   soft = 연한 면 · 글자는 톤과 무관하게 INK(아주 약간 회색 쪽 검정), 보조 글자는 SUB
+INK, SUB = "303338", "6F7681"
+for _t in TONES.values():
+    _t["point"] = _t["mid"]
+    _t["calm"] = _mix(_t["dark"], "3A3F47", 0.62)
+    _t["calm2"] = _mix(_t["mid"], "8A909B", 0.62)
+    _t["soft"] = _mix(_t["light"], "EEF0F3", 0.55)
+TEXT_POINT = {"0A41AE", "FF3370"}   # 기본 양식에서 강조로 쓰인 글자 색(표지 연도·문서 종류). 도입 문단 강조는 put_lead 가 따로 칠한다
+#   (09106D 는 소제목과 도입 강조가 같이 쓰던 색이라 포인트로 두면 소제목까지 파랗게 된다 — 사용자 2026-10-14 지적)
+SHAPE_POINT = {"3975ED"}                      # 작은 강조 도형(소제목 앞 육각형)
+_TXT = {f"{{{A}}}rPr", f"{{{A}}}endParaRPr", f"{{{A}}}defRPr"}
 # 기본 양식에 쓰인 색 → 역할(톤마다 바꿀 색). 회색·검정·안내선 주황은 그대로
 ROLE = {**{c: "dark" for c in ("1D1D49", "002060", "09106D", "070C51", "0B2A6F", "223A90", "203890", "233C8D", "2C4D90", "142D7E", "324B9C", "213553", "0C1C96")},
         **{c: "mid" for c in ("0056A4", "0A41AE", "207FE8", "3975ED", "437CD9", "6B89CD", "3082DC", "5574C4", "FF3370")},
         **{c: "light" for c in ("BFD2F9",)}}
 PAGE_W, PAGE_H = 19.05, 27.52
+BODY_G, BODY_T = 2.04, 2.54   # 본문 세로 기준선 — G: 경로·제목·도입·띠·아이콘·막대 왼쪽 / T: 블록 안 글 시작
 
 
 def _fill(colors, ang=0):
@@ -363,11 +385,11 @@ def head_geom(st, tn):
     if st == "tab":
         return dict(bt=0.0, bh=1.25, bx=0.95, tx=2.05, tcol="FFFFFF", pcol="8C8C8C")
     if st == "split":
-        return dict(bt=0.0, bh=1.25, bx=0.95, tx=2.05, tcol="FFFFFF", pcol=tn["dark"])
+        return dict(bt=0.0, bh=1.25, bx=0.95, tx=2.05, tcol="FFFFFF", pcol=INK)
     if st == "line":
-        return dict(bt=0.32, bh=1.05, bx=0.95, tx=2.05, tcol=tn["dark"], pcol="8C8C8C")
+        return dict(bt=0.32, bh=1.05, bx=0.95, tx=2.05, tcol=INK, pcol="8C8C8C")
     if st == "side":
-        return dict(bt=0.0, bh=1.25, bx=0.27, tx=2.05, tcol=tn["dark"], pcol="8C8C8C")
+        return dict(bt=0.0, bh=1.25, bx=0.27, tx=2.05, tcol=INK, pcol="8C8C8C")
     return dict(bt=0.0, bh=1.25, bx=0.95, tx=2.05, tcol="FFFFFF", pcol=tn["proj"])
 
 
@@ -381,14 +403,14 @@ def head_band(tree, st, tn):
         _shape(tree, "머리 밑선", 10.2, 1.2, W_ - 10.2, 0.05, [tn["head"][-1]])
     elif st == "split":
         _shape(tree, "머리 띠", 0, 0, 7.8, 1.25, tn["head"])
-        _shape(tree, "머리 띠 연한", 7.8, 0, W_ - 7.8, 1.25, [tn["light"]])
-        _shape(tree, "머리 밑선", 0, 1.25, W_, 0.06, [tn["mid"]])
+        _shape(tree, "머리 띠 연한", 7.8, 0, W_ - 7.8, 1.25, [tn["soft"]])
+        _shape(tree, "머리 밑선", 0, 1.25, W_, 0.06, [tn["point"]])
     elif st == "line":
         _shape(tree, "머리 굵은 줄", 0, 0, W_, 0.32, tn["head"])
-        _shape(tree, "머리 가는 선", 0.9, 1.42, W_ - 1.8, 0.03, [tn["light"]])
+        _shape(tree, "머리 가는 선", 0.9, 1.42, W_ - 1.8, 0.03, [tn["soft"]])
     elif st == "side":
         _shape(tree, "왼쪽 레일", 0, 0, 1.35, PAGE_H, tn["head"], ang=5400000)
-        _shape(tree, "머리 가는 선", 1.95, 1.25, W_ - 2.85, 0.03, [tn["light"]])
+        _shape(tree, "머리 가는 선", 1.95, 1.25, W_ - 2.85, 0.03, [tn["soft"]])
     else:
         _shape(tree, "머리 띠", 0, 0, W_, 1.25, tn["head"])
         if tn.get("line"):
@@ -400,9 +422,14 @@ def apply_theme(prs, st, tn, masters):
     st = st if st in STYLES else "band"
     for part in [m.part for m in prs.slide_masters] + [l.part for m in prs.slide_masters for l in m.slide_layouts] + [s.part for s in prs.slides]:
         for c in part._element.iter(f"{{{A}}}srgbClr"):
-            role = ROLE.get((c.get("val") or "").upper())
-            if role:
-                c.set("val", tn[role])
+            v = (c.get("val") or "").upper()
+            role = ROLE.get(v)
+            if not role:
+                continue
+            if any(a.tag in _TXT for a in c.iterancestors()):   # 글자 — 먹색, 강조만 포인트
+                c.set("val", tn["point"] if v in TEXT_POINT else (tn["soft"] if role == "light" else INK))
+            else:                                               # 면 — 차분한 슬레이트, 작은 강조 도형만 포인트
+                c.set("val", tn["point"] if v in SHAPE_POINT else {"dark": tn["calm"], "mid": tn["calm2"], "light": tn["soft"]}[role])
     m_body, m_toc, m_div, m_cover = masters
     g = head_geom(st, tn)
     bt, bh = g["bt"], g["bh"]
@@ -467,18 +494,18 @@ def apply_theme(prs, st, tn, masters):
         x._element.getparent().remove(x._element)
     dt = m_div.shapes._spTree
     if st == "band":
-        _shape(dt, "장 태그", (PAGE_W - 4.6) / 2, 3.62, 4.6, 0.95, tn["head"], "roundRect", 18000)
+        _shape(dt, "장 태그", (PAGE_W - 4.6) / 2, 3.62, 4.6, 0.95, [tn["point"]], "roundRect", 18000)
     elif st == "pill":
-        _shape(dt, "장 태그", (PAGE_W - 4.6) / 2, 3.62, 4.6, 0.95, tn["head"], "roundRect", 50000)
+        _shape(dt, "장 태그", (PAGE_W - 4.6) / 2, 3.62, 4.6, 0.95, [tn["point"]], "roundRect", 50000)
     elif st == "tab":
-        _shape(dt, "장 태그", 2.0, 3.62, 4.6, 0.95, tn["head"], "snip1Rect", 28000)
-        _shape(dt, "장 밑선", 6.6, 4.52, PAGE_W - 7.6, 0.05, [tn["head"][-1]])
+        _shape(dt, "장 태그", 2.0, 3.62, 4.6, 0.95, [tn["point"]], "snip1Rect", 28000)
+        _shape(dt, "장 밑선", 6.6, 4.52, PAGE_W - 7.6, 0.05, [tn["soft"]])
     elif st == "split":
-        _shape(dt, "위쪽 색 블록", 0, 0, PAGE_W, 14.0, tn["head"], ang=5400000)   # 목록 4줄까지 블록 안
+        _shape(dt, "위쪽 색 블록", 0, 0, PAGE_W, 14.0, [tn["calm"], _mix(tn["calm"], "FFFFFF", 0.1)], ang=5400000)   # 목록 4줄까지 블록 안
     elif st == "side":
-        _shape(dt, "왼쪽 굵은 레일", 0, 0, 4.4, PAGE_H, tn["head"], ang=5400000)
+        _shape(dt, "왼쪽 굵은 레일", 0, 0, 4.4, PAGE_H, [tn["calm"], _mix(tn["calm"], "FFFFFF", 0.1)], ang=5400000)
     elif st == "line":
-        _shape(dt, "가는 선", (PAGE_W - 5.0) / 2, 8.75, 5.0, 0.05, [tn["mid"]])
+        _shape(dt, "가는 선", (PAGE_W - 5.0) / 2, 8.75, 5.0, 0.05, [tn["point"]])
     for lay in m_div.slide_layouts:
         for sh in lay.shapes:
             if not sh.has_text_frame:
@@ -509,7 +536,7 @@ def apply_theme(prs, st, tn, masters):
                     for r in p_.runs:
                         r.font.size = Pt(72)
             if is_tag:
-                _recolor_el(sh._element, tn["mid"] if st == "line" else "FFFFFF")
+                _recolor_el(sh._element, tn["point"] if st == "line" else "FFFFFF")
             elif st == "split":
                 _recolor_el(sh._element, "FFFFFF")
     # ── 목차 머리
@@ -519,7 +546,7 @@ def apply_theme(prs, st, tn, masters):
                 x._element.getparent().remove(x._element)
     tt = m_toc.shapes._spTree
     head_band(tt, st, tn)
-    lab_col = "FFFFFF" if st in ("band", "tab", "split", "pill") else tn["dark"]
+    lab_col = "FFFFFF" if st in ("band", "tab", "split", "pill") else INK
     lx = 2.05 if st == "side" else g["bx"] + 0.1
     _shape(tt, "목차 글", lx, bt + 0.07, 2.0, bh, None, text="목차", sz=1400, col=lab_col)
     for lay in m_toc.slide_layouts:
@@ -536,7 +563,7 @@ def apply_theme(prs, st, tn, masters):
                 sp = sh._element.find("p:spPr", NS)
                 for c in sp.findall("a:solidFill", NS) + sp.findall("a:gradFill", NS) + sp.findall("a:noFill", NS):
                     sp.remove(c)
-                sp.find("a:prstGeom", NS).addnext(parse_xml(f'<a:solidFill xmlns:a="{A}"><a:srgbClr val="{tn["head"][0]}"/></a:solidFill>'))
+                sp.find("a:prstGeom", NS).addnext(parse_xml(f'<a:solidFill xmlns:a="{A}"><a:srgbClr val="{tn["calm"]}"/></a:solidFill>'))   # 머리가 아니라 차분한 색
 
 
 # ───────────────────────── pptx 도우미
@@ -574,6 +601,63 @@ def abs_box(sh):
         w, h = w * sx, h * sy
         par = par.getparent()
     return x / 360000, y / 360000, w / 360000, h / 360000
+
+
+def _lins(sh):
+    """글 상자 왼쪽 안쪽 여백(cm) — 지정이 없으면 PowerPoint 기본 0.254"""
+    if not sh.has_text_frame or not sh.text_frame.text.strip():
+        return 0.0   # 글 없는 도형(아이콘·막대)은 도형 끝이 곧 보이는 끝 — 여백을 더하면 0.25cm 왼쪽으로 밀린다(2026-10-14 실수)
+    v = sh.text_frame._txBody.find("a:bodyPr", NS).get("lIns")
+    return int(v) / 360000 if v is not None else 0.254
+
+
+def _algn(sh):
+    """첫 문단의 실제 정렬 — 문단에 없으면 상자 lstStyle 의 1단계 값"""
+    tb = sh.text_frame._txBody
+    p0 = tb.find("a:p/a:pPr", NS)
+    if p0 is not None and p0.get("algn"):
+        return p0.get("algn")
+    l1 = tb.find("a:lstStyle/a:lvl1pPr", NS)
+    return (l1.get("algn") if l1 is not None else None) or "l"
+
+
+def vis_left(sh):
+    """보이는 왼쪽 끝 — 글 상자는 안쪽 여백을 더한 글의 시작점"""
+    return abs_box(sh)[0] + _lins(sh)
+
+
+def shift_to(sh, x_cm):
+    """보이는 왼쪽 끝을 x_cm 에 — 그룹 안이어도 차이만큼 옮긴다(그룹 배율 1 가정)"""
+    sh.left = int(sh.left + Cm(x_cm - vis_left(sh)))
+
+
+def audit_align(prs, lo=0.05, hi=0.9):
+    """정렬 검사 — 한 장 안에서 왼쪽 정렬 요소들의 시작점이 '거의 같은데 다른'(lo~hi cm 차이) 곳을 찾는다.
+    눈대중으로 놓친 사례: 표지 뱃지가 글 기준선보다 0.56cm 왼쪽(사용자 2026-10-14). 들여쓰기는 같은 상자 안 문단이라 걸리지 않는다."""
+    out = []
+    for k, s in enumerate(prs.slides, 1):
+        items = []
+        for src in (s.slide_layout.shapes, s.shapes):
+            for sh in walk(src):
+                if sh.shape_type == 6:
+                    continue
+                try:
+                    x, y, w, h = abs_box(sh)
+                except Exception:
+                    continue
+                if x < 0.5 or (w > PAGE_W * 0.85 and h > 5) or h > PAGE_H * 0.8 or y > 25.5 or y < 1.6:
+                    continue   # 배경·꽉 찬 그림·레일·머리·바닥(머리·바닥은 따로 정렬)
+                if sh.has_text_frame and sh.text_frame.text.strip():
+                    if _algn(sh) in ("ctr", "r"):
+                        continue
+                    items.append((vis_left(sh), sh.text_frame.text.strip()[:14]))
+                elif sh.name in ("표지 필", "표지 탭", "장 태그", "육각형 42", "직사각형 25"):   # 기준선에 붙는 장식(뱃지·소제목 아이콘·막대)
+                    items.append((x, sh.name))
+        items.sort()
+        for (x1, a), (x2, b) in zip(items, items[1:]):
+            if lo < x2 - x1 < hi and abs(x2 - x1 - (BODY_T - BODY_G)) > 0.03:   # 본문 2단(기준선 → 블록 안 글 0.50)은 의도한 들여쓰기
+                out.append(f"{k}쪽 '{a}' {x1:.2f}cm ↔ '{b}' {x2:.2f}cm ({x2 - x1:.2f}cm 어긋남)")
+    return out
 
 
 def named(shapes, name, nth=None):
@@ -660,8 +744,39 @@ class Build:
         self.m_div = master_of(self.prs, "vertical-divider")
         self.m_cover = master_of(self.prs, "vertical-cover")
         apply_theme(self.prs, self.style, self.th, (self.m_body, self.m_toc, self.m_div, self.m_cover))
+        self.normalize_body()
         self.pageno = {}     # (장 번호) → 쪽 수
         self.pn = {}         # 장 → 본문 레이아웃에서 떼어 낸 쪽 번호 칸
+
+    def normalize_body(self):
+        """본문 견본 블록의 세로 기준선 정리 — 원래 양식은 아이콘·막대 2.02~2.09, 글 2.12~2.54 로 제각각이었다(사용자 2026-10-14 "세로 가이드가 하나도 안 맞아").
+        아이콘·막대 왼쪽 = G(본문 기준선, 도입 문단과 같은 선), 그 안의 글(소제목·작은 제목·막대 제목·본문 글) = T 한 선, 오른쪽 끝 = G + 15"""
+        G, T, R_ = BODY_G, BODY_T, BODY_G + 15.0
+        hex42 = None
+        for sh in walk(self.s_body.shapes):
+            if sh.shape_type == 6:
+                continue
+            x, y, w, h = abs_box(sh)
+            if y < 7.3:
+                continue
+            if sh.name == "육각형 42":
+                shift_to(sh, G)
+                hex42 = (G, w)
+            elif sh.name == "직사각형 25":
+                shift_to(sh, G)
+                sh.width = Cm(R_ - G)
+            elif sh.has_text_frame and sh.name in ("Rectangle 95", "TextBox 19", "AutoShape 91"):
+                shift_to(sh, T)
+                sh.width = Cm(R_ - T)
+        for sh in walk(self.s_body.shapes):
+            if sh.name == "육각형 54" and hex42:   # 작은 육각형은 큰 육각형과 가운데를 맞춘다
+                w = abs_box(sh)[2]
+                shift_to(sh, hex42[0] + (hex42[1] - w) / 2)
+        # 목차 — 목록 글을 장 이름 글과 같은 선에(원래 4.57 ↔ 4.48)
+        ttl = next((x for x in layout_for(self.m_toc, 0).shapes if x.has_text_frame and x.top > Cm(2) and x.text_frame.text.strip()), None)
+        lst = min((x for x in self.s_toc.shapes if x.has_text_frame and x.name == "Text Box 40"), key=lambda x: x.left, default=None)
+        if ttl is not None and lst is not None:
+            shift_to(lst, vis_left(ttl))
 
     # 공통 글: 사업명(마스터들의 머리·바닥)
     def project_text(self):
@@ -719,17 +834,22 @@ class Build:
             set_text(dc, p["doc"])
         if self.bgs.get("cover"):
             set_bg(s, compose(self.bgs["cover"], 1.0, 0.62 if self.style == "split" else 0.68, 0.82, 0.6, 0.55))
-        light_text = self.cover_style(s, dc)
-        x, y, h = Cm(1.91), Cm(1.39), Cm(1.35)
+        guide = vis_left(tt) if tt is not None else 1.92   # 표지 왼쪽 기준선 = 제목 글자의 실제 시작점
+        for x_ in (yr, dc):
+            if x_ is not None:
+                shift_to(x_, guide)
+        light_text = self.cover_style(s, dc, guide)
+        x, y, h = Cm(guide), Cm(1.39), Cm(1.35)
         if self.logo:
             im = Image.open(io.BytesIO(self.logo))
             s.shapes._spTree.append(self._pic_el(s, self.logo, x, y, int(h * im.width / im.height), h, "발주기관 로고"))
         elif p["client"]:
-            self._text_el(s, p["client"], x, y, Cm(10), h, 1600, "FFFFFF" if light_text else self.th["dark"], "a시월구일3")
+            self._text_el(s, p["client"], x, y, Cm(10), h, 1600, "FFFFFF" if light_text else INK, "a시월구일3")
         return s
 
-    def cover_style(self, s, dc):
-        """표지도 스타일마다 다르게 — 도형은 글 뒤(spTree 앞쪽)에. 흰 글씨로 바꿨으면 True"""
+    def cover_style(self, s, dc, guide):
+        """표지도 스타일마다 다르게 — 도형은 글 뒤(spTree 앞쪽)에. 흰 글씨로 바꿨으면 True.
+        뱃지(탭·필)는 왼쪽 끝을 기준선(guide)에 맞추고 글은 뱃지 가운데 — 뱃지가 기준선 왼쪽으로 삐져나왔다(사용자 2026-10-14)"""
         tn, st = self.th, self.style
         shapes = []
 
@@ -738,28 +858,39 @@ class Build:
             _shape(tree_, *a, **k)
             shapes.append(tree_[-1])
 
-        dxy = abs_box(dc) if dc is not None else (1.71, 10.11, 3.4, 1.03)
+        dxy = abs_box(dc) if dc is not None else (guide, 10.11, 3.4, 1.03)
+        bw = 0.0
+        if dc is not None and st in ("tab", "pill"):
+            r0 = dc._element.find(".//a:rPr", NS)
+            pt = int(r0.get("sz") or 1400) / 100 if r0 is not None else 14
+            bw = text_cm(dc.text_frame.text.strip(), pt, "a시월구일3") + 1.1   # 글 폭 + 양옆 0.55
+        calm = [tn["calm"], _mix(tn["calm"], "FFFFFF", 0.1)]
         if st == "band":
             add("표지 위 띠", 0, 0, PAGE_W, 0.95, tn["head"])
         elif st == "tab":
-            add("표지 탭", dxy[0] - 0.35, dxy[1] - 0.12, 4.1, dxy[3] + 0.24, tn["head"], "snip1Rect", 28000)
+            add("표지 탭", guide, dxy[1] - 0.1, bw, dxy[3] + 0.2, [tn["point"]], "snip1Rect", 28000)
         elif st == "pill":
-            add("표지 필", dxy[0] - 0.35, dxy[1] - 0.12, 3.9, dxy[3] + 0.24, tn["head"], "roundRect", 50000)
+            add("표지 필", guide, dxy[1] - 0.1, bw, dxy[3] + 0.2, [tn["point"]], "roundRect", 50000)
         elif st == "side":
-            add("표지 레일", 0, 0, 1.35, PAGE_H, tn["head"], ang=5400000)
+            add("표지 레일", 0, 0, 1.35, PAGE_H, calm, ang=5400000)
         elif st == "split":
-            add("표지 위 색 블록", 0, 0, PAGE_W, 12.4, tn["head"], ang=5400000)
+            add("표지 위 색 블록", 0, 0, PAGE_W, 12.4, calm, ang=5400000)
         elif st == "line":
             add("표지 위 굵은 줄", 0, 0, PAGE_W, 0.45, tn["head"])
-            add("표지 제목 밑선", dxy[0], dxy[1] + dxy[3] + 0.5, 6.0, 0.06, [tn["mid"]])
+            add("표지 제목 밑선", guide, dxy[1] + dxy[3] + 0.5, 6.0, 0.06, [tn["point"]])
         tree = s.shapes._spTree
         for k, e in enumerate(shapes):
             tree.remove(e)
             tree.insert(2 + k, e)
-        if st in ("tab", "pill") and dc is not None:
+        if st in ("tab", "pill") and dc is not None:   # 글 상자를 뱃지와 같은 자리·폭으로, 가운데 정렬
             _recolor_el(dc._element, "FFFFFF")
+            bp = dc.text_frame._txBody.find("a:bodyPr", NS)
+            for k in ("lIns", "rIns"):
+                bp.set(k, "0")
+            shift_to(dc, guide)
+            dc.width = Cm(bw)
             for p_ in dc.text_frame.paragraphs:
-                p_.alignment = 1
+                p_.alignment = 2
         if st == "split":
             for nm in ("TextBox 24", "TextBox 29", "TextBox 30"):
                 for x in named(s.shapes, nm):
@@ -841,6 +972,7 @@ class Build:
         if len(rect2) > 1:
             set_text(rect2[1], title)
             fit_one_line(rect2[1], title, 14.6)
+            point_number(rect2[1], self.th["point"])   # 제목은 먹색, 번호만 포인트
         tag = named(s.shapes, "요구사항 꼬리표", 0)
         ids = [x.strip() for x in re.split(r"[,\s]+", str(pg.get("req") or "")) if x.strip()]
         req = ", ".join(ids[:3]) + (f" 외 {len(ids) - 3}" if len(ids) > 3 else "")   # 길면 경로 줄을 덮는다
@@ -856,7 +988,7 @@ class Build:
         # 도입 2문장 + 강조
         lead = [x for x in s.shapes if x.name == "Rectangle 95" and x.height > Cm(1.5)]
         if lead:
-            put_lead(lead[0], [str(t) for t in (pg.get("lead") or [])][:2], str(pg.get("strong") or ""))
+            put_lead(lead[0], [str(t) for t in (pg.get("lead") or [])][:2], str(pg.get("strong") or ""), self.th["point"])
         band = named(s.shapes, "Text Box 166", 0)
         if band is not None:
             set_text(band, str(pg.get("band") or ""))
@@ -956,7 +1088,7 @@ class Build:
                     ibody.append(_para(P_L2, ["    ", t2]))
                     pbody.append(_para(P_PG, [pno]) if pno else _blank(P_PG))
                     if pno:
-                        x1 = 4.57 + 0.2 + text_cm("    " + t2, 14) + 0.25
+                        x1 = vis_left(it_box) + 0.2 + text_cm("    " + t2, 14) + 0.25   # 점선은 글 끝에서(목록 상자 위치를 따라간다)
                         e = copy.deepcopy(line)
                         e.find(".//a:off", NS).set("x", str(int(Cm(x1))))
                         e.find(".//a:off", NS).set("y", str(int(Cm(5.72 + row * 0.893))))
@@ -1064,6 +1196,22 @@ def page_path(c, title):
     return f"{k}. {secs[k - 1]['title']} > {item}"
 
 
+def point_number(sh, col):
+    """'1.1 사업 배경' → 번호 '1.1' 만 포인트 색(나머지는 양식의 먹색 그대로)"""
+    ps = sh.text_frame.paragraphs
+    if not ps or not ps[0].runs:
+        return
+    r = ps[0].runs[0]
+    m = re.match(r"^(\d+(?:\.\d+)*\.?)(\s+.*)$", r.text, re.S)
+    if not m:
+        return
+    e = copy.deepcopy(r._r)
+    e.find("a:t", NS).text = m.group(1)
+    _recolor_el(e, col)
+    r.text = m.group(2)
+    r._r.addprevious(e)
+
+
 def fit_one_line(sh, text, width_cm, start=18, low=12):
     """제목이 한 줄에 들어가게 글자 크기를 줄인다(G마켓 산스 굵게 — 글꼴이 없으면 글자 종류로 어림)"""
     pt = start
@@ -1087,7 +1235,7 @@ def split_title(name):
     return best[1], best[2], best[0] > 0
 
 
-def put_lead(sh, sentences, strong):
+def put_lead(sh, sentences, strong, point=None):
     pe = sh.text_frame.paragraphs[0]._p
     rs = pe.findall("a:r", NS)
     norm = copy.deepcopy(rs[0]) if rs else None
@@ -1121,6 +1269,8 @@ def put_lead(sh, sentences, strong):
             e.find("a:t", NS).text = t
             if is_b and bold is None:
                 e.find("a:rPr", NS).set("b", "1")
+            if is_b and point:   # 강조 어구만 포인트 색
+                _recolor_el(e, point)
             add(e)
 
 
@@ -1200,7 +1350,7 @@ def add_table(s, tb, x, y, w, th=None):
             cell.vertical_anchor = 3
             fill = cell.fill
             fill.solid()
-            fill.fore_color.rgb = __import__("pptx").dml.color.RGBColor.from_string(th["dark"] if ri == 0 else ("FFFFFF" if ri % 2 else "F5F7FB"))
+            fill.fore_color.rgb = __import__("pptx").dml.color.RGBColor.from_string(th["calm"] if ri == 0 else ("FFFFFF" if ri % 2 else "F5F7FB"))
             for p_ in cell.text_frame.paragraphs:
                 p_.alignment = 2 if (ri == 0 or short[ci]) else 1   # 정렬은 열 단위(사용자 표 규칙 — 칸마다 섞지 않는다)
                 for r in p_.runs:
@@ -1272,6 +1422,11 @@ def run(job, j, opts, brief, note):
     use_fonts(opts.get("font_title"), opts.get("font_body"))
     bd = Build(o, bgs, logo, style, tone)
     n = bd.build(chapters_pages, out)
+    try:   # 정렬 검사 — 세로 기준선이 '거의 같은데 다른' 곳(눈대중으로 놓쳤던 표지 뱃지 0.56cm 사례, 2026-10-14)
+        align = audit_align(Presentation(out))
+    except Exception as e:
+        align = [f"정렬 검사 실패: {str(e)[:80]}"]
+    job.event(f"정렬 검사: 세로 기준선 어긋남 {len(align)}건" + (" — " + " / ".join(align[:3]) if align else ""), "warn" if align else "done")
     job.event(f"서체: 제목 {FONT['title'][0]}(표지·목차·간지·쪽 제목) · 본문 {FONT['body'][0]}")
     job.event(f"디자인: {(STYLES.get(style) or STYLES['band'])['label']} · 톤 {(TONES.get(tone) or TONES['navy'])['label']}")
     job.event(f"세로 제안서 {n}장(표지·목차·간지·본문)을 만들었습니다.", "done")
@@ -1297,7 +1452,8 @@ def run(job, j, opts, brief, note):
         "summary": f"{p['name']} — A4 세로 제안서 {n}장(본문 {n_body}쪽, {len(o['chapters'])}장 구성)",
         "stats": [{"label": "전체 장", "value": n}, {"label": "본문 쪽", "value": n_body}, {"label": "장 구성", "value": len(o["chapters"])}],
         "pages": getattr(bd, "pages", []), "fonts": {"title": FONT["title"][0], "body": FONT["body"][0]},
-        "checklist": [{"slide": 0, "title": "제안사 정보 확인", "level": "info",
+        "checklist": [{"slide": int(re.match(r"(\d+)", a).group(1)) if re.match(r"(\d+)", a) else 0, "title": "세로 기준선 어긋남", "level": "warn", "detail": a} for a in align[:10]]
+                     + [{"slide": 0, "title": "제안사 정보 확인", "level": "info",
                        "detail": "회사 현황·실적·인력·지분처럼 자료에 없는 제안사 정보는 「[제안사 작성]」 자리로 두었습니다."}],
         "changes": bglog}})
 
@@ -1309,18 +1465,18 @@ def guide_pages(th):
         ["머리 띠 장 이름", "a시월구일3", "12pt", "흰색(띠 위) · 띠 높이 가운데"],
         ["장 번호 배지", "a시월구일3", "12pt", "배지 색 위 · 가운데"],
         ["사업명(머리)", "a시월구일2", "8pt", "오른쪽 정렬"],
-        ["경로 줄", "a시월구일2", "10pt", f"#{th['mid']}"],
-        ["쪽 제목", "G마켓 산스 TTF Bold", "18pt", f"#{th['mid']} · 한 줄(길면 12pt까지 줄임)"],
+        ["경로 줄", "a시월구일2", "10pt", f"#{SUB}"],
+        ["쪽 제목", "G마켓 산스 TTF Bold", "18pt", f"#{INK} · 번호만 #{th['point']} · 한 줄"],
         ["요구사항 꼬리표", "a시월구일3 / a시월구일2", "8pt", "번호 3개 + 외 N"],
         ["쪽 번호", "a시월구일1", "9pt", "장별 'Ⅱ - 3' · 아래 가운데"]]}
     spec2 = {"cols": ["요소", "글꼴", "크기", "색 · 속성"], "rows": [
         ["도입 문단", "a시월구일2 / 강조 a시월구일3", "11pt", "#686868 · 줄간격 1.25 · 2문장"],
         ["띠 문구", "a시월구일4", "13pt", "흰색 · 한 줄"],
-        ["소제목", "a시월구일3", "12pt", f"#{th['dark']}"],
-        ["작은 제목", "a시월구일3", "10.5pt", f"#{th['dark']}"],
-        ["막대 제목", "a시월구일3", "11pt", f"#{th['dark']} · 바탕 #D9D9D9 50%"],
+        ["소제목", "a시월구일3", "12pt", f"#{INK}"],
+        ["작은 제목", "a시월구일3", "10.5pt", f"#{INK}"],
+        ["막대 제목", "a시월구일3", "11pt", f"#{INK} · 바탕 #D9D9D9 50%"],
         ["본문 글", "a시월구일2", "9pt", "#4D4D4D · 줄간격 1.0 · 앞 점 없음"],
-        ["표 머리 / 표 본문", "a시월구일3 / a시월구일2", "8.5pt", f"#{th['dark']} 바탕 흰 글씨 / #4D4D4D"]]}
+        ["표 머리 / 표 본문", "a시월구일3 / a시월구일2", "8.5pt", f"#{th['calm']} 바탕 흰 글씨 / #4D4D4D"]]}
     for sp in (spec1, spec2):   # 글꼴 칸 = 고른 서체 이름(사용자 2026-10-14 "고르면 작성가이드에 폰트도 같이 변경")
         for r in sp["rows"]:
             r[1] = re.sub(r"a시월구일[1-4]|G마켓 산스 TTF Bold", lambda m: fface(m.group(0)), r[1])
@@ -1351,8 +1507,9 @@ def guide_pages(th):
                                              f"본문: {bf[0]} {lv} — 굵기 4단계(옅음·본문·강조·굵음)",
                                              "글꼴이 없는 PC 에서는 다른 글꼴로 바뀌어 줄바꿈이 달라짐 — 작성 전 설치",
                                              "컨소시엄 업체는 같은 양식 파일로 작성해 합칠 때 어긋나지 않게 함"]),
-                    b("색", "톤 색상", [f"진한 색 #{th['dark']} — 머리 띠·소제목·막대 제목",
-                                       f"중간 색 #{th['mid']} — 쪽 제목·경로·강조", f"연한 색 #{th['light']} — 연한 면·선"])]},
+                    b("색", "글자는 먹색, 톤은 머리·강조에만", [f"글자 #{INK} — 제목·소제목·막대 제목 / 보조 #{SUB} — 경로",
+                                       f"강조 #{th['point']} — 쪽 제목 번호·강조 어구·태그만 칠함",
+                                       f"차분한 면 #{th['calm']} — 띠 문구·표 머리 / 연한 면 #{th['soft']}"])]},
         {"title": "1.3 서식 규칙표", "fixed_path": "1. 작성 가이드", "req": "",
          "lead": ["요소마다 글꼴·크기·색이 정해져 있습니다.", "새 쪽을 만들 때도 이 표의 값 그대로 씁니다."],
          "strong": "글꼴·크기·색", "band": "요소별 서식 — 이 값 그대로",

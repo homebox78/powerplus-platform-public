@@ -25,7 +25,7 @@ export const VERTICAL_TONES: VerticalTone[] = [
 ];
 export const verticalStyleName = (id?: string | null) => VERTICAL_STYLES.find((t) => t.id === (id || "band"))?.name ?? "클래식 밴드";
 export const verticalToneName = (id?: string | null) => VERTICAL_TONES.find((t) => t.id === (id || "navy"))?.name ?? "네이비";
-const THUMB_V = 1;
+const THUMB_V = 3;
 const PAGES = ["표지", "목차", "간지", "본문"];
 const thumb = (id: string, n: number) => `${import.meta.env.BASE_URL}vstyles/${id}/${n}.jpg?v=${THUMB_V}`;
 

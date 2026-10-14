@@ -11,6 +11,7 @@ import { BackButton } from "@/components/hb/back-button";
 import { Tag } from "@/components/hb/tag";
 import { cn } from "@/lib/utils";
 import { KRDS_COMPONENTS } from "@/modules/guide/data/krds";
+import { applyMetas, useGuideOverrides } from "@/modules/guide/overrides";
 
 interface DocFile { path: string; code: string }
 interface FwDoc { demo: string; files: DocFile[]; deps: string[] }
@@ -152,11 +153,14 @@ export default function GuideComponent() {
   const reg = useQuery({ queryKey: ["kit-registry"], queryFn: async () => (await fetch("/kit-files/registry.json")).json() as Promise<KitRegistry>, staleTime: Infinity });
   const doc = useQuery({ queryKey: ["kit-doc", id], queryFn: async () => { const r = await fetch(`/kit-files/docs/${id}.json`); if (!r.ok) throw new Error("없는 부품"); return r.json() as Promise<ComponentDoc>; }, staleTime: Infinity, retry: false });
   const pickFw = (v: Fw) => { setFw(v); try { localStorage.setItem("pp-guide-fw", v); } catch { /* 저장 불가 환경 */ } };
-  const metas = reg.data?.metas ?? [];
+  // 관리자 덮어쓰기(2026-10-14) — 부품 이름·숨김·순서, 문서 요약·메모·주의 사항
+  const ov = useGuideOverrides();
+  const metas = useMemo(() => applyMetas(reg.data?.metas ?? [], ov.components), [reg.data, ov.components]);
   const at = metas.findIndex((m) => m.id === id);
   const prev = at > 0 ? metas[at - 1] : undefined;
   const next = at >= 0 && at < metas.length - 1 ? metas[at + 1] : undefined;
-  const d = doc.data;
+  const o = ov.components[id];
+  const d = doc.data && o ? { ...doc.data, ...(o.title ? { title: o.title } : {}), ...(o.summary ? { summary: o.summary } : {}), ...(o.note ? { note: o.note } : {}), ...(o.notes?.length ? { notes: o.notes } : {}) } : doc.data;
   const f = d?.[fw];
   const vueOnlyManual = fw === "vue";
   const mode = vueOnlyManual ? "manual" : how;

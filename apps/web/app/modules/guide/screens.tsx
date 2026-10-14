@@ -19,6 +19,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { CHANGELOG_MODULES, fetchChangelog, type ChangelogEntry, type ChangelogModule } from "@/lib/admin";
 import { DOWNLOADS } from "./downloads";
 import { ComponentArt } from "./component-art";
+import { applyChecklist, applyItems, applyMetas, useGuideOverrides } from "./overrides";
 import { useMe } from "@/lib/auth";
 
 import { KRDS_CATEGORIES, KRDS_COMPONENTS, type KrdsComponent } from "./data/krds";
@@ -79,6 +80,8 @@ function Swatch({ hex, label, sub }: { hex: string; label: string; sub?: string 
 
 
 function GuideTokens() {
+  const ov = useGuideOverrides(); // 관리자 덮어쓰기 — 토큰 쓰임 설명·내려받기 이름·숨김·안내문
+  const downloads = DOWNLOADS.filter((d) => !ov.downloads[d.file]?.hidden).map((d) => ({ ...d, label: ov.downloads[d.file]?.label || d.label, use: ov.downloads[d.file]?.use || d.use }));
   const [group, setGroup] = useState("gray");
   const g = COLOR_GROUPS.find((x) => x.id === group) ?? COLOR_GROUPS[0]!;
   const colors = leaves(g.tree());
@@ -92,7 +95,7 @@ function GuideTokens() {
     <div className="mt-8 flex flex-col gap-14">
       <section>
         <SectionHeading title="색" />
-        <Copy className="mt-2 text-md text-ink-3" text="원시 팔레트(primitive)는 값이고, 의미 토큰(semantic)은 역할입니다. 화면은 의미 토큰만 씁니다." />
+        <Copy className="mt-2 text-md text-ink-3" text={ov.copy.intro?.tokens || "원시 팔레트(primitive)는 값이고, 의미 토큰(semantic)은 역할입니다. 화면은 의미 토큰만 씁니다."} />
         <div className="mt-6 flex flex-wrap items-center gap-3">
           <ChoiceButton label="팔레트" value={group} onChange={(v) => setGroup(v || "gray")} options={COLOR_GROUPS.map((c) => ({ id: c.id, label: c.label }))} allLabel="Gray" />
           {g.note && <span className="text-sm text-ink-4"><Copy as="span" text={g.note} /></span>}
@@ -114,7 +117,7 @@ function GuideTokens() {
                       <TableCell><span className="mx-auto block size-6 rounded-md border border-line" style={{ background: resolve(node.$value) }} aria-hidden /></TableCell>
                       <TableCell className="text-sm">{resolve(node.$value)}</TableCell>
                       <TableCell className="text-sm text-ink-4">{typeof node.$value === "string" && node.$value.startsWith("{") ? node.$value.slice(1, -1) : "—"}</TableCell>
-                      <TableCell className="text-left text-sm text-ink-3">{node.$description ?? ""}</TableCell>
+                      <TableCell className="text-left text-sm text-ink-3">{ov.tokens[path]?.description || node.$description || ""}</TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
@@ -166,11 +169,11 @@ function GuideTokens() {
 
       <section>
         <SectionHeading title="내려받기" />
-        <Copy className="mt-2 text-md text-ink-3" text={`토큰 원본 하나에서 만든 산출물 ${DOWNLOADS.length}종입니다. 빌드 도구 없이 파일 복사만으로 씁니다. 버전 ${T.$version}.`} />
+        <Copy className="mt-2 text-md text-ink-3" text={`토큰 원본 하나에서 만든 산출물 ${downloads.length}종입니다. 빌드 도구 없이 파일 복사만으로 씁니다. 버전 ${T.$version}.`} />
         <Table className="mt-6">
           <TableHeader><TableRow><TableHead className="w-[200px]">형식</TableHead><TableHead className="text-left">어디에 쓰나</TableHead><TableHead className="w-[260px]">파일</TableHead><TableHead className="w-[120px]">받기</TableHead></TableRow></TableHeader>
           <TableBody>
-            {DOWNLOADS.map((d) => (
+            {downloads.map((d) => (
               <TableRow key={d.file}>
                 <TableCell className="font-semibold">{d.label}</TableCell>
                 <TableCell className="text-left text-sm text-ink-3">{d.use}</TableCell>
@@ -195,12 +198,15 @@ function GuideComponents() {
   const [group, setGroup] = useState("");
   const [q, setQ] = useState("");
   const [fw, setFw] = useState<"react" | "vue">("react");
-  const list = useMemo(() => (data?.metas ?? []).filter((m) => (!group || m.group === group) && (!q || m.title.includes(q) || m.id.includes(q))), [data, group, q]);
+  const ov = useGuideOverrides(); // 관리자 덮어쓰기 — 부품 이름·숨김·순서·안내문
+  const metas = useMemo(() => applyMetas(data?.metas ?? [], ov.components), [data, ov.components]);
+  const list = useMemo(() => metas.filter((m) => (!group || m.group === group) && (!q || m.title.includes(q) || m.id.includes(q))), [metas, group, q]);
   const groupLabel = (id: string) => data?.groups.find((g) => g[0] === id)?.[1] ?? id;
   return (
     <div className="mt-8">
+      {ov.copy.intro?.components && <Copy className="mb-6 text-md text-ink-3" text={ov.copy.intro.components} />}
       <div className="flex flex-wrap items-center gap-3">
-        <ChoiceButton label="분류" value={group} onChange={setGroup} options={(data?.groups ?? []).map(([id, label]) => ({ id, label, count: data?.metas.filter((m) => m.group === id).length }))} />
+        <ChoiceButton label="분류" value={group} onChange={setGroup} options={(data?.groups ?? []).map(([id, label]) => ({ id, label, count: metas.filter((m) => m.group === id).length }))} />
         <ChoiceButton label="코드" value={fw} onChange={(v) => setFw((v as "react" | "vue") || "react")} options={[{ id: "react", label: "React" }, { id: "vue", label: "Vue" }]} showAll={false} />
         <SearchInput value={q} onChange={(e) => setQ(e.target.value)} placeholder="부품 이름" className="w-full sm:w-[260px]" />
         <Button asChild variant="outline" className="ml-auto"><a href="/kit-files/powerguide-kit-krds.zip" download><Download aria-hidden />키트 통째 받기</a></Button>
@@ -222,7 +228,7 @@ function GuideComponents() {
 // KRDS 지침 id → 키트 부품 id(guide-component 의 KRDS_ALIAS 를 거꾸로). 대응 줄은 부품 문서로, 미대응 줄은 KRDS 원문으로(품질 판정 GDE-011)
 const KIT_OF: Record<string, string> = { "gov-banner": "masthead", modal: "dialog", radio: "radio-group", tab: "tabs", "tab-bar": "tabs", "text-field": "input", "in-page-nav": "in-page-navigation", "top-navigation": "navigation-menu", "critical-alert": "alert", "bottom-sheet": "drawer", disclosure: "collapsible", snackbar: "toast" };
 const KRDS_SRC = "https://www.krds.go.kr/html/site/component/component_summary.html";
-function KrdsRow({ c, kitIds }: { c: KrdsComponent; kitIds: Set<string> }) {
+function KrdsRow({ c, kitIds }: { c: KrdsComponent & { note?: string }; kitIds: Set<string> }) {
   const kit = c.id ? [KIT_OF[c.id], c.id].find((x) => x && kitIds.has(x)) : undefined;
   const [open, setOpen] = useState(false);
   const has = (a: string[]) => a.length > 0;
@@ -240,6 +246,7 @@ function KrdsRow({ c, kitIds }: { c: KrdsComponent; kitIds: Set<string> }) {
         <TableRow className="bg-ground-2 hover:bg-ground-2">
           <TableCell colSpan={6} className="text-left">
             <div className="grid grid-cols-1 gap-6 py-2 md:grid-cols-2">
+              {c.note && <div className="md:col-span-2 rounded-md bg-ground px-4 py-3 text-sm leading-[1.7]"><span className="font-bold">우리 키트 메모</span> <Copy as="span" text={c.note} /></div>}
               {([["사용 지침", c.usage], ["접근성", c.a11y], ["상호작용", c.interaction], ["개발", c.dev]] as [string, string[]][]).filter(([, a]) => has(a)).map(([t, a]) => (
                 <div key={t}><div className="text-sm font-bold">{t}</div><ul className="mt-2 flex list-disc flex-col gap-1 pl-5 text-sm leading-[1.7] text-ink-3">{a.map((s, i) => <li key={i}>{s}</li>)}</ul></div>
               ))}
@@ -257,15 +264,18 @@ function GuideKrds() {
   const kitIds = useMemo(() => new Set((reg.data?.metas ?? []).map((m) => m.id)), [reg.data]);
   const [cat, setCat] = useState("");
   const [tab, setTab] = useState("components");
-  const comps = KRDS_COMPONENTS.filter((c) => !cat || c.cat === cat);
-  const mapped = KRDS_COMPONENTS.filter((c) => c.id).length;
+  const ov = useGuideOverrides(); // 관리자 덮어쓰기 — 지침 글·키트 메모·숨김·안내문
+  const all = useMemo(() => applyItems(KRDS_COMPONENTS, ov.krds), [ov.krds]);
+  const patterns = useMemo(() => applyItems(KRDS_PATTERNS, ov.patterns), [ov.patterns]);
+  const comps = all.filter((c) => !cat || c.cat === cat);
+  const mapped = all.filter((c) => c.id).length;
   return (
     <div className="mt-8">
       <Tabs value={tab} onValueChange={setTab}>
-        <TabsList><TabsTrigger value="components">컴포넌트 {KRDS_COMPONENTS.length}</TabsTrigger><TabsTrigger value="patterns">기본 패턴 {KRDS_PATTERNS.length}</TabsTrigger></TabsList>
+        <TabsList><TabsTrigger value="components">컴포넌트 {all.length}</TabsTrigger><TabsTrigger value="patterns">기본 패턴 {patterns.length}</TabsTrigger></TabsList>
         <TabsContent value="components">
-          <Copy className="mt-4 text-md text-ink-3" text={`KRDS 컴포넌트 ${KRDS_COMPONENTS.length}종 중 ${mapped}종이 우리 부품과 대응합니다. 공공 SI 검수는 이 분류로 대조합니다. 줄을 누르면 지침이 펼쳐집니다.`} />
-          <div className="mt-6"><ChoiceButton label="분류" value={cat} onChange={setCat} options={KRDS_CATEGORIES.map((k) => ({ id: k, label: k, count: KRDS_COMPONENTS.filter((c) => c.cat === k).length }))} /></div>
+          <Copy className="mt-4 text-md text-ink-3" text={ov.copy.intro?.krds || `KRDS 컴포넌트 ${all.length}종 중 ${mapped}종이 우리 부품과 대응합니다. 공공 SI 검수는 이 분류로 대조합니다. 줄을 누르면 지침이 펼쳐집니다.`} />
+          <div className="mt-6"><ChoiceButton label="분류" value={cat} onChange={setCat} options={KRDS_CATEGORIES.map((k) => ({ id: k, label: k, count: all.filter((c) => c.cat === k).length }))} /></div>
           <Table className="mt-6">
             <TableHeader><TableRow><TableHead className="w-[200px]">컴포넌트</TableHead><TableHead className="w-[200px]">영문</TableHead><TableHead className="w-[150px]">분류</TableHead><TableHead className="w-[100px]">대응</TableHead><TableHead className="w-[120px]">바로 가기</TableHead><TableHead className="w-[90px]">KWCAG</TableHead></TableRow></TableHeader>
             <TableBody>{comps.map((c) => <KrdsRow key={`${c.cat}-${c.ko}`} c={c} kitIds={kitIds} />)}</TableBody>
@@ -274,7 +284,7 @@ function GuideKrds() {
         <TabsContent value="patterns">
           <Copy className="mt-4 text-md text-ink-3" text="컴포넌트가 무엇을 쓰는가라면, 기본 패턴은 어떻게 엮는가입니다." />
           <div className="mt-6 grid grid-cols-1 items-start gap-4 md:grid-cols-2">
-            {KRDS_PATTERNS.map((p) => (
+            {patterns.map((p) => (
               <details key={p.ko} className="group rounded-panel border border-line bg-ground p-5">
                 <summary className="flex cursor-pointer list-none items-center gap-3 text-lg font-bold">{p.ko}{p.id ? <Tag tone="ok">대응</Tag> : <Tag tone="warn">미대응</Tag>}</summary>
                 <p className="mt-3 text-md leading-[1.7] text-ink-3">{p.desc}</p>
@@ -319,21 +329,23 @@ function GuideA11y() {
   const reg = useQuery({ queryKey: ["kit-registry"], queryFn: async () => (await fetch("/kit-files/registry.json")).json() as Promise<KitRegistry>, staleTime: Infinity });
   const [verdict, setVerdict] = useState<string[]>(["F", "?"]);
   const [section, setSection] = useState("");
-  const rows = REPORT.rows.filter((r) => (!verdict.length || verdict.includes(r.verdict)) && (!section || r.section === section));
-  const total = REPORT.rows.length;
+  const ov = useGuideOverrides(); // 관리자 덮어쓰기 — 판정·근거·고칠 방향·숨김·안내문(요약 건수도 다시 센다)
+  const merged = useMemo(() => applyChecklist(REPORT.rows, ov.checklist), [ov.checklist]);
+  const rows = merged.rows.filter((r) => (!verdict.length || verdict.includes(r.verdict)) && (!section || r.section === section));
+  const total = merged.rows.length;
   return (
     <div className="mt-8">
-      <Copy className="text-md text-ink-3" text={`디지털 정부 서비스 UI/UX 가이드라인 자체 검증 체크리스트 ${total}항목을 키트 코드에 대조한 결과입니다. 자동 검사(axe-core WCAG 2.1 A·AA, 키보드 포커스)는 React·Vue 77종 모두 위반 0입니다.`} />
+      <Copy className="text-md text-ink-3" text={ov.copy.intro?.a11y || `디지털 정부 서비스 UI/UX 가이드라인 자체 검증 체크리스트 ${total}항목을 키트 코드에 대조한 결과입니다. 자동 검사(axe-core WCAG 2.1 A·AA, 키보드 포커스)는 React·Vue 77종 모두 위반 0입니다.`} />
       {/* 검사일·키트 버전(품질 판정 GDE-012) — 판정이 어느 판 기준인지 */}
       <p className="mt-2 text-sm text-ink-4">검사일 {REPORT.at.slice(0, 10).replace(/-/g, ".")} · 키트 v{reg.data?.version ?? "…"} 기준</p>
       <div className="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
-        {Object.entries(REPORT.summary).map(([k, n]) => (
+        {Object.entries(merged.summary).map(([k, n]) => (
           <div key={k} className="rounded-panel border border-line bg-ground p-5"><div className="text-sm text-ink-4">{VERDICT[k]?.label ?? k}</div><div className="mt-1 text-3xl font-extrabold tracking-[-0.03em]">{n}</div></div>
         ))}
       </div>
       <div className="mt-8 flex flex-wrap items-center gap-3">
-        <ChoiceButton label="판정" multiple value={verdict} onChange={setVerdict} options={Object.entries(VERDICT).map(([id, v]) => ({ id, label: v.label, count: REPORT.summary[id] ?? 0 }))} />
-        <ChoiceButton label="영역" value={section} onChange={setSection} options={Object.entries(SECTION_KO).map(([id, label]) => ({ id, label, count: REPORT.rows.filter((r) => r.section === id).length }))} />
+        <ChoiceButton label="판정" multiple value={verdict} onChange={setVerdict} options={Object.entries(VERDICT).map(([id, v]) => ({ id, label: v.label, count: merged.summary[id] ?? 0 }))} />
+        <ChoiceButton label="영역" value={section} onChange={setSection} options={Object.entries(SECTION_KO).map(([id, label]) => ({ id, label, count: merged.rows.filter((r) => r.section === id).length }))} />
         <span className="text-sm text-ink-4">{rows.length}항목</span>
       </div>
       {/* 1024 미만: 표 대신 카드 목록 — 고정 폭 열이 설명 칸을 0px 로 눌러 한 글자씩 세로로 쌓이던 문제(종합평가 1-2) */}
@@ -382,7 +394,8 @@ function GuideChangelog() {
   const mod: ChangelogModule = CHANGELOG_MODULES.some((m) => m.id === modParam) ? (modParam as ChangelogModule) : "guide";
   const { data, isLoading } = useQuery({ queryKey: ["changelog", mod], queryFn: () => fetchChangelog(mod), staleTime: 60_000 });
   const { isAdmin } = useMe();
-  const tracks = [...new Set((data ?? []).map((v) => v.track || "전체"))];
+  const ov = useGuideOverrides();
+  const tracks =[...new Set((data ?? []).map((v) => v.track || "전체"))];
   const Row = ({ v }: { v: ChangelogEntry }) => (
     <li className="flex gap-6 border-b border-line py-5">
       <div className="w-[120px] shrink-0"><div className="text-lg font-extrabold">v{v.version}</div><div className="text-sm text-ink-4">{v.date.replace(/-/g, ".")}</div></div>
@@ -397,7 +410,7 @@ function GuideChangelog() {
   );
   if (isLoading) return <div className="mt-8 h-40 animate-pulse rounded-panel bg-ground-3" />;
   return (
-    <>{adminBar}<div className={`mt-8 grid grid-cols-1 gap-12 ${tracks.length > 1 ? "lg:grid-cols-2" : ""}`}>
+    <>{adminBar}{ov.copy.intro?.changelog && <Copy className="mt-6 text-md text-ink-3" text={ov.copy.intro.changelog} />}<div className={`mt-8 grid grid-cols-1 gap-12 ${tracks.length > 1 ? "lg:grid-cols-2" : ""}`}>
       {tracks.map((t) => (
         <section key={t}><SectionHeading title={t} size={24} /><ul className="mt-2">{(data ?? []).filter((v) => (v.track || "전체") === t).map((v) => <Row key={v.id} v={v} />)}</ul></section>
       ))}
@@ -406,17 +419,20 @@ function GuideChangelog() {
 }
 
 // ───────────────────────── 랜딩 보강 ─────────────────────────
+/** 시작하기 '적용 순서' 원본 — 관리자 덮어쓰기(copy.steps[i])가 있으면 그 칸만 바꾼다 */
+export const GUIDE_STEPS = [
+  ["토큰을 가져온다", "CSS 변수 한 파일이면 어떤 스택이든 시작됩니다. Tailwind·shadcn·Spring 용도별 형식이 따로 있습니다.", "/guide/tokens"],
+  ["부품을 고른다", "KRDS 77종이 React·Vue 두 판으로 있습니다. 미리보기에서 눌러 보고 코드를 복사합니다.", "/guide/components"],
+  ["KRDS 로 대조한다", "검수가 KRDS 분류로 오므로 대응표에서 빠진 것부터 챙깁니다.", "/guide/krds"],
+  ["접근성 결과를 본다", "자체 검증 체크리스트 판정표에서 사이트 담당 항목을 확인합니다.", "/guide/a11y"],
+] as const;
+
 export function GuideLandingSteps() {
-  const steps = [
-    ["토큰을 가져온다", "CSS 변수 한 파일이면 어떤 스택이든 시작됩니다. Tailwind·shadcn·Spring 용도별 형식이 따로 있습니다.", "/guide/tokens"],
-    ["부품을 고른다", "KRDS 77종이 React·Vue 두 판으로 있습니다. 미리보기에서 눌러 보고 코드를 복사합니다.", "/guide/components"],
-    ["KRDS 로 대조한다", "검수가 KRDS 분류로 오므로 대응표에서 빠진 것부터 챙깁니다.", "/guide/krds"],
-    ["접근성 결과를 본다", "자체 검증 체크리스트 판정표에서 사이트 담당 항목을 확인합니다.", "/guide/a11y"],
-  ] as const;
+  const ov = useGuideOverrides();
   return (
     <section className="mt-8" aria-label="적용 순서">
       <SectionHeading title="적용 순서" />
-      <StepCards cols={4} items={steps.map(([title, desc, to], i) => ({ title, desc, to, img: `/img/steps/guide-${i + 1}-v3.html` }))} />
+      <StepCards cols={4} items={GUIDE_STEPS.map(([title, desc, to], i) => ({ title: ov.copy.steps?.[i]?.title || title, desc: ov.copy.steps?.[i]?.desc || desc, to, img: `/img/steps/guide-${i + 1}-v3.html` }))} />
     </section>
   );
 }

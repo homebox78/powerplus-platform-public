@@ -13,6 +13,7 @@ import { MODULES, menuHref, type ModuleMenu, type PlatformModule } from "@/lib/m
 import { cn } from "@/lib/utils";
 import { ASSET_SCREENS, AssetsLandingStats } from "@/modules/assets/screens";
 import { GUIDE_SCREENS, GuideLandingSteps } from "@/modules/guide/screens";
+import { useGuideOverrides, type GuideCopy } from "@/modules/guide/overrides";
 import { DECK_SCREENS, DeckLandingSteps } from "@/modules/deck/screens";
 import { MOCK_SCREENS, MockLandingSteps } from "@/modules/mock/screens";
 
@@ -25,7 +26,9 @@ export default function ModulePage() {
   const { sub = "" } = useParams();
   const { me } = useMe();
   const [sp] = useSearchParams();
-  const m = MODULES.find((x) => pathname.startsWith(x.to)) ?? MODULES[0]!;
+  const m0 = MODULES.find((x) => pathname.startsWith(x.to)) ?? MODULES[0]!;
+  const gov = useGuideOverrides();
+  const m = m0.id === "guide" ? withGuideCopy(m0, gov.copy) : m0; // 가이드 부제·소개·메뉴 글 = 관리자 덮어쓰기(2026-10-14)
   const item = m.menu.find((i) => i.slug === sub) ?? m.menu[0]!;
   const landing = item.slug === "";
   // powerDeck 공유 링크(/deck/jobs?id=…)는 로그인 없이 연다 — 볼 수 있는지는 서버가 작업의 링크 권한(shared=3)으로 정한다
@@ -79,6 +82,15 @@ export default function ModulePage() {
       )}
     </div>
   );
+}
+
+/** 가이드 모듈 글 덮어쓰기 — 메뉴 열쇠는 slug(시작하기는 '_') */
+function withGuideCopy(m: PlatformModule, c: GuideCopy): PlatformModule {
+  return {
+    ...m,
+    sub: c.module?.sub || m.sub, desc: c.module?.desc || m.desc, free: c.module?.free || m.free,
+    menu: m.menu.map((i) => ({ ...i, label: c.menu?.[i.slug || "_"]?.label || i.label, desc: c.menu?.[i.slug || "_"]?.desc || i.desc })),
+  };
 }
 
 /** 각 솔루션 소개 하단 공통 — powerMCP 연결 안내. /powermcp 의 "키는 마이페이지에서" 띠와 같은 형태(사용자 2026-10-07) */

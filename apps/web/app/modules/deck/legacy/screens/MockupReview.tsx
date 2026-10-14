@@ -773,7 +773,7 @@ export function MockupReview({ job, onChange, isAdmin, me, onLogout }: { job: Jo
         </div>
         {ovMode === "canvas" ? (
           <OverviewCanvas jobId={job.id} groups={groups} sel={fcur ? null : sel} title={(x) => clean(val(x, "title"))} thumb={thumb} badge={abBadge}
-            onOpen={(n) => { pickSlide(n); setOverview(false); }} />
+            onOpen={(n) => { pickSlide(n); setOverview(false); }} onReorder={canMove ? applyOrder : undefined} />
         ) : groups.map(([ch, ss]) => (
           <div key={ch}>
             <div className="text-[14px] font-bold text-ink2 mb-2">{ch} <span className="text-dim font-medium">· {ss.length}장</span></div>

@@ -55,9 +55,10 @@ final class Data
         return self::json(dirname(__DIR__, 2) . '/data/guide/' . $name, 'KRDS');
     }
 
+    // 아래 읽기는 모두 관리자 덮어쓰기(Overrides — 글·판정·숨김·순서)를 합친 값이다(2026-10-14). 숨긴 부품은 목록·문서 모두에서 빠진다.
     public static function registry(): array
     {
-        return self::json(self::webRoot() . '/kit-files/registry.json', '부품 목록');
+        return Overrides::applyRegistry(self::json(self::webRoot() . '/kit-files/registry.json', '부품 목록'));
     }
 
     /** 부품 문서 한 건(없으면 null). id 는 목록에 있는 것만 받는다(경로 조작 차단). */
@@ -67,7 +68,7 @@ final class Data
         if (!in_array($id, $ids, true)) {
             return null;
         }
-        return self::json(self::webRoot() . "/kit-files/docs/{$id}.json", '부품 문서');
+        return Overrides::applyDoc(self::json(self::webRoot() . "/kit-files/docs/{$id}.json", '부품 문서'));
     }
 
     public static function hasRegistryItem(string $id): bool
@@ -77,17 +78,17 @@ final class Data
 
     public static function krdsComponents(): array
     {
-        return self::dataFile('krds-components.json');
+        return Overrides::applyItems(self::dataFile('krds-components.json'), 'krds');
     }
 
     public static function krdsPatterns(): array
     {
-        return self::dataFile('krds-patterns.json');
+        return Overrides::applyItems(self::dataFile('krds-patterns.json'), 'patterns');
     }
 
     public static function checklist(): array
     {
-        return self::dataFile('checklist.json');
+        return Overrides::applyChecklist(self::dataFile('checklist.json'));
     }
 
     /** 키트 부품 id → KRDS 지침 항목들(대응표 id 가 다른 것은 aliases). */

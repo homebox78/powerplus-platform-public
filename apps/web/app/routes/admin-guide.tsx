@@ -1,10 +1,13 @@
-// 관리자 · powerGuide 현황 — api/routes/admin_guide.php (사용자 2026-10-14 "admin 에 파워가이드 관리·설정 메뉴가 없네?").
-// powerGuide 내용은 코드가 정본(packages/kit · modules/guide/data · guide-files)이라 편집 화면이 아니라
-// ① 배포된 자료가 제대로 실렸는지 ② 부품·체크리스트 구성 ③ MCP·REST 로 얼마나 불리는지 ④ 어디를 고치면 되는지를 본다. 틀은 admin-search.tsx 와 같다.
+// 관리자 · powerGuide — api/routes/admin_guide.php (사용자 2026-10-14 "admin 에 파워가이드 관리·설정 메뉴가 없네?" → "/guide 를 모두 관리 가능해야").
+// 탭: 현황(자료 상태·구성·이용) + 내용 편집(소개·메뉴·부품·KRDS·접근성·토큰, components/admin/guide-editors.tsx) + 변경 이력(별도 화면).
+// 원본은 코드(packages/kit · modules/guide/data · guide-files)이고 편집은 그 위 덮어쓰기(core_settings guide.*) — 값·코드는 저장소에서.
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router";
 import { Area, AreaChart, CartesianGrid, XAxis, YAxis } from "recharts";
 import { AdminTitle, SortHead, useQueryState, useSort } from "@/components/admin/admin-ui";
+import { GuideChecklistEditor, GuideComponentsEditor, GuideCopyEditor, GuideKrdsEditor, GuideTokensEditor } from "@/components/admin/guide-editors";
+import { Button } from "@/components/ui/button";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ChoiceButton } from "@/components/hb/choice-button";
 import { Copy } from "@/components/hb/copy";
 import { Tag } from "@/components/hb/tag";
@@ -32,7 +35,36 @@ const EDIT = [
   { what: "KRDS 지침·패턴·체크리스트", where: "apps/web/app/modules/guide/data", how: "원천을 고치면 배포 때 build-guide-data 가 서버용 사본을 만듭니다." },
 ];
 
+// 탭 — 현황(자료 상태·이용) + 내용 편집 5개 + 변경 이력(별도 화면). 사용자 2026-10-14 "/guide 를 모두 관리 가능해야"
+const TABS = [
+  { id: "status", label: "현황" }, { id: "copy", label: "소개·메뉴" }, { id: "components", label: "부품" },
+  { id: "krds", label: "KRDS 대응표" }, { id: "a11y", label: "접근성" }, { id: "tokens", label: "토큰·내려받기" }, { id: "changelog", label: "변경 이력" },
+] as const;
+
 export default function AdminGuide() {
+  const { get, set } = useQueryState();
+  const tab = get("tab") || "status";
+  return (
+    <div>
+      <AdminTitle title="powerGuide" desc="/guide 의 글·항목을 고치고, 자료가 제대로 실렸는지·얼마나 쓰이는지 봅니다. 고친 내용은 /guide 와 MCP 에 바로 반영됩니다." />
+      <Tabs value={tab} onValueChange={(v) => set({ tab: v === "status" ? "" : v, q: "", kind: "", group: "", verdict: "" })} className="mt-6">
+        <TabsList className="flex-wrap">{TABS.map((t) => <TabsTrigger key={t.id} value={t.id}>{t.label}</TabsTrigger>)}</TabsList>
+      </Tabs>
+      {tab === "status" && <GuideStatus />}
+      {tab === "copy" && <GuideCopyEditor />}
+      {tab === "components" && <GuideComponentsEditor />}
+      {tab === "krds" && <GuideKrdsEditor />}
+      {tab === "a11y" && <GuideChecklistEditor />}
+      {tab === "tokens" && <GuideTokensEditor />}
+      {tab === "changelog" && (
+        <Card className="mt-6"><CardHeader><CardTitle>변경 이력</CardTitle><CardDescription>변경 이력은 모든 모듈이 같이 쓰는 이력 화면에서 씁니다.</CardDescription></CardHeader>
+          <CardContent className="flex gap-2"><Button asChild><Link to="/admin/changelog?module=guide&new=1">새 이력</Link></Button><Button asChild variant="outline"><Link to="/admin/changelog?module=guide">가이드 이력 관리</Link></Button></CardContent></Card>
+      )}
+    </div>
+  );
+}
+
+function GuideStatus() {
   const { get, set } = useQueryState();
   const days = Number(get("days") || 30);
   const q = useQuery({ queryKey: ["admin", "guide", days], queryFn: () => fetchGuideAdmin(days) });
@@ -41,8 +73,6 @@ export default function AdminGuide() {
   const broken = s ? s.files.filter((f) => !f.ok).length : 0;
   return (
     <div>
-      <AdminTitle title="powerGuide" desc="부품·토큰·KRDS 지침이 제대로 실렸는지, 얼마나 쓰이는지 봅니다. 내용은 코드가 정본이라 여기서 고치지 않습니다." />
-
       <div className="mt-7 grid grid-cols-2 gap-3 lg:grid-cols-4">
         <Kpi label="부품" value={s ? s.counts.components.toLocaleString() : null} sub={s ? `KRDS ${s.counts.by_source.krds} · shadcn ${s.counts.by_source.shadcn} · 둘 다 ${s.counts.by_source.both}` : ""} />
         <Kpi label="토큰 형식" value={s ? `${s.counts.tokens}종` : null} sub={s ? `키트 v${s.counts.kit_version || "—"}` : ""} />
@@ -158,7 +188,7 @@ export default function AdminGuide() {
       </div>
 
       <Card className="mt-10">
-        <CardHeader><CardTitle>내용을 고치려면</CardTitle><CardDescription>코드가 정본이라 저장소에서 고치고 배포하면 이 화면과 MCP 에 함께 반영됩니다.</CardDescription></CardHeader>
+        <CardHeader><CardTitle>코드에서만 고치는 것</CardTitle><CardDescription>글·판정·숨김·순서는 위 탭에서 고칩니다. 토큰 값·부품 코드·지침 원문 갱신은 빌드가 필요해 저장소에서 고치고 배포합니다.</CardDescription></CardHeader>
         <CardContent className="px-0">
           <Table className="min-w-[640px] table-fixed">
             <TableHeader><TableRow><TableHead className="w-[200px]">무엇</TableHead><TableHead className="w-[260px]">어디</TableHead><TableHead>어떻게</TableHead></TableRow></TableHeader>

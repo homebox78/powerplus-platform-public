@@ -62,6 +62,19 @@ return static function (Router $r): void {
     };
     $verdicts = ['P' => '통과','F' => '미흡', '수정됨' => '수정해 통과', '의도' => '의도된 차이', '?' => '판단 불가', '사이트' => '사이트 담당'];
 
+    // 관리자 덮어쓰기 전체(공개) — 웹 /guide 화면이 코드 원본 위에 합친다(2026-10-14, Pp\Guide\Overrides). 키 없이 읽는다.
+    $r->get('/guide/overrides', function (array $p, Actor $a): void {
+        header('Cache-Control: public, max-age=60');
+        Response::json(\Pp\Guide\Overrides::all());
+    });
+
+    // KRDS 컴포넌트 지침 목록(관리자 덮어쓰기 반영 — 숨긴 항목 빠짐, note 덧붙음). MCP guide_krds 가 공용 분류표(id·공식 링크) 위에 합친다(2026-10-14).
+    $r->get('/guide/krds', function (array $p, Actor $a) use ($hit): void {
+        $hit($a, 'guide_krds');
+        $kc = Data::krdsComponents();
+        Response::json($kc['items'] ?? [], 200, ['meta' => ['categories' => $kc['categories'] ?? [], 'source' => 'KRDS(대한민국 디지털 정부 디자인 시스템) 공식 지침 · 관리자 덮어쓰기 반영']], true);
+    });
+
     $r->get('/guide/components', function (array $p, Actor $a) use ($hit): void {
         $hit($a, 'guide_list_components');
         $reg = Data::registry();

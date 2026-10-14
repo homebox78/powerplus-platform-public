@@ -810,7 +810,7 @@ function buildServer(key: string | null): McpServer {
   });
 
   server.registerTool("guide_krds", {
-    title: "KRDS 컴포넌트 가이드", description: "KRDS(대한민국 디지털 정부 디자인시스템) 컴포넌트 55종의 이름·분류·공식 가이드 링크(krds.go.kr 실제 문서)와 홈박스 섹션 매핑.",
+    title: "KRDS 컴포넌트 가이드", description: "KRDS(대한민국 디지털 정부 디자인시스템) 컴포넌트 55종의 이름·분류·공식 가이드 링크(krds.go.kr 실제 문서)·홈박스 섹션 매핑·대응 부품(kit_id). component·category 로 5개 이하로 좁히면 사용·접근성·상호작용·개발 지침 글과 관리자 메모(note)도 준다.",
     inputSchema: { component: z.string().optional().describe("krds_components.id (예: tab, breadcrumb, pagination). 없으면 전체 목록"), category: z.string().optional().describe("identity·navigation·layout·action·selection·feedback·help·input·settings·content·mobile") },
   }, async (a) => {
     const g = await guard("guide_krds"); if (g) return g;
@@ -819,10 +819,26 @@ function buildServer(key: string | null): McpServer {
     const KO_CAT: Record<string, string> = { 아이덴티티: "identity", 정체성: "identity", 탐색: "navigation", 내비게이션: "navigation", 레이아웃: "layout", 배치: "layout", 액션: "action", 동작: "action", 선택: "selection", 피드백: "feedback", 도움: "help", 도움말: "help", 입력: "input", 설정: "settings", 콘텐츠: "content", 모바일: "mobile" };
     const cat = a.category ? (KO_CAT[a.category.trim()] ?? a.category.trim().toLowerCase()) : undefined;
     const comp = a.component?.trim().toLowerCase();
-    const list = taxonomy.krds_components.filter((c) => (!comp || c.id === comp || (c as { name_ko?: string }).name_ko === a.component) && (!cat || c.category === cat));
+    // 지침 글은 플랫폼 /guide/krds(관리자 덮어쓰기 반영)에서 받아 이름으로 붙인다 — 공용 분류표만 읽어 관리자 KRDS 대응표 수정이 MCP 에 안 보이던 것(2026-10-14).
+    // 두 원본의 이름 표기가 조금 다르다('텍스트 영역 (Textarea)'·'범위슬라이드') → 괄호·공백을 빼고 맞춘다.
+    type KrdsRule = { ko: string; en?: string; id?: string; usage?: string[]; a11y?: string[]; interaction?: string[]; dev?: string[]; kwcag?: string[]; note?: string };
+    const norm = (s: string) => s.replace(/\(.*?\)/g, "").replace(/\s+/g, "").toLowerCase();
+    const rr = await pp<KrdsRule[]>("/guide/krds", key).catch(() => null); // 플랫폼이 안 되면 분류표만이라도
+    const rules = rr?.ok && Array.isArray(rr.data) && rr.data.length > 0 ? new Map(rr.data.map((x) => [norm(x.ko), x])) : null;
+    const ruleOf = (c: { name_ko: string; name_en: string }) => rules?.get(norm(c.name_ko)) ?? (rules ? [...rules.values()].find((x) => x.en && norm(x.en) === norm(c.name_en)) : undefined);
+    const list = taxonomy.krds_components.filter((c) => (!comp || c.id === comp || (c as { name_ko?: string }).name_ko === a.component) && (!cat || c.category === cat) && (!rules || ruleOf(c))); // 관리자가 숨긴 항목은 빠진다
     if (list.length === 0) return err(`KRDS 컴포넌트 '${a.component ?? a.category}' 없음. category 는 ${[...new Set(taxonomy.krds_components.map((c) => c.category))].join("·")} 중 하나(한글 이름도 됨)`, "NOT_FOUND");
     const map = taxonomy.section_krds_default_map as Record<string, string[]>;
-    return text({ items: list.map((c) => ({ ...c, guide_url: `${base}${(c as { guide_file?: string }).guide_file ?? "component_summary.html"}`, sections: Object.entries(map).filter(([, v]) => v.includes(c.id)).map(([k]) => k) })), attribution: ATTRIBUTION });
+    const full = list.length <= 5; // 전체 목록에 지침 글까지 실으면 수만 자 — 몇 개로 좁혔을 때만 싣는다
+    return text({
+      items: list.map((c) => {
+        const r = ruleOf(c);
+        const guide = r ? (full ? { kit_id: r.id || null, usage: r.usage ?? [], a11y: r.a11y ?? [], interaction: r.interaction ?? [], dev: r.dev ?? [], kwcag: r.kwcag ?? [], note: r.note ?? null } : { kit_id: r.id || null, rule_count: ["usage", "a11y", "interaction", "dev"].reduce((n, k) => n + ((r as Record<string, unknown>)[k] as string[] | undefined ?? []).length, 0), note: r.note ?? null }) : {};
+        return { ...c, guide_url: `${base}${(c as { guide_file?: string }).guide_file ?? "component_summary.html"}`, sections: Object.entries(map).filter(([, v]) => v.includes(c.id)).map(([k]) => k), ...guide };
+      }),
+      hint: full ? undefined : "지침 글(사용·접근성·상호작용·개발)은 component 나 category 로 좁히거나 guide_search_rules 로 찾는다",
+      attribution: ATTRIBUTION,
+    });
   });
 
   // ---------------------------------------------------------------- powerAssets (파워플러스 옛 PHP MCP 도구 7종 → 새 플랫폼 /api/v1/assets)

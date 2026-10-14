@@ -419,6 +419,7 @@ def chapter_pages(job, o, ch, ctx, raw):
             d2 = design._plan_call(job, CHAPTER_SYSTEM, fix_user, 16000, f"{ch['no']} 규칙 맞춰 고쳐 쓰기 {rnd}")
             # 항목 번호 기준으로 합친다 — 제목이 바뀌거나 빠졌던 항목 쪽도 받는다(4차: 고쳐 쓴 뒤 '이 항목의 쪽이 없다')
             new_by, old_by = {}, {}
+            normalize_blocks(d2.get("pages") or [])   # 항목별 비교(item_cost)가 채움을 재려면 먼저 다듬어야 한다
             for pg in d2.get("pages") or []:
                 if pg.get("title"):
                     new_by.setdefault(key(pg["title"]), []).append(pg)
@@ -428,7 +429,13 @@ def chapter_pages(job, o, ch, ctx, raw):
             merged = []
             for it in items:
                 k = key(it["item"])
-                merged += new_by[k] if (k in new_by and (k in redo_keys or k not in old_by)) else old_by.get(k, [])
+                if k in new_by and k in old_by and k in redo_keys:
+                    # 항목마다 고친 것과 앞의 것 중 나은 쪽 — 장 전체 위반 '건수' 만 보면 한 항목이 134% 로 넘쳐도
+                    # 다른 항목이 나아져 받아들였다(7차: Ⅲ 13 → 8건인데 넘친 쪽 126~134% 3개, 덜어 낸 행 24)
+                    use_new = item_cost(new_by[k], bad, k) <= item_cost(old_by[k], bad, k, old=True)
+                    merged += new_by[k] if use_new else old_by[k]
+                else:
+                    merged += new_by[k] if (k in new_by and (k in redo_keys or k not in old_by)) else old_by.get(k, [])
             prev_pages = pages
             pages = merged
             normalize_blocks(pages)
@@ -2057,6 +2064,18 @@ def fit_page(pg):
 
 def _item_key(pg):
     return re.sub(r"\s*\(\d+/\d+\)\s*$", "", str(pg.get("title") or "").strip())
+
+
+def item_cost(pgs, bad, k, old=False):
+    """한 항목 쪽들의 나쁨 — 목표 채움(90~100%)에서 벗어난 양(넘침은 모자람의 두 배: 덜어 내면 내용을 잃는다)
+    + 앞 검사에서 그 항목에 걸린 채움 밖 위반(구성 중복 등, 앞의 것에만 — 고친 것은 그 위반을 고쳤다고 본다)"""
+    c = 0.0
+    for pg in pgs:
+        f = page_fill(fit_page(dict(pg)))
+        c += max(0.0, 0.88 - f) + 2 * max(0.0, f - 1.02)
+    if old:
+        c += 0.1 * sum(1 for b in bad if str(b.get("title") or "").startswith(k) and not re.search(r"찼다|넘친다", b["why"]))
+    return c
 
 
 def merge_item_pages(pages):

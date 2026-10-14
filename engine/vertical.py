@@ -145,15 +145,24 @@ def use_fonts(title=None, body=None):
     """opts.font_title · font_body → FONT. 모르는 값이면 기본(목록 첫 줄)"""
     t = TITLE0
     TITLE_IS_BOLD[0] = False
+    TITLE_SCALE[0] = 1.0
     if title and title != "gmarket":
         try:
             import fontset
             if title in fontset.TITLES:
                 t = fontset.TITLES[title]
                 TITLE_IS_BOLD[0] = fontset.TITLE_BOLD.get(title, False)
+                TITLE_SCALE[0] = fontset.TITLE_SCALE.get(title, 1.0)
         except Exception:
             pass
     FONT["title"], FONT["body"] = t, VBODY.get(str(body or ""), VBODY[VBODY_DEFAULT])
+    global LH, BL_LH
+    try:
+        import fontset
+        BODY_SCALE[0] = fontset.BODY_SCALE.get(str(body or ""), fontset.BODY_SCALE.get(VBODY_DEFAULT, 1.0))
+    except Exception:
+        BODY_SCALE[0] = 1.0
+    LH, BL_LH = 0.38 * BODY_SCALE[0], 0.42 * BODY_SCALE[0]
     _FONTS.clear()
 
 
@@ -191,6 +200,35 @@ def refont(prs):
         elif "theme" in str(part.partname) and str(part.partname).endswith(".xml"):
             part._blob = re.sub(r'typeface="([^"]+)"', sub, part._blob.decode("utf-8")).encode("utf-8")
     track_title(prs)
+    scale_body(prs)
+
+
+def scale_body(prs):
+    """본문 서체 글자 — 크기 보정(BODY_SCALE) 후, 굵게(강조·굵음 단계) 11pt 이상이면 자간을 조금 좁힌다(fontset.BODY_TRACK)"""
+    try:
+        import fontset
+        track, tmin = fontset.BODY_TRACK, fontset.BODY_TRACK_MIN
+    except Exception:
+        track, tmin = -0.015, 1100
+    faces = FONT["body"][1]
+    bold = set(faces[2:])
+    tags = {f"{{{A}}}rPr", f"{{{A}}}defRPr", f"{{{A}}}endParaRPr"}
+    for part in prs.part.package.iter_parts():
+        el = getattr(part, "_element", None)
+        if el is None:
+            continue
+        for rp in el.iter():
+            if not isinstance(rp.tag, str) or rp.tag not in tags:
+                continue
+            lat = rp.find(f"{{{A}}}latin")
+            ea = rp.find(f"{{{A}}}ea")
+            f = (ea.get("typeface") if ea is not None else None) or (lat.get("typeface") if lat is not None else None)
+            if f not in faces or not rp.get("sz") or rp.get("spc") == "0":   # 뱃지(자간 0 표시)는 크기를 미리 재 맞췄다
+                continue
+            if BODY_SCALE[0] != 1.0:
+                rp.set("sz", str(round(int(rp.get("sz")) * BODY_SCALE[0] / 50) * 50))
+            if f in bold and int(rp.get("sz")) >= tmin:
+                rp.set("spc", str(min(int(rp.get("spc") or 0), round(track * int(rp.get("sz"))))))
 
 
 try:
@@ -200,6 +238,9 @@ except Exception:
 
 
 TITLE_IS_BOLD = [False]   # use_fonts 가 정한다
+TITLE_SCALE = [1.0]       # 제목 서체 크기 보정(fonts.json title.scale) — 저장 직전 제목 글자 크기에 곱한다
+BODY_SCALE = [1.0]        # 본문 서체 크기 보정(fonts.json body.scale) — 글 폭·줄 높이 계산과 저장 직전 본문 글자 크기에 곱한다
+BL_LH = 0.42              # 본문 글머리(9pt) 한 줄 높이(cm) — use_fonts 가 보정만큼 바꾼다
 
 
 def track_title(prs):
@@ -220,6 +261,10 @@ def track_title(prs):
                 continue
             if TITLE_IS_BOLD[0]:
                 rp.set("b", "1")   # 가족 이름 + 굵게로 고르는 제목 서체(엘리스 DX널리체) — 뱃지 글도
+            if rp.get("spc") == "0":   # 뱃지 — 자간 없이 크기를 재 맞췄다(크기 보정도 하지 않는다)
+                continue
+            if TITLE_SCALE[0] != 1.0 and rp.get("sz"):
+                rp.set("sz", str(round(int(rp.get("sz")) * TITLE_SCALE[0] / 50) * 50))   # 서체마다 덩어리감 맞춤(저장 직전 한 번)
             if rp.get("spc") == "0":
                 continue
             sz = int(rp.get("sz") or 1800)
@@ -264,6 +309,8 @@ def font_paths():
 
 
 def text_cm(t, pt, face="a시월구일2"):
+    if _level(face) is not None:
+        pt = pt * BODY_SCALE[0]   # 본문 서체 크기 보정(저장 직전 곱한다) — 줄 수 계산도 같은 크기로
     face = ffile(face)
     f = _FONTS.get((face, pt))
     if f is None and (face, pt) not in _FONTS:
@@ -1568,7 +1615,7 @@ class Build:
                 has_tb = isinstance(tb, dict) and tb.get("cols") and tb.get("rows")
                 if bullets:
                     put_bullets(sh, bullets)
-                    sh.height = Cm(bullet_lines(bullets) * 0.42 + 0.1)
+                    sh.height = Cm(bullet_lines(bullets) * BL_LH + 0.1)
                     top = sh.top + sh.height + Cm(0.25)
                 else:   # 글머리 없이 표만 — 빈 글 상자를 빼고 그 자리에 표
                     top = sh.top
@@ -1630,7 +1677,7 @@ class Build:
                 sh = s.shapes[-1]
                 put_bullets(sh, bullets)
                 sh.top = Cm(after_bar + fig_height(fd[0], fd[1], W) + 0.35)
-                sh.height = Cm(bullet_lines(bullets) * 0.42 * (FW / W if W else 1) + 0.1)
+                sh.height = Cm(bullet_lines(bullets) * BL_LH * (FW / W if W else 1) + 0.1)
                 if W:
                     sh.left, sh.width = Cm(BODY_T + dx), Cm(W)
 
@@ -1828,7 +1875,7 @@ def point_number(sh, col):
 def fit_one_line(sh, text, width_cm, start=18, low=12):
     """제목이 한 줄에 들어가게 글자 크기를 줄인다(G마켓 산스 굵게 — 글꼴이 없으면 글자 종류로 어림)"""
     pt = start
-    while pt > low and text_cm(text, pt, TITLE0[1]) * 1.04 > width_cm:
+    while pt > low and text_cm(text, pt * TITLE_SCALE[0], TITLE0[1]) * 1.04 > width_cm:
         pt -= 1
     for r in sh.text_frame.paragraphs[0].runs:
         r.font.size = Pt(pt)
@@ -1913,7 +1960,7 @@ def block_height(blk, W=None):
         h = 0.91 + (0.64 if str(blk.get("small") or "").strip() else 0) + (0.96 if str(blk.get("bar") or "").strip() else 0)
         h += fig_height(fd[0], fd[1], W) + 0.2
         bl = [str(b) for b in (blk.get("bullets") or []) if str(b).strip()]
-        return h + (0.15 + bullet_lines(bl) * 0.42 * (FW / W if W else 1) + 0.1 if bl else 0)
+        return h + (0.15 + bullet_lines(bl) * BL_LH * (FW / W if W else 1) + 0.1 if bl else 0)
     if W:   # 2단 표 — 소제목 + 표(칸이 좁아 줄바꿈이 는다)
         tb = blk.get("table")
         return 0.91 + (table_height(tb, W) if isinstance(tb, dict) and tb.get("rows") else 0)
@@ -1921,7 +1968,7 @@ def block_height(blk, W=None):
     bl = [str(b) for b in (blk.get("bullets") or []) if str(b).strip()]
     tb = blk.get("table")
     has_tb = isinstance(tb, dict) and tb.get("rows")
-    h += (bullet_lines(bl) * 0.42 + 0.1 + (0.25 if has_tb else 0)) if bl else 0
+    h += (bullet_lines(bl) * BL_LH + 0.1 + (0.25 if has_tb else 0)) if bl else 0
     if has_tb:
         h += table_height(tb, 14.9)
     return h
@@ -2100,7 +2147,7 @@ def table_height(tb, total):
     h = 0.62
     for r in rows:
         lines = max([1] + [math.ceil(text_cm(v, 8.5) / max(0.5, ws[i] - 0.3)) for i, v in enumerate(r)])
-        h += 0.62 if lines == 1 else 0.62 + (lines - 1) * 0.36
+        h += 0.62 if lines == 1 else 0.62 + (lines - 1) * 0.36 * BODY_SCALE[0]
     return h
 
 
@@ -2151,7 +2198,7 @@ FIG_KINDS = ("concept", "hub", "photo", "compare", "process", "cards", "rows", "
 FIG_NAMES = {"개선", "개선 내용", "곁 조직", "구분", "기간", "기대효과 내용", "기대효과 바탕", "기대효과 이름", "기둥 내용", "기둥 머리", "내용", "단계", "단계 설명", "단계 원", "단계 제목", "마일스톤", "마일스톤 이름", "막대", "목표", "바탕", "사진", "사진 글", "사진 바탕", "사진 설명", "사진 자리", "아이콘", "요소", "일정 머리", "전략 내용", "전략 바탕", "전략 번호", "지표", "총괄", "층 바탕", "층 이름", "카드 내용", "카드 머리", "칸", "팀", "팀 역할", "허브 노드", "허브 중심", "허브 테", "현재", "현재 내용", "화살표", "활동"}   # 도식이 그리는 도형 이름(정렬 검사에서 안쪽 칸을 가려낸다)
 FW = BODY_G + 15.0 - BODY_T   # 도식 폭(블록 안 글 시작선 T ~ 오른쪽 끝)
 LINE = "D3D7DE"
-LH = 0.38                     # 8.5~9pt 한 줄 높이(cm)
+LH = 0.38                     # 8.5~9pt 한 줄 높이(cm) — use_fonts 가 본문 서체 크기 보정만큼 바꾼다
 
 
 def _esc(t):

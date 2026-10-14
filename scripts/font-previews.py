@@ -18,13 +18,9 @@ def title(t):
     im = Image.new("RGB", (1200, 220), "white")
     d = ImageDraw.Draw(im)
     parts = [("심사는 빠르게, ", NAVY), ("의약품 AI", PINK), (" 심사 체계", NAVY)]
-    size = 64
+    size = round(60 * float(t.get("scale") or 1.0))   # 서체마다 덩어리감 보정(fonts.json title.scale) — 같은 크기로 보이게
     f = ImageFont.truetype(os.path.join(FD, t["file"]), size)
     w = sum(f.getlength(p) for p, _ in parts)
-    while w > 1000 and size > 40:   # 기존 그림처럼 글 폭 약 920px 안
-        size -= 2
-        f = ImageFont.truetype(os.path.join(FD, t["file"]), size)
-        w = sum(f.getlength(p) for p, _ in parts)
     tr = TRACK * size   # 제목 자간(엔진 fontset.TITLE_TRACK 과 같게) — 글자마다 간격을 줄여 찍는다
     w += tr * (sum(len(p) for p, _ in parts) - 1)
     x = (1200 - w) / 2
@@ -43,8 +39,9 @@ def body(b):
     fs = [os.path.join(FD, x) for x in b["files"]]
     rows = [("추진 전략 01 · 표준 연계 허브", fs[3], 38, NAVY, 101), ("기관마다 다른 데이터를 하나의 기준으로", fs[2], 30, BLUE, 161),
             ("흩어진 관제 정보를 한 화면에서 보고 바로 대응합니다.", fs[1], 30, INK, 219), ("※ 2026년 1월 기준 · 출처: 사업계획서", fs[0], 24, GRAY, 272)]
+    k = float(b.get("scale") or 1.0)   # 본문 서체 크기 보정(fonts.json body.scale)
     for t, f, s, c, y in rows:
-        d.text((71, y), t, font=ImageFont.truetype(f, s), fill=c, anchor="ls")
+        d.text((71, y), t, font=ImageFont.truetype(f, round(s * k)), fill=c, anchor="ls")
     im.save(os.path.join(OUT, f"body-{b['id']}.png"))
 
 

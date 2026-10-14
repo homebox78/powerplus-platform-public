@@ -23,6 +23,7 @@ PLAN = json.load(open(sys.argv[sys.argv.index("--plan") + 1], encoding="utf-8"))
 ACCENT = sys.argv[sys.argv.index("--accent") + 1] if "--accent" in sys.argv else "#FF2A6D"
 ACCENT = ACCENT[:7] if re.match(r"^#[0-9A-Fa-f]{6}", ACCENT or "") else "#FF2A6D"
 KEY_FONT, KEY_PT = fontset.KEY_FONT, 25
+KEY_PT_EFF = round(KEY_PT * fontset.KEY_SCALE)   # 제목 서체 덩어리감 보정한 키메시지 크기
 KEY_ALIGN = PP_ALIGN.LEFT if "--key-align" in sys.argv and sys.argv[sys.argv.index("--key-align") + 1] == "left" else PP_ALIGN.CENTER   # 디자인 타입(B·D 는 왼쪽)
 KEEP = re.compile(r"^(G마켓|Gmarket|Wingdings|Webdings|Symbol|Segoe UI (Emoji|Symbol)|Marlett|\+m)", re.I)   # 서체 한 벌로 바꾸지 않는 것
 A = "{http://schemas.openxmlformats.org/drawingml/2006/main}"
@@ -66,7 +67,7 @@ def fit_pt(text, width_in):
         w100 = ImageFont.truetype(path, 100).getlength(text)   # 100pt 일 때 폭(pt)
     except Exception:
         w100 = len(text) * 88
-    for pt in range(KEY_PT, 16, -1):
+    for pt in range(KEY_PT_EFF, 16, -1):
         if w100 * pt / 100 <= width_in * 72:
             return pt
     return 17
@@ -102,6 +103,8 @@ def fix_rpr(rPr):
     new = face if lvl is None else fontset.face(lvl)
     if not new:
         return 0
+    if lvl is not None and lvl >= 2 and int(rPr.get("sz") or 0) >= fontset.BODY_TRACK_MIN:   # 본문 굵게·크게 — 자간 조금 좁게
+        rPr.set("spc", str(min(int(rPr.get("spc") or 0), round(fontset.BODY_TRACK * int(rPr.get("sz"))))))
     before = [A + t for t in ("ln", "noFill", "solidFill", "gradFill", "blipFill", "pattFill", "grpFill", "effectLst", "effectDag", "highlight", "uLnTx", "uLn", "uFillTx", "uFill")]
     for tag in ("latin", "ea", "cs"):   # 스키마 순서: … 채우기·효과 뒤에 latin → ea → cs
         el = rPr.find(A + tag)
@@ -500,6 +503,8 @@ if "--unify-only" in sys.argv:   # 표지·목차·간지처럼 키메시지·�
                         el.set("typeface", KEY_FONT)
                 if fontset.KEY_BOLD:
                     rPr.set("b", "1")   # 가족 이름 + 굵게로 고르는 제목 서체
+                if fontset.KEY_SCALE != 1.0:   # 서체마다 덩어리감 맞춤(앞장은 이 단계를 한 번만 거친다)
+                    rPr.set("sz", str(round(int(rPr.get("sz") or 0) * fontset.KEY_SCALE / 50) * 50))
                 # 큰 글자는 탄탄하게 — 사용자가 표지 사업명(35.5pt)에 맞춘 값: 문자 간격 좁게 0.6pt, 줄 간격 고정 42pt.
                 # 다른 크기에는 같은 비율로 — 자간 = 크기 × −1.7%, 줄 간격 = 크기 × 1.18 (pt 고정)
                 z = int(rPr.get("sz") or 0) / 100
@@ -551,10 +556,13 @@ if "--polish" in sys.argv:   # 초안 다듬기 — 배치는 그대로 두고 �
         for r in slide._element.iter(A + "r"):   # 20pt 이상 큰 글자(장 제목·표지 제목)는 제목 서체
             rPr = r.find(A + "rPr")
             if rPr is not None and int(rPr.get("sz") or 0) >= 2000:
+                fresh = all((rPr.find(A + tag) is None or rPr.find(A + tag).get("typeface") != KEY_FONT) for tag in ("latin", "ea"))
                 for tag in ("latin", "ea", "cs"):
                     el = rPr.find(A + tag)
                     if el is not None:
                         el.set("typeface", KEY_FONT)
+                if fresh and fontset.KEY_SCALE != 1.0:   # 덩어리감 맞춤 — 처음 바뀌는 글자만(다시 돌거나 앞장이면 곱하지 않는다)
+                    rPr.set("sz", str(round(int(rPr.get("sz")) * fontset.KEY_SCALE / 50) * 50))
                 if fontset.KEY_BOLD:
                     rPr.set("b", "1")
                 rPr.set("spc", str(min(int(rPr.get("spc") or 0), round(fontset.TITLE_TRACK * int(rPr.get("sz"))))))   # 제목 서체 자간 조금 더 좁게 — 다시 돌아도 같은 값(더 좁아지지 않게)
@@ -587,20 +595,20 @@ elif not FONTS_ONLY:
             for p in key.text_frame.paragraphs:
                 p.alignment = KEY_ALIGN
                 for r in p.runs:
-                    r.font.size = Pt(KEY_PT)
+                    r.font.size = Pt(KEY_PT_EFF)
                     r.font.bold = None
                     set_font(r, KEY_FONT)
                     if fontset.KEY_BOLD:
                         r.font.bold = True
-                    r._r.get_or_add_rPr().set("spc", str(round(fontset.TITLE_TRACK * KEY_PT * 100)))   # 키메시지도 제목 서체 자간
+                    r._r.get_or_add_rPr().set("spc", str(round(fontset.TITLE_TRACK * KEY_PT_EFF * 100)))   # 키메시지도 제목 서체 자간
             if color_keywords(key.text_frame, keywords(no)):
                 nemph += 1
             pt = fit_pt(key.text_frame.text.strip().replace("\n", " "), KEY_W - 0.2)
-            if pt < KEY_PT:   # 한 줄에 안 들어가는 긴 키메시지 — 넘치지 않게 줄이고 알린다
+            if pt < KEY_PT_EFF:   # 한 줄에 안 들어가는 긴 키메시지 — 넘치지 않게 줄이고 알린다
                 for p in key.text_frame.paragraphs:
                     for r in p.runs:
                         r.font.size = Pt(pt)
-                warn(no, "키메시지가 길어 글자를 줄임", f"{KEY_PT}pt 로는 한 줄에 안 들어가 {pt}pt 로 줄였습니다 — 문구를 줄이면 {KEY_PT}pt 로 맞춰집니다")
+                warn(no, "키메시지가 길어 글자를 줄임", f"{KEY_PT_EFF}pt 로는 한 줄에 안 들어가 {pt}pt 로 줄였습니다 — 문구를 줄이면 {KEY_PT_EFF}pt 로 맞춰집니다")
             key_top0 = key.top
             key.left, key.top, key.width, key.height = int(KEY_L * IN), int(KEY_TOP * IN), int(KEY_W * IN), int(KEY_H * IN)
             if KEY_ALIGN == PP_ALIGN.LEFT:   # 왼쪽 정렬 — 글의 왼쪽 끝이 본문 가이드(G_L)와 같은 세로선에 오게(상자 안쪽 여백 0)

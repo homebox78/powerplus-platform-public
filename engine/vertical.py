@@ -1762,14 +1762,16 @@ class Build:
                     ibody.append(_para(P_L2, ["    ", t2]))
                     pbody.append(_para(P_PG, [pno]) if pno else _blank(P_PG))
                     if pno:
-                        x1 = vis_left(it_box) + 0.2 + text_cm("    " + t2, 14) + 0.25   # 점선은 글 끝에서(목록 상자 위치를 따라간다)
+                        x1 = vis_left(it_box) + 0.2 + text_cm("    " + t2, 14) + 0.45   # 점선은 글 끝에서(목록 상자 위치를 따라간다) — 서버 캡처(LibreOffice)는 '·' 둘레가 넓어 글이 길게 그려져 0.25 로는 붙었다
                         e = copy.deepcopy(line)
                         e.find(".//a:off", NS).set("x", str(int(Cm(x1))))
-                        e.find(".//a:off", NS).set("y", str(int(Cm(5.72 + row * 0.893))))
+                        e.find(".//a:off", NS).set("y", str(int(Cm(5.72 + row * TOC_PITCH))))
                         e.find(".//a:ext", NS).set("cx", str(int(Cm(max(0.3, 15.25 - x1)))))
                         e.find(".//a:ext", NS).set("cy", "0")
                         s.shapes._spTree.append(e)
                     row += 1
+            for p_ in ibody.findall("a:p", NS) + pbody.findall("a:p", NS):
+                fix_line_pitch(p_, TOC_PITCH)
             made.append(s)
         return made
 
@@ -1864,6 +1866,23 @@ def _para(tmpl, parts):
     for r, t in zip(rs, parts):
         r.find("a:t", NS).text = t
     return e
+
+
+TOC_PITCH = 0.893   # 목차 한 줄 높이(cm) — 점선도 이 간격으로 놓는다
+
+
+def fix_line_pitch(p, cm):
+    """문단 줄 간격을 고정 pt 로 — 글자 크기(본문 서체 보정 ×1.11)·렌더러(PowerPoint·LibreOffice)와 무관하게 줄 높이가 같게.
+    목차가 '한 줄(100%)' 간격이라 글자가 커지면 줄이 밀려, 고정 간격(0.893cm)으로 놓은 점선과 아래로 갈수록 어긋났다(사용자 2026-10-14)"""
+    pPr = p.find("a:pPr", NS)
+    if pPr is None:
+        pPr = p.makeelement(f"{{{A}}}pPr", {})
+        p.insert(0, pPr)
+    for old in pPr.findall("a:lnSpc", NS):
+        pPr.remove(old)
+    ln = pPr.makeelement(f"{{{A}}}lnSpc", {})
+    ln.append(ln.makeelement(f"{{{A}}}spcPts", {"val": str(round(cm / 0.03528 * 100))}))
+    pPr.insert(0, ln)
 
 
 def _blank(tmpl):

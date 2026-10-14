@@ -761,7 +761,7 @@ export function Upload({ engine, isAdmin = false, onUploaded, onCancel, onSettin
               <div className="mt-3 p-3 rounded-md bg-white border border-line flex flex-col gap-1.5">
                 <div className="text-[13px] text-dim">예상 비용</div>
                 <div className="flex justify-between gap-2"><span className="whitespace-nowrap">기획 · 와이어프레임</span><span className="font-bold whitespace-nowrap">이미지 비용 0</span></div>
-                {purpose === "submit" ? <div className="flex justify-between gap-2"><span className="whitespace-nowrap">시안 이미지</span><span className="font-bold whitespace-nowrap">없음 — PPT 를 바로 만들어 캡처로 보여 드림</span></div>
+                {purpose === "submit" ? <div className="flex justify-between gap-2"><span className="whitespace-nowrap">시안 이미지</span><span className="font-bold whitespace-nowrap" title="세로 제안서는 시안 이미지를 만들지 않고 PPT 를 바로 만들어 쪽 캡처로 보여 드립니다">없음 · PPT 캡처</span></div>
                   : <div className="flex justify-between gap-2"><span className="whitespace-nowrap">시안 이미지</span>
                   <span className="font-bold whitespace-nowrap">{mockups === "plan" ? "고른 장만 · 나중에" : mockups === "sample" ? `장당 비용 × ${planOpts.sample}장` : `장당 비용 × ${slides ? `${slides}장` : "전체 장 수"}`}</span></div>}
                 {isAdmin && ai && (ai.budget.default != null || ai.budget.monthly_cap != null) && <>

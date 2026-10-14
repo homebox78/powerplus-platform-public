@@ -14,6 +14,7 @@ from concurrent.futures import ThreadPoolExecutor
 from PIL import Image, ImageFont
 from lxml import etree
 from pptx import Presentation
+from pptx.oxml import parse_xml   # python-pptx 요소 클래스로 만든다 — etree.fromstring 도형은 도형 목록을 훑을 때 깨진다
 from pptx.util import Cm, Pt
 
 import design
@@ -38,6 +39,7 @@ OUTLINE_SYSTEM = """너는 공공 SI 제안서 기획자다. 올린 자료(제�
   Ⅰ 일반현황 / Ⅱ 전략 및 방법론 / Ⅲ 수행계획 / Ⅳ 수행기반 / Ⅴ 프로젝트 관리 / Ⅵ 프로젝트 지원 / Ⅶ 전문업체 참여 / Ⅷ 기타사항.
 - 맨 끝에 별첨 장 하나(no 는 "※", title "별첨"): 요구사항 참조표·약어표·증빙서류 등 RFP 가 별첨으로 요구한 것.
 - 장은 최대 8개 + 별첨. 절(sections) 아래 항목(items)이 본문 쪽 단위다. 항목마다 pages(1~3)를 정하고, 별첨을 뺀 pages 합이 {pages}쪽 안팎이 되게 한다.
+- RFP 권고 목차의 절은 쪽 수가 적어도 합치거나 이름을 바꾸지 않는다(쪽이 모자라면 절마다 항목 1개·1쪽). 항목 제목은 22자 이내.
   배점이 큰 평가 항목(사업이해도·추진체계·기능 요구사항 등)에 쪽을 더 준다.
 - item.req 에는 그 항목이 답하는 요구사항 고유번호(SFR-001 등)를 자료에서 찾아 적는다. 없으면 빈 배열.
 - project.name 은 자료에 적힌 공식 사업명, client 는 발주기관 정식 명칭, year 는 사업연도(없으면 올해).
@@ -55,6 +57,7 @@ CHAPTER_SYSTEM = """너는 공공 SI 기술제안서 작성자다. 주어진 장
 
 규칙
 - 항목(item) 하나에 pages 수만큼 쪽을 만든다(2쪽 이상이면 title 끝에 (1/2) 처럼 붙인다).
+- title 은 '1.1 항목 이름' 꼴로 26자 이내(한 줄에 들어가게). 번호는 쓸 항목의 번호 그대로.
 - lead 는 정확히 2문장. 문장마다 마침표로 끝나고 한 문장이 45자를 넘지 않는다(한 줄에 들어가게). strong 은 lead 첫 문장 안의 강조 어구(그대로 들어 있어야 한다).
 - band 는 30자 안팎의 한 줄. bullets 는 문장마다 70자 이하, 개조식(~함, ~임), 앞에 기호를 붙이지 않는다.
 - 블록의 table 은 꼭 필요할 때만(비교·일정·역할·지표). 열 2~4개, 행 2~6개, 칸 글은 짧게.
@@ -68,11 +71,76 @@ JSON 형식
   "blocks": [{"head": "", "small": "", "bar": "", "bullets": ["", ""], "table": {"cols": ["", ""], "rows": [["", ""]]}}]}]}"""
 
 
+# ───────────────────────── 서체 — 코드는 a시월구일1~4(본문 굵기 4단계)·G마켓 산스 TTF Bold(제목)로 쓰고, 저장 직전 고른 서체로 바꾼다.
+# 세로 제안서 본문은 3종만(사용자 2026-10-14), 제목 서체는 표지·목차·간지·쪽 제목의 큰 글자에만. 단계 = 1 옅음 · 2 본문 · 3 강조 · 4 굵음
+VBODY = {
+    "siwol": ("a시월구일", ("a시월구일1", "a시월구일2", "a시월구일3", "a시월구일4"),
+              ("a시월구일1.ttf", "a시월구일2.ttf", "a시월구일3.ttf", "a시월구일4.ttf")),
+    "kopub": ("KoPub돋움체", ("KoPub돋움체 Light", "KoPub돋움체 Medium", "KoPub돋움체 Bold", "KoPub돋움체 Bold"),
+              ("KoPube돋움_L.ttf", "KoPube돋움_M.ttf", "KoPube돋움.ttf", "KoPube돋움.ttf")),
+    "rix": ("Rix고딕", ("Rix고딕 M", "Rix고딕 M", "Rix고딕 B", "Rix고딕 EB"),
+            ("RIXGOM.TTF", "RIXGOM.TTF", "RIXGOB.TTF", "RIXGOEB.TTF")),
+}
+TITLE0 = ("G마켓 산스", "G마켓 산스 TTF Bold", "GmarketSansTTFBold.ttf")
+FONT = {"title": TITLE0, "body": VBODY["siwol"]}
+
+
+def use_fonts(title=None, body=None):
+    """opts.font_title · font_body → FONT. 모르는 값이면 기본(G마켓 산스 · a시월구일)"""
+    t = TITLE0
+    if title and title != "gmarket":
+        try:
+            import fontset
+            if title in fontset.TITLES:
+                t = fontset.TITLES[title]
+        except Exception:
+            pass
+    FONT["title"], FONT["body"] = t, VBODY.get(str(body or ""), VBODY["siwol"])
+    _FONTS.clear()
+
+
+def _level(face):
+    m = re.fullmatch(r"a시월구일([1-4])", face or "")
+    return int(m.group(1)) - 1 if m else None
+
+
+def fface(face):
+    """코드 속 서체 이름 → 고른 서체 이름"""
+    lv = _level(face)
+    if lv is not None:
+        return FONT["body"][1][lv]
+    return FONT["title"][1] if face == TITLE0[1] else face
+
+
+def ffile(face):
+    lv = _level(face)
+    if lv is not None:
+        return FONT["body"][2][lv]
+    return FONT["title"][2] if face == TITLE0[1] else face
+
+
+def refont(prs):
+    """저장 직전 — 장표·레이아웃·마스터·테마의 서체 이름을 고른 서체로"""
+    if FONT["title"] == TITLE0 and FONT["body"] is VBODY["siwol"]:
+        return
+    sub = lambda m: f'typeface="{fface(m.group(1))}"'
+    for part in prs.part.package.iter_parts():
+        el = getattr(part, "_element", None)
+        if el is not None:
+            for e in el.iter():
+                tf = e.get("typeface") if isinstance(e.tag, str) else None
+                if tf and fface(tf) != tf:
+                    e.set("typeface", fface(tf))
+        elif "theme" in str(part.partname) and str(part.partname).endswith(".xml"):
+            part._blob = re.sub(r'typeface="([^"]+)"', sub, part._blob.decode("utf-8")).encode("utf-8")
+
+
 # ───────────────────────── 글자 폭(목차 점선·꼬리표 폭) — 서버에 글꼴이 없으면 글자 종류로 어림
-def _font(face, size):
-    for d in (os.path.join(HERE, "fonts"), os.path.join(HERE, "..", "fonts"), "C:/Windows/Fonts",
-              os.path.expanduser("~/AppData/Local/Microsoft/Windows/Fonts"), "/usr/share/fonts/truetype", os.path.expanduser("~/.fonts")):
-        p = os.path.join(d, face + ".ttf")
+def _font(file, size):
+    for d in (os.path.join(HERE, "fonts"), os.path.join(HERE, "fonts", "private"), "C:/Windows/Fonts",
+              os.path.expanduser("~/AppData/Local/Microsoft/Windows/Fonts"), os.path.expanduser("~/.local/share/fonts/powerdeck"),
+              "/usr/share/fonts/truetype", os.path.expanduser("~/.fonts")):
+        p = os.path.join(d, file if file.lower().endswith((".ttf", ".otf")) else file + ".ttf")
         if os.path.isfile(p):
             try:
                 return ImageFont.truetype(p, size)
@@ -85,6 +153,7 @@ _FONTS = {}
 
 
 def text_cm(t, pt, face="a시월구일2"):
+    face = ffile(face)
     f = _FONTS.get((face, pt))
     if f is None and (face, pt) not in _FONTS:
         f = _FONTS[(face, pt)] = _font(face, pt * 10)
@@ -156,7 +225,7 @@ def find_bg(job, text, keywords, used, kind):
         return None, None
     pick, conf = d.get("pick"), float(d.get("confidence") or 0)
     name = str((d.get("picked") or {}).get("label") or "")
-    if not pick or conf < 0.5 or re.search(r"공무원|국민|회의|교육|고민|상담원|사람", name):
+    if not pick or conf < 0.9 or re.search(r"공무원|국민|회의|교육|고민|상담원|사람", name):
         return None, None
     try:
         used.add(pick)
@@ -233,39 +302,50 @@ def backgrounds(job, o):
     return out, log
 
 
-# ───────────────────────── 디자인 타입 6가지 — 머리 영역·장 표시·띠·막대·표 색을 한 규칙으로(레퍼런스 design/ppt contents sample)
-#   dark = 머리 띠·제목·막대 글자, mid = 경로·강조·띠 무늬, light = 연한 면, head = 머리 띠 색(2개면 그라데이션),
-#   badge/badge_text = 장 번호 배지, proj = 머리 띠 위 사업명 글자, style = bar(꽉 찬 띠)·tab(왼쪽 탭)·pill(여백 둔 둥근 띠), line = 띠 아래 포인트 선
-THEMES = {
-    "navy":  {"label": "네이비 클래식", "dark": "0B2A6F", "mid": "2F5BD3", "light": "C9D8F7", "head": ["0B2A6F"], "badge": "FFFFFF", "badge_text": "0B2A6F", "proj": "C8D3EE", "style": "bar"},
-    "blue":  {"label": "블루 그라데이션", "dark": "1537C4", "mid": "3D7BFF", "light": "CFE0FF", "head": ["1537C4", "4A86FF"], "badge": "FFFFFF", "badge_text": "1537C4", "proj": "DCE6FF", "style": "bar"},
-    "deep":  {"label": "딥 테크", "dark": "0A1840", "mid": "1E4FD8", "light": "CBD9F5", "head": ["07133A", "123A8C"], "badge": "22D3EE", "badge_text": "07133A", "proj": "9FB3DB", "style": "bar", "line": "22D3EE"},
-    "teal":  {"label": "틸 그린", "dark": "0B5F69", "mid": "0FA3A3", "light": "C8EEEC", "head": ["0B5F69", "129C9F"], "badge": "FFFFFF", "badge_text": "0B5F69", "proj": "8C8C8C", "style": "tab"},
-    "gray":  {"label": "차콜 비즈니스", "dark": "2B2F36", "mid": "2F6BFF", "light": "D6E2FF", "head": ["2B2F36"], "badge": "2F6BFF", "badge_text": "FFFFFF", "proj": "B9BEC7", "style": "bar"},
-    "glass": {"label": "글래스 블루", "dark": "2A3F9D", "mid": "5B7CFA", "light": "DCE4FF", "head": ["3B5BDB", "7B97FF"], "badge": "FFFFFF", "badge_text": "3B5BDB", "proj": "E5EBFF", "style": "pill"},
+# ───────────────────────── 디자인 = 스타일(모양) × 톤(색) — 레퍼런스 design/ppt contents sample
+#   스타일은 머리 영역·목차 머리·간지 구성이 서로 다르고(색과 무관), 톤은 색만 정한다(사용자 2026-10-14: "테마를 색상으로 나누면 안 된다").
+STYLES = {
+    "band":  {"label": "클래식 밴드", "desc": "꽉 찬 머리 띠 + 흰 글씨, 간지는 가운데 태그"},
+    "tab":   {"label": "인덱스 탭", "desc": "왼쪽 탭 머리 + 밑선, 간지는 왼쪽 정렬"},
+    "side":  {"label": "사이드 레일", "desc": "왼쪽 세로 레일에 장 번호·장 이름, 간지는 굵은 레일 + 큰 번호"},
+    "split": {"label": "스플릿", "desc": "진한 블록(장) + 연한 블록(사업명) 2단 머리, 간지는 위쪽 색 블록"},
+    "pill":  {"label": "플로팅 필", "desc": "여백 둔 둥근 머리 띠, 간지는 둥근 태그"},
+    "line":  {"label": "미니멀 라인", "desc": "위쪽 굵은 줄 + 진한 글씨, 간지는 큰 장 번호 + 가는 선"},
 }
-# 기본 양식에 쓰인 색 → 역할(타입마다 바꿀 색). 회색·검정·안내선 주황은 그대로
+#   톤 — dark = 진한 면·제목, mid = 경로·강조, light = 연한 면, head = 머리 색(2개면 그라데이션), badge/badge_text = 장 번호 배지,
+#   proj = 진한 머리 위 사업명 글자, accent = 추천 강조색
+TONES = {
+    "navy":  {"label": "네이비", "dark": "0B2A6F", "mid": "2F5BD3", "light": "DCE5F7", "head": ["0B2A6F"], "badge": "FFFFFF", "badge_text": "0B2A6F", "proj": "C8D3EE", "accent": "#2F5BD3"},
+    "blue":  {"label": "블루", "dark": "1537C4", "mid": "3D7BFF", "light": "DCE7FF", "head": ["1537C4", "4A86FF"], "badge": "FFFFFF", "badge_text": "1537C4", "proj": "DCE6FF", "accent": "#3D7BFF"},
+    "deep":  {"label": "딥 네이비", "dark": "0A1840", "mid": "1E4FD8", "light": "D8E1F5", "head": ["07133A", "123A8C"], "badge": "22D3EE", "badge_text": "07133A", "proj": "9FB3DB", "accent": "#22B8D8"},
+    "teal":  {"label": "틸", "dark": "0B5F69", "mid": "0FA3A3", "light": "D6F1EF", "head": ["0B5F69", "129C9F"], "badge": "FFFFFF", "badge_text": "0B5F69", "proj": "CFEFEE", "accent": "#0FA3A3"},
+    "gray":  {"label": "차콜", "dark": "2B2F36", "mid": "2F6BFF", "light": "E3E6EB", "head": ["2B2F36"], "badge": "2F6BFF", "badge_text": "FFFFFF", "proj": "B9BEC7", "accent": "#2F6BFF"},
+    "glass": {"label": "글래스 블루", "dark": "2A3F9D", "mid": "5B7CFA", "light": "E1E7FF", "head": ["3B5BDB", "7B97FF"], "badge": "FFFFFF", "badge_text": "3B5BDB", "proj": "E5EBFF", "accent": "#5B7CFA"},
+}
+THEMES = TONES   # 옛 이름(vtheme) 호환
+# 기본 양식에 쓰인 색 → 역할(톤마다 바꿀 색). 회색·검정·안내선 주황은 그대로
 ROLE = {**{c: "dark" for c in ("1D1D49", "002060", "09106D", "070C51", "0B2A6F", "223A90", "203890", "233C8D", "2C4D90", "142D7E", "324B9C", "213553", "0C1C96")},
         **{c: "mid" for c in ("0056A4", "0A41AE", "207FE8", "3975ED", "437CD9", "6B89CD", "3082DC", "5574C4", "FF3370")},
         **{c: "light" for c in ("BFD2F9",)}}
+PAGE_W, PAGE_H = 19.05, 27.52
 
 
-def _fill(colors):
+def _fill(colors, ang=0):
     if len(colors) == 1:
         return f'<a:solidFill><a:srgbClr val="{colors[0]}"/></a:solidFill>'
     return (f'<a:gradFill rotWithShape="1"><a:gsLst><a:gs pos="0"><a:srgbClr val="{colors[0]}"/></a:gs><a:gs pos="100000"><a:srgbClr val="{colors[1]}"/></a:gs>'
-            f'</a:gsLst><a:lin ang="0" scaled="0"/></a:gradFill>')
+            f'</a:gsLst><a:lin ang="{ang}" scaled="0"/></a:gradFill>')
 
 
-def _shape(tree, name, x, y, w, h, colors, geom="rect", adj=None, text=None, sz=1200, col="FFFFFF", face="G마켓 산스 TTF Bold", algn="l"):
+def _shape(tree, name, x, y, w, h, colors, geom="rect", adj=None, text=None, sz=1200, col="FFFFFF", face="G마켓 산스 TTF Bold", algn="l", ang=0, rot=0):
     ids = [int(e.get("id")) for e in tree.iter(f"{{{P}}}cNvPr")] or [1]
     av = f'<a:gd name="adj" fmla="val {adj}"/>' if adj is not None else ""
     t = (f'<a:p><a:pPr algn="{algn}"/><a:r><a:rPr lang="ko-KR" sz="{sz}"><a:solidFill><a:srgbClr val="{col}"/></a:solidFill><a:latin typeface="{face}"/><a:ea typeface="{face}"/></a:rPr><a:t>{text}</a:t></a:r></a:p>'
          if text else '<a:p><a:endParaRPr lang="ko-KR"/></a:p>')
-    tree.append(etree.fromstring(
+    tree.append(parse_xml(
         f'<p:sp xmlns:p="{P}" xmlns:a="{A}"><p:nvSpPr><p:cNvPr id="{max(ids) + 1}" name="{name}"/><p:cNvSpPr/><p:nvPr userDrawn="1"/></p:nvSpPr>'
-        f'<p:spPr><a:xfrm><a:off x="{int(Cm(x))}" y="{int(Cm(y))}"/><a:ext cx="{int(Cm(w))}" cy="{int(Cm(h))}"/></a:xfrm>'
-        f'<a:prstGeom prst="{geom}"><a:avLst>{av}</a:avLst></a:prstGeom>{_fill(colors) if colors else "<a:noFill/>"}<a:ln><a:noFill/></a:ln></p:spPr>'
+        f'<p:spPr><a:xfrm{f" rot=\"{rot}\"" if rot else ""}><a:off x="{int(Cm(x))}" y="{int(Cm(y))}"/><a:ext cx="{int(Cm(w))}" cy="{int(Cm(h))}"/></a:xfrm>'
+        f'<a:prstGeom prst="{geom}"><a:avLst>{av}</a:avLst></a:prstGeom>{_fill(colors, ang) if colors else "<a:noFill/>"}<a:ln><a:noFill/></a:ln></p:spPr>'
         f'<p:txBody><a:bodyPr wrap="none" lIns="0" tIns="0" rIns="0" bIns="0" anchor="ctr"/><a:lstStyle/>{t}</p:txBody></p:sp>'))
 
 
@@ -273,39 +353,64 @@ def _recolor_el(el, hexv):
     for rp in el.iter(f"{{{A}}}rPr"):
         for c in rp.findall(f"{{{A}}}solidFill") + rp.findall(f"{{{A}}}gradFill"):
             rp.remove(c)
-        rp.insert(0, etree.fromstring(f'<a:solidFill xmlns:a="{A}"><a:srgbClr val="{hexv}"/></a:solidFill>'))
+        rp.insert(0, parse_xml(f'<a:solidFill xmlns:a="{A}"><a:srgbClr val="{hexv}"/></a:solidFill>'))
 
 
-def head_band(tree, th, h=1.25):
-    """머리 영역(본문·목차 공통) — 타입의 모양으로"""
-    W_ = 19.05
-    if th["style"] == "pill":
-        _shape(tree, "머리 띠", 0.55, 0.3, W_ - 1.1, h - 0.15, th["head"], "roundRect", 50000)
-    elif th["style"] == "tab":
-        _shape(tree, "머리 띠", 0, 0, 10.2, h, th["head"], "snip1Rect", 28000)
-        _shape(tree, "머리 밑선", 10.2, h - 0.05, W_ - 10.2, 0.05, [th["head"][-1]])
+def head_geom(st, tn):
+    """스타일별 머리 영역 — 띠 위치(bt,bh)·배지 x·제목 x·제목 색·사업명 색"""
+    if st == "pill":
+        return dict(bt=0.3, bh=1.1, bx=1.0, tx=2.1, tcol="FFFFFF", pcol=tn["proj"])
+    if st == "tab":
+        return dict(bt=0.0, bh=1.25, bx=0.95, tx=2.05, tcol="FFFFFF", pcol="8C8C8C")
+    if st == "split":
+        return dict(bt=0.0, bh=1.25, bx=0.95, tx=2.05, tcol="FFFFFF", pcol=tn["dark"])
+    if st == "line":
+        return dict(bt=0.32, bh=1.05, bx=0.95, tx=2.05, tcol=tn["dark"], pcol="8C8C8C")
+    if st == "side":
+        return dict(bt=0.0, bh=1.25, bx=0.27, tx=2.05, tcol=tn["dark"], pcol="8C8C8C")
+    return dict(bt=0.0, bh=1.25, bx=0.95, tx=2.05, tcol="FFFFFF", pcol=tn["proj"])
+
+
+def head_band(tree, st, tn):
+    """머리 영역 도형(본문·목차 공통)"""
+    W_ = PAGE_W
+    if st == "pill":
+        _shape(tree, "머리 띠", 0.55, 0.3, W_ - 1.1, 1.1, tn["head"], "roundRect", 50000)
+    elif st == "tab":
+        _shape(tree, "머리 띠", 0, 0, 10.2, 1.25, tn["head"], "snip1Rect", 28000)
+        _shape(tree, "머리 밑선", 10.2, 1.2, W_ - 10.2, 0.05, [tn["head"][-1]])
+    elif st == "split":
+        _shape(tree, "머리 띠", 0, 0, 7.8, 1.25, tn["head"])
+        _shape(tree, "머리 띠 연한", 7.8, 0, W_ - 7.8, 1.25, [tn["light"]])
+        _shape(tree, "머리 밑선", 0, 1.25, W_, 0.06, [tn["mid"]])
+    elif st == "line":
+        _shape(tree, "머리 굵은 줄", 0, 0, W_, 0.32, tn["head"])
+        _shape(tree, "머리 가는 선", 0.9, 1.42, W_ - 1.8, 0.03, [tn["light"]])
+    elif st == "side":
+        _shape(tree, "왼쪽 레일", 0, 0, 1.35, PAGE_H, tn["head"], ang=5400000)
+        _shape(tree, "머리 가는 선", 1.95, 1.25, W_ - 2.85, 0.03, [tn["light"]])
     else:
-        _shape(tree, "머리 띠", 0, 0, W_, h, th["head"])
-    if th.get("line"):
-        _shape(tree, "머리 포인트 선", 0, h, W_, 0.06, [th["line"]])
+        _shape(tree, "머리 띠", 0, 0, W_, 1.25, tn["head"])
+        if tn.get("line"):
+            _shape(tree, "머리 포인트 선", 0, 1.25, W_, 0.06, [tn["line"]])
 
 
-def apply_theme(prs, th, masters):
-    """기본 양식 전체(마스터·레이아웃·견본)를 디자인 타입으로 — 색 지도 + 머리 영역·장 표시 모양"""
+def apply_theme(prs, st, tn, masters):
+    """기본 양식 전체(마스터·레이아웃·견본)를 스타일 × 톤으로 — 색 지도 + 머리 영역·목차 머리·간지 구성"""
+    st = st if st in STYLES else "band"
     for part in [m.part for m in prs.slide_masters] + [l.part for m in prs.slide_masters for l in m.slide_layouts] + [s.part for s in prs.slides]:
-        el = part._element
-        for c in el.iter(f"{{{A}}}srgbClr"):
+        for c in part._element.iter(f"{{{A}}}srgbClr"):
             role = ROLE.get((c.get("val") or "").upper())
             if role:
-                c.set("val", th[role])
+                c.set("val", tn[role])
     m_body, m_toc, m_div, m_cover = masters
-    bt, bh = (0.3, 1.1) if th["style"] == "pill" else (0.0, 1.25)   # 머리 띠 위치·높이 — 띠 안 글은 모두 이 높이의 가운데
-    bx = 1.0 if th["style"] == "pill" else 0.95
+    g = head_geom(st, tn)
+    bt, bh = g["bt"], g["bh"]
     gh = 0.6
-    gy = bt + (bh - gh) / 2
+    gy = bt + (bh - gh) / 2 if st != "side" else 0.45
 
-    def center(sh, x=None, w=None):
-        sh.top, sh.height = Cm(bt), Cm(bh)
+    def center(sh, x=None, w=None, top=None, h=None):
+        sh.top, sh.height = Cm(bt if top is None else top), Cm(bh if h is None else h)
         if x is not None:
             sh.left = Cm(x)
         if w is not None:
@@ -317,61 +422,121 @@ def apply_theme(prs, th, masters):
         for x_ in bp.findall("a:spAutoFit", NS) + bp.findall("a:normAutofit", NS):
             bp.remove(x_)
 
-    # 본문 머리: 지난 평면 배지·밑줄을 걷고 진한 띠 + 흰 글씨
+    # ── 본문 머리
     for nm in ("머리 밑줄", "장 번호 배지"):
         for x in named(m_body.shapes, nm):
             x._element.getparent().remove(x._element)
     tree = m_body.shapes._spTree
-    head_band(tree, th)
-    _shape(tree, "장 번호 배지", bx, gy, 0.82, gh, [th["badge"]], "roundRect", 22000)
+    head_band(tree, st, tn)
+    badge_bg = tn["dark"] if st in ("line",) else tn["badge"]
+    badge_tx = "FFFFFF" if st in ("line",) else tn["badge_text"]
+    _shape(tree, "장 번호 배지", g["bx"], gy, 0.82, gh, [badge_bg], "roundRect", 22000)
     pn = next((x for x in walk(m_body.shapes) if x.has_text_frame and x.top < Cm(1.5) and x.text_frame.text.strip()), None)
-    if pn is not None:   # 사업명 — 띠 오른쪽(탭형은 흰 바탕 위)
+    if pn is not None:   # 사업명
         center(pn)
-        _recolor_el(pn._element, th["proj"])
+        _recolor_el(pn._element, g["pcol"])
         tree.remove(pn._element)
-        tree.append(pn._element)   # 띠보다 위
+        tree.append(pn._element)
+    if st == "side":   # 바닥 왼쪽 로고가 레일에 걸리지 않게
+        for sh in m_body.shapes:
+            if sh.top > Cm(26) and sh.left < Cm(1.5):
+                sh.left = Cm(1.75)
     for lay in m_body.slide_layouts:
         for sh in lay.shapes:
-            if sh.has_text_frame and sh.top < Cm(2):
-                if sh.name == "Rectangle 95":
-                    center(sh, bx, 0.82)
-                    sh.top, sh.height = Cm(gy), Cm(gh)
-                    for p_ in sh.text_frame.paragraphs:
-                        p_.alignment = 2
-                    _recolor_el(sh._element, th["badge_text"])
-                else:
-                    center(sh, bx + 1.1)
-                    _recolor_el(sh._element, "FFFFFF")
-    # 간지: 입체 리본 → 타입 색 태그(본문 배지와 같은 모서리)
+            if not (sh.has_text_frame and sh.top < Cm(2)):
+                continue
+            if sh.name == "Rectangle 95":
+                center(sh, g["bx"], 0.82, gy, gh)
+                for p_ in sh.text_frame.paragraphs:
+                    p_.alignment = 2
+                _recolor_el(sh._element, badge_tx)
+            elif st == "side":   # 장 이름을 레일 안에 세로로(위→아래)
+                w_, h_ = 9.0, 1.35
+                sh.rotation = 90
+                sh.width, sh.height = Cm(w_), Cm(h_)
+                sh.left, sh.top = Cm(1.35 / 2 - w_ / 2), Cm(1.6 + w_ / 2 - h_ / 2)
+                sh.text_frame.vertical_anchor = 3
+                for p_ in sh.text_frame.paragraphs:
+                    p_.alignment = 1
+                _recolor_el(sh._element, "FFFFFF")
+            else:
+                center(sh, g["tx"])
+                _recolor_el(sh._element, g["tcol"])
+    # ── 간지
     for x in named(m_div.shapes, "그룹 41"):
         x._element.getparent().remove(x._element)
-    _shape(m_div.shapes._spTree, "장 태그", (19.05 - 4.6) / 2, 3.62, 4.6, 0.95, th["head"], "roundRect", 50000 if th["style"] == "pill" else 18000)
+    dt = m_div.shapes._spTree
+    if st == "band":
+        _shape(dt, "장 태그", (PAGE_W - 4.6) / 2, 3.62, 4.6, 0.95, tn["head"], "roundRect", 18000)
+    elif st == "pill":
+        _shape(dt, "장 태그", (PAGE_W - 4.6) / 2, 3.62, 4.6, 0.95, tn["head"], "roundRect", 50000)
+    elif st == "tab":
+        _shape(dt, "장 태그", 2.0, 3.62, 4.6, 0.95, tn["head"], "snip1Rect", 28000)
+        _shape(dt, "장 밑선", 6.6, 4.52, PAGE_W - 7.6, 0.05, [tn["head"][-1]])
+    elif st == "split":
+        _shape(dt, "위쪽 색 블록", 0, 0, PAGE_W, 14.0, tn["head"], ang=5400000)   # 목록 4줄까지 블록 안
+    elif st == "side":
+        _shape(dt, "왼쪽 굵은 레일", 0, 0, 4.4, PAGE_H, tn["head"], ang=5400000)
+    elif st == "line":
+        _shape(dt, "가는 선", (PAGE_W - 5.0) / 2, 8.75, 5.0, 0.05, [tn["mid"]])
     for lay in m_div.slide_layouts:
         for sh in lay.shapes:
-            if sh.has_text_frame and ("CHAPTER" in sh.text_frame.text or sh.text_frame.text.strip() in ("※", "*")):
+            if not sh.has_text_frame:
+                continue
+            t = sh.text_frame.text.strip()
+            is_tag = "CHAPTER" in t or t in ("※", "*")
+            if st in ("tab",):
+                sh.left = Cm(2.0) if not is_tag else Cm(2.0)
+                if is_tag:
+                    sh.width = Cm(4.6)
+                for p_ in sh.text_frame.paragraphs:
+                    p_.alignment = 2 if is_tag else 1
+            elif st == "side":
+                if is_tag:   # 큰 장 번호(레일 안, 흰 글씨)
+                    sh.left, sh.top, sh.width, sh.height = Cm(0), Cm(2.6), Cm(4.4), Cm(3.2)
+                    for p_ in sh.text_frame.paragraphs:
+                        p_.alignment = 2
+                        for r in p_.runs:
+                            r.font.size = Pt(60)
+                else:
+                    sh.left, sh.width = Cm(5.2), Cm(12.8)
+                    for p_ in sh.text_frame.paragraphs:
+                        p_.alignment = 1
+            elif st == "line" and is_tag:   # 큰 장 번호(색)
+                sh.left, sh.top, sh.width, sh.height = Cm(0), Cm(2.4), Cm(PAGE_W), Cm(3.6)
+                for p_ in sh.text_frame.paragraphs:
+                    p_.alignment = 2
+                    for r in p_.runs:
+                        r.font.size = Pt(72)
+            if is_tag:
+                _recolor_el(sh._element, tn["mid"] if st == "line" else "FFFFFF")
+            elif st == "split":
                 _recolor_el(sh._element, "FFFFFF")
-    # 목차: 접힌 탭 → 본문과 같은 머리 띠 + '목차'
+    # ── 목차 머리
     for nm in ("그룹 2", "자유형 34"):
         for x in named(m_toc.shapes, nm):
             if x._element.getparent() is not None:
                 x._element.getparent().remove(x._element)
-    head_band(m_toc.shapes._spTree, th)
-    _shape(m_toc.shapes._spTree, "목차 글", bx + 0.1, bt + 0.07, 2.0, bh, None, text="목차", sz=1400)   # G마켓 산스는 글자가 위로 떠 보여 살짝 내린다
+    tt = m_toc.shapes._spTree
+    head_band(tt, st, tn)
+    lab_col = "FFFFFF" if st in ("band", "tab", "split", "pill") else tn["dark"]
+    lx = 2.05 if st == "side" else g["bx"] + 0.1
+    _shape(tt, "목차 글", lx, bt + 0.07, 2.0, bh, None, text="목차", sz=1400, col=lab_col)
     for lay in m_toc.slide_layouts:
         for sh in lay.shapes:
             if sh.has_text_frame and ("CHAPTER" in sh.text_frame.text or sh.text_frame.text.strip() in ("※", "*")):
-                center(sh, bx + 2.2)
+                center(sh, lx + 2.1)
                 for p_ in sh.text_frame.paragraphs:
                     p_.alignment = 1
-                _recolor_el(sh._element, "FFFFFF")
-    # 표지·간지·목차 왼쪽 세로 띠 = 타입 머리 색
+                _recolor_el(sh._element, lab_col)
+    # ── 표지·간지·목차 왼쪽 가는 세로 띠 = 톤 머리 색
     for m in (m_cover, m_div, m_toc):
         for sh in m.shapes:
             if sh.shape_type == 1 and sh.left < Cm(0.1) and sh.width < Cm(0.5) and sh.height > Cm(20):
                 sp = sh._element.find("p:spPr", NS)
                 for c in sp.findall("a:solidFill", NS) + sp.findall("a:gradFill", NS) + sp.findall("a:noFill", NS):
                     sp.remove(c)
-                sp.find("a:prstGeom", NS).addnext(etree.fromstring(f'<a:solidFill xmlns:a="{A}"><a:srgbClr val="{th["head"][0]}"/></a:solidFill>'))
+                sp.find("a:prstGeom", NS).addnext(parse_xml(f'<a:solidFill xmlns:a="{A}"><a:srgbClr val="{tn["head"][0]}"/></a:solidFill>'))
 
 
 # ───────────────────────── pptx 도우미
@@ -381,7 +546,7 @@ def set_bg(owner, blob):
     old = csld.find("p:bg", NS)
     if old is not None:
         csld.remove(old)
-    csld.insert(0, etree.fromstring(
+    csld.insert(0, parse_xml(
         f'<p:bg xmlns:p="{P}" xmlns:a="{A}" xmlns:r="{R}"><p:bgPr><a:blipFill dpi="0" rotWithShape="1"><a:blip r:embed="{rid}"/>'
         f'<a:srcRect/><a:stretch><a:fillRect/></a:stretch></a:blipFill><a:effectLst/></p:bgPr></p:bg>'))
 
@@ -391,6 +556,24 @@ def walk(shapes):
         yield sh
         if sh.shape_type == 6:
             yield from walk(sh.shapes)
+
+
+def abs_box(sh):
+    """그룹 안 도형의 실제 위치(cm) — 그룹 변환(off·chOff·ext·chExt)을 거슬러 올라가 계산"""
+    el = sh._element
+    off, ext = el.find(".//a:xfrm/a:off", NS), el.find(".//a:xfrm/a:ext", NS)
+    x, y, w, h = int(off.get("x")), int(off.get("y")), int(ext.get("cx")), int(ext.get("cy"))
+    par = el.getparent()
+    while par is not None and par.tag == f"{{{P}}}grpSp":
+        gx = par.find("p:grpSpPr/a:xfrm", NS)
+        o, e, co, ce = gx.find("a:off", NS), gx.find("a:ext", NS), gx.find("a:chOff", NS), gx.find("a:chExt", NS)
+        sx = int(e.get("cx")) / max(1, int(ce.get("cx")))
+        sy = int(e.get("cy")) / max(1, int(ce.get("cy")))
+        x = int(o.get("x")) + (x - int(co.get("x"))) * sx
+        y = int(o.get("y")) + (y - int(co.get("y"))) * sy
+        w, h = w * sx, h * sy
+        par = par.getparent()
+    return x / 360000, y / 360000, w / 360000, h / 360000
 
 
 def named(shapes, name, nth=None):
@@ -435,7 +618,7 @@ def master_of(prs, name):
     """PowerPoint '디자인' 이름 = 마스터 테마 이름(base.pptx 를 만들 때 vertical-body/cover/toc/divider 로 붙였다)"""
     for m in prs.slide_masters:
         th = m.part.part_related_by("http://schemas.openxmlformats.org/officeDocument/2006/relationships/theme")
-        if (etree.fromstring(th.blob).get("name") or "") == name:
+        if (parse_xml(th.blob).get("name") or "") == name:
             return m
     raise RuntimeError(f"base.pptx 에 '{name}' 마스터가 없습니다")
 
@@ -465,9 +648,10 @@ def drop_slide(prs, slide):
 
 # ───────────────────────── 제작
 class Build:
-    def __init__(self, o, bgs, logo, theme="navy"):
+    def __init__(self, o, bgs, logo, style="band", tone="navy"):
         self.o, self.bgs, self.logo = o, bgs, logo
-        self.th = THEMES.get(theme) or THEMES["navy"]
+        self.style = style if style in STYLES else "band"
+        self.th = TONES.get(tone) or TONES["navy"]
         self.prs = Presentation(BASE)
         s = list(self.prs.slides)
         self.s_body, self.s_cover, self.s_toc, self.s_div = s[0], s[1], s[2], s[3]
@@ -475,7 +659,7 @@ class Build:
         self.m_toc = master_of(self.prs, "vertical-toc")
         self.m_div = master_of(self.prs, "vertical-divider")
         self.m_cover = master_of(self.prs, "vertical-cover")
-        apply_theme(self.prs, self.th, (self.m_body, self.m_toc, self.m_div, self.m_cover))
+        apply_theme(self.prs, self.style, self.th, (self.m_body, self.m_toc, self.m_div, self.m_cover))
         self.pageno = {}     # (장 번호) → 쪽 수
         self.pn = {}         # 장 → 본문 레이아웃에서 떼어 낸 쪽 번호 칸
 
@@ -487,7 +671,7 @@ class Build:
                 if sh.has_text_frame and re.search(r"사업|구축|○○", sh.text_frame.text) and sh.top < Cm(27):
                     set_text(sh, name)
         # 본문 바닥 왼쪽: 발주기관 로고(있으면 그림, 없으면 이름)
-        x, y, h = Cm(1.02), Cm(26.61), Cm(0.6)
+        x, y, h = Cm(1.75 if self.style == "side" else 1.02), Cm(26.61), Cm(0.6)
         if self.logo:
             im = Image.open(io.BytesIO(self.logo))
             self.m_body.shapes._spTree.append(self._pic_el(self.m_body, self.logo, x, y, int(h * im.width / im.height), h, "발주기관 로고"))
@@ -497,7 +681,7 @@ class Build:
     def _pic_el(self, owner, blob, x, y, w, h, name):
         _, rid = owner.part.get_or_add_image_part(io.BytesIO(blob))
         ids = [int(e.get("id")) for e in owner._element.iter(f"{{{P}}}cNvPr")] or [1]
-        return etree.fromstring(
+        return parse_xml(
             f'<p:pic xmlns:p="{P}" xmlns:a="{A}" xmlns:r="{R}"><p:nvPicPr><p:cNvPr id="{max(ids) + 1}" name="{name}"/>'
             f'<p:cNvPicPr><a:picLocks noChangeAspect="1"/></p:cNvPicPr><p:nvPr userDrawn="1"/></p:nvPicPr>'
             f'<p:blipFill><a:blip r:embed="{rid}"/><a:stretch><a:fillRect/></a:stretch></p:blipFill>'
@@ -506,7 +690,7 @@ class Build:
     def _text_el(self, owner, text, x, y, w, h, sz, col, face, bold=False):
         ids = [int(e.get("id")) for e in owner._element.iter(f"{{{P}}}cNvPr")] or [1]
         t = (text or "").replace("&", "&amp;").replace("<", "&lt;")
-        owner.shapes._spTree.append(etree.fromstring(
+        owner.shapes._spTree.append(parse_xml(
             f'<p:sp xmlns:p="{P}" xmlns:a="{A}"><p:nvSpPr><p:cNvPr id="{max(ids) + 1}" name="글"/><p:cNvSpPr txBox="1"/><p:nvPr/></p:nvSpPr>'
             f'<p:spPr><a:xfrm><a:off x="{int(x)}" y="{int(y)}"/><a:ext cx="{int(w)}" cy="{int(h)}"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom><a:noFill/></p:spPr>'
             f'<p:txBody><a:bodyPr wrap="none" lIns="0" tIns="0" rIns="0" bIns="0" anchor="ctr"/><a:lstStyle/><a:p><a:r>'
@@ -534,19 +718,59 @@ class Build:
         if dc is not None:
             set_text(dc, p["doc"])
         if self.bgs.get("cover"):
-            set_bg(s, compose(self.bgs["cover"], 1.0, 0.68, 0.82, 0.6, 0.55))
+            set_bg(s, compose(self.bgs["cover"], 1.0, 0.62 if self.style == "split" else 0.68, 0.82, 0.6, 0.55))
+        light_text = self.cover_style(s, dc)
         x, y, h = Cm(1.91), Cm(1.39), Cm(1.35)
         if self.logo:
             im = Image.open(io.BytesIO(self.logo))
             s.shapes._spTree.append(self._pic_el(s, self.logo, x, y, int(h * im.width / im.height), h, "발주기관 로고"))
         elif p["client"]:
-            self._text_el(s, p["client"], x, y, Cm(10), h, 1600, self.th["dark"], "a시월구일3")
+            self._text_el(s, p["client"], x, y, Cm(10), h, 1600, "FFFFFF" if light_text else self.th["dark"], "a시월구일3")
         return s
+
+    def cover_style(self, s, dc):
+        """표지도 스타일마다 다르게 — 도형은 글 뒤(spTree 앞쪽)에. 흰 글씨로 바꿨으면 True"""
+        tn, st = self.th, self.style
+        shapes = []
+
+        def add(*a, **k):   # 장표 트리에 바로 그린 뒤 맨 뒤(글 아래)로 옮긴다 — 다른 트리를 거치면 요소 클래스가 바뀐다
+            tree_ = s.shapes._spTree
+            _shape(tree_, *a, **k)
+            shapes.append(tree_[-1])
+
+        dxy = abs_box(dc) if dc is not None else (1.71, 10.11, 3.4, 1.03)
+        if st == "band":
+            add("표지 위 띠", 0, 0, PAGE_W, 0.95, tn["head"])
+        elif st == "tab":
+            add("표지 탭", dxy[0] - 0.35, dxy[1] - 0.12, 4.1, dxy[3] + 0.24, tn["head"], "snip1Rect", 28000)
+        elif st == "pill":
+            add("표지 필", dxy[0] - 0.35, dxy[1] - 0.12, 3.9, dxy[3] + 0.24, tn["head"], "roundRect", 50000)
+        elif st == "side":
+            add("표지 레일", 0, 0, 1.35, PAGE_H, tn["head"], ang=5400000)
+        elif st == "split":
+            add("표지 위 색 블록", 0, 0, PAGE_W, 12.4, tn["head"], ang=5400000)
+        elif st == "line":
+            add("표지 위 굵은 줄", 0, 0, PAGE_W, 0.45, tn["head"])
+            add("표지 제목 밑선", dxy[0], dxy[1] + dxy[3] + 0.5, 6.0, 0.06, [tn["mid"]])
+        tree = s.shapes._spTree
+        for k, e in enumerate(shapes):
+            tree.remove(e)
+            tree.insert(2 + k, e)
+        if st in ("tab", "pill") and dc is not None:
+            _recolor_el(dc._element, "FFFFFF")
+            for p_ in dc.text_frame.paragraphs:
+                p_.alignment = 1
+        if st == "split":
+            for nm in ("TextBox 24", "TextBox 29", "TextBox 30"):
+                for x in named(s.shapes, nm):
+                    _recolor_el(x._element, "FFFFFF")
+            return True
+        return False
 
     # 간지·목차 레이아웃 글(장 번호·장 이름)
     def chapter_layouts(self):
         for i, c in enumerate(self.o["chapters"]):
-            tag = "※" if c["no"] == "※" else f"CHAPTER {c['no']}"
+            tag = "※" if c["no"] == "※" else (c["no"] if self.style in ("side", "line") else f"CHAPTER {c['no']}")   # 큰 장 번호 스타일은 번호만
             for m in (self.m_div, self.m_toc, self.m_body):
                 layout_for(m, i).name = c["title"] if c["no"] == "※" else f"{c['no']} {c['title']}"
             for m in (self.m_div, self.m_toc):
@@ -584,8 +808,15 @@ class Build:
             for r in rs[1:]:
                 e.remove(r)
             tf._txBody.append(e)
+        if self.style in ("tab", "side"):   # 왼쪽 정렬 스타일 — 장 이름과 같은 줄에서 시작
+            b.left = Cm(2.0 if self.style == "tab" else 5.2)
+        if self.style == "split":   # 위쪽 색 블록 위 — 흰 글씨
+            for r in b._element.iter(f"{{{A}}}rPr"):
+                for c_ in r.findall(f"{{{A}}}solidFill") + r.findall(f"{{{A}}}gradFill"):
+                    r.remove(c_)
+                r.insert(0, parse_xml(f'<a:solidFill xmlns:a="{A}"><a:srgbClr val="FFFFFF"/></a:solidFill>'))
         if self.bgs.get(f"div{i}"):
-            set_bg(s, compose(self.bgs[f"div{i}"], 1.0, 0.5, 0.72, 0.8, 0.6))
+            set_bg(s, compose(self.bgs[f"div{i}"], 1.0, 0.45 if self.style == "split" else 0.5, 0.72, 0.8, 0.6))
         return s
 
     # 본문 — 견본 장표를 복제해 글을 채우고, 블록은 아래로 쌓는다
@@ -604,12 +835,15 @@ class Build:
                 s.shapes._spTree.append(copy.deepcopy(el))
         # 머리: 경로·제목·요구사항
         rect2 = sorted([x for x in s.shapes if x.name == "Rectangle 2"], key=lambda x: x.top)
-        if rect2:
-            set_text(rect2[0], str(pg.get("path") or ""))
+        title = str(pg.get("title") or "").strip() + (f" ({cont})" if cont else "")
+        if rect2:   # 경로는 AI 글을 믿지 않고 목차에서 만든다(장 이름이 섞여 목차와 어긋났다 — 운영 점검 2026-10-14). 가이드 견본은 fixed_path
+            set_text(rect2[0], pg["fixed_path"] if "fixed_path" in pg else (page_path(c, title) or str(pg.get("path") or "")))
         if len(rect2) > 1:
-            set_text(rect2[1], str(pg.get("title") or "") + (f" ({cont})" if cont else ""))
+            set_text(rect2[1], title)
+            fit_one_line(rect2[1], title, 14.6)
         tag = named(s.shapes, "요구사항 꼬리표", 0)
-        req = str(pg.get("req") or "").strip()
+        ids = [x.strip() for x in re.split(r"[,\s]+", str(pg.get("req") or "")) if x.strip()]
+        req = ", ".join(ids[:3]) + (f" 외 {len(ids) - 3}" if len(ids) > 3 else "")   # 길면 경로 줄을 덮는다
         if tag is not None:
             if req:
                 rs = tag.text_frame.paragraphs[0].runs
@@ -743,9 +977,10 @@ class Build:
                 pic.part.related_part(rid)._blob = compose(self.bgs["toc"], 0.85, 0.42, 0.5, 0.6, 0.6)
         cover = self.cover()
         order = [cover]
-        toc_rows, chapter_slides = [], []
+        toc_rows, chapter_slides, chapter_kinds = [], [], []
         for i, c in enumerate(self.o["chapters"]):
             sl = [self.divider(i, c)]
+            kinds = ["div"]
             rows = []
             pages = chapters_pages.get(i) or []
             if c["no"] == "※":
@@ -756,30 +991,42 @@ class Build:
                     rest, cont = None, None
                     s, rest = self.body_page(i, c, pg)
                     sl.append(s)
+                    kinds.append(str(pg.get("title") or ""))
                     first = f"{c['no']}-{self.pageno[c['no']]}"
                     k = 2
                     while rest:
                         s, rest2 = self.body_page(i, c, dict(pg, blocks=rest), cont=f"{k}")
                         sl.append(s)
+                        kinds.append(f"{pg.get('title') or ''} ({k})")
                         rest, k = rest2, k + 1
-                    sec = str(pg.get("path") or "").split(">")[0].strip()
                     item = re.sub(r"\s*\(\d+/\d+\)\s*$", "", str(pg.get("title") or "").strip())
-                    by_sec.setdefault(sec, [])
-                    if item not in [x[0] for x in by_sec[sec]]:
-                        by_sec[sec].append((item, first))
+                    m = re.match(r"(\d+)\.\d+", item)
+                    k_ = int(m.group(1)) if m else 0
+                    by_sec.setdefault(k_, [])
+                    if item not in [x[0] for x in by_sec[k_]]:
+                        by_sec[k_].append((item, first))
                 for k, sec in enumerate(c.get("sections") or [], 1):
-                    key = next((x for x in by_sec if x.split(".", 1)[-1].strip() == sec["title"].strip() or x.startswith(f"{k}.")), None)
-                    rows.append(((f"{k}. ", sec["title"]), by_sec.get(key, [])))
+                    rows.append(((f"{k}. ", sec["title"]), by_sec.get(k, [])))
             toc_rows.append((i, c, rows))
             chapter_slides.append(sl)
+            chapter_kinds.append(kinds)
         tocs = []
         for i, c, rows in toc_rows:
             tocs += self.toc(i, c, rows)
         order += tocs + [x for sl in chapter_slides for x in sl]
+        # 결과 화면 캔버스용 — 쪽마다 종류·장(章)·제목(장 줄 = 표지·목차 한 줄 + 장마다 간지·본문 한 줄)
+        self.pages = [{"n": 1, "kind": "cover", "ch": "표지 · 목차", "title": "표지"}]
+        self.pages += [{"n": 2 + k, "kind": "toc", "ch": "표지 · 목차", "title": f"목차 {k + 1}"} for k in range(len(tocs))]
+        for i, kinds in enumerate(chapter_kinds):
+            c = self.o["chapters"][i]
+            for t in kinds:
+                self.pages.append({"n": len(self.pages) + 1, "kind": "div" if t == "div" else "body", "ch": f"{c['no']} {c['title']}",
+                                   "title": f"간지 · {c['title']}" if t == "div" else t})
         for k, s in enumerate(order):
             move_slide(self.prs, s, k)
         for s in (self.s_body, self.s_cover, self.s_toc, self.s_div):
             drop_slide(self.prs, s)
+        refont(self.prs)
         self.prs.save(out)
         return len(order)
 
@@ -804,6 +1051,26 @@ def _blank(tmpl):
     for r in e.findall("a:r", NS):
         e.remove(r)
     return e
+
+
+def page_path(c, title):
+    """'1.2 …' 제목 → '1. 절 이름 > 1.2 …' (목차 절 이름 그대로)"""
+    m = re.match(r"(\d+)\.\d+", title)
+    secs = c.get("sections") or []
+    if not m or not (0 < int(m.group(1)) <= len(secs)):
+        return ""
+    k = int(m.group(1))
+    item = re.sub(r"\s*\(\d+(/\d+)?\)\s*$", "", title)   # f-string 안 역슬래시는 3.12 미만에서 문법 오류 — 밖에서
+    return f"{k}. {secs[k - 1]['title']} > {item}"
+
+
+def fit_one_line(sh, text, width_cm, start=18, low=12):
+    """제목이 한 줄에 들어가게 글자 크기를 줄인다(G마켓 산스 굵게 — 글꼴이 없으면 글자 종류로 어림)"""
+    pt = start
+    while pt > low and text_cm(text, pt, TITLE0[1]) * 1.04 > width_cm:
+        pt -= 1
+    for r in sh.text_frame.paragraphs[0].runs:
+        r.font.size = Pt(pt)
 
 
 def split_title(name):
@@ -883,7 +1150,27 @@ def block_height(blk):
     h += bullet_lines(bl) * 0.42 + 0.1
     tb = blk.get("table")
     if isinstance(tb, dict) and tb.get("rows"):
-        h += 0.25 + 0.62 * (1 + min(8, len(tb["rows"])))
+        h += 0.25 + table_height(tb, 14.9)
+    return h
+
+
+def col_widths(cols, rows, total):
+    """열 너비 — 열마다 가장 긴 글 폭에 비례(최소 1.6cm)"""
+    cols = [str(c) for c in cols][:4]
+    need = [max([text_cm(str(c), 8.5)] + [text_cm(str(r[i]) if i < len(r) else "", 8.5) for r in rows]) + 0.4 for i, c in enumerate(cols)]
+    need = [max(1.6, x) for x in need]
+    k = total / sum(need)
+    return [x * k for x in need]
+
+
+def table_height(tb, total):
+    cols = [str(c) for c in tb["cols"]][:4]
+    rows = [[str(v) for v in r][:len(cols)] for r in tb["rows"][:8]]
+    ws = col_widths(cols, rows, total)
+    h = 0.62
+    for r in rows:
+        lines = max([1] + [math.ceil(text_cm(v, 8.5) / max(0.5, ws[i] - 0.3)) for i, v in enumerate(r)])
+        h += 0.62 if lines == 1 else 0.62 + (lines - 1) * 0.36
     return h
 
 
@@ -899,8 +1186,10 @@ def add_table(s, tb, x, y, w, th=None):
     st = tblPr.find("a:tableStyleId", NS)
     if st is not None:
         tblPr.remove(st)
+    widths = col_widths(cols, rows, w / 360000)
+    short = [all(len(r[ci]) <= 6 for r in rows) for ci in range(len(cols))]   # 6자 이하 열은 가운데   # 글 길이에 맞춘 열 너비(cm) — 고르게 나누면 긴 칸이 줄바꿈돼 표가 길어진다
     for ci in range(len(cols)):
-        t.columns[ci].width = int(w / len(cols))
+        t.columns[ci].width = Cm(widths[ci])
     for ri in range(len(rows) + 1):
         t.rows[ri].height = Cm(0.62)
         for ci in range(len(cols)):
@@ -913,7 +1202,7 @@ def add_table(s, tb, x, y, w, th=None):
             fill.solid()
             fill.fore_color.rgb = __import__("pptx").dml.color.RGBColor.from_string(th["dark"] if ri == 0 else ("FFFFFF" if ri % 2 else "F5F7FB"))
             for p_ in cell.text_frame.paragraphs:
-                p_.alignment = 2 if (ri == 0 or len(cell.text) <= 6) else 1
+                p_.alignment = 2 if (ri == 0 or short[ci]) else 1   # 정렬은 열 단위(사용자 표 규칙 — 칸마다 섞지 않는다)
                 for r in p_.runs:
                     r.font.size = Pt(8.5)
                     r.font.color.rgb = __import__("pptx").dml.color.RGBColor.from_string("FFFFFF" if ri == 0 else "4D4D4D")
@@ -978,10 +1267,21 @@ def run(job, j, opts, brief, note):
     logo = client_logo(o)
     job.push("시안 생성", 70)
     out = os.path.join(job.dir, "결과.pptx")
-    theme = str(opts.get("vtheme") or "navy")
-    n = Build(o, bgs, logo, theme).build(chapters_pages, out)
-    job.event(f"디자인 타입: {(THEMES.get(theme) or THEMES['navy'])['label']}")
+    style = str(opts.get("vstyle") or "band")
+    tone = str(opts.get("vtone") or opts.get("vtheme") or "navy")
+    use_fonts(opts.get("font_title"), opts.get("font_body"))
+    bd = Build(o, bgs, logo, style, tone)
+    n = bd.build(chapters_pages, out)
+    job.event(f"서체: 제목 {FONT['title'][0]}(표지·목차·간지·쪽 제목) · 본문 {FONT['body'][0]}")
+    job.event(f"디자인: {(STYLES.get(style) or STYLES['band'])['label']} · 톤 {(TONES.get(tone) or TONES['navy'])['label']}")
     job.event(f"세로 제안서 {n}장(표지·목차·간지·본문)을 만들었습니다.", "done")
+    try:   # 작성 가이드 — 사용법·서식 규칙표·1~4 depth 견본(같은 스타일·톤)
+        gp = os.path.join(job.dir, "세로제안서_작성가이드.pptx")
+        build_guide(o["project"], style, tone, logo, gp)
+        put_file(job.id, "extra", gp)
+        job.event("작성 가이드(사용법·서식 규칙표·1~4 depth 견본)를 함께 넣었습니다.", "done")
+    except Exception as e:
+        job.event(f"작성 가이드를 만들지 못했습니다(결과 장표는 정상): {str(e)[:120]}", "warn")
     job.push("시안 정리", 96)
     try:
         design.W.get("upload_after", lambda *a, **k: None)(job, out)
@@ -996,6 +1296,106 @@ def run(job, j, opts, brief, note):
     req("POST", f"/worker/jobs/{job.id}/finish", {"status": "done", "result_name": "결과.pptx", "engine": "vertical", "report": {
         "summary": f"{p['name']} — A4 세로 제안서 {n}장(본문 {n_body}쪽, {len(o['chapters'])}장 구성)",
         "stats": [{"label": "전체 장", "value": n}, {"label": "본문 쪽", "value": n_body}, {"label": "장 구성", "value": len(o["chapters"])}],
+        "pages": getattr(bd, "pages", []), "fonts": {"title": FONT["title"][0], "body": FONT["body"][0]},
         "checklist": [{"slide": 0, "title": "제안사 정보 확인", "level": "info",
                        "detail": "회사 현황·실적·인력·지분처럼 자료에 없는 제안사 정보는 「[제안사 작성]」 자리로 두었습니다."}],
         "changes": bglog}})
+
+
+# ───────────────────────── 작성 가이드(결과에 함께 넣는다) — 컨소시엄 업체가 같은 규칙으로 쓰게(사용자 2026-10-14)
+def guide_pages(th):
+    b = lambda head, bar, bullets, small="", table=None: dict(head=head, small=small, bar=bar, bullets=bullets, **({"table": table} if table else {}))
+    spec1 = {"cols": ["요소", "글꼴", "크기", "색 · 속성"], "rows": [
+        ["머리 띠 장 이름", "a시월구일3", "12pt", "흰색(띠 위) · 띠 높이 가운데"],
+        ["장 번호 배지", "a시월구일3", "12pt", "배지 색 위 · 가운데"],
+        ["사업명(머리)", "a시월구일2", "8pt", "오른쪽 정렬"],
+        ["경로 줄", "a시월구일2", "10pt", f"#{th['mid']}"],
+        ["쪽 제목", "G마켓 산스 TTF Bold", "18pt", f"#{th['mid']} · 한 줄(길면 12pt까지 줄임)"],
+        ["요구사항 꼬리표", "a시월구일3 / a시월구일2", "8pt", "번호 3개 + 외 N"],
+        ["쪽 번호", "a시월구일1", "9pt", "장별 'Ⅱ - 3' · 아래 가운데"]]}
+    spec2 = {"cols": ["요소", "글꼴", "크기", "색 · 속성"], "rows": [
+        ["도입 문단", "a시월구일2 / 강조 a시월구일3", "11pt", "#686868 · 줄간격 1.25 · 2문장"],
+        ["띠 문구", "a시월구일4", "13pt", "흰색 · 한 줄"],
+        ["소제목", "a시월구일3", "12pt", f"#{th['dark']}"],
+        ["작은 제목", "a시월구일3", "10.5pt", f"#{th['dark']}"],
+        ["막대 제목", "a시월구일3", "11pt", f"#{th['dark']} · 바탕 #D9D9D9 50%"],
+        ["본문 글", "a시월구일2", "9pt", "#4D4D4D · 줄간격 1.0 · 앞 점 없음"],
+        ["표 머리 / 표 본문", "a시월구일3 / a시월구일2", "8.5pt", f"#{th['dark']} 바탕 흰 글씨 / #4D4D4D"]]}
+    for sp in (spec1, spec2):   # 글꼴 칸 = 고른 서체 이름(사용자 2026-10-14 "고르면 작성가이드에 폰트도 같이 변경")
+        for r in sp["rows"]:
+            r[1] = re.sub(r"a시월구일[1-4]|G마켓 산스 TTF Bold", lambda m: fface(m.group(0)), r[1])
+            fam = FONT["body"][0] + " "
+            if r[1].count(fam) > 1:   # 'KoPub돋움체 Bold / KoPub돋움체 Medium' → 'KoPub돋움체 Bold / Medium' (칸이 넘쳐 옆 칸이 줄바꿈되지 않게)
+                head, _, tail = r[1].partition(" / ")
+                r[1] = head + " / " + tail.replace(fam, "")
+    bf = FONT["body"]
+    lv = "·".join(dict.fromkeys(f.replace(bf[0], "").strip() for f in bf[1]))   # 굵기 이름만(1·2·3·4 / Light·Medium·Bold)
+    return [
+        {"title": "1.1 구성과 쪽 추가", "fixed_path": "1. 작성 가이드", "req": "",
+         "lead": ["이 제안서는 표지·목차·간지·본문 네 가지 양식으로 짜여 있습니다.", "장마다 전용 레이아웃이 있어 머리 띠와 쪽 번호가 맞습니다."],
+         "strong": "네 가지 양식", "band": "같은 장 안에서는 쪽을 복제해 이어 씁니다",
+         "blocks": [b("구성", "양식 네 가지", ["표지 1쪽 → 목차(장마다) → 간지(장마다) → 본문 순서로 엮음",
+                                         "목차·간지·본문은 장마다 전용 레이아웃(Ⅰ 일반현황, Ⅱ 전략 및 방법론 …)을 씀",
+                                         "다른 장으로 옮긴 쪽은 [홈 > 레이아웃]에서 그 장 레이아웃으로 바꿈"]),
+                    b("쪽 추가·삭제", "복제해서 이어 쓰기", ["같은 장 본문 쪽을 골라 Ctrl+D 로 복제한 뒤 글만 바꿈",
+                                                      "블록(소제목·막대 제목·본문)은 묶음째 복사해 아래로 이어 붙임",
+                                                      "쪽 번호(Ⅱ - 3)는 글자 상자라 쪽을 넣거나 빼면 직접 고침",
+                                                      "목차 쪽 번호도 함께 고침 — 평가위원이 참조표로 찾아감"])]},
+        {"title": "1.2 글쓰기 규칙", "fixed_path": "1. 작성 가이드", "req": "",
+         "lead": ["모든 문장은 마침표에서 줄을 바꾸고 한 줄에 들어가게 씁니다.", "모호한 표현 대신 수치로 적어 바로 확인하게 합니다."],
+         "strong": "마침표에서 줄을 바꾸고", "band": "한 문장 한 줄, 수치로 말하기",
+         "blocks": [b("문장", "줄바꿈과 길이", ["도입 문단은 2문장, 한 문장 45자 이내(한 줄)",
+                                           "본문 글은 개조식(~함, ~임), 한 줄 70자 이내, 앞에 점(·)을 붙이지 않음",
+                                           "'할 수 있다·고려하고 있다' 같은 모호한 말은 쓰지 않음"]),
+                    b("글꼴", "설치해야 할 글꼴", [f"제목: {FONT['title'][1]} — 표지·목차·간지·쪽 제목의 큰 글자에만",
+                                             f"본문: {bf[0]} {lv} — 굵기 4단계(옅음·본문·강조·굵음)",
+                                             "글꼴이 없는 PC 에서는 다른 글꼴로 바뀌어 줄바꿈이 달라짐 — 작성 전 설치",
+                                             "컨소시엄 업체는 같은 양식 파일로 작성해 합칠 때 어긋나지 않게 함"]),
+                    b("색", "톤 색상", [f"진한 색 #{th['dark']} — 머리 띠·소제목·막대 제목",
+                                       f"중간 색 #{th['mid']} — 쪽 제목·경로·강조", f"연한 색 #{th['light']} — 연한 면·선"])]},
+        {"title": "1.3 서식 규칙표", "fixed_path": "1. 작성 가이드", "req": "",
+         "lead": ["요소마다 글꼴·크기·색이 정해져 있습니다.", "새 쪽을 만들 때도 이 표의 값 그대로 씁니다."],
+         "strong": "글꼴·크기·색", "band": "요소별 서식 — 이 값 그대로",
+         "blocks": [b("머리·제목 영역", "머리 띠부터 쪽 번호까지", ["쪽 위쪽과 아래쪽에 늘 같은 자리로 놓이는 요소"], table=spec1),
+                    b("본문 영역", "도입 문단부터 표까지", ["블록 하나 = 소제목 + (작은 제목) + 막대 제목 + 본문 글 + (표)"], table=spec2)]},
+        {"title": "1 사업이해도", "fixed_path": "", "req": "SFR-001",
+         "lead": ["1 depth 는 장 안의 큰 절을 여는 쪽입니다.", "경로 줄 없이 절 번호와 이름만 씁니다."],
+         "strong": "큰 절을 여는 쪽", "band": "1 depth — 절의 방향을 먼저 보여 주는 쪽",
+         "blocks": [b("쓰는 곳", "1 depth 예시", ["절의 첫 쪽에 써서 절 전체의 방향을 먼저 보여 줌", "제목 형식: 숫자 + 공백 + 절 이름(예: 1 사업이해도)"])]},
+        {"title": "1.1 사업 배경 및 목적", "fixed_path": "1. 사업이해도", "req": "SFR-001, SFR-002",
+         "lead": ["2 depth 는 절 아래 항목 하나를 설명하는 기본 쪽입니다.", "경로 줄에는 위 절 하나만 적습니다."],
+         "strong": "기본 쪽", "band": "2 depth — 가장 많이 쓰는 본문 쪽",
+         "blocks": [b("쓰는 곳", "2 depth 예시", ["항목마다 1~3쪽, 2쪽 이상이면 제목 끝에 (1/2)처럼 붙임", "경로: 1. 사업이해도 / 제목: 1.1 사업 배경 및 목적"], small="현행 시스템의 한계")]},
+        {"title": "1.1.1 추진 배경", "fixed_path": "1. 사업이해도 > 1.1 사업 배경", "req": "SFR-001",
+         "lead": ["3 depth 는 항목을 더 잘게 나눌 때 씁니다.", "경로 줄에 절과 항목을 이어 적습니다."],
+         "strong": "더 잘게 나눌 때", "band": "3 depth — 항목 안의 세부 주제",
+         "blocks": [b("쓰는 곳", "3 depth 예시", ["한 항목이 3쪽을 넘으면 세부 주제로 나눠 3 depth 로 씀", "경로: 1. 사업이해도 > 1.1 사업 배경 / 제목: 1.1.1 추진 배경"])]},
+        {"title": "1.1.1.1 현행 시스템 현황", "fixed_path": "1. 사업이해도 > 1.1 사업 배경 > 1.1.1 추진 배경", "req": "SFR-001",
+         "lead": ["4 depth 는 세부 주제 안에서 한 가지를 짚을 때만 씁니다.", "너무 깊어지면 읽기 어려우니 꼭 필요할 때만 씁니다."],
+         "strong": "한 가지를 짚을 때", "band": "4 depth — 가장 깊은 단계(꼭 필요할 때만)",
+         "blocks": [b("쓰는 곳", "4 depth 예시", ["경로 줄에 세 단계를 모두 적어 위치를 알려 줌", "4 depth 아래로는 더 나누지 않고 블록으로 정리함"])]},
+    ]
+
+
+def build_guide(project, style, tone, logo, out):
+    o = {"project": dict(project), "chapters": [{"no": "Ⅰ", "title": "작성 가이드", "sections": []}]}
+    b = Build(o, {}, logo, style, tone)
+    b.project_text()
+    b.chapter_layouts()
+    c = o["chapters"][0]
+    slides = []
+    for pg in guide_pages(b.th):
+        s, rest = b.body_page(0, c, pg)
+        slides.append(s)
+        k = 2
+        while rest:
+            s, rest = b.body_page(0, c, dict(pg, blocks=rest), cont=str(k))
+            slides.append(s)
+            k += 1
+    for k, s in enumerate(slides):
+        move_slide(b.prs, s, k)
+    for s in (b.s_body, b.s_cover, b.s_toc, b.s_div):
+        drop_slide(b.prs, s)
+    refont(b.prs)
+    b.prs.save(out)
+    return len(slides)

@@ -4,8 +4,8 @@ import { LiveDot } from "@/components/hb/live-status";
 import { getAi, type AiSettings } from "../openrouter";
 import { Arrow, cn, Ms, SecTitle, Seg, useToastOn, toast, useContextMenu, type CtxItem, sent } from "../ui";
 import { DesignTypePicker, typeName } from "../DesignTypes";
-import { VerticalThemePicker, verticalThemeName } from "../VerticalThemes";
-import { BODY_FONTS, FontPicker, TITLE_FONTS, fontName } from "../FontPicker";
+import { VerticalStylePicker, VerticalTonePicker, verticalStyleName, verticalToneName } from "../VerticalThemes";
+import { BODY_FONTS, FontPicker, TITLE_FONTS, VERTICAL_BODY_FONTS, fontName } from "../FontPicker";
 import { LogoSearch } from "../LogoSearch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
@@ -96,10 +96,16 @@ export function Upload({ engine, isAdmin = false, onUploaded, onCancel, onSettin
   const [front, setFront] = useState({ cover: true, toc: true, divider: true });   // 표지·목차·간지 — 제작 직전에도 바꿀 수 있다
   const [style, setStyle] = useState("a");   // 디자인 타입 — reference/styles/styles.json
   const [purpose, setPurpose] = useState<"submit" | "present">("present");
-  const [vtheme, setVtheme] = useState("navy");   // 제출용(세로 제안서) 디자인 타입 — engine/vertical.py THEMES
+  const [vstyle, setVstyle] = useState("band");   // 제출용(세로 제안서) 디자인 스타일(모양) — engine/vertical.py STYLES
+  const [vtone, setVtone] = useState("navy");     // 톤(색) — engine/vertical.py TONES. 고르면 강조색도 추천 색으로
   const [lang, setLang] = useState<DeckLang>("ko");   // 제작 언어 — 자료가 한국어여도 장표 글을 이 언어로   // 용도 — 발표용(기본) / 제출용
   const [fontTitle, setFontTitle] = useState(TITLE_FONTS[0]?.id ?? "gmarket");   // 서체 — worker/fonts/fonts.json
   const [fontBody, setFontBody] = useState(BODY_FONTS[0]?.id ?? "siwol");
+  // 용도가 바뀌면 본문 서체를 그 용도의 목록 안으로(제출용 = 세로 제안서 3종)
+  useEffect(() => {
+    const list = purpose === "submit" ? VERTICAL_BODY_FONTS : BODY_FONTS;
+    if (!list.some((f) => f.id === fontBody)) setFontBody(list[0]?.id ?? "siwol");
+  }, [purpose, fontBody]);
   const [logos, setLogos] = useState<{ client: File[]; vendor: File[] }>({ client: [], vendor: [] });   // 기관이 둘 이상이면 여러 개(3개까지) — 올릴 때 한 줄로 이어 붙인다
   // 흰색 로고(선택, 어두운 바탕용) — 기본 로고마다 하나(같은 순서). 없으면 기본 로고 모양을 흰색으로 바꿔 쓴다
   const [whites, setWhites] = useState<{ client: (File | undefined)[]; vendor: (File | undefined)[] }>({ client: [], vendor: [] });
@@ -153,7 +159,7 @@ export function Upload({ engine, isAdmin = false, onUploaded, onCancel, onSettin
   const hasText = text.trim().length >= 20;
   const slideUnset = !slideN || !(parseInt(slideN) > 0);
   const slides = slideUnset ? 5 : parseInt(slideN);
-  const planOpts = { slides, mockups, sample: Math.max(1, parseInt(sampleN) || 3), front, style, vtheme, purpose, lang, font_title: fontTitle, font_body: fontBody, event: event.trim(), date: evDate.trim() };
+  const planOpts = { slides, mockups, sample: Math.max(1, parseInt(sampleN) || 3), front, style, vstyle, vtone, purpose, lang, font_title: fontTitle, font_body: fontBody, event: event.trim(), date: evDate.trim() };
   const aiBlock = design && ai && !ai.ready;
   const working = busy !== null;
 
@@ -273,7 +279,8 @@ export function Upload({ engine, isAdmin = false, onUploaded, onCancel, onSettin
     ["용도", purpose === "present" ? "발표용" : "제출용", 1, "purpose"],
     ["언어", DECK_LANGS.find((x) => x[0] === lang)?.[1] ?? "한국어", 1, "lang"],
     ["자료", items.length ? `${hasText ? "글 + " : ""}${items.length}개 · ${fmtSize(totalSize)}` : text.trim() ? "직접 적은 글" : "없음", 1, "files"],
-    ["디자인", purpose === "submit" ? `세로 제안서 · ${verticalThemeName(vtheme)}` : `타입 ${style.toUpperCase()} · ${typeName(style)}`, 2, "design"],
+    ["디자인", purpose === "submit" ? `세로 제안서 · ${verticalStyleName(vstyle)}` : `타입 ${style.toUpperCase()} · ${typeName(style)}`, 2, "design"],
+    ...(purpose === "submit" ? [["톤", verticalToneName(vtone), 3, "vtone"] as [string, ReactNode, Step, string]] : []),
     ["서체", fontTxt, 2, "font"],
     ["장 수", slideUnset ? "5장 (장 수 미입력)" : `${slides}장`, 3, "count"],
     ["시안", `${MODE_LABEL[mockups]}${mockups === "sample" ? ` ${planOpts.sample}장` : ""}`, 3, "timing"],
@@ -511,15 +518,15 @@ export function Upload({ engine, isAdmin = false, onUploaded, onCancel, onSettin
             {design && step === 2 && <>
               <Sec id="design" style={hl("design")} className="!gap-2.5">
                 {purpose === "submit" ? <>
-                  <SecTitle icon="palette" title="세로 제안서 디자인 타입" desc="본문 머리 띠 · 목차 · 간지 · 표 색이 모두 이 타입으로 맞춰집니다" />
-                  <VerticalThemePicker value={vtheme} onChange={setVtheme} disabled={working} />
+                  <SecTitle icon="palette" title="세로 제안서 디자인 스타일" desc="표지 · 목차 · 간지 · 본문의 모양이 이 스타일로 정해집니다 — 색은 다음 단계에서 톤으로 고릅니다" />
+                  <VerticalStylePicker value={vstyle} onChange={setVstyle} disabled={working} />
                 </> : <>
                   <SecTitle icon="palette" title="디자인 타입" desc="시안 이미지 · 머리 띠 · 표지 · 목차 · 간지가 모두 이 타입으로 만들어집니다" />
                   <DesignTypePicker value={style} onChange={setStyle} disabled={working} />
                 </>}
               </Sec>
               <Sec id="font" style={hl("font")} className="!gap-3">
-                <FontPicker title={fontTitle} body={fontBody} onTitle={setFontTitle} onBody={setFontBody} disabled={working} />
+                <FontPicker vertical={purpose === "submit"} title={fontTitle} body={fontBody} onTitle={setFontTitle} onBody={setFontBody} disabled={working} />
               </Sec>
             </>}
 
@@ -583,6 +590,11 @@ export function Upload({ engine, isAdmin = false, onUploaded, onCancel, onSettin
                     })}
                   </div>
                 </Row>
+                {purpose === "submit" && (
+                  <Row id="vtone" style={hl("vtone")} icon="palette" title="톤" sub="머리 띠 · 간지 · 표 색">
+                    <VerticalTonePicker value={vtone} onChange={(t) => { setVtone(t.id); setAccent(t.accent); }} disabled={working} />
+                  </Row>
+                )}
                 <Row id="accent" style={hl("accent")} icon="format_color_fill" title="강조색" sub="핵심 단어 강조">
                   <div className="flex flex-col gap-2.5">
                     <div className="flex items-center gap-1.5 flex-wrap">

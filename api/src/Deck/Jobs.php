@@ -322,7 +322,8 @@ final class Jobs
             'event' => mb_substr(trim((string) ($b['event'] ?? '')), 0, 30), 'date' => mb_substr(trim((string) ($b['date'] ?? '')), 0, 20),   // 표지 꼬리 글·날짜(비우면 엔진이 '제안설명회'·작성 날짜)
             'style' => preg_match('/^[a-z]{1,2}$/', (string) ($b['style'] ?? '')) ? $b['style'] : 'a',
             'purpose' => ($b['purpose'] ?? '') === 'submit' ? 'submit' : 'present',
-            'vtheme' => in_array($b['vtheme'] ?? '', ['navy', 'blue', 'deep', 'teal', 'gray', 'glass'], true) ? $b['vtheme'] : 'navy',   // 세로 제안서 디자인 타입(engine/vertical.py THEMES)
+            'vstyle' => in_array($b['vstyle'] ?? '', ['band', 'tab', 'side', 'split', 'pill', 'line'], true) ? $b['vstyle'] : 'band',   // 세로 제안서 디자인 스타일(모양) — engine/vertical.py STYLES
+            'vtone' => in_array($b['vtone'] ?? ($b['vtheme'] ?? ''), ['navy', 'blue', 'deep', 'teal', 'gray', 'glass'], true) ? ($b['vtone'] ?? $b['vtheme']) : 'navy',   // 톤(색) — TONES(옛 vtheme 도 받는다)
             'lang' => in_array($b['lang'] ?? '', self::LANGS, true) ? $b['lang'] : 'ko',   // 제작 언어 — 장표 글·시안·대본
             'font_title' => preg_match('/^[a-z0-9]{2,16}$/', (string) ($b['font_title'] ?? '')) ? $b['font_title'] : '',
             'font_body' => preg_match('/^[a-z0-9]{2,16}$/', (string) ($b['font_body'] ?? '')) ? $b['font_body'] : ''], JSON_UNESCAPED_UNICODE);   // 서체 — worker/fonts/fonts.json 의 id(모르면 엔진이 기본)

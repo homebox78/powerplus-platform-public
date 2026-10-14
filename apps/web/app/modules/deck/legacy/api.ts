@@ -64,6 +64,9 @@ export type Report = {
   changes?: string[];
   assets_used?: { slide: number; id: string; why?: string }[];
   pilot_slide?: number;
+  /** 세로 제안서 — 쪽마다 종류·장(章)·제목(결과 화면 캔버스의 장 줄) */
+  pages?: { n: number; kind: "cover" | "toc" | "div" | "body"; ch: string; title: string }[];
+  fonts?: { title: string; body: string };
 };
 /** design 작업의 장별 기획 (엔진이 만들고, 시안 확인에서 사용자가 고친다) */
 export type PlanSlide = {

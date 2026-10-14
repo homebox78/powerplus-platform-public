@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { REVIEW_COLS, TextEdit, Thumbs } from "./TextEdit";
-import { isEditing, api, fileUrl, fmtSize, isDesign, usd, type Job, type JobFile } from "../api";
+import { isEditing, api, fileUrl, fmtSize, isDesign, usd, type Job, type JobFile, type PlanSlide } from "../api";
 import { cn, fmtDur, GenStamp, GuestHeader, JobHeader, Ms, parseTs, Seg, useToastOn, useContextMenu, type CtxItem, toast, sent } from "../ui";
 import { Files } from "./ResultFiles";
 import { Script } from "./ResultScript";
 import { Detail } from "./ResultDetail";
 import { CommentPanel, PinImage, useFeedback } from "../Feedback";
+import { OverviewCanvas } from "../OverviewCanvas";
 
 type Props = { job: Job; me: string; isAdmin?: boolean; onNew?: () => void; onRetry: () => void; onChange?: (j: Job) => void; onLogout?: () => void; onPlan?: () => void };
 type Pair = { b?: JobFile; a?: JobFile; label?: string };   // label = 표지·목차·간지(쪽번호 없는 앞장)
@@ -115,7 +116,55 @@ export function Result(p: Props) {
 }
 
 type Tab = "review" | "script" | "files" | "detail";
-type Mode = "side" | "over" | "edit" | "frames";
+type Mode = "side" | "over" | "edit" | "frames" | "grid" | "canvas";
+
+/** 세로 제안서(제출용) — 비교할 시안이 없다(before 없음) */
+const isVertical = (job: Job) => isDesign(job) && job.opts?.purpose === "submit" && !(job.files?.before?.length);
+const KIND: Record<string, string> = { cover: "표지", toc: "목차", div: "간지", body: "본문" };
+
+/** 세로 제안서 — 가운데에 장표 3열(사용자 2026-10-14 "센터에 장표가 가로 3개씩"). 장표를 누르면 그 자리에 의견 */
+function VerticalGrid({ job, slides, sel, onSel, fb }: { job: Job; slides: [number, Pair][]; sel: number; onSel: (n: number) => void; fb: ReturnType<typeof useFeedback> }) {
+  const pages = job.report?.pages;
+  const box = useRef<HTMLDivElement>(null);
+  useEffect(() => { box.current?.querySelector(`[data-n="${sel}"]`)?.scrollIntoView({ block: "nearest", behavior: "smooth" }); }, [sel]);
+  return (
+    <div ref={box} className="grid grid-cols-3 gap-x-4 gap-y-5 items-start">
+      {slides.map(([n, p]) => {
+        const pg = pages?.find((x) => x.n === n), on = n === sel;
+        return (
+          <div key={n} data-n={n} onClickCapture={() => onSel(n)} className="flex flex-col gap-1.5 min-w-0">
+            <div className={cn("flex items-center gap-1.5 text-[13px] font-semibold min-w-0", on ? "text-orange-d" : "text-dim")}>
+              <span className="flex-none">{n}</span>
+              <span className="truncate">{pg ? `${KIND[pg.kind] ?? ""}${pg.kind === "body" ? ` · ${pg.title}` : ""}` : p.label ?? ""}</span>
+            </div>
+            {p.a ? <PinImage fb={fb} slide={n} src={afterUrl(job, p.a)} alt={`${n}쪽`} className={cn(SHEET, on && "!shadow-[0_0_0_2px_var(--color-point)]")} />
+              : <NoSheet>이 쪽의 렌더가 아직 없습니다</NoSheet>}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+/** 세로 제안서 캔버스 — 표지·목차 한 줄 + 장(章)마다 간지·본문 한 줄. 누르면 그 쪽을 3열 보기에서 연다 */
+function VerticalCanvas({ job, slides, sel, onOpen }: { job: Job; slides: [number, Pair][]; sel: number; onOpen: (n: number) => void }) {
+  const groups = useMemo(() => {
+    const pages = job.report?.pages ?? [];
+    const g = new Map<string, PlanSlide[]>();
+    for (const [n, p] of slides) {
+      const pg = pages.find((x) => x.n === n);
+      const k = slides.findIndex((x) => x[0] === n);
+      const ch = pg?.ch ?? `${Math.floor(k / 6) * 6 + 1}~${Math.min(slides.length, Math.floor(k / 6) * 6 + 6)}쪽`;   // 쪽 정보가 없는 옛 작업은 6장씩 한 줄
+      g.set(ch, [...(g.get(ch) ?? []), { n, title: pg ? (pg.kind === "body" ? pg.title : KIND[pg.kind] ?? pg.title) : p.label ?? `${n}쪽`, section: pg ? KIND[pg.kind] : undefined, content: "" }]);
+    }
+    return [...g.entries()];
+  }, [job.report?.pages, slides]);
+  const src = useMemo(() => new Map(slides.map(([n, p]) => [n, p.a ? afterUrl(job, p.a) : ""])), [slides, job]);
+  return (
+    <OverviewCanvas portrait jobId={job.id} groups={groups} sel={sel} title={(x) => x.title} onOpen={onOpen} badge={() => null}
+      thumb={(x) => src.get(x.n) ? <img src={src.get(x.n)} alt="" draggable={false} className="block w-full aspect-[210/297] object-cover" /> : <div className="aspect-[210/297] bg-panel" />} />
+  );
+}
 
 /**
  * 고친 과정 보기 — 엔진이 쌓은 중간 렌더(files.frames, 이름 fNNN_sNN.jpg)를 순서대로 넘겨 본다.
@@ -152,8 +201,10 @@ function Owner({ job, me, isAdmin, onRetry, onChange, onPlan }: Props) {
   const slides = useSlides(job);
   const [sel, setSel] = useState(slides[0]?.[0] ?? 1);
   const [tab, setTab] = useState<Tab>("review");
-  const [mode0, setMode] = useState<Mode>(design ? "side" : "over");
-  const mode: Mode = mode0 === "edit" && !ok ? "side" : mode0;
+  const vert = isVertical(job);
+  const [mode0, setMode] = useState<Mode>(vert ? "grid" : design ? "side" : "over");
+  const mode: Mode = mode0 === "edit" && !ok ? (vert ? "grid" : "side") : mode0;
+  const home: Mode = vert ? "grid" : "side";
   // 발표 대본 탭은 한 번 열면 계속 붙여 둔다 — 대본을 만드는 중에 다른 탭을 눌러도 진행과 화면이 사라지지 않게
   const [scriptSeen, setScriptSeen] = useState(false);
   useEffect(() => { if (tab === "script") setScriptSeen(true); }, [tab]);
@@ -192,13 +243,15 @@ function Owner({ job, me, isAdmin, onRetry, onChange, onPlan }: Props) {
   const at = slides.findIndex((s) => s[0] === sel);
   const reviewMenu = (): CtxItem[] => [
     { head: cur?.label || `${sel}쪽` },
-    { label: "나란히", icon: "view_column_2", on: mode === "side", onClick: () => setMode("side") },
-    { label: "겹쳐서", icon: "compare", on: mode === "over", onClick: () => setMode("over") },
+    ...(vert ? [{ label: "장표 보기", icon: "grid_view", on: mode === "grid", onClick: () => setMode("grid") },
+      { label: "캔버스", icon: "account_tree", on: mode === "canvas", onClick: () => setMode("canvas") }]
+      : [{ label: "나란히", icon: "view_column_2", on: mode === "side", onClick: () => setMode("side") },
+        { label: "겹쳐서", icon: "compare", on: mode === "over", onClick: () => setMode("over") }]),
     ...(ok ? [{ label: "글 고치기", icon: "edit_note", on: mode0 === "edit", onClick: () => setMode("edit") }] : []),
     "-",
     { label: "이전 장", icon: "chevron_left", disabled: at <= 0, onClick: () => slides[at - 1] && setSel(slides[at - 1]![0]) },
     { label: "다음 장", icon: "chevron_right", disabled: at >= slides.length - 1, onClick: () => slides[at + 1] && setSel(slides[at + 1]![0]) },
-    ...(design && ok ? ["-" as const, { label: "수정 요청 쓰기", icon: "rate_review", onClick: () => { setMode(mode0 === "edit" ? "side" : mode0); setTimeout(() => reviseBox.current?.focus(), 50); } },
+    ...(design && ok ? ["-" as const, { label: "수정 요청 쓰기", icon: "rate_review", onClick: () => { setMode(mode0 === "edit" ? home : mode0); setTimeout(() => reviseBox.current?.focus(), 50); } },
       { label: "팀원에게 공유", icon: "share", onClick: share }] : []),
     ...(ok && results[0] ? ["-" as const, { label: "내보내기 (pptx)", icon: "download", onClick: () => { location.href = fileUrl(job.id, "result", results[0]!.name, true); } }] : []),
   ];
@@ -219,13 +272,15 @@ function Owner({ job, me, isAdmin, onRetry, onChange, onPlan }: Props) {
     </>
   );
 
-  const hint = mode === "side" ? (design ? "오른쪽 결과 장표에서 고칠 곳을 누르면 그 자리에 의견이 남습니다 · 좌우 방향키로 장 이동" : `${baseLabel}과 결과를 나란히 봅니다 · 좌우 방향키로 장 이동`)
+  const hint = mode === "grid" ? "장표를 누르면 그 자리에 의견이 남습니다 · 좌우 방향키로 쪽 이동"
+    : mode === "canvas" ? "표지·목차와 장(章)마다 한 줄씩 · 카드를 누르면 그 쪽을 엽니다 · Ctrl+휠로 확대"
+    : mode === "side" ? (design ? "오른쪽 결과 장표에서 고칠 곳을 누르면 그 자리에 의견이 남습니다 · 좌우 방향키로 장 이동" : `${baseLabel}과 결과를 나란히 봅니다 · 좌우 방향키로 장 이동`)
     : mode === "over" ? `가운데 손잡이를 끌어 ${baseLabel}과 결과를 비교하세요 · 좌우 방향키로 장 이동`
     : mode === "frames" ? "엔진이 고쳐 간 순서대로 중간 그림을 넘겨 봅니다"
     : "고칠 글을 누르면 오른쪽에서 바로 고칩니다 — 글만 바뀌고 서식 · 위치는 그대로입니다";
   const toolbar = (
     <div className="head panel !gap-2.5 overflow-hidden">
-      <Seg<Mode> value={mode} onChange={setMode} options={[["side", "나란히"], ["over", "겹쳐서"], ...(ok ? [["edit", "글 고치기"] as const] : []), ...(hasFrames ? [["frames", "고친 과정 보기"] as const] : [])]} />
+      <Seg<Mode> value={mode} onChange={setMode} options={[...(vert ? [["grid", "장표 보기"], ["canvas", "캔버스"]] as const : [["side", "나란히"], ["over", "겹쳐서"]] as const), ...(ok ? [["edit", "글 고치기"] as const] : []), ...(hasFrames ? [["frames", "고친 과정 보기"] as const] : [])]} />
       {/* 안내문은 좁은 화면(390)에서 쪽 이동 버튼과 겹쳐 숨긴다 — 모드 이름이 곧 안내 */}
       <span className="hidden md:block flex-1 min-w-0 text-[13px] text-dim leading-[1.5] break-words" title={hint}>{sent(hint)}</span>
       <span className="md:hidden flex-1" />
@@ -244,8 +299,8 @@ function Owner({ job, me, isAdmin, onRetry, onChange, onPlan }: Props) {
       {tab === "review" && (mode === "edit" ? (
         <TextEdit job={job} onChange={(j) => onChange?.(j)} toolbar={toolbar} sel={sel} onSel={setSel} />
       ) : (
-        <div className="pd-cols flex-1 min-h-0 grid" style={{ gridTemplateColumns: !slides.length ? (design ? "minmax(0,1fr) minmax(260px,300px)" : "minmax(0,1fr)") : design ? REVIEW_COLS : "104px minmax(0,1fr)" }} onContextMenu={(e) => ctx.open(e, reviewMenu())}>
-          {slides.length > 0 && <Thumbs sel={sel} onSel={setSel} items={slides.map(([n, f]) => ({ n, src: thumbUrl(job, f), label: f.label, badge: design && !f.label ? fb.open.filter((c) => c.slide === n).length : 0 }))} />}
+        <div className="pd-cols flex-1 min-h-0 grid" style={{ gridTemplateColumns: !slides.length || vert ? (design ? "minmax(0,1fr) minmax(260px,300px)" : "minmax(0,1fr)") : design ? REVIEW_COLS : "104px minmax(0,1fr)" }} onContextMenu={(e) => ctx.open(e, reviewMenu())}>
+          {slides.length > 0 && !vert && <Thumbs sel={sel} onSel={setSel} items={slides.map(([n, f]) => ({ n, src: thumbUrl(job, f), label: f.label, badge: design && !f.label ? fb.open.filter((c) => c.slide === n).length : 0 }))} />}
           <div className="flex flex-col min-h-0 min-w-0 bg-side">
             {toolbar}
             {!ok && (
@@ -264,7 +319,11 @@ function Owner({ job, me, isAdmin, onRetry, onChange, onPlan }: Props) {
             )}
             {!slides.length ? <Empty text={ok ? "장별 렌더가 아직 없습니다." : "보여 줄 장표가 없습니다."} />
               : (
+                mode === "canvas" ? (
+                  <div className="flex-1 min-h-0 flex flex-col p-4"><VerticalCanvas job={job} slides={slides} sel={sel} onOpen={(n) => { setSel(n); setMode("grid"); }} /></div>
+                ) : (
                 <div className="flex-1 min-h-0 overflow-auto scroll-thin p-5">
+                  {mode === "grid" && <VerticalGrid job={job} slides={slides} sel={sel} onSel={setSel} fb={fb} />}
                   {cur && mode === "side" && (
                     <SideBySide job={job} cur={cur} fit={FIT} baseLabel={design ? "시안 (확정본)" : "원본"} rightLabel={design ? "결과 장표 — 눌러서 의견" : "결과 장표"}
                       right={!cur.a ? noResult : design && !cur.label ? <PinImage fb={fb} slide={sel} src={afterUrl(job, cur.a)} alt="결과" className={SHEET} fit={FIT}><GenStamp at={cur.a.ts} /></PinImage> : <Sheet src={afterUrl(job, cur.a)} alt="결과" fit={FIT} ts={cur.a.ts} />} />
@@ -272,10 +331,10 @@ function Owner({ job, me, isAdmin, onRetry, onChange, onPlan }: Props) {
                   {cur && mode === "over" && <Compare key={sel} before={cur.b && beforeUrl(job, cur.b)} after={cur.a && afterUrl(job, cur.a)} beforeLabel={baseLabel} />}
                   {mode === "frames" && <FramesView job={job} slide={sel} />}
                 </div>
-              )}
+              ))}
           </div>
           {design && (
-            <CommentPanel fb={fb} onGo={(c) => { setSel(c.slide); setMode("side"); }} onJob={(j) => onChange?.(j)} empty="결과 장표에서 고칠 곳을 눌러 보세요."
+            <CommentPanel fb={fb} onGo={(c) => { setSel(c.slide); setMode(home); }} onJob={(j) => onChange?.(j)} empty="결과 장표에서 고칠 곳을 눌러 보세요."
               foot={ok && (
                 <div className="flex-none border-t border-line px-[18px] py-3.5 flex flex-col gap-2 bg-panel">
                   <div className="font-bold">수정 요청</div>

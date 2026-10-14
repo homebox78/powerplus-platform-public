@@ -5,7 +5,9 @@ import { cn, SecTitle } from "./ui";
 type F = { id: string; name: string };
 export const TITLE_FONTS: F[] = (list as { title: F[] }).title;
 export const BODY_FONTS: F[] = (list as { body: F[] }).body;
-export const fontName = (kind: "title" | "body", id?: string) => (kind === "title" ? TITLE_FONTS : BODY_FONTS).find((f) => f.id === id)?.name ?? (kind === "title" ? TITLE_FONTS : BODY_FONTS)[0]?.name;
+/** 세로 제안서(제출용) 본문 서체 — 3종만(사용자 2026-10-14). id 는 엔진 engine/vertical.py VBODY 와 같다 */
+export const VERTICAL_BODY_FONTS: F[] = [{ id: "siwol", name: "a시월구일" }, { id: "kopub", name: "KoPub돋움체" }, { id: "rix", name: "Rix고딕" }];
+export const fontName = (kind: "title" | "body", id?: string) => (kind === "title" ? TITLE_FONTS : [...BODY_FONTS, ...VERTICAL_BODY_FONTS]).find((f) => f.id === id)?.name ?? (kind === "title" ? TITLE_FONTS : BODY_FONTS)[0]?.name;
 const img = (kind: string, id: string) => `${import.meta.env.BASE_URL}fonts/${kind}-${id}.png`;
 
 /** 라디오 목록 — 한 줄에 2개씩. 줄마다 이름 + 견본 그림 */
@@ -34,7 +36,23 @@ function FontList({ kind, items, value, onChange, disabled }: { kind: "title" | 
  * 제목 서체 · 본문 서체 — 2열 카드에 각각 라디오 목록.
  * compact(초안 PPT 다듬기): 항목 제목 없이 회색 작은 라벨만 — 바깥에서 「서체」 제목을 단다.
  */
-export function FontPicker({ title, body, onTitle, onBody, disabled, compact }: { title: string; body: string; onTitle: (id: string) => void; onBody: (id: string) => void; disabled?: boolean; compact?: boolean }) {
+export function FontPicker({ title, body, onTitle, onBody, disabled, compact, vertical }: { title: string; body: string; onTitle: (id: string) => void; onBody: (id: string) => void; disabled?: boolean; compact?: boolean; vertical?: boolean }) {
+  // vertical(세로 제안서) — 제목 서체는 표지·목차·간지·쪽 제목의 큰 글자에만, 본문은 3종. 고른 서체는 작성 가이드의 서식 규칙표에도 그대로 적힌다
+  if (vertical) return (
+    <>
+      <div className="grid grid-cols-2 gap-4">
+        <div className="flex flex-col min-w-0 gap-2">
+          <SecTitle icon="title" title="제목 서체" desc="표지 · 목차 · 간지 · 쪽 제목의 큰 글자에만" />
+          <FontList kind="title" items={TITLE_FONTS} value={title} onChange={onTitle} disabled={disabled} />
+        </div>
+        <div className="flex flex-col min-w-0 gap-2">
+          <SecTitle icon="text_fields" title="본문 서체" desc="머리 · 소제목 · 본문 · 표 · 쪽 번호 4단계" />
+          <FontList kind="body" items={VERTICAL_BODY_FONTS} value={body} onChange={onBody} disabled={disabled} />
+        </div>
+      </div>
+      <div className="sec-desc">고른 서체는 함께 넣는 작성 가이드(서식 규칙표·설치해야 할 글꼴)에도 그대로 적힙니다.</div>
+    </>
+  );
   return (
     <>
       <div className="grid grid-cols-2 gap-4">

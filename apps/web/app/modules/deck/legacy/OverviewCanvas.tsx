@@ -15,21 +15,23 @@ import "@xyflow/react/dist/style.css";
 import type { PlanSlide } from "./api";
 import { cn } from "./ui";
 
-const W = 260, GAP_X = 48, ROW_H = 300, HEAD_W = 150;
+const GAP_X = 48, HEAD_W = 150;
+// 카드 폭·줄 높이 — 가로 장표 260·300, 세로 제안서(A4 세로) 200·400
+const DIM = { land: { W: 260, ROW_H: 300 }, port: { W: 200, ROW_H: 400 } };
 const LINE = "var(--color-point)";
 const SNAP = 56;   // 놓일 칸에서 이 거리(px) 안이면 칸에 붙인다
 // 연결점 — 장표 왼쪽(들어오는 선)·오른쪽(나가는 선)의 작은 동그라미
 const PORT = "!w-2.5 !h-2.5 !min-w-0 !min-h-0 !rounded-full !bg-white !border-2 !border-[var(--color-point)]";
 
-type CardData = { s: PlanSlide; title: string; thumb: ReactNode; badge?: ReactNode; on: boolean; checks: number; lift: boolean };
+type CardData = { s: PlanSlide; title: string; thumb: ReactNode; badge?: ReactNode; on: boolean; checks: number; lift: boolean; w: number };
 type HeadData = { name: string; count: number; hot: boolean };
-type SlotData = { h: number };
+type SlotData = { h: number; w: number };
 type Lists = number[][];   // 줄(장)마다 쪽 번호
 
 const Card = ({ data }: NodeProps<Node<CardData>>) => (
   // 테두리는 그림자(box-shadow)가 아니라 border — 축소 보기에서 2px 그림자는 1px 아래로 줄어 변이 군데군데 사라진다(border 는 최소 1px 로 그려짐).
   // 2px 일 때 안쪽 여백을 1px 줄여 글·그림 자리가 움직이지 않게.
-  <div className={cn("w-[260px] flex flex-col gap-1.5 rounded-md bg-white cursor-pointer",
+  <div style={{ width: data.w }} className={cn("flex flex-col gap-1.5 rounded-md bg-white cursor-pointer",
     data.lift ? "border-2 border-[var(--color-point)] p-[7px] shadow-[0_8px_24px_rgba(0,0,0,0.18)] cursor-grabbing"
       : data.on ? "border-2 border-[var(--color-point)] p-[7px]" : "border border-[var(--color-line-3)] p-2 hover:border-2 hover:border-[var(--color-point)] hover:p-[7px]")}>
     <Handle type="target" position={Position.Left} className={PORT} isConnectable={false} />
@@ -52,13 +54,11 @@ const Head = ({ data }: NodeProps<Node<HeadData>>) => (
 
 // 놓일 자리 가이드 — 끄는 동안 새 순서의 빈 칸을 점선으로
 const Slot = ({ data }: NodeProps<Node<SlotData>>) => (
-  <div className="w-[260px] rounded-md border-2 border-dashed border-[var(--color-point)] bg-[var(--color-point-soft)]/60" style={{ height: data.h }} />
+  <div className="rounded-md border-2 border-dashed border-[var(--color-point)] bg-[var(--color-point-soft)]/60" style={{ height: data.h, width: data.w }} />
 );
 
 const nodeTypes = { card: Card, head: Head, slot: Slot };
-const at = (r: number, i: number) => ({ x: HEAD_W + i * (W + GAP_X), y: r * ROW_H });
-
-export function OverviewCanvas({ groups, sel, title, thumb, badge, onOpen, onReorder }: {
+export function OverviewCanvas({ groups, sel, title, thumb, badge, onOpen, onReorder, portrait }: {
   jobId: string;
   groups: [string, PlanSlide[]][];
   sel: number | null;
@@ -68,7 +68,11 @@ export function OverviewCanvas({ groups, sel, title, thumb, badge, onOpen, onReo
   onOpen: (n: number) => void;
   /** 없으면 끌어 놓기 잠금(보기 전용). chapters = 장이 바뀐 쪽 → 새 장 이름 */
   onReorder?: (order: number[], chapters: Record<number, string>, keep: number) => Promise<void> | void;
+  /** 세로 장표(A4 세로 제안서) — 카드를 좁고 길게 */
+  portrait?: boolean;
 }) {
+  const { W, ROW_H } = DIM[portrait ? "port" : "land"];
+  const at = (r: number, i: number) => ({ x: HEAD_W + i * (W + GAP_X), y: r * ROW_H });
   const bySlide = useMemo(() => new Map(groups.flatMap(([, ss]) => ss.map((s) => [s.n, s] as const))), [groups]);
   const real: Lists = useMemo(() => groups.map(([, ss]) => ss.map((s) => s.n)), [groups]);
 
@@ -101,10 +105,10 @@ export function OverviewCanvas({ groups, sel, title, thumb, badge, onOpen, onReo
         const id = `s${n}`, lift = drag?.n === n, slot = at(r, i);
         // 끄는 카드 — 놓일 칸을 점선 가이드로 보이고, 가까우면 그 칸에 붙인다(스냅)
         const snap = lift && Math.hypot(drag.pos.x - slot.x, drag.pos.y - slot.y) < SNAP;
-        if (lift) nodes.push({ id: "slot", type: "slot", position: slot, data: { h: drag.h }, draggable: false, selectable: false, zIndex: -1 });
+        if (lift) nodes.push({ id: "slot", type: "slot", position: slot, data: { h: drag.h, w: W }, draggable: false, selectable: false, zIndex: -1 });
         nodes.push({
           id, type: "card", position: lift && !snap ? drag.pos : slot, zIndex: lift ? 10 : 0,
-          data: { s, title: title(s), thumb: thumb(s), badge: badge(s), on: sel === n, checks: s.checks?.length ?? 0, lift },
+          data: { s, title: title(s), thumb: thumb(s), badge: badge(s), on: sel === n, checks: s.checks?.length ?? 0, lift, w: W },
         });
         if (prev) {
           const hot = drag != null && (prev === `s${drag.n}` || lift);
@@ -117,7 +121,7 @@ export function OverviewCanvas({ groups, sel, title, thumb, badge, onOpen, onReo
       });
     });
     return { nodes, edges };
-  }, [lists, groups, bySlide, drag, live?.r, sel, title, thumb, badge]);
+  }, [lists, groups, bySlide, drag, live?.r, sel, title, thumb, badge, W, ROW_H]);
 
   const onNodesChange = useCallback((ch: NodeChange[]) => {
     for (const c of ch) {
@@ -141,14 +145,16 @@ export function OverviewCanvas({ groups, sel, title, thumb, badge, onOpen, onReo
     }
   }, [drag, onReorder, pending, real, groups]);
 
+  // 세로 장표는 줄이 많아 전부 맞추면 카드가 점처럼 작다 — 처음엔 위 3줄만 맞춰 보이고 나머지는 끌어서 본다
+  const fitNodes = useMemo(() => (portrait ? groups.slice(0, 3).flatMap(([, ss], r) => [{ id: `h${r}` }, ...ss.map((x) => ({ id: `s${x.n}` }))]) : undefined), [portrait, groups]);
   return (
     // 높이는 부모가 준다(flex-1) — 고정 calc 로는 좌우 칸보다 짧게 끝났다(2026-10-14)
-    <div className="relative flex-1 min-h-[440px] rounded-md border border-line bg-panel overflow-hidden">
+    <div className={cn("relative flex-1 rounded-md border border-line bg-panel overflow-hidden", portrait ? "min-h-[760px]" : "min-h-[440px]")}>
       <ReactFlow
         nodes={view.nodes} edges={view.edges} nodeTypes={nodeTypes}
         onNodesChange={onNodesChange} nodesDraggable={!!onReorder && !pending}
         onNodeClick={(_, n) => { if (n.type === "card") onOpen((n.data as CardData).s.n); }}
-        fitView fitViewOptions={{ padding: 0.12, maxZoom: 1 }} minZoom={0.15} maxZoom={1.6}
+        fitView fitViewOptions={{ padding: 0.12, maxZoom: 1, nodes: fitNodes }} minZoom={0.15} maxZoom={1.6}
         zoomOnScroll={false} zoomActivationKeyCode="Control" panOnScroll={false} preventScrolling={false}
         nodesConnectable={false} edgesFocusable={false} proOptions={{ hideAttribution: true }}
       >

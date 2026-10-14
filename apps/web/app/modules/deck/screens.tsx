@@ -15,7 +15,7 @@ import { SectionHeading } from "@/components/hb/section-heading";
 import { Copy, MBr } from "@/components/hb/copy";
 import { useLogout, useMe } from "@/lib/auth";
 import { api, ApiError, isEditing, type Engine, type Job } from "./legacy/api";
-import { Asker, GlobalContextMenu, Toaster, useToastOn } from "./legacy/ui";
+import { ask, Asker, GlobalContextMenu, Toaster, useToastOn } from "./legacy/ui";
 import { getAi } from "./legacy/openrouter";
 import { Upload } from "./legacy/screens/Upload";
 import { Running } from "./legacy/screens/Running";
@@ -165,7 +165,12 @@ function JobView({ id, c }: { id: string; c: Ctx }) {
     return (
       <Running job={job} engine={engine} onNew={onNew}
         onCancel={owner ? async () => setJob(await api<Job>(`/jobs/${job.id}/cancel`, { method: "POST" })) : undefined}
-        onStart={owner ? async () => setJob(await api<Job>(`/jobs/${job.id}/start`, { method: "POST" })) : undefined} />
+        onStart={owner ? async () => setJob(await api<Job>(`/jobs/${job.id}/start`, { method: "POST" })) : undefined}
+        onBack={owner ? async () => {
+          if (!(await ask("지금까지 만든 기획은 지우고 내용 입력으로 돌아갑니다.\n자료를 더하거나 뺀 뒤 「검토 시작」을 누르면 기획을 처음부터 다시 짭니다.", { title: "멈추고 자료를 고칠까요?", ok: "멈추고 돌아가기" }))) return;
+          try { setJob(await api<Job>(`/jobs/${job.id}/back`, { method: "POST" })); } catch (e) { setJobErr((e as Error).message); }
+        } : undefined}
+        onReload={() => loadJob(id)} />
     );
   }
   if (job.status === "review") {

@@ -1,0 +1,58 @@
+{
+ "G마켓 산스 TTF Bold": {
+  "base_em": 0.2345,
+  "scale": 0.9901
+ },
+ "Hana2.0 B": {
+  "base_em": 0.2896,
+  "scale": 0.9965
+ },
+ "KoPub돋움체 Bold": {
+  "base_em": 0.3327,
+  "scale": 0.9999
+ },
+ "KoPub돋움체 Light": {
+  "base_em": 0.3279,
+  "scale": 0.9923
+ },
+ "KoPub돋움체 Medium": {
+  "base_em": 0.3262,
+  "scale": 0.9979
+ },
+ "MBC 1961 Medium": {
+  "base_em": 0.2259,
+  "scale": 0.995
+ },
+ "Paperlogy 8 ExtraBold": {
+  "base_em": 0.3924,
+  "scale": 0.9958
+ },
+ "Rix고딕 B": {
+  "base_em": 0.3227,
+  "scale": 0.9868
+ },
+ "Rix고딕 EB": {
+  "base_em": 0.3268,
+  "scale": 0.9999
+ },
+ "Rix고딕 M": {
+  "base_em": 0.3219,
+  "scale": 0.9923
+ },
+ "a시월구일1": {
+  "base_em": 0.3556,
+  "scale": 0.9911
+ },
+ "a시월구일2": {
+  "base_em": 0.3603,
+  "scale": 0.9985
+ },
+ "a시월구일3": {
+  "base_em": 0.3503,
+  "scale": 0.9931
+ },
+ "a시월구일4": {
+  "base_em": 0.3568,
+  "scale": 0.9952
+ }
+}

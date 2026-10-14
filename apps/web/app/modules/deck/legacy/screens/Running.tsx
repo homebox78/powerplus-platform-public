@@ -1,9 +1,9 @@
 import { pdGo } from "../nav";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { LiveDot } from "@/components/hb/live-status";
-import { fileUrl, fmtSize, isDesign, usd, type Engine, type Job } from "../api";
+import { api, fileUrl, fmtSize, isDesign, uploadDoc, usd, type Engine, type Job } from "../api";
 import { clampProgress, hasMockup, isPlanPhase, stageIndex, stagesOf } from "../stages";
-import { cn, fmtDur, JobHeader, Ms, parseTs, useContextMenu, sent } from "../ui";
+import { cn, fmtDur, JobHeader, Ms, parseTs, useContextMenu, useToastOn, sent } from "../ui";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { PaneToggle, usePane } from "@/components/hb/work-space";
 import { TipTicker } from "../TipTicker";
@@ -130,11 +130,68 @@ function Tips({ plan, mock }: { plan: boolean; mock: boolean }) {
   );
 }
 
+const DOC_RE = /\.(pdf|docx|hwpx|hwp|xlsx|pptx|md|txt|markdown|csv)$/i;
+
+/** 시작 대기(hold) — 맥락 자료를 더하고 뺀다. 기획을 멈추고 돌아왔을 때 회사소개서 같은 자료를 더 넣는 자리(2026-10-14) */
+function HoldDocs({ job, onChange }: { job: Job; onChange: () => void }) {
+  const docs = job.docs ?? [];
+  const [busy, setBusy] = useState<string | null>(null);
+  const [err, setErr] = useState<string | null>(null);
+  useToastOn(err);
+  const input = useRef<HTMLInputElement>(null);
+  const add = async (fs: FileList | null) => {
+    if (!fs?.length) return;
+    setErr(null);
+    const list = [...fs];
+    const bad = list.filter((f) => !DOC_RE.test(f.name) || f.size > 1024 ** 3);
+    if (bad.length) setErr(`올릴 수 없는 파일: ${bad.map((b) => b.name).join(", ")} — pdf·docx·hwp·hwpx·xlsx·pptx·md·txt, 1GB 까지`);
+    try {
+      for (const f of list.filter((x) => !bad.includes(x))) {
+        setBusy(f.name);
+        await uploadDoc(f, job.id, () => {}, new AbortController().signal);
+      }
+    } catch (e) { setErr((e as Error).message); }
+    setBusy(null);
+    if (input.current) input.current.value = "";
+    onChange();
+  };
+  const drop = async (id: string) => {
+    try { await api(`/jobs/${job.id}/docs/${id}`, { method: "DELETE" }); } catch (e) { setErr((e as Error).message); }
+    onChange();
+  };
+  return (
+    <div className="rounded-md border border-line px-4 py-4 flex flex-col gap-3">
+      <div className="flex items-center gap-3">
+        <span className="font-bold">맥락 자료 {docs.length}개</span>
+        <span className="text-[13px] text-dim truncate min-w-0 flex-1">회사소개서·제안요청서처럼 기획이 읽을 배경 자료</span>
+        <input ref={input} type="file" multiple hidden accept=".pdf,.docx,.hwpx,.hwp,.xlsx,.pptx,.md,.txt,.markdown,.csv" onChange={(e) => add(e.target.files)} />
+        <button type="button" className="btn-back flex-none" disabled={!!busy} onClick={() => input.current?.click()}>
+          <Ms name="upload_file" size={18} />{busy ? "올리는 중…" : "자료 더하기"}
+        </button>
+      </div>
+      {(docs.length > 0 || busy) && (
+        <div className="flex flex-col gap-1.5">
+          {docs.map((d) => (
+            <div key={d.id} className="flex items-center gap-2.5 px-2.5 py-2 bg-white border border-line rounded-md">
+              <span className="font-mono text-[12px] font-medium text-orange-d bg-orange-soft rounded-md px-[5px] py-0.5 flex-none">{d.name.split(".").pop()?.toLowerCase()}</span>
+              <span className="flex-1 min-w-0 truncate font-semibold" title={d.name}>{d.name}</span>
+              <span className="text-[13px] text-dim whitespace-nowrap flex-none">{fmtSize(d.size)}</span>
+              <button type="button" className="btn-icon danger !w-6 !h-6" title="빼기" aria-label={`${d.name} 빼기`} disabled={!!busy} onClick={() => drop(d.id)}><Ms name="close" size={17} /></button>
+            </div>
+          ))}
+          {busy && <div className="px-2.5 py-2 text-[13px] text-dim border border-dashed border-line rounded-md truncate" role="status">{busy} 올리는 중…</div>}
+        </div>
+      )}
+    </div>
+  );
+}
+
 const agoText = (s: number) => (s < 60 ? "방금" : s < 3600 ? `${Math.floor(s / 60)}분 전` : `${Math.floor(s / 3600)}시간 전`);
 
 /** 2·3단계 — 대기 / 변환 중. 단계·진행률·작업 기록·렌더가 실시간으로 올라온다. */
 /** onCancel·onStart 는 작업 주인일 때만 온다 — 공유받은 사람 화면에는 버튼이 없다(중4, 2026-10-10) */
-export function Running({ job, engine, onCancel, onStart }: { job: Job; engine: Engine | null; onCancel?: () => void; onNew: () => void; onStart?: () => void }) {
+/** onBack — 기획 단계를 멈추고 내용 입력(시작 대기)으로 되돌린다. onReload — 자료를 더하거나 뺀 뒤 작업을 다시 읽는다 */
+export function Running({ job, engine, onCancel, onStart, onBack, onReload }: { job: Job; engine: Engine | null; onCancel?: () => void; onNew: () => void; onStart?: () => void; onBack?: () => void; onReload?: () => void }) {
   const [side, setSide] = usePane("deck-running-side");
   const narrow = useIsMobile();
   const hold = job.status === "hold";
@@ -164,6 +221,8 @@ export function Running({ job, engine, onCancel, onStart }: { job: Job; engine: 
   const [pick, setPick] = useState<number | null>(null);
   const sel = slides.find((s) => s.n === pick) ?? slides.find((s) => s.live) ?? slides[0];
   const docs = job.docs?.length ?? 0;
+  const backing = !!job.opts?.back && !!job.cancel_requested;   // 「멈추고 자료 고치기」를 눌러 멈추는 중
+  const canBack = !!onBack && design && plan && !hold && !job.cancel_requested;
 
   // 머리줄 작업 정보 — 장 수 · 크기 · 맥락 자료 · 지금까지 비용
   const meta = [
@@ -185,6 +244,11 @@ export function Running({ job, engine, onCancel, onStart }: { job: Job; engine: 
             <Ms name="download" size={19} />지금까지 받기 <span className="font-medium text-dim">({fmtSize(draft.size)}{draft.ts ? ` · ${agoText(now / 1000 - draft.ts)}` : ""})</span>
           </a>
         )}
+        {canBack && (
+          <button className="btn-back" onClick={onBack} title="기획을 멈추고 내용 입력으로 돌아갑니다 — 자료를 더하거나 뺀 뒤 기획을 처음부터 다시 짭니다">
+            <Ms name="undo" size={19} />멈추고 자료 고치기
+          </button>
+        )}
         {onCancel && (
           <button className="btn-back" disabled={job.cancel_requested} onClick={onCancel}>
             <Ms name={queued ? "close" : "pause"} size={19} />{hold ? "취소" : queued ? "대기 취소" : "멈추기"}
@@ -194,6 +258,7 @@ export function Running({ job, engine, onCancel, onStart }: { job: Job; engine: 
       </>} />
 
       <div className="flex-1 min-h-0 grid" style={{ gridTemplateColumns: narrow ? "minmax(0,1fr)" : `minmax(0,1fr) ${side ? "320px" : "44px"}` }} onContextMenu={(e) => rmenu.open(e, [
+        ...(canBack ? [{ label: "멈추고 자료 고치기", icon: "undo", onClick: onBack! }] : []),
         ...(onCancel ? [{ label: hold ? "취소" : job.status === "queued" ? "대기 취소" : "멈추기", icon: job.status === "queued" || hold ? "close" : "pause", disabled: !!job.cancel_requested, onClick: onCancel }, "-" as const] : []),
         { label: "내 작업", icon: "list", onClick: () => { pdGo("/list"); } },
       ])}>
@@ -203,7 +268,7 @@ export function Running({ job, engine, onCancel, onStart }: { job: Job; engine: 
             <div className="flex items-end gap-6">
               <div className="min-w-0 flex-1">
                 <div className="text-[21px] font-bold tracking-[-0.02em]">
-                  {hold ? "시작 대기 — 검토 시작을 누르면 진행합니다" : queued ? "변환 차례를 기다리는 중" : job.cancel_requested ? "멈추는 중" : plan ? "기획하고 시안을 만드는 중" : design ? "시안대로 장표를 만드는 중" : job.phase === "pilot" ? "한 장 시안을 만드는 중" : "디자인을 입히는 중"}
+                  {hold ? "시작 대기 — 검토 시작을 누르면 진행합니다" : queued ? "변환 차례를 기다리는 중" : backing ? "멈추고 내용 입력으로 돌아가는 중" : job.cancel_requested ? "멈추는 중" : plan ? "기획하고 시안을 만드는 중" : design ? "시안대로 장표를 만드는 중" : job.phase === "pilot" ? "한 장 시안을 만드는 중" : "디자인을 입히는 중"}
                 </div>
                 <div className="text-dim mt-1 truncate">
                   {hold ? "아직 대기열에 넣지 않았습니다 — 자료를 더 올린 뒤 시작할 수 있습니다" : queued ? (job.queue_pos ? `대기 ${job.queue_pos}번째` : "대기열에 있습니다") : cur >= 0 ? `${STAGES[cur]!.label ?? STAGES[cur]!.name} — ${STAGES[cur]!.desc}` : (job.stage ?? "준비")}
@@ -227,7 +292,7 @@ export function Running({ job, engine, onCancel, onStart }: { job: Job; engine: 
               <div className="rounded-md border border-line px-4 py-4 flex items-center gap-3">
                 <span className="sec-ic"><Ms name={hold ? "upload_file" : "schedule"} size={18} /></span>
                 <div className="min-w-0 flex-1 text-[14px] text-ink2 leading-[1.6] break-keep">
-                  {hold ? <>시작 대기 중입니다. 맥락 자료 <b className="text-ink">{docs}개</b>가 붙어 있습니다. {onStart ? <>오른쪽 위 <b className="text-ink">검토 시작</b>을 누르면 지금 자료로 진행합니다.</> : <>작업 주인이 검토 시작을 누르면 진행합니다.</>}</> : <>
+                  {hold ? <>시작 대기 중입니다. 맥락 자료 <b className="text-ink">{docs}개</b>가 붙어 있습니다. {onStart ? <>자료를 더하거나 뺀 뒤 오른쪽 위 <b className="text-ink">검토 시작</b>을 누르면 기획을 처음부터 짭니다.</> : <>작업 주인이 검토 시작을 누르면 진행합니다.</>}</> : <>
                     {job.queue_pos ? <>대기 <b className="text-ink">{job.queue_pos}번째</b>입니다. </> : null}
                     {engine?.online ? "앞 작업이 끝나면 바로 시작합니다." : "제작 서버가 멈춰 있습니다. 다시 켜지는 대로 자동으로 시작합니다."}
                   </>}
@@ -245,6 +310,8 @@ export function Running({ job, engine, onCancel, onStart }: { job: Job; engine: 
                 <span className="flex-none font-extrabold text-[24px] leading-none tracking-[-0.02em] text-orange-d">{p}<span className="text-[15px] font-bold">%</span></span>
               </div>
             )}
+
+            {hold && onStart && onReload && design && <HoldDocs job={job} onChange={onReload} />}
 
             {/* 단계 목록 — 끝난 단계 ✓, 지금 단계 강조. 단계가 많으면 두 줄로 */}
             <div className={cn("grid gap-px rounded-md border border-line bg-line-soft overflow-hidden", STAGES.length > 6 && "grid-cols-2")}>

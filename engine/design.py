@@ -747,6 +747,7 @@ def load_context(job, limit=160000):
         return ""
     if not docs:
         return ""
+    job.doc_sig = ",".join(sorted(str(x["id"]) for x in docs))   # digest_context 가 이 PC 의 요약 사본이 지금 자료로 만든 것인지 본다
     d = os.path.join(job.dir, "_docs")
     os.makedirs(d, exist_ok=True)
     parts = []
@@ -806,12 +807,19 @@ def digest_context(job, raw):
     if len(raw) < 12000:  # 짧으면 그대로
         return raw
     p = os.path.join(job.dir, "_docs", "context.md")
+    # 이 PC 사본은 만든 때의 자료 목록(context.sig)과 지금 목록이 같을 때만 쓴다 — 기획을 멈추고 회사소개서를 더했는데
+    # 옛 요약을 그대로 써서 새 자료가 기획에 안 들어가던 것(2026-10-14). 서버 사본은 자료가 바뀔 때 서버가 지운다
+    sig_p, sig = p + ".sig", getattr(job, "doc_sig", "")
+    if os.path.isfile(p) and (not os.path.isfile(sig_p) or read(sig_p).strip() != sig):
+        os.remove(p)
     if not os.path.isfile(p):
         try:
             download(f"/worker/jobs/{job.id}/files/mockup/context.md", p)
         except Exception:
             pass
     if os.path.isfile(p) and os.path.getsize(p) > 500:
+        with open(sig_p, "w", encoding="utf-8") as f:
+            f.write(sig)
         job.event("저장된 사업 요약을 씁니다 (자료를 다시 읽지 않음).")
         return read(p)
     before = job.spent
@@ -826,6 +834,8 @@ def digest_context(job, raw):
         raise RuntimeError("자료 요약이 비어 있습니다: " + text[:200])
     with open(p, "w", encoding="utf-8") as f:
         f.write(text)
+    with open(p + ".sig", "w", encoding="utf-8") as f:
+        f.write(getattr(job, "doc_sig", ""))
     put_file(job.id, "mockup", p, "context.md")
     job.event(f"사업 요약 완성 — {len(text):,}자, 비용 ${job.spent - before:.3f}. 기획에는 이 요약만 넣습니다.", "done")
     return text

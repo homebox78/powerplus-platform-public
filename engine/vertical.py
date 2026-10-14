@@ -11,7 +11,7 @@
   기본 양식의 출처: design/제안서템플릿(사내 표준 세로 템플릿)을 2026-10-14 세션에서 정비한 것."""
 import copy, io, json, math, os, re, time, urllib.parse, urllib.request
 from concurrent.futures import ThreadPoolExecutor
-from PIL import Image, ImageFont
+from PIL import Image, ImageDraw, ImageFont
 from lxml import etree
 from pptx import Presentation
 from pptx.oxml import parse_xml   # python-pptx 요소 클래스로 만든다 — etree.fromstring 도형은 도형 목록을 훑을 때 깨진다
@@ -494,12 +494,11 @@ def apply_theme(prs, st, tn, masters):
         x._element.getparent().remove(x._element)
     dt = m_div.shapes._spTree
     if st == "band":
-        _shape(dt, "장 태그", (PAGE_W - 4.6) / 2, 3.62, 4.6, 0.95, [tn["point"]], "roundRect", 18000)
+        pass   # 장 태그 뱃지는 chapter_layouts 가 장마다 글 길이에 맞춰 그린다
     elif st == "pill":
-        _shape(dt, "장 태그", (PAGE_W - 4.6) / 2, 3.62, 4.6, 0.95, [tn["point"]], "roundRect", 50000)
+        pass
     elif st == "tab":
-        _shape(dt, "장 태그", 2.0, 3.62, 4.6, 0.95, [tn["point"]], "snip1Rect", 28000)
-        _shape(dt, "장 밑선", 6.6, 4.52, PAGE_W - 7.6, 0.05, [tn["soft"]])
+        pass
     elif st == "split":
         _shape(dt, "위쪽 색 블록", 0, 0, PAGE_W, 14.0, [tn["calm"], _mix(tn["calm"], "FFFFFF", 0.1)], ang=5400000)   # 목록 4줄까지 블록 안
     elif st == "side":
@@ -611,6 +610,119 @@ def _lins(sh):
     return int(v) / 360000 if v is not None else 0.254
 
 
+def run_pt_face(sh, default_pt=18):
+    """글 상자 첫 글자의 실제 크기·서체 — 크기 지정이 없으면 문서 기본(18pt). 14pt 로 가정해 뱃지 폭이 좁았다(2026-10-14)"""
+    r0 = sh._element.find(".//a:r/a:rPr", NS)
+    pt = int(r0.get("sz")) / 100 if r0 is not None and r0.get("sz") else default_pt
+    text = sh.text_frame.text.strip()
+    # 영문·숫자 글자는 latin 서체로 그려진다('CHAPTER Ⅰ' 는 G마켓 산스) — 한글이 섞이면 ea
+    tag = "a:ea" if re.search(r"[가-힣]", text) else "a:latin"
+    fe = r0.find(tag, NS) if r0 is not None else None
+    if fe is None and r0 is not None:
+        fe = r0.find("a:ea", NS)
+    return pt, (fe.get("typeface") if fe is not None else "a시월구일3")
+
+
+def run_spc_cm(sh):
+    """자간(spc, 1/100pt) → 글자 사이마다 더해지는 cm"""
+    r0 = sh._element.find(".//a:r/a:rPr", NS)
+    return int(r0.get("spc") or 0) / 100 * 0.03528 if r0 is not None else 0.0
+
+
+_INK = {}
+try:   # 서체별 '글 상자 가운데 → 기준선' 실측(engine/tools_baseline_calib.py 가 PowerPoint 렌더로 만든다)
+    BASELINE = json.load(open(os.path.join(HERE, "templates", "vertical", "baseline.json"), encoding="utf-8"))
+except Exception:
+    BASELINE = {}
+
+
+def _ink(text, pt, face):
+    """글을 실제로 그려 잰 잉크 — (진행 폭, x0, y0, x1, y1) cm, 기준선이 y=0(아래 +). 서체 파일이 없으면 None.
+    PIL getbbox 는 잉크가 아니라 글자 칸 상자를 준다 — 'Ⅰ' 처럼 오른쪽이 빈 글자에서 0.08cm 쏠림을 놓쳤다(2026-10-14)"""
+    ff = ffile(face)
+    key = (ff, pt, text)
+    if key not in _INK:
+        f = _FONTS.get((ff, pt))
+        if f is None and (ff, pt) not in _FONTS:
+            f = _FONTS[(ff, pt)] = _font(ff, pt * 10)
+        if not f:
+            _INK[key] = None
+        else:
+            W, H = int(f.getlength(text)) + 400, int(pt * 40)
+            im = Image.new("L", (W, H), 0)
+            ImageDraw.Draw(im).text((200, H * 2 // 3), text, font=f, fill=255, anchor="ls")
+            bb = im.getbbox() or (200, H * 2 // 3, 200, H * 2 // 3)
+            k = 0.03528 / 10
+            _INK[key] = (f.getlength(text) * k, (bb[0] - 200) * k, (bb[1] - H * 2 // 3) * k, (bb[2] - 200) * k, (bb[3] - H * 2 // 3) * k)
+    return _INK[key]
+
+
+def ink_cm(text, pt, face):
+    """글자 잉크 폭·높이 cm(서체가 없으면 어림)"""
+    r = _ink(text, pt, face)
+    if r:
+        return r[3] - r[1], r[4] - r[2]
+    return text_cm(text, pt, face) * 0.97, pt * 0.03528 * 0.9
+
+
+def ink_offset_cm(text, pt, face):
+    """가운데 정렬·안쪽 여백 0 글 상자에서 잉크를 정가운데로 옮길 양(cm) — (dx, dy), 양수 = 오른쪽·아래로 옮겨야 함.
+    가로: PowerPoint 는 진행 폭 가운데에 맞춘다 → 잉크 가운데와의 차이. 세로: 기준선 자리(BASELINE 실측, em) + 잉크의 기준선 기준 가운데"""
+    r = _ink(text, pt, face)
+    if not r:
+        return 0.0, 0.0
+    adv, x0, y0, x1, y1 = r
+    em = pt * 0.03528
+    base = BASELINE.get(fface(face), {}).get("base_em", 0.33) * em
+    return adv / 2 - (x0 + x1) / 2, -(base + (y0 + y1) / 2)
+
+
+def badge_size(text, pt, face, spc_cm=0.0):
+    """뱃지 = 글 잉크 + 여백. 상하 여백 = 잉크 높이 × 0.42, 좌우 여백 = 상하 × 1.5(사용자 2026-10-14 "좌우 여백은 상하 여백보다 1.5배 넓게").
+    여백은 '보이는' 여백 — 글자 크기(em)로 짐작하면 한글 잉크가 0.91em 이라 상하가 좁고 비율이 2.1 로 틀어졌다(고해상도 렌더 실측). (폭, 높이) cm"""
+    iw, ih = ink_cm(text, pt, face)
+    pv = ih * 0.42
+    return iw + 2 * pv * 4.5, ih + 2 * pv   # 좌우 = 상하 × 4.5 (처음 1.5 → 사용자 2026-10-14 "좌우 여백 지금보다 3배 더 여유")
+
+
+def fit_badge(tree, sh, name, x, cy, colors, geom, adj, center_x=False):
+    """글 상자 sh 를 뱃지로 — 뱃지 도형을 글 바로 뒤에 그리고, 글 상자를 뱃지와 같은 자리·크기로(가운데 정렬, 안쪽 여백 0)"""
+    for r in sh._element.iter(f"{{{A}}}rPr"):   # 뱃지 글은 자간 없이 — 마지막 글자 뒤 자간까지 폭에 들어가 글이 왼쪽으로 쏠렸다
+        if r.get("spc"):
+            del r.attrib["spc"]
+    pt, face = run_pt_face(sh)
+    text = sh.text_frame.text.strip()
+    bw, bh = badge_size(text, pt, face)
+    odx, ody = ink_offset_cm(text, pt, face)
+    bx = (PAGE_W - bw) / 2 if center_x else x
+    by = cy - bh / 2
+    _shape(tree, name, bx, by, bw, bh, colors, geom, adj)
+    e = tree[-1]
+    tree.remove(e)
+    top = sh._element   # 글 상자가 그룹 안이면 그룹째 앞(아래층)에 — 그룹 안에 넣으면 그룹 좌표로 읽혀 0.19cm 밀렸다
+    while top.getparent() is not None and top.getparent() is not tree:
+        top = top.getparent()
+    top.addprevious(e)
+    bp = sh.text_frame._txBody.find("a:bodyPr", NS)
+    # 잉크를 뱃지 정가운데로 — 치우친 쪽 반대편에 안쪽 여백을 두 배로 주면 가운데 정렬된 글이 그만큼 옮겨진다
+    bp.set("lIns", str(int(Cm(max(0.0, 2 * odx)))))
+    bp.set("rIns", str(int(Cm(max(0.0, -2 * odx)))))
+    bp.set("tIns", str(int(Cm(max(0.0, 2 * ody)))))
+    bp.set("bIns", str(int(Cm(max(0.0, -2 * ody)))))
+    bp.set("anchor", "ctr")
+    for x_ in bp.findall("a:spAutoFit", NS) + bp.findall("a:normAutofit", NS):
+        bp.remove(x_)
+    for _ in range(3):   # 그룹 배율을 거슬러 실제 위치·크기를 뱃지와 같게
+        ax, ay, aw, ah = abs_box(sh)
+        sx, sy = aw / max(1e-6, sh.width / 360000), ah / max(1e-6, sh.height / 360000)
+        sh.left = int(sh.left + Cm(bx - ax) / sx)
+        sh.top = int(sh.top + Cm(by - ay) / sy)
+        sh.width, sh.height = int(Cm(bw) / sx), int(Cm(bh) / sy)
+    for p_ in sh.text_frame.paragraphs:
+        p_.alignment = 2
+    return bw, bh
+
+
 def _algn(sh):
     """첫 문단의 실제 정렬 — 문단에 없으면 상자 lstStyle 의 1단계 값"""
     tb = sh.text_frame._txBody
@@ -652,6 +764,8 @@ def audit_align(prs, lo=0.05, hi=0.9):
                         continue
                     items.append((vis_left(sh), sh.text_frame.text.strip()[:14]))
                 elif sh.name in ("표지 필", "표지 탭", "장 태그", "육각형 42", "직사각형 25"):   # 기준선에 붙는 장식(뱃지·소제목 아이콘·막대)
+                    if abs(x + w / 2 - PAGE_W / 2) < 0.05:
+                        continue   # 쪽 가운데 놓인 장식(가운데 정렬 간지 태그)은 왼쪽 선 검사 대상이 아니다
                     items.append((x, sh.name))
         items.sort()
         for (x1, a), (x2, b) in zip(items, items[1:]):
@@ -859,18 +973,13 @@ class Build:
             shapes.append(tree_[-1])
 
         dxy = abs_box(dc) if dc is not None else (guide, 10.11, 3.4, 1.03)
-        bw = 0.0
-        if dc is not None and st in ("tab", "pill"):
-            r0 = dc._element.find(".//a:rPr", NS)
-            pt = int(r0.get("sz") or 1400) / 100 if r0 is not None else 14
-            bw = text_cm(dc.text_frame.text.strip(), pt, "a시월구일3") + 1.1   # 글 폭 + 양옆 0.55
         calm = [tn["calm"], _mix(tn["calm"], "FFFFFF", 0.1)]
+        if st in ("tab", "pill") and dc is not None:   # 뱃지 — 좌우 여백 = 상하 × 1.5, 왼쪽 = 기준선
+            _recolor_el(dc._element, "FFFFFF")
+            fit_badge(s.shapes._spTree, dc, "표지 탭" if st == "tab" else "표지 필", guide, dxy[1] + dxy[3] / 2, [tn["point"]],
+                      "snip1Rect" if st == "tab" else "roundRect", 28000 if st == "tab" else 50000)
         if st == "band":
             add("표지 위 띠", 0, 0, PAGE_W, 0.95, tn["head"])
-        elif st == "tab":
-            add("표지 탭", guide, dxy[1] - 0.1, bw, dxy[3] + 0.2, [tn["point"]], "snip1Rect", 28000)
-        elif st == "pill":
-            add("표지 필", guide, dxy[1] - 0.1, bw, dxy[3] + 0.2, [tn["point"]], "roundRect", 50000)
         elif st == "side":
             add("표지 레일", 0, 0, 1.35, PAGE_H, calm, ang=5400000)
         elif st == "split":
@@ -882,15 +991,6 @@ class Build:
         for k, e in enumerate(shapes):
             tree.remove(e)
             tree.insert(2 + k, e)
-        if st in ("tab", "pill") and dc is not None:   # 글 상자를 뱃지와 같은 자리·폭으로, 가운데 정렬
-            _recolor_el(dc._element, "FFFFFF")
-            bp = dc.text_frame._txBody.find("a:bodyPr", NS)
-            for k in ("lIns", "rIns"):
-                bp.set(k, "0")
-            shift_to(dc, guide)
-            dc.width = Cm(bw)
-            for p_ in dc.text_frame.paragraphs:
-                p_.alignment = 2
         if st == "split":
             for nm in ("TextBox 24", "TextBox 29", "TextBox 30"):
                 for x in named(s.shapes, nm):
@@ -910,7 +1010,15 @@ class Build:
                     if not sh.has_text_frame or not sh.text_frame.text.strip():
                         continue
                     t = sh.text_frame.text.strip()
-                    set_text(sh, tag if ("CHAPTER" in t or t in ("※", "*")) else c["title"])
+                    is_tag = "CHAPTER" in t or t in ("※", "*")
+                    set_text(sh, tag if is_tag else c["title"])
+                    if is_tag and m is self.m_div and self.style in ("band", "pill", "tab"):   # 간지 장 태그 = 뱃지(좌우 = 상하 × 1.5)
+                        bx = abs_box(sh)[0] + _lins(sh)
+                        geo = {"band": ("roundRect", 18000), "pill": ("roundRect", 50000), "tab": ("snip1Rect", 28000)}[self.style]
+                        bw, bh = fit_badge(lay.shapes._spTree, sh, "장 태그", bx if self.style == "tab" else 0, 3.62 + 0.475,
+                                           [self.th["point"]], geo[0], geo[1], center_x=self.style != "tab")
+                        if self.style == "tab":   # 탭 오른쪽으로 이어지는 가는 밑선
+                            _shape(lay.shapes._spTree, "장 밑선", bx + bw, 3.62 + 0.475 + bh / 2 - 0.05, PAGE_W - 1.0 - (bx + bw), 0.05, [self.th["soft"]])
             lay = layout_for(self.m_body, i)
             for sh in list(lay.shapes):
                 if not sh.has_text_frame:

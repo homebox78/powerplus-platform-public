@@ -355,6 +355,10 @@ return static function (Router $r): void {
         [$e, $admin] = $user($a);
         Legacy::jsonOut(Jobs::cancel($hex16($p['id']), $e, $admin));
     });
+    $r->post('/deck/jobs/{id}/back', static function (array $p, Actor $a) use ($user, $hex16): void {   // 기획 멈추고 내용 입력(hold)으로
+        [$e, $admin] = $user($a);
+        Legacy::jsonOut(Jobs::back($hex16($p['id']), $e, $admin));
+    });
     $r->put('/deck/jobs/{id}/brand/{which}', static function (array $p, Actor $a) use ($user, $hex16): void {
         [$e, $admin] = $user($a);
         if (!in_array($p['which'], ['client', 'vendor', 'client_white', 'vendor_white'], true)) Legacy::fail('Not Found', 404);

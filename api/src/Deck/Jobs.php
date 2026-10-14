@@ -219,6 +219,7 @@ final class Jobs
             ->execute([$id, $jobId, strtolower($email), mb_substr(basename($filename), 0, 255), $size]);
         Scan::queue($dest, 'deck_doc', $jobId . ':' . $id, self::userId($email));  // 바이러스 검사 대기열(SEC-011)
         self::event($jobId, 'info', '맥락 자료 추가 — ' . basename($filename) . ' (' . self::mb($size) . ')');
+        self::dropDigest($jobId);
         return ['ok' => true, 'docs' => self::docs($jobId)];
     }
 
@@ -231,9 +232,11 @@ final class Jobs
 
     public static function deleteDoc(string $jobId, string $docId, string $email, bool $admin): array
     {
-        self::own($jobId, $email, $admin);
+        $j = self::own($jobId, $email, $admin);
+        if ($j['status'] === 'running') Legacy::fail('진행 중인 작업의 자료는 뺄 수 없습니다. 먼저 멈춰 주세요.', 409);
         foreach (glob(self::dir($jobId, 'docs') . '/' . basename($docId) . '_*') ?: [] as $f) @unlink($f);
         Db::pdo()->prepare('DELETE FROM deck_job_docs WHERE id = ? AND job_id = ?')->execute([$docId, $jobId]);
+        self::dropDigest($jobId);
         return ['ok' => true, 'docs' => self::docs($jobId)];
     }
 
@@ -892,7 +895,9 @@ final class Jobs
         $j['share'] = (int) $raw['shared'];                 // 0 끔 · 1 의견 · 2 편집 · 3 링크로 보기
         $j['can_edit'] = $mine || ((int) $raw['shared'] === 2 && $email !== '');
         $j['anon'] = $email === '';                          // 로그인 없이 링크로 보는 중 — 보기만
-        $j['is_owner'] = !$admin && $raw['email'] === $email;   // 진짜 주인(관리자 대리 열람 제외) — 화면의 설정·취소·시작 버튼 분기용
+        // 진짜 주인 — 화면의 설정·취소·시작 버튼 분기용. 관리자가 남의 작업을 열면 메일이 달라 false.
+        // ⚠ 2026-10-14 전에는 `!$admin &&` 가 붙어 관리자 계정은 자기 작업에서도 멈추기·시작 버튼이 사라졌다
+        $j['is_owner'] = $raw['email'] === $email;
         // 공유받은 사람에게 보여 줄 주인 표시 — 이메일 전체 대신 앞 2자 + *** (안전한 필드, 2026-10-10 상1)
         $local = (string) strstr((string) $raw['email'], '@', true);
         if ($local === '') $local = (string) $raw['email'];
@@ -938,6 +943,55 @@ final class Jobs
             self::event($id, 'warn', '취소를 요청했습니다. 엔진이 현재 단계를 마치는 대로 멈춥니다.');
         }
         return self::get($id, $email, $admin);
+    }
+
+    /**
+     * 멈추고 내용 입력으로 — 기획 단계(design·phase plan)를 언제든 멈추고 '시작 대기(hold)' 로 되돌린다.
+     * 자료(회사소개서 등)를 더하거나 빼고 '검토 시작'을 누르면 기획을 처음부터 다시 짠다(2026-10-14 사용자 지시).
+     * 엔진이 돌고 있으면 취소를 요청해 두고(opts.back), 엔진이 멈췄다고 알리면 finish·claim 이 hold 로 되돌린다.
+     */
+    public static function back(string $id, string $email, bool $admin): array
+    {
+        $j = self::own($id, $email, $admin);
+        if (($j['kind'] ?? '') !== 'design' || !in_array($j['phase'] ?? 'plan', ['plan', '', null], true)) {
+            Legacy::fail('기획 단계에서만 내용 입력으로 돌아갈 수 있습니다. 장표를 만들기 시작한 뒤에는 새 작업으로 시작해 주세요.', 409);
+        }
+        if ($j['status'] === 'hold') return self::get($id, $email, $admin);
+        if ($j['status'] === 'running') {
+            $op = !empty($j['opts']) ? (json_decode((string) $j['opts'], true) ?: []) : [];
+            $op['back'] = 1;
+            Db::pdo()->prepare('UPDATE deck_jobs SET cancel_requested = 1, opts = :o WHERE id = :i')
+                ->execute([':o' => json_encode($op, JSON_UNESCAPED_UNICODE), ':i' => $id]);
+            self::event($id, 'warn', '기획을 멈추고 내용 입력으로 돌아갑니다. 엔진이 지금 단계를 마치는 대로 멈춥니다.');
+        } else {
+            self::toHold($id);
+        }
+        return self::get($id, $email, $admin);
+    }
+
+    /** 기획 결과(plan·시안·사업 요약)를 비우고 hold 로 — 맥락 자료·로고·설정은 그대로 둔다 */
+    private static function toHold(string $id): void
+    {
+        $pdo = Db::pdo();
+        $st = $pdo->prepare('SELECT opts FROM deck_jobs WHERE id = :i');
+        $st->execute([':i' => $id]);
+        $op = json_decode((string) $st->fetchColumn(), true) ?: [];
+        unset($op['back']);
+        $pdo->prepare("UPDATE deck_jobs SET status = 'hold', phase = 'plan', plan = NULL, review = NULL, stage = NULL, progress = 0, worker = NULL,
+                       claimed_at = NULL, heartbeat_at = NULL, started_at = NULL, finished_at = NULL, error = NULL, cancel_requested = 0,
+                       opts = :o WHERE id = :i")
+            ->execute([':o' => $op ? json_encode($op, JSON_UNESCAPED_UNICODE) : null, ':i' => $id]);
+        // 옛 기획 미리 보기(plan.json)·시안·사업 요약(context.md)이 새 기획에 섞이지 않게 지운다
+        foreach (glob(self::dir($id, 'mockup') . '/*') ?: [] as $f) if (is_file($f)) @unlink($f);
+        $pdo->prepare("DELETE FROM deck_job_files WHERE job_id = ? AND kind IN ('mockup', 'live')")->execute([$id]);
+        self::event($id, 'info', '내용 입력으로 돌아왔습니다. 자료를 더하거나 뺀 뒤 「검토 시작」을 누르면 기획을 처음부터 다시 짭니다.');
+    }
+
+    /** 자료가 바뀌면 서버에 저장된 사업 요약(context.md)은 낡은 것 — 지워서 다음 기획이 새 자료로 다시 요약하게 */
+    private static function dropDigest(string $id): void
+    {
+        @unlink(self::dir($id, 'mockup') . '/context.md');
+        Db::pdo()->prepare("DELETE FROM deck_job_files WHERE job_id = ? AND kind = 'mockup' AND name = 'context.md'")->execute([$id]);
     }
 
     /** 삭제 — 기록·파일까지 지운다. 진행 중이면 먼저 취소해야 한다. */
@@ -1020,8 +1074,9 @@ final class Jobs
         $pdo = Db::pdo();
         try { self::purgeDocs(); } catch (Throwable $e) { error_log('[powerDeck] purgeDocs: ' . $e->getMessage()); }
         // 취소를 요청했는데 엔진이 90초 넘게 소식이 없으면(멈췄거나 재시작됨) 서버가 취소로 끝낸다
-        $dead = $pdo->query("SELECT id FROM deck_jobs WHERE status = 'running' AND cancel_requested = 1 AND heartbeat_at < (NOW() - INTERVAL 90 SECOND)")->fetchAll(PDO::FETCH_COLUMN);
-        foreach ($dead as $d) {
+        $dead = $pdo->query("SELECT id, opts FROM deck_jobs WHERE status = 'running' AND cancel_requested = 1 AND heartbeat_at < (NOW() - INTERVAL 90 SECOND)")->fetchAll(PDO::FETCH_KEY_PAIR);
+        foreach ($dead as $d => $dOpts) {
+            if (!empty((json_decode((string) $dOpts, true) ?: [])['back'])) { self::toHold((string) $d); continue; }
             $pdo->prepare("UPDATE deck_jobs SET status = 'canceled', stage = '취소됨', finished_at = NOW() WHERE id = :i AND status = 'running'")->execute([':i' => $d]);
             self::event((string) $d, 'warn', '취소되었습니다.');
         }
@@ -1127,6 +1182,11 @@ final class Jobs
         if (isset($b['report']) && is_array($b['report'])) Checklist::safe(static fn () => Checklist::fromReport($id, $b['report']));
         if (isset($b['report']['guard']) && is_array($b['report']['guard'])) Checklist::safe(static fn () => Checklist::fromGuard($id, $b['report']));
         if ($status === 'failed' && !empty($b['error'])) Checklist::safe(static fn () => Checklist::fromFail($id, (string) $b['error']));
+        // 「멈추고 내용 입력으로」를 눌러 멈춘 기획 — 취소로 끝내지 않고 시작 대기로 되돌린다
+        if ($status === 'canceled' && !empty((json_decode((string) ($j0['opts'] ?? ''), true) ?: [])['back'])) {
+            self::toHold($id);
+            return ['ok' => true];
+        }
         if ($status === 'done' && ($j0['phase'] ?? 'full') === 'pilot') return self::finishPilot($id, $b);
         if ($status === 'review') return self::finishPlan($id, $b);
         Db::pdo()->prepare('UPDATE deck_jobs SET status = :s, progress = :p, stage = :st, finished_at = NOW(), heartbeat_at = NOW(),

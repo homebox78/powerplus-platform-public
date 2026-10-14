@@ -694,6 +694,13 @@ export function MockupReview({ job, onChange, isAdmin, me, onLogout }: { job: Jo
   const actions = (
     <>
       <button className="btn-danger" title="그만두기" disabled={!!busy} onClick={() => run("cancel", () => api<Job>(`/jobs/${job.id}/cancel`, { method: "POST" }))}><Ms name="close" size={20} />그만두기</button>
+      {job.status === "review" && (job.phase ?? "plan") === "plan" && (
+        <button className="btn-back" disabled={!!busy} title="기획을 지우고 내용 입력으로 — 자료를 더하거나 뺀 뒤 기획을 처음부터 다시 짭니다"
+          onClick={async () => {
+            if (!(await ask("지금 기획·와이어·시안과 고친 내용은 지워집니다.\n자료를 더하거나 뺀 뒤 「검토 시작」을 누르면 기획을 처음부터 다시 짭니다.", { title: "자료를 고쳐 다시 기획할까요?", ok: "내용 입력으로", danger: true }))) return;
+            run("back", () => api<Job>(`/jobs/${job.id}/back`, { method: "POST" }));
+          }}><Ms name="undo" size={19} />자료 고쳐 다시 기획</button>
+      )}
       <span className="vsep" />
       {/* 시안이 생기면 버튼이 둘(다시 만들기 · 장표 만들기)이라 받기 버튼은 아이콘만 남긴다 */}
       <button className={cn("btn-back", have > 0 && "!w-[38px] !px-0")} onClick={downloadMd} title="지금 화면의 기획(고친 내용·의견 포함)을 마크다운 파일로" aria-label="기획 (.md) 받기"><Ms name="download" size={have ? 19 : 17} />{!have && "기획 (.md)"}</button>

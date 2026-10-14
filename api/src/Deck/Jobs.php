@@ -315,13 +315,14 @@ final class Jobs
     {
         $n = max(0, min(200, (int) ($b['slides'] ?? 0)));
         // 새로 기획하는 장표는 장 수를 안 적으면 5장(2026-10-07 사용자) — '자동'이 자료 14만 자에 37장을 잡아 몇 시간씩 걸렸다
-        if ($design && $n === 0) $n = 5;
+        if ($design && $n === 0) $n = ($b['purpose'] ?? '') === 'submit' ? 30 : 5;   // 제출용(세로 제안서)은 본문 쪽 수 — 미입력이면 30쪽
         $m = in_array($b['mockups'] ?? '', ['plan', 'sample', 'all'], true) ? $b['mockups'] : 'plan';
         return json_encode(['slides' => $n, 'mockups' => $m, 'sample' => max(1, min(20, (int) ($b['sample'] ?? 3))),
             'project' => mb_substr(trim((string) ($b['project'] ?? '')), 0, 80), 'front' => self::front($b['front'] ?? null),
             'event' => mb_substr(trim((string) ($b['event'] ?? '')), 0, 30), 'date' => mb_substr(trim((string) ($b['date'] ?? '')), 0, 20),   // 표지 꼬리 글·날짜(비우면 엔진이 '제안설명회'·작성 날짜)
             'style' => preg_match('/^[a-z]{1,2}$/', (string) ($b['style'] ?? '')) ? $b['style'] : 'a',
             'purpose' => ($b['purpose'] ?? '') === 'submit' ? 'submit' : 'present',
+            'vtheme' => in_array($b['vtheme'] ?? '', ['navy', 'blue', 'deep', 'teal', 'gray', 'glass'], true) ? $b['vtheme'] : 'navy',   // 세로 제안서 디자인 타입(engine/vertical.py THEMES)
             'lang' => in_array($b['lang'] ?? '', self::LANGS, true) ? $b['lang'] : 'ko',   // 제작 언어 — 장표 글·시안·대본
             'font_title' => preg_match('/^[a-z0-9]{2,16}$/', (string) ($b['font_title'] ?? '')) ? $b['font_title'] : '',
             'font_body' => preg_match('/^[a-z0-9]{2,16}$/', (string) ($b['font_body'] ?? '')) ? $b['font_body'] : ''], JSON_UNESCAPED_UNICODE);   // 서체 — worker/fonts/fonts.json 의 id(모르면 엔진이 기본)

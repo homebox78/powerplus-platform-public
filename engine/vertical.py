@@ -233,6 +233,147 @@ def backgrounds(job, o):
     return out, log
 
 
+# ───────────────────────── 디자인 타입 6가지 — 머리 영역·장 표시·띠·막대·표 색을 한 규칙으로(레퍼런스 design/ppt contents sample)
+#   dark = 머리 띠·제목·막대 글자, mid = 경로·강조·띠 무늬, light = 연한 면, head = 머리 띠 색(2개면 그라데이션),
+#   badge/badge_text = 장 번호 배지, proj = 머리 띠 위 사업명 글자, style = bar(꽉 찬 띠)·tab(왼쪽 탭)·pill(여백 둔 둥근 띠), line = 띠 아래 포인트 선
+THEMES = {
+    "navy":  {"label": "네이비 클래식", "dark": "0B2A6F", "mid": "2F5BD3", "light": "C9D8F7", "head": ["0B2A6F"], "badge": "FFFFFF", "badge_text": "0B2A6F", "proj": "C8D3EE", "style": "bar"},
+    "blue":  {"label": "블루 그라데이션", "dark": "1537C4", "mid": "3D7BFF", "light": "CFE0FF", "head": ["1537C4", "4A86FF"], "badge": "FFFFFF", "badge_text": "1537C4", "proj": "DCE6FF", "style": "bar"},
+    "deep":  {"label": "딥 테크", "dark": "0A1840", "mid": "1E4FD8", "light": "CBD9F5", "head": ["07133A", "123A8C"], "badge": "22D3EE", "badge_text": "07133A", "proj": "9FB3DB", "style": "bar", "line": "22D3EE"},
+    "teal":  {"label": "틸 그린", "dark": "0B5F69", "mid": "0FA3A3", "light": "C8EEEC", "head": ["0B5F69", "129C9F"], "badge": "FFFFFF", "badge_text": "0B5F69", "proj": "8C8C8C", "style": "tab"},
+    "gray":  {"label": "차콜 비즈니스", "dark": "2B2F36", "mid": "2F6BFF", "light": "D6E2FF", "head": ["2B2F36"], "badge": "2F6BFF", "badge_text": "FFFFFF", "proj": "B9BEC7", "style": "bar"},
+    "glass": {"label": "글래스 블루", "dark": "2A3F9D", "mid": "5B7CFA", "light": "DCE4FF", "head": ["3B5BDB", "7B97FF"], "badge": "FFFFFF", "badge_text": "3B5BDB", "proj": "E5EBFF", "style": "pill"},
+}
+# 기본 양식에 쓰인 색 → 역할(타입마다 바꿀 색). 회색·검정·안내선 주황은 그대로
+ROLE = {**{c: "dark" for c in ("1D1D49", "002060", "09106D", "070C51", "0B2A6F", "223A90", "203890", "233C8D", "2C4D90", "142D7E", "324B9C", "213553", "0C1C96")},
+        **{c: "mid" for c in ("0056A4", "0A41AE", "207FE8", "3975ED", "437CD9", "6B89CD", "3082DC", "5574C4", "FF3370")},
+        **{c: "light" for c in ("BFD2F9",)}}
+
+
+def _fill(colors):
+    if len(colors) == 1:
+        return f'<a:solidFill><a:srgbClr val="{colors[0]}"/></a:solidFill>'
+    return (f'<a:gradFill rotWithShape="1"><a:gsLst><a:gs pos="0"><a:srgbClr val="{colors[0]}"/></a:gs><a:gs pos="100000"><a:srgbClr val="{colors[1]}"/></a:gs>'
+            f'</a:gsLst><a:lin ang="0" scaled="0"/></a:gradFill>')
+
+
+def _shape(tree, name, x, y, w, h, colors, geom="rect", adj=None, text=None, sz=1200, col="FFFFFF", face="G마켓 산스 TTF Bold", algn="l"):
+    ids = [int(e.get("id")) for e in tree.iter(f"{{{P}}}cNvPr")] or [1]
+    av = f'<a:gd name="adj" fmla="val {adj}"/>' if adj is not None else ""
+    t = (f'<a:p><a:pPr algn="{algn}"/><a:r><a:rPr lang="ko-KR" sz="{sz}"><a:solidFill><a:srgbClr val="{col}"/></a:solidFill><a:latin typeface="{face}"/><a:ea typeface="{face}"/></a:rPr><a:t>{text}</a:t></a:r></a:p>'
+         if text else '<a:p><a:endParaRPr lang="ko-KR"/></a:p>')
+    tree.append(etree.fromstring(
+        f'<p:sp xmlns:p="{P}" xmlns:a="{A}"><p:nvSpPr><p:cNvPr id="{max(ids) + 1}" name="{name}"/><p:cNvSpPr/><p:nvPr userDrawn="1"/></p:nvSpPr>'
+        f'<p:spPr><a:xfrm><a:off x="{int(Cm(x))}" y="{int(Cm(y))}"/><a:ext cx="{int(Cm(w))}" cy="{int(Cm(h))}"/></a:xfrm>'
+        f'<a:prstGeom prst="{geom}"><a:avLst>{av}</a:avLst></a:prstGeom>{_fill(colors) if colors else "<a:noFill/>"}<a:ln><a:noFill/></a:ln></p:spPr>'
+        f'<p:txBody><a:bodyPr wrap="none" lIns="0" tIns="0" rIns="0" bIns="0" anchor="ctr"/><a:lstStyle/>{t}</p:txBody></p:sp>'))
+
+
+def _recolor_el(el, hexv):
+    for rp in el.iter(f"{{{A}}}rPr"):
+        for c in rp.findall(f"{{{A}}}solidFill") + rp.findall(f"{{{A}}}gradFill"):
+            rp.remove(c)
+        rp.insert(0, etree.fromstring(f'<a:solidFill xmlns:a="{A}"><a:srgbClr val="{hexv}"/></a:solidFill>'))
+
+
+def head_band(tree, th, h=1.25):
+    """머리 영역(본문·목차 공통) — 타입의 모양으로"""
+    W_ = 19.05
+    if th["style"] == "pill":
+        _shape(tree, "머리 띠", 0.55, 0.3, W_ - 1.1, h - 0.15, th["head"], "roundRect", 50000)
+    elif th["style"] == "tab":
+        _shape(tree, "머리 띠", 0, 0, 10.2, h, th["head"], "snip1Rect", 28000)
+        _shape(tree, "머리 밑선", 10.2, h - 0.05, W_ - 10.2, 0.05, [th["head"][-1]])
+    else:
+        _shape(tree, "머리 띠", 0, 0, W_, h, th["head"])
+    if th.get("line"):
+        _shape(tree, "머리 포인트 선", 0, h, W_, 0.06, [th["line"]])
+
+
+def apply_theme(prs, th, masters):
+    """기본 양식 전체(마스터·레이아웃·견본)를 디자인 타입으로 — 색 지도 + 머리 영역·장 표시 모양"""
+    for part in [m.part for m in prs.slide_masters] + [l.part for m in prs.slide_masters for l in m.slide_layouts] + [s.part for s in prs.slides]:
+        el = part._element
+        for c in el.iter(f"{{{A}}}srgbClr"):
+            role = ROLE.get((c.get("val") or "").upper())
+            if role:
+                c.set("val", th[role])
+    m_body, m_toc, m_div, m_cover = masters
+    bt, bh = (0.3, 1.1) if th["style"] == "pill" else (0.0, 1.25)   # 머리 띠 위치·높이 — 띠 안 글은 모두 이 높이의 가운데
+    bx = 1.0 if th["style"] == "pill" else 0.95
+    gh = 0.6
+    gy = bt + (bh - gh) / 2
+
+    def center(sh, x=None, w=None):
+        sh.top, sh.height = Cm(bt), Cm(bh)
+        if x is not None:
+            sh.left = Cm(x)
+        if w is not None:
+            sh.width = Cm(w)
+        sh.text_frame.vertical_anchor = 3
+        bp = sh.text_frame._txBody.find("a:bodyPr", NS)
+        for k in ("tIns", "bIns"):
+            bp.set(k, "0")
+        for x_ in bp.findall("a:spAutoFit", NS) + bp.findall("a:normAutofit", NS):
+            bp.remove(x_)
+
+    # 본문 머리: 지난 평면 배지·밑줄을 걷고 진한 띠 + 흰 글씨
+    for nm in ("머리 밑줄", "장 번호 배지"):
+        for x in named(m_body.shapes, nm):
+            x._element.getparent().remove(x._element)
+    tree = m_body.shapes._spTree
+    head_band(tree, th)
+    _shape(tree, "장 번호 배지", bx, gy, 0.82, gh, [th["badge"]], "roundRect", 22000)
+    pn = next((x for x in walk(m_body.shapes) if x.has_text_frame and x.top < Cm(1.5) and x.text_frame.text.strip()), None)
+    if pn is not None:   # 사업명 — 띠 오른쪽(탭형은 흰 바탕 위)
+        center(pn)
+        _recolor_el(pn._element, th["proj"])
+        tree.remove(pn._element)
+        tree.append(pn._element)   # 띠보다 위
+    for lay in m_body.slide_layouts:
+        for sh in lay.shapes:
+            if sh.has_text_frame and sh.top < Cm(2):
+                if sh.name == "Rectangle 95":
+                    center(sh, bx, 0.82)
+                    sh.top, sh.height = Cm(gy), Cm(gh)
+                    for p_ in sh.text_frame.paragraphs:
+                        p_.alignment = 2
+                    _recolor_el(sh._element, th["badge_text"])
+                else:
+                    center(sh, bx + 1.1)
+                    _recolor_el(sh._element, "FFFFFF")
+    # 간지: 입체 리본 → 타입 색 태그(본문 배지와 같은 모서리)
+    for x in named(m_div.shapes, "그룹 41"):
+        x._element.getparent().remove(x._element)
+    _shape(m_div.shapes._spTree, "장 태그", (19.05 - 4.6) / 2, 3.62, 4.6, 0.95, th["head"], "roundRect", 50000 if th["style"] == "pill" else 18000)
+    for lay in m_div.slide_layouts:
+        for sh in lay.shapes:
+            if sh.has_text_frame and ("CHAPTER" in sh.text_frame.text or sh.text_frame.text.strip() in ("※", "*")):
+                _recolor_el(sh._element, "FFFFFF")
+    # 목차: 접힌 탭 → 본문과 같은 머리 띠 + '목차'
+    for nm in ("그룹 2", "자유형 34"):
+        for x in named(m_toc.shapes, nm):
+            if x._element.getparent() is not None:
+                x._element.getparent().remove(x._element)
+    head_band(m_toc.shapes._spTree, th)
+    _shape(m_toc.shapes._spTree, "목차 글", bx + 0.1, bt + 0.07, 2.0, bh, None, text="목차", sz=1400)   # G마켓 산스는 글자가 위로 떠 보여 살짝 내린다
+    for lay in m_toc.slide_layouts:
+        for sh in lay.shapes:
+            if sh.has_text_frame and ("CHAPTER" in sh.text_frame.text or sh.text_frame.text.strip() in ("※", "*")):
+                center(sh, bx + 2.2)
+                for p_ in sh.text_frame.paragraphs:
+                    p_.alignment = 1
+                _recolor_el(sh._element, "FFFFFF")
+    # 표지·간지·목차 왼쪽 세로 띠 = 타입 머리 색
+    for m in (m_cover, m_div, m_toc):
+        for sh in m.shapes:
+            if sh.shape_type == 1 and sh.left < Cm(0.1) and sh.width < Cm(0.5) and sh.height > Cm(20):
+                sp = sh._element.find("p:spPr", NS)
+                for c in sp.findall("a:solidFill", NS) + sp.findall("a:gradFill", NS) + sp.findall("a:noFill", NS):
+                    sp.remove(c)
+                sp.find("a:prstGeom", NS).addnext(etree.fromstring(f'<a:solidFill xmlns:a="{A}"><a:srgbClr val="{th["head"][0]}"/></a:solidFill>'))
+
+
 # ───────────────────────── pptx 도우미
 def set_bg(owner, blob):
     _, rid = owner.part.get_or_add_image_part(io.BytesIO(blob))
@@ -324,8 +465,9 @@ def drop_slide(prs, slide):
 
 # ───────────────────────── 제작
 class Build:
-    def __init__(self, o, bgs, logo):
+    def __init__(self, o, bgs, logo, theme="navy"):
         self.o, self.bgs, self.logo = o, bgs, logo
+        self.th = THEMES.get(theme) or THEMES["navy"]
         self.prs = Presentation(BASE)
         s = list(self.prs.slides)
         self.s_body, self.s_cover, self.s_toc, self.s_div = s[0], s[1], s[2], s[3]
@@ -333,6 +475,7 @@ class Build:
         self.m_toc = master_of(self.prs, "vertical-toc")
         self.m_div = master_of(self.prs, "vertical-divider")
         self.m_cover = master_of(self.prs, "vertical-cover")
+        apply_theme(self.prs, self.th, (self.m_body, self.m_toc, self.m_div, self.m_cover))
         self.pageno = {}     # (장 번호) → 쪽 수
         self.pn = {}         # 장 → 본문 레이아웃에서 떼어 낸 쪽 번호 칸
 
@@ -397,7 +540,7 @@ class Build:
             im = Image.open(io.BytesIO(self.logo))
             s.shapes._spTree.append(self._pic_el(s, self.logo, x, y, int(h * im.width / im.height), h, "발주기관 로고"))
         elif p["client"]:
-            self._text_el(s, p["client"], x, y, Cm(10), h, 1600, NAVY, "a시월구일3")
+            self._text_el(s, p["client"], x, y, Cm(10), h, 1600, self.th["dark"], "a시월구일3")
         return s
 
     # 간지·목차 레이아웃 글(장 번호·장 이름)
@@ -524,7 +667,7 @@ class Build:
                 sh.height = Cm(bullet_lines(bullets) * 0.42 + 0.1)
                 tb = blk.get("table")
                 if isinstance(tb, dict) and tb.get("cols") and tb.get("rows"):
-                    add_table(s, tb, sh.left, sh.top + sh.height + Cm(0.25), sh.width)
+                    add_table(s, tb, sh.left, sh.top + sh.height + Cm(0.25), sh.width, self.th)
 
     def page_number(self, s, i, c):
         n = self.pageno[c["no"]] = self.pageno.get(c["no"], 0) + 1
@@ -744,7 +887,8 @@ def block_height(blk):
     return h
 
 
-def add_table(s, tb, x, y, w):
+def add_table(s, tb, x, y, w, th=None):
+    th = th or THEMES["navy"]
     cols = [str(c) for c in tb["cols"]][:4]
     rows = [[str(v) for v in r][:len(cols)] + [""] * (len(cols) - len(r)) for r in tb["rows"][:8]]
     g = s.shapes.add_table(len(rows) + 1, len(cols), x, y, w, Cm(0.62 * (len(rows) + 1)))
@@ -767,12 +911,12 @@ def add_table(s, tb, x, y, w):
             cell.vertical_anchor = 3
             fill = cell.fill
             fill.solid()
-            fill.fore_color.rgb = __import__("pptx").dml.color.RGBColor.from_string("E8EEF7" if ri == 0 else ("FFFFFF" if ri % 2 else "F7F9FC"))
+            fill.fore_color.rgb = __import__("pptx").dml.color.RGBColor.from_string(th["dark"] if ri == 0 else ("FFFFFF" if ri % 2 else "F5F7FB"))
             for p_ in cell.text_frame.paragraphs:
                 p_.alignment = 2 if (ri == 0 or len(cell.text) <= 6) else 1
                 for r in p_.runs:
                     r.font.size = Pt(8.5)
-                    r.font.color.rgb = __import__("pptx").dml.color.RGBColor.from_string(NAVY if ri == 0 else "4D4D4D")
+                    r.font.color.rgb = __import__("pptx").dml.color.RGBColor.from_string("FFFFFF" if ri == 0 else "4D4D4D")
                     rp = r._r.get_or_add_rPr()
                     for tag in ("latin", "ea"):
                         e = rp.find(f"a:{tag}", NS)
@@ -834,7 +978,9 @@ def run(job, j, opts, brief, note):
     logo = client_logo(o)
     job.push("시안 생성", 70)
     out = os.path.join(job.dir, "결과.pptx")
-    n = Build(o, bgs, logo).build(chapters_pages, out)
+    theme = str(opts.get("vtheme") or "navy")
+    n = Build(o, bgs, logo, theme).build(chapters_pages, out)
+    job.event(f"디자인 타입: {(THEMES.get(theme) or THEMES['navy'])['label']}")
     job.event(f"세로 제안서 {n}장(표지·목차·간지·본문)을 만들었습니다.", "done")
     job.push("시안 정리", 96)
     try:

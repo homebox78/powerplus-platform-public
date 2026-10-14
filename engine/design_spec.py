@@ -66,7 +66,9 @@ BASE = {
     ],
     "quality": [
         "Pixel-precise alignment: left edges of stacked items line up; same-kind gaps are identical; nothing is crooked, overlapping or clipped.",
-        "Generous white space: content fills about 80% of the body area (real proposals keep ~19% white, 2026-10-14 원본 확인), never cramped to the edges and never with large empty holes.",
+        "Generous white space: content fills about 80% of the body area (real proposals keep ~19% white, 2026-10-14 원본 확인), never cramped to the edges and never with large empty holes. "
+        "Spread that white space as even margins and gaps between the blocks — the content spans the body area from just under the header to just above the footer line, "
+        "so the last block (usually the key message band) ends close to the footer; never leave a blank band taller than about 5% of the body height below it.",
         "Big–Middle–Small: one dominant element, two or three secondary, the rest small text — never a grid of equal boxes with equal weight.",
         "Every Korean string is spelled exactly as given, sharp and evenly kerned; no broken syllables, no invented filler text, no lorem ipsum, no English labels.",
         "NO TEXT THAT IS NOT IN THE CONTENT: no invented speech bubbles, thought bubbles, questions, quotes, captions, slogans or labels — characters and pictures carry no words; a speech bubble appears only when the content gives its exact words.",

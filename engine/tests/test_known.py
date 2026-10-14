@@ -243,6 +243,20 @@ def test_divider_memo_tone():
     assert "promise" in src.split("OUTLINE_SYSTEM = ")[1][:3000]
 
 
+def test_guard_reported():
+    """게이트 되돌림(rep['guard'])이 finish 보고에 실린다 — 10-12~10-14 화이트리스트에 빠져 개선 체크리스트에 안 쌓였다"""
+    src = open(os.path.join(ENGINE, "worker.py"), encoding="utf-8").read()
+    i = src.index('"pilot_slide": rep.get("pilot_slide"), "report": {')
+    assert '"guard"' in src[i:i + 400]
+
+
+def test_spec_text_fills():
+    """design_spec 규칙 글의 {이름} 이 채움값에 모두 있다 — 10-14 {accent} 누락으로 시안이 전부 KeyError"""
+    import design_spec as D
+    for t in D.TYPES:
+        D.spec_text(t, "#E8336D")
+
+
 def test_registry_consistent():
     """known_errors.json 의 모든 test 가 이 파일에 있고, slug 가 겹치지 않는다"""
     items = json.load(open(os.path.join(ENGINE, "known_errors.json"), encoding="utf-8"))["items"]

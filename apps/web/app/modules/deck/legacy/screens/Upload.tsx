@@ -4,6 +4,7 @@ import { LiveDot } from "@/components/hb/live-status";
 import { getAi, type AiSettings } from "../openrouter";
 import { Arrow, cn, Ms, SecTitle, Seg, useToastOn, toast, useContextMenu, type CtxItem, sent } from "../ui";
 import { DesignTypePicker, typeName } from "../DesignTypes";
+import { VerticalThemePicker, verticalThemeName } from "../VerticalThemes";
 import { BODY_FONTS, FontPicker, TITLE_FONTS, fontName } from "../FontPicker";
 import { LogoSearch } from "../LogoSearch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -95,6 +96,7 @@ export function Upload({ engine, isAdmin = false, onUploaded, onCancel, onSettin
   const [front, setFront] = useState({ cover: true, toc: true, divider: true });   // 표지·목차·간지 — 제작 직전에도 바꿀 수 있다
   const [style, setStyle] = useState("a");   // 디자인 타입 — reference/styles/styles.json
   const [purpose, setPurpose] = useState<"submit" | "present">("present");
+  const [vtheme, setVtheme] = useState("navy");   // 제출용(세로 제안서) 디자인 타입 — engine/vertical.py THEMES
   const [lang, setLang] = useState<DeckLang>("ko");   // 제작 언어 — 자료가 한국어여도 장표 글을 이 언어로   // 용도 — 발표용(기본) / 제출용
   const [fontTitle, setFontTitle] = useState(TITLE_FONTS[0]?.id ?? "gmarket");   // 서체 — worker/fonts/fonts.json
   const [fontBody, setFontBody] = useState(BODY_FONTS[0]?.id ?? "siwol");
@@ -151,7 +153,7 @@ export function Upload({ engine, isAdmin = false, onUploaded, onCancel, onSettin
   const hasText = text.trim().length >= 20;
   const slideUnset = !slideN || !(parseInt(slideN) > 0);
   const slides = slideUnset ? 5 : parseInt(slideN);
-  const planOpts = { slides, mockups, sample: Math.max(1, parseInt(sampleN) || 3), front, style, purpose, lang, font_title: fontTitle, font_body: fontBody, event: event.trim(), date: evDate.trim() };
+  const planOpts = { slides, mockups, sample: Math.max(1, parseInt(sampleN) || 3), front, style, vtheme, purpose, lang, font_title: fontTitle, font_body: fontBody, event: event.trim(), date: evDate.trim() };
   const aiBlock = design && ai && !ai.ready;
   const working = busy !== null;
 
@@ -271,7 +273,7 @@ export function Upload({ engine, isAdmin = false, onUploaded, onCancel, onSettin
     ["용도", purpose === "present" ? "발표용" : "제출용", 1, "purpose"],
     ["언어", DECK_LANGS.find((x) => x[0] === lang)?.[1] ?? "한국어", 1, "lang"],
     ["자료", items.length ? `${hasText ? "글 + " : ""}${items.length}개 · ${fmtSize(totalSize)}` : text.trim() ? "직접 적은 글" : "없음", 1, "files"],
-    ["디자인", `타입 ${style.toUpperCase()} · ${typeName(style)}`, 2, "design"],
+    ["디자인", purpose === "submit" ? `세로 제안서 · ${verticalThemeName(vtheme)}` : `타입 ${style.toUpperCase()} · ${typeName(style)}`, 2, "design"],
     ["서체", fontTxt, 2, "font"],
     ["장 수", slideUnset ? "5장 (장 수 미입력)" : `${slides}장`, 3, "count"],
     ["시안", `${MODE_LABEL[mockups]}${mockups === "sample" ? ` ${planOpts.sample}장` : ""}`, 3, "timing"],
@@ -508,8 +510,13 @@ export function Upload({ engine, isAdmin = false, onUploaded, onCancel, onSettin
             {/* ── 2단계 디자인 — 타입 카드 6장(3열) + 제목·본문 서체 ── */}
             {design && step === 2 && <>
               <Sec id="design" style={hl("design")} className="!gap-2.5">
-                <SecTitle icon="palette" title="디자인 타입" desc="시안 이미지 · 머리 띠 · 표지 · 목차 · 간지가 모두 이 타입으로 만들어집니다" />
-                <DesignTypePicker value={style} onChange={setStyle} disabled={working} />
+                {purpose === "submit" ? <>
+                  <SecTitle icon="palette" title="세로 제안서 디자인 타입" desc="본문 머리 띠 · 목차 · 간지 · 표 색이 모두 이 타입으로 맞춰집니다" />
+                  <VerticalThemePicker value={vtheme} onChange={setVtheme} disabled={working} />
+                </> : <>
+                  <SecTitle icon="palette" title="디자인 타입" desc="시안 이미지 · 머리 띠 · 표지 · 목차 · 간지가 모두 이 타입으로 만들어집니다" />
+                  <DesignTypePicker value={style} onChange={setStyle} disabled={working} />
+                </>}
               </Sec>
               <Sec id="font" style={hl("font")} className="!gap-3">
                 <FontPicker title={fontTitle} body={fontBody} onTitle={setFontTitle} onBody={setFontBody} disabled={working} />

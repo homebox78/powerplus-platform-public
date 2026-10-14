@@ -1041,7 +1041,7 @@ def process(j):
             job.event(f"powerPlus 자산 {len(used)}개를 넣었습니다.", "done")
         req("POST", f"/worker/jobs/{job.id}/finish", {"status": "done", "result_name": os.path.basename(out), "engine": engine,
             "pilot_slide": rep.get("pilot_slide"), "report": {
-            k: rep.get(k) for k in ("summary", "score", "stats", "checklist", "changes", "assets_used", "pilot_slide")}})
+            k: rep.get(k) for k in ("summary", "score", "stats", "checklist", "changes", "assets_used", "pilot_slide", "guard")}})   # guard 가 빠져 있어 10-12 부터 게이트 되돌림이 개선 체크리스트에 안 쌓였다(10-14 실측)
         log("완료:", job.id)
     except Exception as e:
         traceback.print_exc()

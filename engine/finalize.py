@@ -13,7 +13,7 @@ from pptx import Presentation
 from pptx.dml.color import RGBColor
 from pptx.enum.text import MSO_ANCHOR, PP_ALIGN
 from pptx.util import Pt
-import fontset, osdep
+import fontlicense, fontset, osdep
 
 sys.stdout.reconfigure(encoding="utf-8")
 src, fonts_dir = os.path.abspath(sys.argv[1]), os.path.abspath(sys.argv[2])
@@ -501,7 +501,7 @@ if "--unify-only" in sys.argv:   # 표지·목차·간지처럼 키메시지·�
                 # 큰 글자는 탄탄하게 — 사용자가 표지 사업명(35.5pt)에 맞춘 값: 문자 간격 좁게 0.6pt, 줄 간격 고정 42pt.
                 # 다른 크기에는 같은 비율로 — 자간 = 크기 × −1.7%, 줄 간격 = 크기 × 1.18 (pt 고정)
                 z = int(rPr.get("sz") or 0) / 100
-                rPr.set("spc", str(-round(z * 1.7)))   # 1/100 pt
+                rPr.set("spc", str(-round(z * 1.7) + round(fontset.TITLE_TRACK * z * 100)))   # 1/100 pt — 제목 서체 자간을 조금 더(2026-10-14)
                 pPr = r.getparent().find(A + "pPr")
                 if pPr is None:
                     pPr = r.getparent().makeelement(A + "pPr", {})
@@ -553,6 +553,7 @@ if "--polish" in sys.argv:   # 초안 다듬기 — 배치는 그대로 두고 �
                     el = rPr.find(A + tag)
                     if el is not None:
                         el.set("typeface", KEY_FONT)
+                rPr.set("spc", str(min(int(rPr.get("spc") or 0), round(fontset.TITLE_TRACK * int(rPr.get("sz"))))))   # 제목 서체 자간 조금 더 좁게 — 다시 돌아도 같은 값(더 좁아지지 않게)
                 nkey += 1
         ncon += readability(no, slide, None)
         lines = []
@@ -585,6 +586,7 @@ elif not FONTS_ONLY:
                     r.font.size = Pt(KEY_PT)
                     r.font.bold = None
                     set_font(r, KEY_FONT)
+                    r._r.get_or_add_rPr().set("spc", str(round(fontset.TITLE_TRACK * KEY_PT * 100)))   # 키메시지도 제목 서체 자간
             if color_keywords(key.text_frame, keywords(no)):
                 nemph += 1
             pt = fit_pt(key.text_frame.text.strip().replace("\n", " "), KEY_W - 0.2)
@@ -710,7 +712,7 @@ with zipfile.ZipFile(src) as z:
 SKIP = re.compile(r"^(맑은 고딕|malgun|arial|calibri|times|segoe|굴림|돋움|바탕|궁서|gulim|dotum|batang|tahoma|verdana|wingdings|symbol|consolas|courier)", re.I)
 reg = osdep.installed_fonts()
 os.makedirs(fonts_dir, exist_ok=True)
-got, miss = set(), []
+got, miss, noship = set(), [], []
 for f in sorted(faces):
     if SKIP.match(f):
         continue
@@ -720,11 +722,20 @@ for f in sorted(faces):
     if not hit:
         miss.append(f)
     for p in hit:
+        ok_, why_ = fontlicense.shippable(p)   # 재배포 안 되는 서체(상용 등)는 산출물에 넣지 않는다(2026-10-14)
+        if not ok_:
+            noship.append(f"{f}({why_})")
+            continue
         shutil.copy2(p, os.path.join(fonts_dir, os.path.basename(p)))
         got.add(os.path.basename(p))
+noship = list(dict.fromkeys(noship))
+if got:   # OFL — 다시 배포할 때 저작권 고지·라이선스 전문을 함께(2026-10-14)
+    fontlicense.write_notice([os.path.join(fonts_dir, g) for g in sorted(got)], fonts_dir)
+if noship:
+    warn(0, "산출물에 넣지 않은 서체", ", ".join(noship) + " — 재배포가 안 되는 서체라 받는 사람이 따로 설치해야 합니다")
 if miss:
     warn(0, "이 PC 에 없는 서체", ", ".join(miss) + " — 서체 파일을 산출물에 넣지 못했습니다")
-if not fontset.HAS_SIWOL and not FONTS_ONLY:
+if fontset.FACES == fontset.ASTA and fontset.BODY_ID == "siwol" and not FONTS_ONLY:   # 옛 목록(a시월구일)일 때만
     warn(0, "a시월구일 서체가 이 엔진 PC 에 없음", "a시월구일1~4 대신 같은 굵기의 Asta Sans 로 만들었습니다 — 엔진 PC 에 a시월구일을 설치하면 다음 제작부터 바뀝니다")
 for w in warns:
     print(w)

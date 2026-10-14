@@ -131,21 +131,18 @@ JSON 형식
 
 
 # ───────────────────────── 서체 — 코드는 a시월구일1~4(본문 굵기 4단계)·G마켓 산스 TTF Bold(제목)로 쓰고, 저장 직전 고른 서체로 바꾼다.
-# 세로 제안서 본문은 3종만(사용자 2026-10-14), 제목 서체는 표지·목차·간지·쪽 제목의 큰 글자에만. 단계 = 1 옅음 · 2 본문 · 3 강조 · 4 굵음
-VBODY = {
-    "siwol": ("a시월구일", ("a시월구일1", "a시월구일2", "a시월구일3", "a시월구일4"),
-              ("a시월구일1.ttf", "a시월구일2.ttf", "a시월구일3.ttf", "a시월구일4.ttf")),
-    "kopub": ("KoPub돋움체", ("KoPub돋움체 Light", "KoPub돋움체 Medium", "KoPub돋움체 Bold", "KoPub돋움체 Bold"),
-              ("KoPube돋움_L.ttf", "KoPube돋움_M.ttf", "KoPube돋움.ttf", "KoPube돋움.ttf")),
-    "rix": ("Rix고딕", ("Rix고딕 M", "Rix고딕 M", "Rix고딕 B", "Rix고딕 EB"),
-            ("RIXGOM.TTF", "RIXGOM.TTF", "RIXGOB.TTF", "RIXGOEB.TTF")),
-}
+# 제목 서체는 표지·목차·간지·쪽 제목의 큰 글자에만. 단계 = 1 옅음 · 2 본문 · 3 강조 · 4 굵음
+# 본문 서체 목록은 fonts/fonts.json(가로 장표와 같은 목록, 첫 줄이 기본) — 2026-10-14 사용자 지정 4종(전부 OFL, 재배포 가능).
+# 전에 쓰던 a시월구일(아시아소프트 상용)·KoPub돋움체·Rix고딕(폰트릭스)은 재배포가 안 돼 뺐다 — 옛 작업 값은 기본으로 바뀐다
+_FL = json.load(open(os.path.join(HERE, "fonts", "fonts.json"), encoding="utf-8"))
+VBODY = {x["id"]: (x["name"], tuple(x["faces"]), tuple(x["files"])) for x in _FL["body"]}
+VBODY_DEFAULT = _FL["body"][0]["id"]
 TITLE0 = ("G마켓 산스", "G마켓 산스 TTF Bold", "GmarketSansTTFBold.ttf")
-FONT = {"title": TITLE0, "body": VBODY["siwol"]}
+FONT = {"title": TITLE0, "body": VBODY[VBODY_DEFAULT]}
 
 
 def use_fonts(title=None, body=None):
-    """opts.font_title · font_body → FONT. 모르는 값이면 기본(G마켓 산스 · a시월구일)"""
+    """opts.font_title · font_body → FONT. 모르는 값이면 기본(목록 첫 줄)"""
     t = TITLE0
     if title and title != "gmarket":
         try:
@@ -154,7 +151,7 @@ def use_fonts(title=None, body=None):
                 t = fontset.TITLES[title]
         except Exception:
             pass
-    FONT["title"], FONT["body"] = t, VBODY.get(str(body or ""), VBODY["siwol"])
+    FONT["title"], FONT["body"] = t, VBODY.get(str(body or ""), VBODY[VBODY_DEFAULT])
     _FONTS.clear()
 
 
@@ -180,8 +177,7 @@ def ffile(face):
 
 def refont(prs):
     """저장 직전 — 장표·레이아웃·마스터·테마의 서체 이름을 고른 서체로"""
-    if FONT["title"] == TITLE0 and FONT["body"] is VBODY["siwol"]:
-        return
+    # 코드·양식은 a시월구일1~4 이름으로 짜여 있어 늘 고른 서체로 바꾼다(a시월구일은 목록에서 빠졌다)
     sub = lambda m: f'typeface="{fface(m.group(1))}"'
     for part in prs.part.package.iter_parts():
         el = getattr(part, "_element", None)
@@ -192,6 +188,35 @@ def refont(prs):
                     e.set("typeface", fface(tf))
         elif "theme" in str(part.partname) and str(part.partname).endswith(".xml"):
             part._blob = re.sub(r'typeface="([^"]+)"', sub, part._blob.decode("utf-8")).encode("utf-8")
+    track_title(prs)
+
+
+try:
+    from fontset import TITLE_TRACK   # 제목 서체 자간(가로 장표와 같은 값) — 원래 자간에 더한다
+except Exception:
+    TITLE_TRACK = -0.015
+
+
+def track_title(prs):
+    """제목 서체로 쓴 글자(표지·목차·간지·쪽 제목·띠)의 자간을 조금 좁힌다 — 양식의 원래 자간(-300~+50)에 크기 × TITLE_TRACK 을 더한다.
+    자간 0 이 명시된 글자(뱃지 — 자간 없이 크기를 잰다)는 건너뛴다"""
+    face = FONT["title"][1]
+    tags = {f"{{{A}}}rPr", f"{{{A}}}defRPr", f"{{{A}}}endParaRPr"}
+    for part in prs.part.package.iter_parts():
+        el = getattr(part, "_element", None)
+        if el is None:
+            continue
+        for rp in el.iter():
+            if not isinstance(rp.tag, str) or rp.tag not in tags:
+                continue
+            lat = rp.find(f"{{{A}}}latin")
+            ea = rp.find(f"{{{A}}}ea")
+            if not ((lat is not None and lat.get("typeface") == face) or (ea is not None and ea.get("typeface") == face)):
+                continue
+            if rp.get("spc") == "0":
+                continue
+            sz = int(rp.get("sz") or 1800)
+            rp.set("spc", str(int(rp.get("spc") or 0) + round(TITLE_TRACK * sz)))
 
 
 # ───────────────────────── 글자 폭(목차 점선·꼬리표 폭) — 서버에 글꼴이 없으면 글자 종류로 어림
@@ -209,24 +234,22 @@ def _font(file, size):
 
 
 _FONTS = {}
-NO_SHIP = ("RIXGO",)   # 산출물에 넣지 않는 서체 파일(상용 — Rix고딕 폰트릭스). 작성 가이드에 '설치해야 할 글꼴'로만 안내
 
 
 def font_paths():
     """이 제안서에 쓴 서체 파일 경로(제목 + 본문 굵기들) — 산출물 '5_서체' 에 넣는다(fonts/licenses/README.md 규칙, 가로 장표와 같게).
-    상용 서체는 빼고 그 이름을 돌려준다"""
+    재배포가 안 되는 서체(fontlicense — 파일 안 저작권 문구로 판단: a시월구일·Rix고딕·KoPub·하나서체)는 빼고 그 이름을 돌려준다"""
+    import fontlicense
     files = list(dict.fromkeys([FONT["title"][2]] + list(FONT["body"][2])))
     found, skipped = [], []
     for f in files:
-        if any(f.upper().startswith(x) for x in NO_SHIP):
-            skipped.append(f)
-            continue
         for d in (os.path.join(HERE, "fonts"), os.path.join(HERE, "fonts", "private"), "C:/Windows/Fonts",
                   os.path.expanduser("~/AppData/Local/Microsoft/Windows/Fonts"), os.path.expanduser("~/.local/share/fonts/powerdeck"),
                   "/usr/share/fonts/truetype", os.path.expanduser("~/.fonts")):
             p_ = os.path.join(d, f if f.lower().endswith((".ttf", ".otf")) else f + ".ttf")
             if os.path.isfile(p_):
-                found.append(p_)
+                ok_, why_ = fontlicense.shippable(p_)
+                (found.append(p_) if ok_ else skipped.append(f"{f}({why_})"))
                 break
         else:
             skipped.append(f)
@@ -352,9 +375,14 @@ def chapter_pages(job, o, ch, ctx, raw):
             for it in items:
                 k = key(it["item"])
                 merged += new_by[k] if (k in new_by and (k in redo_keys or k not in old_by)) else old_by.get(k, [])
+            prev_pages = pages
             pages = merged
             normalize_blocks(pages)
             bad2, fixed2 = vertical_rules.check(items, pages, ok, page_fill, block_empty)
+            if len(bad2) > len(bad):   # 고쳐 쓴 것이 더 나쁘면 앞의 것으로(6차: 2차 고쳐 쓰기에서 4→5, 2→4, 4→7)
+                job.event(f"{ch['no']} 고쳐 쓴 뒤({rnd}차) 위반이 {len(bad)} → {len(bad2)}건으로 늘어 앞의 것을 씁니다", "warn")
+                pages = prev_pages
+                break
             fixed += fixed2
             job.event(f"{ch['no']} 고쳐 쓴 뒤({rnd}차) 규칙 위반 {len(bad)} → {len(bad2)}건"
                       + (" — " + " / ".join(f"{b['title']}: {b['why']}" for b in bad2[:3]) if bad2 else ""), "warn" if bad2 else "done")
@@ -1045,8 +1073,8 @@ def badge_size(text, pt, face, spc_cm=0.0):
 def fit_badge(tree, sh, name, x, cy, colors, geom, adj, center_x=False):
     """글 상자 sh 를 뱃지로 — 뱃지 도형을 글 바로 뒤에 그리고, 글 상자를 뱃지와 같은 자리·크기로(가운데 정렬, 안쪽 여백 0)"""
     for r in sh._element.iter(f"{{{A}}}rPr"):   # 뱃지 글은 자간 없이 — 마지막 글자 뒤 자간까지 폭에 들어가 글이 왼쪽으로 쏠렸다
-        if r.get("spc"):
-            del r.attrib["spc"]
+        if True:
+            r.set("spc", "0")   # 0 을 명시 — 제목 자간 줄이기(refont)가 뱃지 글은 건너뛴다(뱃지 크기는 자간 없이 잰다)
     pt, face = run_pt_face(sh)
     text = sh.text_frame.text.strip()
     bw, bh = badge_size(text, pt, face)
@@ -1231,6 +1259,7 @@ class Build:
         apply_theme(self.prs, self.style, self.th, (self.m_body, self.m_toc, self.m_div, self.m_cover))
         self.normalize_body()
         self.pageno = {}     # (장 번호) → 쪽 수
+        self.trimmed = []    # 넘쳐서 덜어 낸 행(작업 기록에 남긴다)
         self.pn = {}         # 장 → 본문 레이아웃에서 떼어 낸 쪽 번호 칸
 
     def normalize_body(self):
@@ -1480,6 +1509,8 @@ class Build:
         gap = 0.55
         if len(us) > 1 and tot + gap * (len(us) - 1) > BODY_BOTTOM - y:   # 조금 넘치면 간격을 줄여 한 쪽에(최소 0.25)
             gap = max(0.25, (BODY_BOTTOM + 0.4 - y - tot) / (len(us) - 1))
+        elif len(us) > 1 and (tot + gap * (len(us) - 1)) / (BODY_BOTTOM - y) >= 0.75:   # 조금 빈 쪽은 남는 높이를 간격에 고르게(최대 1.2cm) — 아래만 비지 않게
+            gap = min(1.2, (BODY_BOTTOM - y - tot) / (len(us) - 1))
         for ui, u in enumerate(us):
             h = unit_height(u)
             if y + h > BODY_BOTTOM + 0.4 and ui:   # 바닥 여유 0.4cm 까지 — 블록 하나만 담긴 '(계속)' 쪽을 줄인다(쪽 번호·로고는 26.6cm)
@@ -1680,7 +1711,8 @@ class Build:
                 rows = [((f"{k}. ", sec["title"]), []) for k, sec in enumerate(c.get("sections") or [], 1)]
             else:
                 by_sec = {}
-                pages = [fit_page(dict(pg)) for pg in pages]
+                pages = merge_item_pages([fit_page(dict(pg)) for pg in pages])
+                pages = trim_overflow(pages, self.trimmed)   # 넘친 쪽은 끝 행을 다음 쪽으로 · 다음 쪽이 없으면 덜어 냄(기록)
                 for pi, pg in enumerate(pages):   # 넘칠 블록을 같은 항목 다음 쪽 앞으로(자리가 있을 때) — 블록 하나뿐인 '(계속)' 쪽이 생겼다(3차 검수)
                     if page_fill(pg) <= 1.02 or pi + 1 >= len(pages):
                         continue
@@ -1946,6 +1978,90 @@ def fit_page(pg):
                 break
             bl[i]["half"] = bl[i + 1]["half"] = False
     return pg
+
+
+def _item_key(pg):
+    return re.sub(r"\s*\(\d+/\d+\)\s*$", "", str(pg.get("title") or "").strip())
+
+
+def merge_item_pages(pages):
+    """같은 항목의 이어진 두 쪽이 한 쪽에 들어가면(105% 이하, 2단 묶기 포함) 합친다 — 반쯤 빈 (2/2) 쪽과 '(계속)' 쪽을 줄인다.
+    AI 가 쪽 높이를 못 맞춰 고쳐 쓸 때마다 모자람↔넘침을 오갔다(6차: 75% 미만 16쪽, '(계속)' 7쪽)"""
+    out = []
+    for pg in pages:
+        if out and _item_key(out[-1]) == _item_key(pg):
+            trial = fit_page(dict(out[-1], blocks=[dict(b, half=False) for b in (out[-1].get("blocks") or []) + (pg.get("blocks") or [])]))
+            if page_fill(trial) <= 1.05:
+                trial["title"] = _item_key(pg)   # '(1/2)' 를 뗀다 — 이제 한 쪽
+                out[-1] = trial
+                continue
+        out.append(pg)
+    # 남은 '(k/n)' 번호를 실제 쪽 수로 다시 매긴다
+    groups = {}
+    for pg in out:
+        groups.setdefault(_item_key(pg), []).append(pg)
+    for k, g in groups.items():
+        if len(g) > 1:
+            for i, pg in enumerate(g, 1):
+                pg["title"] = f"{k} ({i}/{len(g)})"
+        elif re.search(r"\(\d+/\d+\)\s*$", str(g[0].get("title") or "")):
+            g[0]["title"] = k
+    return out
+
+
+def _rows_of(b):
+    """블록에서 행 단위로 나눌 수 있는 목록(참조) — 표 행·구분 행·전략 항목·절차 단계(4단계 넘을 때)·카드(3개 넘을 때)"""
+    k = str(b.get("kind") or "")
+    f = b.get("fig") if isinstance(b.get("fig"), dict) else {}
+    tb = b.get("table") if isinstance(b.get("table"), dict) else {}
+    if k == "table" and len(tb.get("rows") or []) > 2:
+        return tb["rows"]
+    if k == "rows" and len(f.get("rows") or []) > 2:
+        return f["rows"]
+    if k == "strategy" and len(f.get("items") or []) > 2:
+        return f["items"]
+    if k == "process" and len(f.get("steps") or []) > 4:
+        return f["steps"]
+    if k == "cards" and len(f.get("cards") or []) > 3:
+        return f["cards"]
+    return None
+
+
+def trim_overflow(pages, log=None):
+    """넘치는 쪽(102% 초과)은 나눌 수 있는 블록의 끝 행부터 — 같은 항목 다음 쪽이 있으면 그쪽으로 옮기고, 없으면 덜어 내 기록한다.
+    블록 하나가 통째로 '(계속)' 쪽에 밀려 반쯤 빈 쪽이 생기던 것(6차: 넘친 쪽 8개 → '(계속)' 7쪽)"""
+    for i, pg in enumerate(pages):
+        guard = cut = 0
+        while page_fill(pg) > 1.02 and guard < 12:
+            guard += 1
+            nxt = pages[i + 1] if i + 1 < len(pages) and _item_key(pages[i + 1]) == _item_key(pg) else None
+            if nxt is None and cut >= 2:
+                break   # 덜어 내는 것은 한 쪽에 2행까지 — 더 넘치면 '(계속)' 쪽으로(내용을 많이 잃지 않게)
+            cand = [b for b in reversed(pg.get("blocks") or []) if _rows_of(b) is not None]
+            if not cand:
+                break
+            b = cand[0]
+            rows = _rows_of(b)
+            moved = rows.pop()
+            cut += nxt is None
+            if nxt is not None:   # 같은 항목 다음 쪽 앞에 같은 구성 블록으로 이어 붙인다
+                head = (nxt.get("blocks") or [None])[0]
+                if head is not None and head.get("_cont_of") == id(b):
+                    _rows_of(head).insert(0, moved) if _rows_of(head) is not None else None
+                else:
+                    nb = copy.deepcopy(b)
+                    nb["head"] = str(b.get("head") or "") + " (이어서)"
+                    nb["_cont_of"] = id(b)
+                    rr = _rows_of(nb) if _rows_of(nb) is not None else None
+                    if isinstance(nb.get("table"), dict):
+                        nb["table"]["rows"] = [moved]
+                    elif isinstance(nb.get("fig"), dict):
+                        key = {"rows": "rows", "strategy": "items", "process": "steps", "cards": "cards"}[str(nb.get("kind"))]
+                        nb["fig"][key] = [moved]
+                    nxt["blocks"] = [nb] + list(nxt.get("blocks") or [])
+            elif log is not None:
+                log.append(f"{pg.get('title')}: '{b.get('head')}' 끝 행 덜어 냄 — {str(moved)[:40]}")
+    return pages
 
 
 def block_empty(blk):
@@ -2477,6 +2593,8 @@ def run(job, j, opts, brief, note):
     use_fonts(opts.get("font_title"), opts.get("font_body"))
     bd = Build(o, bgs, logo, style, tone)
     n = bd.build(chapters_pages, out)
+    if bd.trimmed:
+        job.event(f"쪽이 넘쳐 덜어 낸 행 {len(bd.trimmed)}개 — " + " / ".join(bd.trimmed[:4]), "warn")
     try:   # 정렬 검사 — 세로 기준선이 '거의 같은데 다른' 곳(눈대중으로 놓쳤던 표지 뱃지 0.56cm 사례, 2026-10-14)
         align = audit_align(Presentation(out))
     except Exception as e:
@@ -2496,8 +2614,12 @@ def run(job, j, opts, brief, note):
         fp, skip = font_paths()
         for f in fp:
             put_file(job.id, "extra", f)
+        if fp:   # OFL — 저작권 고지·라이선스 전문(서체_라이선스.txt)과 배포처 동봉 문서를 함께
+            import fontlicense
+            for f in fontlicense.write_notice(fp, os.path.join(job.dir, "_fonts_notice")):
+                put_file(job.id, "extra", f)
         job.event(f"서체 파일 {len(fp)}개를 산출물에 넣었습니다(" + ", ".join(os.path.basename(f) for f in fp) + ")"
-                  + (f" · 넣지 않음: {', '.join(skip)}(상용이거나 엔진에 없음 — 작성 가이드의 설치 안내 참고)" if skip else ""), "done" if fp else "warn")
+                  + (f" · 넣지 않음: {', '.join(skip)}(재배포가 안 되거나 엔진에 없음 — 받는 사람이 따로 설치, 작성 가이드의 설치 안내 참고)" if skip else ""), "done" if fp else "warn")
     except Exception as e:
         job.event(f"서체 파일을 산출물에 넣지 못했습니다: {str(e)[:100]}", "warn")
     job.push("시안 정리", 96)

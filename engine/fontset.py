@@ -21,18 +21,19 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 # 굵기 이름 → 단계(0~3). 어느 본문 서체로 적혀 있든 같은 단계로 읽는다(마무리가 고른 서체로 바꿀 때 쓴다)
 LEVEL = {"Asta Sans": 1, "Asta Sans Regular": 1, "Asta Sans Bold": 3, "맑은 고딕": 1, "Malgun Gothic": 1, "Pretendard Regular": 1, "Pretendard Medium": 1,
          "Pretendard Bold": 3, "Wanted Sans Regular": 1, "Wanted Sans Medium": 1, "Wanted Sans Bold": 3}
-for _f in [ASTA] + [b[1] for b in BODIES.values()]:
+for _f in [ASTA, SIWOL] + [b[1] for b in BODIES.values()]:   # 양식(base pptx)은 a시월구일1~4 이름으로 짜여 있다
     for _i, _n in enumerate(_f):
         LEVEL.setdefault(_n, _i)
 TITLE_FACES = {t[1] for t in TITLES.values()}   # 마무리가 본문 서체로 바꾸지 않는 제목 서체
 
 
+TITLE_TRACK = -0.015   # 제목 서체 자간 — 지금 자간에 글자 크기의 -1.5% 를 더 줄인다(사용자 2026-10-14 "제목서체는 자간을 아주 조금 더 좁게"). 가로·세로 공통
 INSTALLED = osdep.installed_fonts()   # 설치된 서체 {이름(소문자): 파일 경로}
 HAS_SIWOL = all(f.lower() in INSTALLED for f in SIWOL)
 
 
 def pick(title=None, body=None):
-    """(제목 id, 본문 id, 제목 서체, 본문 4단계, 본문 이름) — 모르는 값이면 기본(G마켓 산스 · a시월구일)"""
+    """(제목 id, 본문 id, 제목 서체, 본문 4단계, 본문 이름) — 모르는 값이면 기본(목록 첫 줄). 옛 작업의 'siwol' 등도 기본으로"""
     t = title if title in TITLES else DEFAULT_TITLE
     b = body if body in BODIES else DEFAULT_BODY
     faces, name = BODIES[b][1], BODIES[b][0]

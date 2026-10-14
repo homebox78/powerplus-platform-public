@@ -1180,7 +1180,7 @@ def main():
         log("서체 설치 실패(무시):", e)
     try:
         import fontset
-        log(f"장표 서체: {fontset.NAME}" + ("" if fontset.HAS_SIWOL else " — a시월구일1~4 가 이 PC 에 없어 Asta Sans 로 대신합니다(설치 권장)"))
+        log(f"장표 서체: {fontset.NAME}(기본) · 고를 수 있는 본문 {', '.join(b[0] for b in fontset.BODIES.values())}")
     except Exception as e:
         log("서체 확인 실패(무시):", e)
     ensure_reference()

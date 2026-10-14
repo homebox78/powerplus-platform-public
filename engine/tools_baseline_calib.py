@@ -51,10 +51,12 @@ def main():
     fc = faces()
     prs = Presentation()
     prs.slide_width, prs.slide_height = Cm(V.PAGE_W), Cm(V.PAGE_H)
-    s = prs.slides.add_slide(prs.slide_layouts[6])
+    PER = int((V.PAGE_H - 1.6) // (BOX_H + 0.1))   # 한 쪽에 놓을 줄 수 — 넘으면 다음 쪽(20종 중 15번째부터 쪽 밖에 놓여 값이 틀렸다, 2026-10-14)
     rows = []
     for i, (face, fl) in enumerate(sorted(fc.items())):
-        x, y = (V.PAGE_W - BOX_W) / 2, 0.8 + i * (BOX_H + 0.1)
+        if i % PER == 0:
+            s = prs.slides.add_slide(prs.slide_layouts[6])
+        x, y = (V.PAGE_W - BOX_W) / 2, 0.8 + (i % PER) * (BOX_H + 0.1)
         tb = s.shapes.add_textbox(Cm(x), Cm(y), Cm(BOX_W), Cm(BOX_H))
         bp = tb.text_frame._txBody.find("a:bodyPr", V.NS)
         for k in ("lIns", "rIns", "tIns", "bIns"):
@@ -70,17 +72,18 @@ def main():
         for tag in ("latin", "ea"):
             e = rp.makeelement(f"{{{V.A}}}{tag}", {"typeface": face})
             rp.append(e)
-        rows.append((face, fl, y))
+        rows.append((face, fl, y, i // PER + 1))
     d = tempfile.mkdtemp()
     pp = os.path.join(d, "calib.pptx")
     prs.save(pp)
-    png = os.path.join(d, "calib.png")
+    n = len(prs.slides)
     ps = (f"$pp=New-Object -ComObject PowerPoint.Application; $p=$pp.Presentations.Open('{pp}',$true,$false,$false); "
-          f"$p.Slides.Item(1).Export('{png}','PNG',2280,{int(2280 * V.PAGE_H / V.PAGE_W)}); $p.Close(); $pp.Quit()")
+          f"1..{n} | % {{ $p.Slides.Item($_).Export((Join-Path '{d}' ('calib' + $_ + '.png')),'PNG',2280,{int(2280 * V.PAGE_H / V.PAGE_W)}) }}; $p.Close(); $pp.Quit()")
     subprocess.run(["powershell", "-NoProfile", "-Command", ps], check=True)
-    im = Image.open(png).convert("L")
+    ims = {k: Image.open(os.path.join(d, f"calib{k}.png")).convert("L") for k in range(1, n + 1)}
     out = {}
-    for face, fl, y in rows:
+    for face, fl, y, k in rows:
+        im = ims[k]
         path = font_path(fl)
         if not path:
             print("서체 파일 없음:", face)

@@ -100,11 +100,11 @@ export function Upload({ engine, isAdmin = false, onUploaded, onCancel, onSettin
   const [vtone, setVtone] = useState("navy");     // 톤(색) — engine/vertical.py TONES. 고르면 강조색도 추천 색으로
   const [lang, setLang] = useState<DeckLang>("ko");   // 제작 언어 — 자료가 한국어여도 장표 글을 이 언어로   // 용도 — 발표용(기본) / 제출용
   const [fontTitle, setFontTitle] = useState(TITLE_FONTS[0]?.id ?? "gmarket");   // 서체 — worker/fonts/fonts.json
-  const [fontBody, setFontBody] = useState(BODY_FONTS[0]?.id ?? "siwol");
+  const [fontBody, setFontBody] = useState(BODY_FONTS[0]?.id ?? "freesentation");
   // 용도가 바뀌면 본문 서체를 그 용도의 목록 안으로(제출용 = 세로 제안서 3종)
   useEffect(() => {
     const list = purpose === "submit" ? VERTICAL_BODY_FONTS : BODY_FONTS;
-    if (!list.some((f) => f.id === fontBody)) setFontBody(list[0]?.id ?? "siwol");
+    if (!list.some((f) => f.id === fontBody)) setFontBody(list[0]?.id ?? "freesentation");
   }, [purpose, fontBody]);
   const [logos, setLogos] = useState<{ client: File[]; vendor: File[] }>({ client: [], vendor: [] });   // 기관이 둘 이상이면 여러 개(3개까지) — 올릴 때 한 줄로 이어 붙인다
   // 흰색 로고(선택, 어두운 바탕용) — 기본 로고마다 하나(같은 순서). 없으면 기본 로고 모양을 흰색으로 바꿔 쓴다

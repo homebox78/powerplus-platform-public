@@ -3376,7 +3376,7 @@ def _plan_phase(job, j):
     job.style = styles.get(styles.of_job(j))
     job.accent = (j.get("theme") or "#FF2A6D")[:7]
     job.lang = lang_of(j)
-    job.font_body = str(((j.get("opts") if isinstance(j.get("opts"), dict) else json.loads(j.get("opts") or "{}")) or {}).get("font_body") or "siwol")
+    job.font_body = str(((j.get("opts") if isinstance(j.get("opts"), dict) else json.loads(j.get("opts") or "{}")) or {}).get("font_body") or "")   # 비면 fontset 기본(목록 첫 줄)
     job.font_title = str(((j.get("opts") if isinstance(j.get("opts"), dict) else json.loads(j.get("opts") or "{}")) or {}).get("font_title") or "")
     job.spent = float(j.get("spent_usd") or 0)
     job.budget = float(j["budget_usd"]) if j.get("budget_usd") not in (None, "") else None

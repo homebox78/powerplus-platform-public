@@ -5,9 +5,9 @@ import { cn, SecTitle } from "./ui";
 type F = { id: string; name: string };
 export const TITLE_FONTS: F[] = (list as { title: F[] }).title;
 export const BODY_FONTS: F[] = (list as { body: F[] }).body;
-/** 세로 제안서(제출용) 본문 서체 — 3종만(사용자 2026-10-14). id 는 엔진 engine/vertical.py VBODY 와 같다 */
-export const VERTICAL_BODY_FONTS: F[] = [{ id: "siwol", name: "a시월구일" }, { id: "kopub", name: "KoPub돋움체" }, { id: "rix", name: "Rix고딕" }];
-export const fontName = (kind: "title" | "body", id?: string) => (kind === "title" ? TITLE_FONTS : [...BODY_FONTS, ...VERTICAL_BODY_FONTS]).find((f) => f.id === id)?.name ?? (kind === "title" ? TITLE_FONTS : BODY_FONTS)[0]?.name;
+/** 세로 제안서(제출용) 본문 서체 — 가로 장표와 같은 목록(2026-10-14 사용자 지정 4종, 전부 OFL). 엔진 vertical.VBODY 도 같은 파일을 읽는다 */
+export const VERTICAL_BODY_FONTS: F[] = BODY_FONTS;
+export const fontName = (kind: "title" | "body", id?: string) => (kind === "title" ? TITLE_FONTS : BODY_FONTS).find((f) => f.id === id)?.name ?? (kind === "title" ? TITLE_FONTS : BODY_FONTS)[0]?.name;
 const img = (kind: string, id: string) => `${import.meta.env.BASE_URL}fonts/${kind}-${id}.png`;
 
 /** 라디오 목록 — 한 줄에 2개씩. 줄마다 이름 + 견본 그림 */

@@ -11,11 +11,11 @@ import osdep
 # 목록은 fonts/fonts.json(웹의 서체 고르기도 같은 파일을 읽는다) — 첫 줄이 기본
 _LIST = json.load(open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "fonts", "fonts.json"), encoding="utf-8"))
 TITLES = {x["id"]: (x["name"], x["face"], x["file"]) for x in _LIST["title"]}            # id: (보이는 이름, 서체 이름, 파일)
-TITLE_BOLD = {x["id"]: bool(x.get("bold")) for x in _LIST["title"]}
-TITLE_SCALE = {x["id"]: float(x.get("scale") or 1.0) for x in _LIST["title"]}
+TITLE_BOLD = {x["id"]: bool(x.get("bold")) for x in _LIST["title"]}   # 가족 이름 + 굵게 속성으로 고르는 제목 서체(엘리스 DX널리체)
+TITLE_SCALE = {x["id"]: float(x.get("scale") or 1.0) for x in _LIST["title"]}   # 제목 서체 크기 보정(덩어리감 맞춤)
 BODY_SCALE = {x["id"]: float(x.get("scale") or 1.0) for x in _LIST["body"]}   # 본문 서체 크기 보정(덩어리감 맞춤)
 BODY_TRACK = -0.015   # 본문 서체를 굵게(강조·굵음) 크게(11pt 이상) 쓴 글자의 자간 — 사용자 2026-10-14 "본문도 볼드로 크게 사용된 폰트는 자간을 조금"
-BODY_TRACK_MIN = 1100   # 제목 서체 크기 보정(덩어리감 맞춤)   # 가족 이름 + 굵게 속성으로 고르는 제목 서체(엘리스 DX널리체)
+BODY_TRACK_MIN = 1100
 BODIES = {x["id"]: (x["name"], tuple(x["faces"]), tuple(x["files"]) if x.get("files") else None) for x in _LIST["body"]}   # id: (보이는 이름, 4단계, 파일들)
 DEFAULT_TITLE, DEFAULT_BODY = _LIST["title"][0]["id"], _LIST["body"][0]["id"]
 ASTA = ("Asta Sans Light", "Asta Sans Medium", "Asta Sans SemiBold", "Asta Sans ExtraBold")
@@ -49,8 +49,8 @@ def pick(title=None, body=None):
 
 TITLE_ID, BODY_ID, KEY_FONT, FACES, NAME = pick(os.environ.get("PD_FONT_TITLE"), os.environ.get("PD_FONT_BODY"))
 LIGHT, BODY, SEMI, BOLD = FACES
-KEY_BOLD = TITLE_BOLD.get(TITLE_ID, False)
-KEY_SCALE = TITLE_SCALE.get(TITLE_ID, 1.0)   # 제목 서체를 입힐 때 굵게도 켠다
+KEY_BOLD = TITLE_BOLD.get(TITLE_ID, False)   # 제목 서체를 입힐 때 굵게도 켠다
+KEY_SCALE = TITLE_SCALE.get(TITLE_ID, 1.0)
 
 
 def env(title, body):
@@ -82,10 +82,21 @@ def title_file(title=None):
 
 def rule(title=None, body=None):
     """제작 지시문에 넣는 서체 규칙 한 덩어리"""
-    _, _, key, (lt, bd, sb, bo), _ = pick(title or TITLE_ID, body or BODY_ID)
+    _, b, key, (lt, bd, sb, bo), _ = pick(title or TITLE_ID, body or BODY_ID)
     return (f"`{bd}` = 본문·목록·표 본문 / `{sb}` = 강조 낱말·소제목·카드 제목·라벨 / `{bo}` = 굵은 제목·패널 띠·표 머리·큰 숫자 / "
             f"`{lt}` = 옅은 보조 설명·주석. 굵기는 **서체 이름으로만** 가른다(`font.bold` 를 쓰지 않는다 — 굵기마다 서체가 따로다). "
-            f"키메시지와 표지·목차·간지의 큰 글자는 `{key}`.")
+            f"키메시지와 표지·목차·간지의 큰 글자는 `{key}`." + size_rule(b))
+
+
+def size_rule(body):
+    """본문 서체 크기 보정을 제작 지시로 — 가로 장표는 에이전트가 크기를 정하고 실제 서체로 글 폭을 재어 맞추므로,
+    마무리에서 나중에 곱하면 맞춘 글이 넘친다. 그래서 처음부터 보정한 크기로 짜게 한다(사용자 2026-10-14 "본문서체 중 첫번째랑 나머지가 크기가 다르다")"""
+    k = BODY_SCALE.get(body, 1.0)
+    if abs(k - 1.0) < 0.03:
+        return ""
+    ex = " · ".join(f"{p}pt → {round(p * k * 2) / 2:g}pt" for p in (6.5, 7, 8, 9, 10, 12))
+    return (f" 이 본문 서체는 같은 pt 에서 다른 본문 서체보다 {'작게' if k > 1 else '크게'} 보인다 — 규칙·참고 문서에 적힌 본문 서체 크기에 "
+            f"×{k:g} 해서 쓴다({ex}). 제목 서체로 쓰는 키메시지·표지·간지 큰 글자는 그대로.")
 
 
 def files_hint(title=None, body=None):

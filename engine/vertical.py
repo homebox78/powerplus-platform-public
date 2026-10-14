@@ -511,10 +511,18 @@ def find_bg(job, text, keywords, used, kind):
 
 
 PEOPLE = r"공무원|국민|회의|교육|고민|상담원|사람|조리원|점검원|연구원|어르신|엄마|아이"
+# 세로(9:16) 제안서 전용 배경 세트 — 실사·3D 를 따로 묶었다(db/migrate-legacy/vp-sets.mjs, 사용자 2026-10-14 "세로제안서용 이미지는 따로 분리").
+# 톤에 따라 고른다(사용자 "실사·3D 따로 올렸는데 디자인 테마에 따라 다르게"): 하얀 3D 렌더·파랑 포인트 → 블루·글래스·딥 네이비, 실사 → 네이비·틸·차콜
+VP_SETS = {"photo": "vp-bg-photo", "3d": "vp-bg-3d"}
+TONE_BG = {"blue": "3d", "glass": "3d", "deep": "3d"}   # 나머지 톤은 실사
+
+
+def bg_kind(tone):
+    return TONE_BG.get(str(tone or ""), "photo")
 
 
 def portrait_pool(job):
-    """세로 제안서용 세로 배경(세트 BG_SET · 세로 비율 · 사람 장면 제외) — 2026-10-14 사용자가 VP1 108장을 등록했는데
+    """세로 제안서용 세로 배경(세로 전용 세트 VP_SETS · 세로 비율 · 사람 장면 제외) — 2026-10-14 사용자가 VP1 108장을 등록했는데
     의미 검색(확신 0.9)과 장 이름 검색이 거의 맞지 않아 표지·간지를 늘 새로 만들었다(11칸 중 0~1칸만 자산)"""
     try:
         d = _api("GET", "/assets/items?" + urllib.parse.urlencode({"q": "세로제안서", "limit": 200}))   # set= 는 세트 id 를 받아 이름이면 404 — 세트는 아래에서 거른다
@@ -522,14 +530,21 @@ def portrait_pool(job):
     except Exception as e:
         job.event(f"세로 배경 목록을 못 읽었습니다(의미 검색으로 고릅니다): {str(e)[:80]}", "warn")
         return []
-    return [r for r in rows if int(r.get("h") or 0) > int(r.get("w") or 1) and ((r.get("set") or {}).get("name") or r.get("style_group")) == BG_SET
+    sets = set(VP_SETS.values())
+    return [r for r in rows if int(r.get("h") or 0) > int(r.get("w") or 1) and _sg(r) in sets
             and not re.search(PEOPLE, str(r.get("name") or ""))]
 
 
-def pick_portrait(pool, key, words, used):
-    """조건문 — 칸 역할(표지·목차·간지)이 이름에 있는 것만, 그중 장 낱말이 가장 많이 겹치는 것. 같은 점수면 목록 순서"""
+def _sg(r):
+    return (r.get("set") or {}).get("name") or r.get("style_group") or ""
+
+
+def pick_portrait(pool, key, words, used, kind="photo"):
+    """조건문 — 칸 역할(표지·목차·간지)이 이름에 있는 것만, 그중 톤에 맞는 세트(kind = photo|3d)를 먼저, 장 낱말이 가장 많이 겹치는 것.
+    그 세트에 그 역할이 남아 있지 않을 때만 다른 세트에서. 같은 점수면 목록 순서"""
     role = "표지" if key == "cover" else "목차" if key == "toc" else "간지"
     cands = [r for r in pool if role in str(r.get("name") or "") and r["id"] not in used]
+    cands = [r for r in cands if _sg(r) == VP_SETS[kind]] or cands
     if not cands:
         return None, None
     toks = {t for w in words for t in re.findall(r"[가-힣A-Za-z0-9]{2,}", str(w)) if t not in ("배경", "표지", "목차", "간지")}
@@ -585,11 +600,15 @@ def _pick(category, text, queries, exclude, set_=None):
 
 
 PHOTO_SKIP = ("photo-section-keyvisual",)        # 표지·간지 배경(가운데가 비고 하얗게 날아감) — 본문 사진으로 안 쓴다
+# 세로 전용 세트의 본문 장면(이름에 표지·목차·간지가 없는 것)은 위쪽이 글 자리로 비어 있다 — 톤에 맞는 세트만 쓰고 아래쪽 장면을 자른다
+VP_ROLE = r"표지|목차|간지|맺음말"
 PHOTO_PREFER = {"photo-doc-business": 1.0}       # 실사 문서·비즈니스 사진 우선
 
 
-def photo_pick(text, queries, used):
-    """본문 사진 — 검색어마다 사진 분류를 검색해 후보를 모으고 조건 점수로 고른다(겹친 검색어 수 + 세트 선호, 배경 세트 제외, 이미 쓴 것 제외)"""
+def photo_pick(text, queries, used, kind="photo"):
+    """본문 사진 — 검색어마다 사진 분류를 검색해 후보를 모으고 조건 점수로 고른다(겹친 검색어 수 + 세트 선호, 배경 세트 제외, 이미 쓴 것 제외).
+    세로 전용 세트는 톤에 맞는 쪽(kind)의 본문 장면만 — 실사 톤에 3D 가, 3D 톤에 실사 키비주얼이 섞이지 않게"""
+    other = VP_SETS["3d" if kind == "photo" else "photo"]
     score, meta = {}, {}
     for q in queries[:5]:
         try:
@@ -598,7 +617,7 @@ def photo_pick(text, queries, used):
             continue
         for r in rows:
             sg = ((r.get("set") or {}).get("name") or r.get("style_group") or "")
-            if r["id"] in used or sg in PHOTO_SKIP or (sg == "photo-keyvisual-climate" and "기후" not in text):
+            if r["id"] in used or sg in PHOTO_SKIP or sg == other or (sg == "photo-keyvisual-climate" and "기후" not in text)                     or (sg in VP_SETS.values() and re.search(VP_ROLE, str(r.get("name") or ""))):
                 continue
             score[r["id"]] = score.get(r["id"], 0) + 1.0
             meta[r["id"]] = sg
@@ -609,7 +628,7 @@ def photo_pick(text, queries, used):
     return best, 1.0, meta[best]
 
 
-def resolve_assets(job, chapters_pages):
+def resolve_assets(job, chapters_pages, kind="photo"):
     """본문 사진·아이콘을 파워에셋에서 — 사용자 2026-10-14 "파워에셋을 다양하게 검색해서 이미지를 잘 활용".
     사진: AI 가 준 검색어 + 쪽 제목·소제목 낱말로(검색어 최대 4개) 고르고 문서 안 중복 금지. 아이콘: 카드·허브 노드·전략 항목 제목으로, 세트 고정"""
     used, jobs = set(), []
@@ -638,10 +657,12 @@ def resolve_assets(job, chapters_pages):
         kind, target, text, qs = j
         try:
             if kind == "photo":
-                pid, conf, sg = photo_pick(text, qs, used)
+                pid, conf, sg = photo_pick(text, qs, used, kind)
                 if pid:
                     if sg == "photo-hero-keyvisual":   # 왼쪽·위가 글 자리로 하얗게 날아간 그림 — 장면이 있는 오른쪽 아래만
                         target["_ax"], target["_ay"] = 0.9, 0.75
+                    elif sg in VP_SETS.values():   # 세로 전용 — 위쪽이 글 자리, 장면은 아래 가운데
+                        target["_ax"], target["_ay"] = 0.5, 0.8
                     used.add(pid)   # 같은 사진 두 번 금지(병렬이라 아주 드물게 겹칠 수 있다 — 아래에서 한 번 더 거른다)
                     target["_img"] = _api("GET", f"/assets/items/{pid}/file/original", raw=True)
                     target["_id"] = pid
@@ -710,8 +731,8 @@ def compose(blob, wf=1.0, hf=0.55, alpha=0.75, fx=0.7, fy=0.6, anchor=0.85):
     return b.getvalue()
 
 
-def backgrounds(job, o):
-    """표지·목차·간지(장마다) 배경. 같은 그림을 두 번 쓰지 않는다."""
+def backgrounds(job, o, kind="photo"):
+    """표지·목차·간지(장마다) 배경. 같은 그림을 두 번 쓰지 않는다. kind = 톤에 맞는 세로 배경 세트(photo|3d)"""
     used, out, log = set(), {}, []
     field = str(o.get("field") or o["project"]["name"])
     slots = [("cover", f"{o['project']['name']} 표지 배경", ["표지 배경"] + [o["project"]["name"][:10]], "a glass cube holding simple icons of the project's field"),
@@ -722,7 +743,7 @@ def backgrounds(job, o):
     pool = portrait_pool(job)
     gen = []
     for key, text, kws, art in slots:   # 고르기는 순서대로(같은 그림 두 번 금지), 못 찾은 칸은 모아서 한꺼번에 생성
-        blob, src = pick_portrait(pool, key, [text] + kws, used)   # ① 세로 배경(역할·장 낱말 조건) ② 의미 검색 ③ 생성
+        blob, src = pick_portrait(pool, key, [text] + kws, used, kind)   # ① 세로 배경(역할·장 낱말 조건) ② 의미 검색 ③ 생성
         if blob is None:
             blob, src = find_bg(job, text, kws, used, key)
         if blob is None:
@@ -2629,21 +2650,23 @@ def run(job, j, opts, brief, note):
     mix = kind_mix(chapters_pages)
     names = vertical_rules.NAMES
     job.event("본문 구성(쪽 첫 블록): " + " · ".join(f"{names.get(k, k)} {n}" for k, n in sorted(mix.items(), key=lambda x: -x[1])), "done")
+    style = str(opts.get("vstyle") or "band")
+    tone = str(opts.get("vtone") or opts.get("vtheme") or "navy")
+    bgk = bg_kind(tone)
+    job.event(f"배경 그림: 톤 {(TONES.get(tone) or TONES['navy'])['label']} → 세로 전용 {'3D 렌더' if bgk == '3d' else '실사'} 세트({VP_SETS[bgk]})")
     try:
-        got = resolve_assets(job, chapters_pages)
+        got = resolve_assets(job, chapters_pages, bgk)
         if got:
             job.event(f"파워에셋 본문 그림: 사진 {got['photo']} · 아이콘 {got['icon']}(세트 {ICON_SET})" + (f" · 못 찾음 {got['miss']}" if got["miss"] else ""), "done")
     except Exception as e:
         job.event(f"파워에셋 본문 그림 검색 실패(도식만으로 만듭니다): {str(e)[:100]}", "warn")
     job.push("시안 생성", 40)
     job.event("표지·목차·간지 배경 — powerAssets 에서 먼저 찾고, 없으면 나노바나나로 만듭니다.")
-    bgs, bglog = backgrounds(job, o)
+    bgs, bglog = backgrounds(job, o, bgk)
     job.event("배경: " + " · ".join(bglog), "done")
     logo = client_logo(o)
     job.push("시안 생성", 70)
     out = os.path.join(job.dir, "결과.pptx")
-    style = str(opts.get("vstyle") or "band")
-    tone = str(opts.get("vtone") or opts.get("vtheme") or "navy")
     use_fonts(opts.get("font_title"), opts.get("font_body"))
     bd = Build(o, bgs, logo, style, tone)
     n = bd.build(chapters_pages, out)

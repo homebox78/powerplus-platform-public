@@ -2,6 +2,8 @@
 """세로 제안서 뱃지 글 가운데 맞춤용 — 서체마다 PowerPoint 가 줄 상자 안에 기준선을 놓는 자리를 실측해 표로 남긴다.
 PowerPoint 가 있는 윈도우 PC 에서만 돌린다(엔진 서버는 이 표만 읽는다).
   python engine/tools_baseline_calib.py  →  engine/templates/vertical/baseline.json
+  python engine/tools_baseline_calib.py --lo  →  같은 파일에 lo_em(LibreOffice 가 PowerPoint 보다 기준선을 아래에 놓는 양, em)만 더한다.
+    엔진 서버(리눅스)에서 돌린다 — 서버 쪽 캡처(lo.py)가 뱃지 글을 0.2em 가까이 아래로 그렸다(사용자 2026-10-14 "영문이 아래로 치우침").
 배경(2026-10-14): 서체 수치(win/hhea/typo)로 계산한 세로 가운데가 실측과 0.01~0.04cm 달라 영문 뱃지 글이 위로 붙어 보였다.
 측정: 서체마다 가운데 정렬·안쪽 여백 0 글 상자에 'CHAPTER 기술' 을 20pt 로 놓고 2280px 로 렌더 → 잉크 가운데 y 를 글 상자 가운데와 비교,
 같은 글을 PIL 로 그린 잉크(기준선 기준)와 맞춰 '글 상자 가운데 → 기준선' 거리(em)와 크기 비율을 구한다."""
@@ -47,7 +49,11 @@ def pil_ink(path, text, pt):
     return y0 - H * 2 // 3, y1 - H * 2 // 3
 
 
+BOLD = {fontset.TITLES[k][1] for k, v in fontset.TITLE_BOLD.items() if v}
+
+
 def main():
+    LO = "--lo" in sys.argv
     fc = faces()
     prs = Presentation()
     prs.slide_width, prs.slide_height = Cm(V.PAGE_W), Cm(V.PAGE_H)
@@ -69,6 +75,8 @@ def main():
         r.text = TEXT
         r.font.size = Pt(PT)
         rp = r._r.get_or_add_rPr()
+        if face in BOLD:
+            rp.set("b", "1")   # 가족 이름 + 굵게로 고르는 제목 서체(엘리스 DX널리체) — 장표와 같게
         for tag in ("latin", "ea"):
             e = rp.makeelement(f"{{{V.A}}}{tag}", {"typeface": face})
             rp.append(e)
@@ -77,11 +85,17 @@ def main():
     pp = os.path.join(d, "calib.pptx")
     prs.save(pp)
     n = len(prs.slides)
-    ps = (f"$pp=New-Object -ComObject PowerPoint.Application; $p=$pp.Presentations.Open('{pp}',$true,$false,$false); "
+    if LO:
+        import lo
+        for k, png in lo.render(pp, d, width=2280, prefix="calib"):
+            os.replace(png, os.path.join(d, f"calib{k}.png"))
+    else:
+      ps = (f"$pp=New-Object -ComObject PowerPoint.Application; $p=$pp.Presentations.Open('{pp}',$true,$false,$false); "
           f"1..{n} | % {{ $p.Slides.Item($_).Export((Join-Path '{d}' ('calib' + $_ + '.png')),'PNG',2280,{int(2280 * V.PAGE_H / V.PAGE_W)}) }}; $p.Close(); $pp.Quit()")
-    subprocess.run(["powershell", "-NoProfile", "-Command", ps], check=True)
+      subprocess.run(["powershell", "-NoProfile", "-Command", ps], check=True)
     ims = {k: Image.open(os.path.join(d, f"calib{k}.png")).convert("L") for k in range(1, n + 1)}
-    out = {}
+    dst = os.path.join(HERE, "templates", "vertical", "baseline.json")
+    out = json.load(open(dst, encoding="utf-8")) if LO else {}
     for face, fl, y, k in rows:
         im = ims[k]
         path = font_path(fl)
@@ -99,9 +113,13 @@ def main():
         scale = (bb[3] - bb[1]) / PX_CM / ((py1 - py0) / 10 * 0.03528)   # PowerPoint/PIL 크기 비율
         em = PT * 0.03528
         base = ink_c / PX_CM - (py0 + py1) / 2 / 10 * 0.03528 * scale   # 글 상자 가운데 → 기준선(cm, 아래 +)
+        if LO:
+            if face in out:
+                out[face]["lo_em"] = round(base / em - out[face]["base_em"], 4)   # LibreOffice 기준선 − PowerPoint 기준선(아래 +)
+                print(f"{face:24} LO 차이 {out[face]['lo_em']:+.3f}em")
+            continue
         out[face] = {"base_em": round(base / em, 4), "scale": round(scale, 4)}
         print(f"{face:24} 기준선 {base / em:+.3f}em  크기 {scale:.3f}")
-    dst = os.path.join(HERE, "templates", "vertical", "baseline.json")
     json.dump(out, open(dst, "w", encoding="utf-8"), ensure_ascii=False, indent=1)
     print("→", dst, len(out))
 

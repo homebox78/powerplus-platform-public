@@ -1,82 +1,102 @@
 {
  "Asta Sans": {
   "base_em": 0.3642,
-  "scale": 0.9856
+  "scale": 0.9856,
+  "lo_em": 0.0345
  },
  "Asta Sans Bold": {
   "base_em": 0.365,
-  "scale": 0.9879
+  "scale": 0.9879,
+  "lo_em": 0.0237
  },
  "Asta Sans ExtraBold": {
   "base_em": 0.365,
-  "scale": 0.9879
+  "scale": 0.9879,
+  "lo_em": 0.0345
  },
  "Asta Sans Medium": {
   "base_em": 0.3632,
-  "scale": 0.9993
+  "scale": 0.9993,
+  "lo_em": 0.0355
  },
  "Elice DX Neolli": {
   "base_em": 0.2621,
-  "scale": 1.0005
+  "scale": 1.0005,
+  "lo_em": 0.1324
  },
  "Freesentation 2 ExtraLight": {
   "base_em": 0.3644,
-  "scale": 1.0003
+  "scale": 1.0003,
+  "lo_em": 0.0356
  },
  "Freesentation 4 Regular": {
   "base_em": 0.3545,
-  "scale": 0.982
+  "scale": 0.982,
+  "lo_em": 0.0466
  },
  "Freesentation 6 SemiBold": {
   "base_em": 0.3773,
-  "scale": 0.9987
+  "scale": 0.9987,
+  "lo_em": 0.0237
  },
  "Freesentation 8 ExtraBold": {
   "base_em": 0.3674,
-  "scale": 0.9809
+  "scale": 0.9809,
+  "lo_em": 0.0347
  },
  "G마켓 산스 TTF Bold": {
   "base_em": 0.2286,
-  "scale": 0.9901
+  "scale": 0.9901,
+  "lo_em": 0.1657
  },
  "Hada Round": {
   "base_em": 0.3589,
-  "scale": 0.9901
+  "scale": 0.9901,
+  "lo_em": 0.0463
  },
  "Hada Round Black": {
   "base_em": 0.3605,
-  "scale": 1.0039
+  "scale": 1.0039,
+  "lo_em": 0.0368
  },
  "Hada Round Bold": {
   "base_em": 0.3593,
-  "scale": 1.0075
+  "scale": 1.0075,
+  "lo_em": 0.0355
  },
  "Hada Round Medium": {
   "base_em": 0.3701,
-  "scale": 0.9979
+  "scale": 0.9979,
+  "lo_em": 0.0356
  },
  "Hakgyoansim Allimjang TTF B": {
   "base_em": 0.3514,
-  "scale": 0.9846
+  "scale": 0.9846,
+  "lo_em": 0.0465
  },
  "Paperlogy 8 ExtraBold": {
   "base_em": 0.4042,
-  "scale": 0.9958
+  "scale": 0.9958,
+  "lo_em": -0.0118
  },
  "Pretendard": {
   "base_em": 0.3586,
-  "scale": 0.9936
+  "scale": 0.9936,
+  "lo_em": 0.0463
  },
  "Pretendard Black": {
   "base_em": 0.3565,
-  "scale": 0.9944
+  "scale": 0.9944,
+  "lo_em": 0.0355
  },
  "Pretendard ExtraLight": {
   "base_em": 0.3627,
-  "scale": 1.0051
+  "scale": 1.0051,
+  "lo_em": 0.0366
  },
  "Pretendard SemiBold": {
   "base_em": 0.3549,
-  "scale": 0.9901
+  "scale": 0.9901,
+  "lo_em": 0.0356
  }
 }

@@ -18,12 +18,62 @@ def to_pdf(pptx, workdir):
     return pdf
 
 
+_LO_EM = None
+
+
+def lift_badges(pptx, workdir):
+    """뱃지 글(세로 제안서 fit_badge — 자간 0 명시 + 세로 가운데)을 LibreOffice 렌더용 사본에서만 위로 올린다.
+    LibreOffice 는 PowerPoint 보다 기준선을 서체마다 0.1~0.2em 아래에 놓아, PowerPoint 에 맞춘 뱃지 글이 캡처에서 아래로 치우쳤다
+    (사용자 2026-10-14 "영문이 아래로 치우침"). 양은 templates/vertical/baseline.json 의 lo_em(tools_baseline_calib.py --lo 실측).
+    장표 파일은 그대로 — 캡처만 맞춘다. 고칠 게 없으면 원본 경로를 돌려준다."""
+    global _LO_EM
+    if _LO_EM is None:
+        try:
+            import json
+            bl = json.load(open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "templates", "vertical", "baseline.json"), encoding="utf-8"))
+            _LO_EM = {k: v["lo_em"] for k, v in bl.items() if v.get("lo_em")}
+        except Exception:
+            _LO_EM = {}
+    if not _LO_EM:
+        return pptx
+    try:
+        from pptx import Presentation
+        prs = Presentation(pptx)
+    except Exception:
+        return pptx
+    A = "{http://schemas.openxmlformats.org/drawingml/2006/main}"
+    n = 0
+    for part in prs.part.package.iter_parts():   # 장·레이아웃·마스터 전부 — 간지 뱃지는 레이아웃에 있다
+        el = getattr(part, "_element", None)
+        if el is None:
+            continue
+        for body in el.iter(A.replace("drawingml/2006/main", "presentationml/2006/main") + "txBody"):
+            bp = body.find(A + "bodyPr")
+            runs = body.findall(f"{A}p/{A}r/{A}rPr")
+            if bp is None or bp.get("anchor") != "ctr" or not runs or any(r.get("spc") != "0" for r in runs):
+                continue
+            rp = runs[0]
+            f = next((e.get("typeface") for e in (rp.find(A + "latin"), rp.find(A + "ea")) if e is not None and e.get("typeface") in _LO_EM), None)
+            if not f or not rp.get("sz"):
+                continue
+            d = int(_LO_EM[f] * int(rp.get("sz")) / 100 * 12700)   # em → EMU(1pt = 12700)
+            if d <= 0:
+                continue
+            bp.set("bIns", str(int(bp.get("bIns") or 45720) + 2 * d))   # 아래 여백을 늘리면 가운데 정렬 글이 그 절반만큼 올라간다
+            n += 1
+    if not n:
+        return pptx
+    dst = os.path.join(workdir, os.path.basename(pptx))
+    prs.save(dst)
+    return dst
+
+
 def render(pptx, outdir, picks=None, width=1600, prefix="s"):
     """장별 PNG 를 outdir/s01.png … 로. picks(1부터 장 번호)를 주면 그 장만. 반환 [(번호, 경로)]"""
     os.makedirs(outdir, exist_ok=True)
     tmp = tempfile.mkdtemp(prefix="pd_lo_")
     try:
-        pdf = to_pdf(pptx, tmp)
+        pdf = to_pdf(lift_badges(pptx, tmp), tmp)
         return _pages(pdf, outdir, picks, width, prefix, tmp)
     finally:
         shutil.rmtree(tmp, ignore_errors=True)

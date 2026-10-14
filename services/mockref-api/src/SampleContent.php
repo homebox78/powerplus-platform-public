@@ -45,7 +45,10 @@ final class SampleContent
             str_contains($n, '재단') => [($c = '한빛' . (preg_match('/장학/u', $n) ? '장학' : (preg_match('/과학|기술|산업/u', $n) ? '과학' : '문화')) . '재단'), '이사장', '시민', 'foundation', $c],
             $t === 'etc_assoc' || (bool) preg_match('/협회|학회|연합회|협의회|연맹|조합$/u', $n)
                 => ['한국미래산업협회', '회장', '회원', 'assoc', '한국미래산업협회'],
-            $t === 'private_culture' || (bool) preg_match('/미술관|박물관|아트센터|문화예술회관|공연장|도서관/u', $n)
+            // 도서관은 미술관(전시·공연·관람) 메뉴가 맞지 않는다 — 자료 검색·대출·열람실(2026-10-15 시험 s10)
+            (bool) preg_match('/도서관$|도서관\s|작은도서관|책마루|북카페$/u', $n)
+                => ['한빛시립도서관', '관장', '이용자', 'library', '한빛시립도서관'],
+            $t === 'private_culture' || (bool) preg_match('/미술관|박물관|아트센터|문화예술회관|공연장/u', $n)
                 => ['한빛아트센터', '관장', '관람객', 'culture', '한빛아트센터'],
             str_starts_with($t, 'private') || (bool) preg_match('/\(주\)|주식회사|㈜|그룹$|컴퍼니|스튜디오|쇼핑|몰$|솔루션|테크$|코리아$|랩$|소프트|홀딩스|전자$|물산$|화학$|제약$|건설$|증권$|은행$|보험$|카드$|통신$|텔레콤|모터스|자동차$|중공업|항공$|해운$|유통$|식품$|제과$|생명$|화재$|엔터테인먼트|시스템즈|네트웍스/u', $n)
                 => [($c = match ($t) { 'private_commerce' => '한빛마켓', 'private_agency' => '한빛디자인랩', 'private_personal' => '한빛스튜디오', default => '한빛솔루션' }), '대표이사', '고객', 'biz', $c . ' 본사'],
@@ -88,13 +91,13 @@ final class SampleContent
         '총장' => 'President', '교장' => 'Principal', '관장' => 'Director', '회장' => 'President', '대표이사' => 'CEO'];
     private const EN_ORG = ['한빛시' => 'Hanbit City', '새솔군' => 'Saesol County', '푸른구' => 'Pureun District', '미래데이터청' => 'Future Data Agency', '국민미래위원회' => 'National Future Commission', '미래혁신부' => 'Ministry of Future Innovation', '한국미래진흥원' => 'Korea Future Promotion Agency',
         '한빛대학교' => 'Hanbit University', '한빛고등학교' => 'Hanbit High School', '한빛종합사회복지관' => 'Hanbit Community Welfare Center', '한빛문화재단' => 'Hanbit Cultural Foundation',
-        '한빛장학재단' => 'Hanbit Scholarship Foundation', '한빛과학재단' => 'Hanbit Science Foundation', '한국미래산업협회' => 'Korea Future Industry Association', '한빛아트센터' => 'Hanbit Art Center',
+        '한빛장학재단' => 'Hanbit Scholarship Foundation', '한빛과학재단' => 'Hanbit Science Foundation', '한국미래산업협회' => 'Korea Future Industry Association', '한빛아트센터' => 'Hanbit Art Center', '한빛시립도서관' => 'Hanbit Public Library',
         '한빛솔루션' => 'Hanbit Solutions', '한빛마켓' => 'Hanbit Market', '한빛디자인랩' => 'Hanbit Design Lab', '한빛스튜디오' => 'Hanbit Studio', '한빛평생교육원' => 'Hanbit Lifelong Learning Institute'];
 
     /** 가상 도메인 끝 — 관공서만 go.kr, 대학 ac.kr, 학교 hs.kr, 기업 co.kr, 그 밖 or.kr. 실재하지 않는 값만. */
     public static function tld(string $kind): string
     {
-        return match ($kind) { 'univ' => '.ac.kr', 'school' => '.hs.kr', 'biz' => '.co.kr', 'foundation', 'welfare', 'assoc', 'culture', 'academy' => '.or.kr', default => '.go.kr' };
+        return match ($kind) { 'univ' => '.ac.kr', 'school' => '.hs.kr', 'biz' => '.co.kr', 'foundation', 'welfare', 'assoc', 'culture', 'library', 'academy' => '.or.kr', default => '.go.kr' };
     }
 
     /** 관공서 계열이 아닌 종류(대학·학교·재단·복지·협회·문화·기업·교육원) — 화면 문구·메뉴·공지를 그 종류에 맞춘다. */
@@ -135,6 +138,11 @@ final class SampleContent
                 'boards' => ['가을 기획전 개막 안내', '어린이 미술 교실 수강생 모집', '정기 공연 예매 오픈 안내', '관람 시간 변경 안내', '도슨트 해설 시간표',
                     '대관 신청 일정 공지', '문화가 있는 날 무료 관람 안내', '작가와의 대화 참가 신청', '공연장 시설 점검 휴관 안내', '회원 할인 혜택 안내',
                     '단체 관람 예약 안내', '소장품 기증 접수 안내', '자원봉사 해설사 모집', '야간 개장 운영 안내', '전시 연계 강연 개최']],
+            'library' => ['about' => '도서관소개', 'sections' => ['자료 검색', '신착 도서', '독서 프로그램', '이용 안내', '도서관 소식', '열람실 현황'],
+                'depts' => ['자료운영팀', '독서문화팀', '열람지원팀', '행정지원팀'],
+                'boards' => ['가을 독서 문화 프로그램 수강생 모집', '신착 도서 목록 안내', '도서관 휴관일 안내', '상호대차 서비스 확대 안내', '작가 초청 북토크 개최',
+                    '어린이 책 읽어주기 시간 운영', '전자책 대출 서비스 이용 안내', '열람실 좌석 예약 시스템 변경', '희망 도서 신청 방법 안내', '연체 도서 반납 안내',
+                    '시험 기간 열람실 연장 운영', '책 기증 접수 안내', '자원봉사자 모집', '독서 동아리 회원 모집', '이달의 추천 도서']],
             'biz' => ['about' => '회사소개', 'sections' => ['새소식', '제품·서비스', '고객 사례', '보도자료', '인재 채용', '고객지원'],
                 'depts' => ['경영지원팀', '사업기획팀', '고객지원팀', '연구개발팀', '마케팅팀'],
                 'boards' => ['신규 서비스 출시 안내', '하반기 경력 사원 채용 공고', '고객센터 운영 시간 변경 안내', '개인정보처리방침 개정 안내', '전시회 참가 소식',
@@ -217,6 +225,7 @@ final class SampleContent
             'foundation' => '누구나 문화와 배움을 누릴 수 있도록 기회를 넓히겠습니다. 지원 사업의 문턱을 낮추고 결과를 투명하게 나누겠습니다.',
             'assoc' => '회원사의 목소리를 모아 산업의 길을 열겠습니다. 정보와 교육, 네트워크로 회원 여러분의 성장을 돕겠습니다.',
             'culture' => '일상 가까이에서 예술을 만나는 공간이 되겠습니다. 전시와 공연, 교육 프로그램으로 관람객 여러분을 맞이하겠습니다.',
+            'library' => '누구나 편하게 찾아와 책과 만나는 생활 속 도서관이 되겠습니다. 자료와 프로그램으로 이용자 여러분의 배움을 돕겠습니다.',
             'biz' => '고객의 문제를 가장 잘 이해하는 파트너가 되겠습니다. 기술과 서비스로 약속을 지키며 함께 성장하겠습니다.',
             'academy' => '배우고 싶은 모든 분께 열려 있는 배움터가 되겠습니다. 생활에 바로 쓰이는 강좌로 수강생 여러분의 내일을 응원합니다.',
             default => '일자리와 복지, 안전을 촘촘히 챙겨 누구나 살고 싶은 ' . $josa($org, '을', '를') . ' 만들겠습니다.',

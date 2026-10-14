@@ -51,19 +51,19 @@ final class Samples
         // 관공서 밖 종류(2026-10-11) — SampleContent::persona 의 가상 기관과 같은 이름
         '한빛대학교' => 'univ', '한빛고등학교' => 'school', '한빛종합사회복지관' => 'welfare',
         '한빛문화재단' => 'foundation', '한빛장학재단' => 'foundation', '한빛과학재단' => 'foundation',
-        '한국미래산업협회' => 'assoc', '한빛아트센터' => 'culture',
+        '한국미래산업협회' => 'assoc', '한빛아트센터' => 'culture', '한빛시립도서관' => 'library',
         '한빛솔루션' => 'biz', '한빛마켓' => 'biz', '한빛디자인랩' => 'biz', '한빛스튜디오' => 'biz',
         '한빛평생교육원' => 'academy',
     ];
 
     /** 관공서가 아닌 묶음 — 대상 태그 없는 글자 그래픽(관공서 문구)을 받지 않는다 */
-    private const NON_PUBLIC = ['univ', 'school', 'welfare', 'foundation', 'assoc', 'culture', 'biz', 'academy'];
+    private const NON_PUBLIC = ['univ', 'school', 'welfare', 'foundation', 'assoc', 'culture', 'library', 'biz', 'academy'];
 
     /** 목업용으로 만든 아이콘 종류 — 그 밖의 icon-… 은 powerAssets 아이콘 세트(세트 이름 = 종류 = 스타일) */
     public const ICON_KINDS = ['icon-set', 'icon-color', 'icon-iso', 'icon-flat', 'icon-glass', 'icon-gradient', 'icon-blue'];
 
     /** 묶음이 받아 주는 사진 대상 — 학교·교육원은 교육청용(edu) 사진도 쓴다 */
-    private const TARGET_FAMILY = ['univ' => ['univ', 'edu'], 'school' => ['school', 'edu'], 'academy' => ['academy', 'edu']];
+    private const TARGET_FAMILY = ['univ' => ['univ', 'edu'], 'school' => ['school', 'edu'], 'academy' => ['academy', 'edu'], 'library' => ['library', 'culture', 'local']];
 
     private static ?array $all = null;
     /** 지금 조립 중인 목업의 가상 기관 */

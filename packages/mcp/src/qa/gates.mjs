@@ -7,6 +7,8 @@ export async function gates(p) {
   const r = await p.evaluate(() => {
     const vis = (el) => { const s = getComputedStyle(el); const b = el.getBoundingClientRect(); return s.display !== "none" && s.visibility !== "hidden" && b.width > 0 && b.height > 0; };
     const txt = (el) => (el.innerText || "").replace(/\s+/g, " ").trim();
+    // 샘플 주소는 …/{key}/web 꼴이라 끝 조각만 쓰면 "original ×3" 처럼 어느 그림인지 몰랐다(2026-10-15 시험 s04) — 열쇠/종류로
+    const imgName = (im) => { const p = String(im.currentSrc || im.src || "").split("?")[0].split("/").filter(Boolean); const n = p.pop() || ""; return /^(original|web|thumb|card)$/.test(n) ? `${p.pop()}/${n}` : n; };
     const out = {};
     // 가로 넘침
     out.overflowX = document.documentElement.scrollWidth - innerWidth;
@@ -51,13 +53,13 @@ export async function gates(p) {
       const boxR = b.width / b.height, natR = im.naturalWidth / im.naturalHeight;
       const clipAnc = (() => { let a = im.parentElement; while (a) { const cs = getComputedStyle(a); if (cs.overflow !== "visible") { const ab = a.getBoundingClientRect(); if (ab.top > b.top + 2 || ab.bottom < b.bottom - 2) return true; } a = a.parentElement; } return false; })();
       return (s.objectFit === "cover" && Math.abs(boxR - natR) / natR > 0.04) || clipAnc;
-    }).map((im) => im.src.split("/").pop());
+    }).map((im) => imgName(im));
     // 빈 이미지 여백(E2): contain 인데 상자 비율이 크게 다름
     out.letterbox = [...document.images].filter(vis).filter((im) => {
       const s = getComputedStyle(im); if (s.objectFit !== "contain" || !im.naturalWidth) return false;
       const b = im.getBoundingClientRect(); if (b.width < 72 && b.height < 72) return false; // 아이콘·로고 조각은 여백이 정상
       return Math.abs(b.width / b.height - im.naturalWidth / im.naturalHeight) / (im.naturalWidth / im.naturalHeight) > 0.15;
-    }).map((im) => im.src.split("/").pop());
+    }).map((im) => imgName(im));
     // 날짜 순서(D1): 같은 목록(ul/ol/tbody) 안 날짜가 최신순이 아님
     out.dateOrder = [];
     for (const list of document.querySelectorAll("ul, ol, tbody")) {
@@ -86,7 +88,8 @@ export async function gates(p) {
     for (const el of document.querySelectorAll("body *")) {
       if (el.children.length && !["IMG", "SVG", "VIDEO", "IFRAME"].includes(el.tagName)) { if (!txt(el) || el.querySelector("*")) { /* 부모는 자식으로 센다 */ } }
       if (!vis(el)) continue; const b = el.getBoundingClientRect();
-      const own = el.tagName === "IMG" || el.tagName === "svg" || (el.childNodes.length && [...el.childNodes].some((n) => n.nodeType === 3 && n.textContent.trim())) || (getComputedStyle(el).backgroundImage !== "none") || (getComputedStyle(el).backgroundColor !== "rgba(0, 0, 0, 0)" && b.height < 400);
+      // 지도·영상 iframe 도 내용이다 — 오시는 길 지도 자리를 "200px+ 빈 공간"으로 잡던 오탐(2026-10-15 시험 s09)
+      const own = el.tagName === "IMG" || el.tagName === "svg" || el.tagName === "IFRAME" || el.tagName === "VIDEO" || el.tagName === "CANVAS" || (el.childNodes.length && [...el.childNodes].some((n) => n.nodeType === 3 && n.textContent.trim())) || (getComputedStyle(el).backgroundImage !== "none") || (getComputedStyle(el).backgroundColor !== "rgba(0, 0, 0, 0)" && b.height < 400);
       // data-qa-gap = 레퍼런스에도 있는 여백(재현 시안에서 일부러 둔 빈 공간) — 빈 공간으로 세지 않는다(2026-10-01)
       if (!own && !el.hasAttribute("data-qa-gap")) continue;
       for (let y = Math.max(0, Math.floor((b.top + scrollY) / 10)); y < Math.min(occ.length, Math.ceil((b.bottom + scrollY) / 10)); y++) occ[y] = 1;
@@ -109,7 +112,9 @@ export async function gates(p) {
     const rgb = (c) => { const v = (c.match(/[\d.]+/g) || []).map(Number); return c.startsWith("color(") ? [v[0] * 255, v[1] * 255, v[2] * 255, v[3] ?? 1] : v; }; // color-mix 결과는 color(srgb 0~1)
     const lum = ([r, g, b]) => { const f = (v) => { v /= 255; return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; }; return 0.2126 * f(r) + 0.7152 * f(g) + 0.0722 * f(b); };
     const overImg = (el, n) => { const r = el.getBoundingClientRect(), cx = r.left + r.width / 2, cy = r.top + r.height / 2; return [...n.querySelectorAll(":scope > img, :scope > * > img")].some((im) => { const b = im.getBoundingClientRect(); return cx >= b.left && cx <= b.right && cy >= b.top && cy <= b.bottom; }); };
-    const bgOf = (el) => { for (let n = el; n; n = n.parentElement) { const s = getComputedStyle(n); if (s.backgroundImage !== "none" || overImg(el, n)) return null; const c = rgb(s.backgroundColor); if (c.length >= 3 && (c[3] ?? 1) > 0.5) return c; } return [255, 255, 255]; };
+    // ::before 로 깐 짙은 띠(position:absolute)도 글자 뒤 면이다 — 흰 글자를 "안 보이는 글자"로 잡던 오탐(2026-10-15 시험 s07)
+    const pseudoBg = (n) => { for (const ps of ["::before", "::after"]) { const p = getComputedStyle(n, ps); if (!p.content || p.content === "none" || p.position !== "absolute") continue; if (p.backgroundImage !== "none") return "img"; const c = rgb(p.backgroundColor); if (c.length >= 3 && (c[3] ?? 1) > 0.5) return c; } return null; };
+    const bgOf = (el) => { for (let n = el; n; n = n.parentElement) { const s = getComputedStyle(n); if (s.backgroundImage !== "none" || overImg(el, n)) return null; const pb = pseudoBg(n); if (pb === "img") return null; if (pb) return pb; const c = rgb(s.backgroundColor); if (c.length >= 3 && (c[3] ?? 1) > 0.5) return c; } return [255, 255, 255]; };
     out.invisible = [];
     for (const el of document.querySelectorAll("main a, main span, main strong, main p, main li, main h2, main h3, main button")) {
       if (!vis(el) || [...el.childNodes].every((n) => n.nodeType !== 3 || !n.textContent.trim())) continue;
@@ -135,6 +140,19 @@ export async function gates(p) {
       if (sr.bottom <= tr.top + 2 || tr.bottom <= sr.top + 2) continue; // 아이콘 위·글 아래로 쌓은 배치는 세로 중심 대상이 아니다
       const d = Math.abs((sr.top + sr.height / 2) - (tr.top + tr.height / 2)); if (d > 2) out.iconOffset.push(`${(tn.textContent || "").trim().slice(0, 10)} ${d.toFixed(1)}px`); }
     out.iconOffset = out.iconOffset.slice(0, 8);
+    // 화면 끝에 붙은 글자: 글자 덩어리가 화면 왼쪽·오른쪽 4px 안까지 닿음(2026-10-15 시험 — 서브 비주얼 제목·경로가 x 0 에 붙어 '홈' 이 잘렸는데 91점,
+    // 모바일 알림 띠 글이 왼쪽 끝 0px). 흐르는 띠(넘침을 자르는 조상이 화면 폭 가득)·화면 밖 슬라이드는 뺀다.
+    out.edgeText = [];
+    { const W = innerWidth; const w = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT); let n;
+      while ((n = w.nextNode()) && out.edgeText.length < 6) {
+        const t = n.nodeValue.trim(); if (t.length < 2) continue; const el = n.parentElement; if (!el || el.closest("script,style,[aria-hidden=true]") || !vis(el)) continue;
+        const rg = document.createRange(); rg.selectNodeContents(n); const b = rg.getBoundingClientRect(); if (!b.width || !b.height) continue;
+        if (b.left >= 4 && b.right <= W - 4) continue;
+        if (b.right <= 0 || b.left >= W) continue; // 화면 밖(넘김 슬라이드)
+        let clipped = false; for (let a = el.parentElement; a && a !== document.body; a = a.parentElement) { const cs = getComputedStyle(a); if (cs.overflowX !== "visible") { const ab = a.getBoundingClientRect(); if (ab.width >= W - 2 && (b.left < ab.left || b.right > ab.right)) { clipped = true; break; } } }
+        if (clipped) continue;
+        out.edgeText.push(`${t.slice(0, 16)} (x ${Math.round(b.left)}~${Math.round(b.right)})`);
+      } }
     out.height = H;
     return out;
   });
@@ -159,5 +177,6 @@ export async function gates(p) {
   chk(!r.symbols.length, "글자 기호(아이콘으로 바꿀 것)", r.symbols);
   chk(!r.iconOffset.length, "글·아이콘 세로 중심 어긋남", r.iconOffset);
   chk(!r.invisible.length, "안 보이는 글자", r.invisible);
+  chk(!r.edgeText.length, "화면 끝에 붙은 글자(좌우 안쪽 여백 없음)", r.edgeText);
   return { r, fails };
 }

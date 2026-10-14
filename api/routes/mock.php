@@ -49,18 +49,34 @@ return static function (Router $r): void {
 
     /** 찾아 바꾸기 — 없거나(0번) 여러 번(all 아니면) 나오면 어느 항목인지 말하고 멈춘다. */
     $applyEdits = static function (string $html, array $edits): string {
+        // 줄바꿈은 LF 하나로 — 윈도에서 쓴 시안(CRLF)과 AI 가 친 find(LF)가 어긋나 '찾지 못함'이 나던 것(2026-10-15 시험 s09)
+        $html = str_replace("\r\n", "\n", $html);
         foreach (array_values($edits) as $i => $e) {
             if (!is_array($e)) {
                 throw HttpError::invalid("edits[{$i}] 는 {find, replace} 객체여야 합니다.");
             }
-            $find = (string) ($e['find'] ?? '');
-            $rep = (string) ($e['replace'] ?? '');
+            $find = str_replace("\r\n", "\n", (string) ($e['find'] ?? ''));
+            $rep = str_replace("\r\n", "\n", (string) ($e['replace'] ?? ''));
             if ($find === '') {
                 throw HttpError::invalid("edits[{$i}].find 가 비어 있습니다.");
             }
             $n = substr_count($html, $find);
             if ($n === 0) {
-                throw HttpError::invalid("edits[{$i}] 의 find 를 보관된 시안에서 찾지 못했습니다(앞 항목이 이미 바꿨을 수 있습니다). 시안 원문의 글자를 공백까지 그대로 복사해 주세요: " . mb_substr($find, 0, 80));
+                // 공백(들여쓰기·줄바꿈) 차이만 있으면 그대로 맞춘다 — 한 군데만 맞을 때만
+                $parts = preg_split('/\s+/u', trim($find)) ?: [];
+                $re = '/' . implode('\s*', array_map(static fn ($w) => preg_quote($w, '/'), $parts)) . '/u';
+                if ($parts && preg_match_all($re, $html, $mm, PREG_OFFSET_CAPTURE) === 1) {
+                    [$hit, $at] = $mm[0][0];
+                    $html = substr_replace($html, $rep, (int) $at, strlen($hit));
+                    continue;
+                }
+                // 첫 낱말 근처 보관 원문을 같이 돌려준다 — 보관본이 어떻게 생겼는지 몰라 전체를 다시 보내던 것
+                $near = '';
+                $head = $parts[0] ?? '';
+                if ($head !== '' && ($pos = strpos($html, $head)) !== false) {
+                    $near = ' · 보관본 해당 부분: ' . mb_substr(substr($html, $pos, 240), 0, 160);
+                }
+                throw HttpError::invalid("edits[{$i}] 의 find 를 보관된 시안에서 찾지 못했습니다(앞 항목이 이미 바꿨을 수 있습니다). 보관본에는 hb:use·동작 스크립트·기본 CSS 가 펼쳐져 있으니 그 자리 표시(<!--hb:use …-->·data-hb-base)를 find 에 넣지 마세요: " . mb_substr($find, 0, 80) . $near);
             }
             if ($n > 1 && empty($e['all'])) {
                 throw HttpError::invalid("edits[{$i}] 의 find 가 시안에 {$n}번 나옵니다. 앞뒤 글자를 더 붙여 한 군데만 맞게 하거나, 전부 바꿀 거면 all: true 를 주세요: " . mb_substr($find, 0, 80));
@@ -84,7 +100,29 @@ return static function (Router $r): void {
      * 받아쓰기 줄이기 — AI 가 매 장 똑같이 다시 쓰던 부분을 서버가 채운다.
      *   <script data-hb-behavior></script> → 동작 스크립트 / <style data-hb-base></style> → 기본 CSS / <!--hb:use 이름--> → 기준 시안의 그 부분
      */
-    $expand = static function (string $html, int $ownerId, string $baseToken) use ($fillBase): string {
+    /** 기준 시안에서 부분 하나 — 없으면 null. 머리의 h1(로고)은 서브에서 div 로 내린다(서브 h1 = 페이지 이름, 2026-10-15 시험 4/10곳이 h1 2개로 감점) */
+    $basePart = static function (string $src, string $name): ?string {
+        $q = preg_quote($name, '/');
+        $part = null;
+        if (preg_match('/<!--\s*hb:part\s+' . $q . '\s*-->(.*?)<!--\s*\/hb:part\s*-->/s', $src, $pm)) {
+            $part = $pm[1];
+        } elseif ($name === 'style' && preg_match_all('/<style\b[^>]*>.*?<\/style>/is', $src, $sm)) {
+            $part = implode("\n", $sm[0]);
+        } elseif ($name === 'header' && preg_match('/<body\b[^>]*>(.*?<\/header>)/is', $src, $hm) && !preg_match('/<(main|section)\b/i', $hm[1])) {
+            // <header> 앞의 공식 누리집 띠·건너뛰기 링크도 머리다 — <header> 만 가져와 서브에서 띠가 빠지던 것(2026-10-15 시험 s02)
+            $part = (string) preg_replace('/<script\b.*?<\/script>/is', '', $hm[1]);
+        } elseif ($name === 'header' && preg_match('/<header\b.*?<\/header>/is', $src, $hm)) {
+            $part = $hm[0];
+        } elseif ($name === 'footer' && preg_match_all('/<footer\b.*?<\/footer>/is', $src, $fm)) {
+            $part = (string) end($fm[0]);
+        }
+        if ($part !== null && $name === 'header') {
+            $part = (string) preg_replace(['/<h1\b([^>]*)>/i', '/<\/h1\s*>/i'], ['<div$1 data-hb-was="h1">', '</div>'], $part);
+        }
+        return $part;
+    };
+
+    $expand = static function (string $html, int $ownerId, string $baseToken) use ($fillBase, $basePart): string {
         $slot = '/<script\b[^>]*\bdata-hb-behavior\b[^>]*>\s*<\/script>/i';
         if (preg_match($slot, $html)) {
             $js = (string) @file_get_contents(dirname(__DIR__) . '/data/hb-behavior.js');
@@ -103,23 +141,31 @@ return static function (Router $r): void {
         }
         $src = (string) $base['html'];
         foreach (array_unique($m[1]) as $name) {
-            $part = null;
             $q = preg_quote($name, '/');
-            if (preg_match('/<!--\s*hb:part\s+' . $q . '\s*-->(.*?)<!--\s*\/hb:part\s*-->/s', $src, $pm)) {
-                $part = $pm[1];
-            } elseif ($name === 'style' && preg_match_all('/<style\b[^>]*>.*?<\/style>/is', $src, $sm)) {
-                $part = implode("\n", $sm[0]);
-            } elseif ($name === 'header' && preg_match('/<header\b.*?<\/header>/is', $src, $hm)) {
-                $part = $hm[0];
-            } elseif ($name === 'footer' && preg_match_all('/<footer\b.*?<\/footer>/is', $src, $fm)) {
-                $part = (string) end($fm[0]);
-            }
+            $part = $basePart($src, $name);
             if ($part === null) {
                 throw HttpError::invalid("기준 시안에 \"{$name}\" 부분이 없습니다. 기준 시안에서 <!--hb:part {$name}-->…<!--/hb:part--> 로 표시했거나, style·header·footer 중 하나여야 합니다.");
             }
-            $html = (string) preg_replace_callback('/<!--\s*hb:use\s+' . $q . '\s*-->/', static fn () => $part, $html);
+            // 넣은 자리를 표시해 둔다 — 메인을 고친 뒤 서브를 token 으로 다시 판정하면 최신 메인 것으로 바꿔 넣는다
+            $html = (string) preg_replace_callback('/<!--\s*hb:use\s+' . $q . '\s*-->/', static fn () => "<!--hb:from {$name}-->" . $part . '<!--/hb:from-->', $html);
         }
         return $fillBase($html);
+    };
+
+    /** 보관된 서브의 hb:from 구간을 기준 시안 최신본으로 다시 채운다(기준이 없거나 그대로면 그대로) */
+    $resync = static function (string $html, int $ownerId, string $baseToken) use ($basePart): string {
+        if ($baseToken === '' || !str_contains($html, '<!--hb:from ')) {
+            return $html;
+        }
+        $base = Db::row('SELECT html FROM mock_mockups WHERE token = ? AND owner_user_id = ? AND deleted_at IS NULL', [$baseToken, $ownerId]);
+        if ($base === null) {
+            return $html;
+        }
+        $src = (string) $base['html'];
+        return (string) preg_replace_callback('/<!--hb:from ([A-Za-z0-9_-]+)-->.*?<!--\/hb:from-->/s', static function (array $mm) use ($src, $basePart): string {
+            $part = $basePart($src, $mm[1]);
+            return $part === null ? $mm[0] : '<!--hb:from ' . $mm[1] . '-->' . $part . '<!--/hb:from-->';
+        }, $html);
     };
 
     $mockupPub = static function (array $m, ?array $g = null): array {
@@ -180,7 +226,7 @@ return static function (Router $r): void {
     };
 
     // ---------------------------------------------------------------- 시안 보관·게시
-    $r->post('/mock/mockups', static function (array $p, Actor $a) use ($tokenOf, $applyEdits, $expand, $mockupPub): void {
+    $r->post('/mock/mockups', static function (array $p, Actor $a) use ($tokenOf, $applyEdits, $expand, $resync, $mockupPub): void {
         $u = Auth::requireUser($a);
         $uid = (int) $u['id'];
         $b = Response::input();
@@ -217,9 +263,9 @@ return static function (Router $r): void {
         }
 
         if ($newHtml !== null) {
-            $newHtml = $expand($newHtml, $uid, $tokenOf((string) ($b['base_token'] ?? '')));
+            $newHtml = $expand(str_replace("\r\n", "\n", $newHtml), $uid, $tokenOf((string) ($b['base_token'] ?? '')));
         }
-        $html = $newHtml ?? (string) ($own['html'] ?? '');
+        $html = $newHtml ?? $resync((string) ($own['html'] ?? ''), $uid, (string) ($own['base_token'] ?? ''));
         if ($html === '') {
             throw HttpError::invalid('html 이 없습니다. 처음 판정할 때는 완성한 HTML 문서 전체를, 다시 판정할 때는 token 과 edits 를 보내세요.');
         }
@@ -414,7 +460,9 @@ return static function (Router $r): void {
         header('Cache-Control: private, max-age=30');
         header("Content-Security-Policy: sandbox allow-scripts allow-popups allow-forms allow-modals; form-action 'none'");
         header('X-AI-Generated: true'); // LEGAL-003: AI 생성 산출물 표시
-        echo \Pp\Mock\FrameHeight::inject((string) $row['html']);
+        // 샘플 원본 주소는 웹 사본으로 — 예전 묶음(url_template …/original)으로 만든 시안도 가볍게 연다
+        $html = (string) preg_replace('#(/api/v1/assets/samples/[a-z0-9]{8,32})/original\b#', '$1/web', (string) $row['html']);
+        echo \Pp\Mock\FrameHeight::inject($html);
         exit;
     });
 

@@ -20,6 +20,8 @@ button{font:inherit;cursor:pointer}
 main>:last-child{margin-bottom:0}
 /* 마지막 내용과 바닥글 사이 80px(모바일 48) — 내 시안 58건 중 30건이 0~4px 로 붙었다(2026-10-13). 줄여도 40 아래, 늘려도 120 위로 두지 않는다 */
 :where(body>footer,.hb-footer){margin-top:var(--hb-foot,80px)}
+/* 마지막 구역이 폭 가득 색 띠면 띠와 바닥글 사이 흰 줄이 생긴다 — 바닥글에 hb-foot-flush 를 달면 붙인다(2026-10-15 시험 s01·s04) */
+footer.hb-foot-flush,.hb-footer.hb-foot-flush{margin-top:0}
 /* 고정 높이 카드·목록 상자는 글·단추를 잘라 먹거나 아래를 비운다 — 같은 줄 높이는 stretch 로 */
 :where(.hb-card,.hb-grid>*){height:auto}
 /* 메가 메뉴 판은 히어로·캐러셀 위로 */

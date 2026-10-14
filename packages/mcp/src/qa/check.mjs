@@ -114,6 +114,10 @@ async function measure(p, ref) {
         }
         // 줄 사이 세로 간격: 위 줄 상자 바닥 ~ 아래 줄 상자 윗변. 붙은 곳(8px 미만)과 다수와 다른 곳(2026-10-02 사용자 지적)
         const sorted = [...wide].sort((a, b) => a.T - b.T); const vs = [];
+        // 줄 위에 따로 놓인 섹션 제목(h2·h3 만 있는 띠)은 아래 줄의 시작이다 — 제목을 빼고 재면 제목 높이만큼 간격이 부풀어
+        // "빈 띠·간격 벗어남"으로 잡혀, 맞추려다 제목 주변이 20px 로 붙었다(2026-10-15 시험 s06·s08)
+        const heads = [...document.querySelectorAll("h2, h3")].filter(vis).map((e) => { const b = e.getBoundingClientRect(); return { y: b.top + scrollY, b: b.bottom + scrollY }; });
+        for (let i = 1; i < sorted.length; i++) { const hd = heads.filter((h) => h.y >= sorted[i - 1].B - 4 && h.b <= sorted[i].T + 4); if (hd.length) sorted[i].T = Math.min(sorted[i].T, ...hd.map((h) => h.y)); }
         for (let i = 1; i < sorted.length; i++) { const v = sorted[i].T - sorted[i - 1].B; if (v > -30 && v < 260) vs.push({ y: sorted[i].T, v, refGap: ref.rows[sorted[i].refIdx]?.gap_above ?? 8 }); }
         // 레퍼런스에서도 맞닿은 띠(배경 가득 줄, gap_above 8 미만)는 0이 정상이라 붙음 감점에서 뺀다
         frame.touch = vs.filter((o) => o.v < 8 && (o.refGap ?? 8) >= 8);
@@ -125,6 +129,8 @@ async function measure(p, ref) {
     const spill = [];
     for (const b of boxes) {
       if (b.w < 150 || b.h < 150 || spill.length >= 3) continue;
+      // 표 칸은 rowspan 으로 줄(tr) 밖까지 늘어나는 게 정상 — 덮임이 아니다(2026-10-15 시험 s07 조직도 표 159px 오탐)
+      if (/^(TD|TH|TR|TBODY|THEAD)$/.test(b.el.tagName)) continue;
       const cs = getComputedStyle(b.el); if (!["static", "relative"].includes(cs.position)) continue;
       const bgc = cs.backgroundColor; if (!bgc || /rgba(.*,s*0)$|transparent/.test(bgc)) continue;
       const pr = b.el.parentElement; if (!pr || pr === document.body) continue;
@@ -148,7 +154,7 @@ async function measure(p, ref) {
     const bg = [...document.querySelectorAll("*")].map((e) => (getComputedStyle(e).backgroundImage.match(/url\("?([^")]+)"?\)/) || [])[1]).filter(Boolean);
     const hostOf = (u) => { try { return new URL(u, location.href).host; } catch { return ""; } };
     const foreign = [...new Set([...srcs.map((s) => s.src), ...bg].filter((u) => u && !u.startsWith("data:") && !u.startsWith("about:")).map(hostOf).filter((h) => h && !/(^|\.)hom2box\.com$|^localhost|^127\.0\.0\.1|fonts\.(googleapis|gstatic)\.com$|cdn\.jsdelivr\.net$/.test(h)))];
-    const broken = [...new Set(srcs.filter((s) => s.vis && !s.ok && s.src).map((s) => s.src.split("/").pop().slice(0, 60)))];
+    const broken = [...new Set(srcs.filter((s) => s.vis && !s.ok && s.src).map((s) => { const p = s.src.split("?")[0].split("/").filter(Boolean); const n = p.pop() || ""; return (/^(original|web|thumb|card)$/.test(n) ? `${p.pop()}/${n}` : n).slice(0, 60); }))];
     return { height: H, body: { from: Math.round(bodyFrom), to: Math.round(bodyTo) }, rows, frame, spill, leaks, foreign, broken, images: srcs.length };
   }, ref);
 }

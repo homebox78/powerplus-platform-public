@@ -342,7 +342,43 @@ def parse_json(s):
             return _loads(t)
         except json.JSONDecodeError:
             # 문자열 안 이스케이프 안 된 따옴표("식품안전나라 "통합" 구축")·항목 사이 빠진 쉼표 — 개요 40장이 이것으로 두 번 다 실패했다(2026-10-13)
-            return _loads(_repair_quotes(t))
+            q = _repair_quotes(t)
+            try:
+                return _loads(q)
+            except json.JSONDecodeError:
+                # 괄호 짝 — 표 블록 끝 '…]]}}}, {' 처럼 닫는 괄호가 하나 더 붙음(세로 제안서 장 통째 누락, 2026-10-14)
+                return _loads(_repair_brackets(q))
+
+
+def _repair_brackets(s):
+    """문자열 밖 괄호 짝 맞추기 — 열린 것과 안 맞는 닫는 괄호는 버리고, 끝에 모자란 닫는 괄호는 채운다"""
+    out, st, ins, k, n = [], [], False, 0, len(s)
+    while k < n:
+        c = s[k]
+        if ins:
+            out.append(c)
+            if c == "\\" and k + 1 < n:
+                out.append(s[k + 1])
+                k += 2
+                continue
+            if c == '"':
+                ins = False
+        elif c == '"':
+            ins = True
+            out.append(c)
+        elif c in "{[":
+            st.append(c)
+            out.append(c)
+        elif c in "}]":
+            if st and st[-1] == ("{" if c == "}" else "["):
+                st.pop()
+                out.append(c)
+            # 짝이 안 맞는 닫는 괄호는 버린다(앞 쉼표가 남으면 아래에서 지운다)
+        else:
+            out.append(c)
+        k += 1
+    out += ["}" if c == "{" else "]" for c in reversed(st)]
+    return re.sub(r",(\s*[}\]])", r"\1", "".join(out))
 
 
 def _repair_quotes(s):
@@ -926,6 +962,13 @@ def _plan_call(job, system, user, tokens, what="기획", timeout=320, retry_time
             return parse_json(text_of(r))
         except Exception as e:
             job.event(f"{what} 요청 실패(다시 요청합니다): {str(e)[:120]}", "warn")
+            try:   # 깨진 응답 원문을 남긴다 — 어디서 깨졌는지 봐야 복구 규칙을 더한다(세로 제안서 장 2개가 통째로 빠짐, 2026-10-14)
+                d = os.path.join(job.dir, "_mockup")
+                os.makedirs(d, exist_ok=True)
+                open(os.path.join(d, f"fail-{re.sub(r'[^0-9A-Za-z가-힣]+', '_', what)[:40]}-{attempt}.txt"), "w", encoding="utf-8").write(
+                    f"{e}\n\n" + text_of(r))
+            except Exception:
+                pass
             if attempt:
                 raise
             tokens = int(tokens * 1.5)

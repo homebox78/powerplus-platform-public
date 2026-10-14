@@ -189,6 +189,8 @@ export function Upload({ engine, isAdmin = false, onUploaded, onCancel, onSettin
   const summary = !design
     ? content ? `'${content.file.name}' 을 표준 절차로 다듬습니다${pilot ? " — 대표 장 하나를 먼저 보여 드립니다" : ""}.` : "초안 .pptx 를 올려 주세요."
     : !ready ? "장표에 담을 내용을 적거나 파일을 올려 주세요."
+    : purpose === "submit"   // 세로 제안서 — 시안 없이 기획에서 바로 PPT(정해진 양식 + 도식의 조합이라 그림 시안이 필요 없다)
+    ? `${contexts.length ? `배경 자료 ${contexts.length}개를 읽고, ` : ""}RFP 목차대로 ${slides}쪽 안팎을 기획한 뒤 시안 없이 바로 PPT 를 만듭니다. 결과는 실제 PPT 를 쪽마다 캡처해 보여 드립니다.`
     : `${contexts.length ? `배경 자료 ${contexts.length}개를 읽고, ` : ""}${content ? `'${content.file.name}' 의 내용으로 ` : hasText ? "적어 주신 내용으로 " : "자료에서 핵심을 뽑아 "}${slides}장을 기획합니다. `
       + (mockups === "plan" ? "기획과 장마다 와이어프레임(화면 구성)을 먼저 보여 드립니다. 팀원과 함께 고친 뒤 고른 장만 시안 이미지를 만듭니다 (지금은 이미지 비용 없음)."
         : mockups === "sample" ? `이어서 대표 ${planOpts.sample}장만 시안 이미지를 만듭니다.` : "이어서 모든 장의 시안 이미지를 만듭니다.");
@@ -267,7 +269,7 @@ export function Upload({ engine, isAdmin = false, onUploaded, onCancel, onSettin
   const switchKind = (k: JobKind) => { if (k === kind) return; setKind(k); setItems([]); setErr(null); setStep(1); setFocus(null); };
 
   const last = !design || step === 3;
-  const startLabel = design ? (mockups === "plan" ? "기획 시작" : "기획 시작 (시안까지)") : "변환 시작";
+  const startLabel = design ? (purpose === "submit" ? "PPT 바로 만들기" : mockups === "plan" ? "기획 시작" : "기획 시작 (시안까지)") : "변환 시작";
   const canStart = ready && !working && !aiBlock && (!design || accentOk);
   const totalSize = items.reduce((a, i) => a + i.file.size, 0);
   const frontTxt = [front.cover && "표지", front.toc && "목차", front.divider && "간지"].filter(Boolean).join(" · ") || "없음";
@@ -283,7 +285,7 @@ export function Upload({ engine, isAdmin = false, onUploaded, onCancel, onSettin
     ...(purpose === "submit" ? [["톤", verticalToneName(vtone), 3, "vtone"] as [string, ReactNode, Step, string]] : []),
     ["서체", fontTxt, 2, "font"],
     ["장 수", slideUnset ? "5장 (장 수 미입력)" : `${slides}장`, 3, "count"],
-    ["시안", `${MODE_LABEL[mockups]}${mockups === "sample" ? ` ${planOpts.sample}장` : ""}`, 3, "timing"],
+    ...(purpose === "submit" ? [] : [["시안", `${MODE_LABEL[mockups]}${mockups === "sample" ? ` ${planOpts.sample}장` : ""}`, 3, "timing"] as [string, ReactNode, Step, string]]),
     ["강조색", <span className="inline-flex items-center gap-1.5 font-mono text-[13px]"><i className="w-3 h-3 rounded-full flex-none" style={{ background: accentOk ? accent : "var(--color-line-3)" }} />{accent}</span>, 3, "accent"],
     ["틀", frameTxt, 3, "frame"],
     ["구성", frontTxt, 3, "extras"],
@@ -556,7 +558,7 @@ export function Upload({ engine, isAdmin = false, onUploaded, onCancel, onSettin
                     )}
                   </div>
                 </Row>
-                <Row id="timing" style={hl("timing")} icon="image" title="시안 이미지 시점" sub="비용 대부분 발생">
+                {purpose !== "submit" && <Row id="timing" style={hl("timing")} icon="image" title="시안 이미지 시점" sub="비용 대부분 발생">
                   <div className="grid gap-2" style={{ gridTemplateColumns: "repeat(auto-fit,minmax(180px,1fr))" }}>
                     {([
                       ["plan", "와이어프레임을 먼저 받아 함께 고치고, 만들 장을 고릅니다", "이미지 비용 0"],
@@ -589,7 +591,7 @@ export function Upload({ engine, isAdmin = false, onUploaded, onCancel, onSettin
                       );
                     })}
                   </div>
-                </Row>
+                </Row>}
                 {purpose === "submit" && (
                   <Row id="vtone" style={hl("vtone")} icon="palette" title="톤" sub="머리 띠 · 간지 · 표 색">
                     <VerticalTonePicker value={vtone} onChange={(t) => { setVtone(t.id); setAccent(t.accent); }} disabled={working} />
@@ -759,15 +761,16 @@ export function Upload({ engine, isAdmin = false, onUploaded, onCancel, onSettin
               <div className="mt-3 p-3 rounded-md bg-white border border-line flex flex-col gap-1.5">
                 <div className="text-[13px] text-dim">예상 비용</div>
                 <div className="flex justify-between gap-2"><span className="whitespace-nowrap">기획 · 와이어프레임</span><span className="font-bold whitespace-nowrap">이미지 비용 0</span></div>
-                <div className="flex justify-between gap-2"><span className="whitespace-nowrap">시안 이미지</span>
-                  <span className="font-bold whitespace-nowrap">{mockups === "plan" ? "고른 장만 · 나중에" : mockups === "sample" ? `장당 비용 × ${planOpts.sample}장` : `장당 비용 × ${slides ? `${slides}장` : "전체 장 수"}`}</span></div>
+                {purpose === "submit" ? <div className="flex justify-between gap-2"><span className="whitespace-nowrap">시안 이미지</span><span className="font-bold whitespace-nowrap">없음 — PPT 를 바로 만들어 캡처로 보여 드림</span></div>
+                  : <div className="flex justify-between gap-2"><span className="whitespace-nowrap">시안 이미지</span>
+                  <span className="font-bold whitespace-nowrap">{mockups === "plan" ? "고른 장만 · 나중에" : mockups === "sample" ? `장당 비용 × ${planOpts.sample}장` : `장당 비용 × ${slides ? `${slides}장` : "전체 장 수"}`}</span></div>}
                 {isAdmin && ai && (ai.budget.default != null || ai.budget.monthly_cap != null) && <>
                   <div className="h-px bg-line-soft my-0.5" />
                   <div className="flex justify-between gap-2"><span className="whitespace-nowrap">작업당 한도</span><span className="font-bold font-mono whitespace-nowrap">{usd(ai.budget.default)}</span></div>
                   {ai.budget.monthly_cap != null && <div className="flex justify-between gap-2"><span className="whitespace-nowrap">이달 사용</span><span className="font-bold font-mono whitespace-nowrap">{usd(ai.budget.month_spent, 3)} / {usd(ai.budget.monthly_cap)}</span></div>}
                 </>}
                 <div className="text-[12.5px] text-faint leading-[1.45] break-keep">
-                  {mockups === "plan" ? "기획을 확인한 뒤 고른 장만 시안 이미지를 만듭니다. 비용은 그때 장 수만큼 듭니다." : "비용은 대부분 시안 이미지에서 납니다. 실제 금액은 작업의 「상세」에서 볼 수 있습니다."}
+                  {purpose === "submit" ? "글 AI 비용만 듭니다. 표지·목차·간지 배경은 파워에셋에서 고르고, 맞는 그림이 없을 때만 새로 만듭니다." : mockups === "plan" ? "기획을 확인한 뒤 고른 장만 시안 이미지를 만듭니다. 비용은 그때 장 수만큼 듭니다." : "비용은 대부분 시안 이미지에서 납니다. 실제 금액은 작업의 「상세」에서 볼 수 있습니다."}
                   {isAdmin && ai && (ai.budget.default != null || ai.budget.monthly_cap != null) && " 한도는 관리자 설정입니다."}
                 </div>
               </div>

@@ -225,6 +225,10 @@ def test_json_quote_repair():
     assert [x["n"] for x in pj('{"slides": [{"n": 1}]} {"slides": [{"n": 2}]}')["slides"]] == [1, 2]
     assert [x["n"] for x in pj('{"n": 3, "wire": {}}\n{"n": 4, "wire": {}}')["slides"]] == [3, 4]
     assert pj('{"slides": [{"n": 1}], "t": "a"}\n설명 {"x": 1}')["t"] == "a"
+    # 닫는 괄호가 하나 더 붙음 — 세로 제안서 표 블록 '…]]}}}, {"head"' 로 장 두 개가 통째로 빠졌다(2026-10-14)
+    r = pj('{"pages": [{"blocks": [{"kind": "table", "table": {"rows": [["a", "b"]]}}}, {"head": "x", "kind": "rows"}]}]}')
+    assert [b.get("kind") for b in r["pages"][0]["blocks"]] == ["table", "rows"]
+    assert pj('{"a": [1, 2, {"b": "c"}')["a"][2]["b"] == "c"   # 끝 괄호 모자람
 
 def test_divider_memo_tone():
     """간지 한 줄 — 약속(promise) 우선, 메모 말투 goal 은 버린다"""

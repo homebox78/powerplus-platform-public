@@ -183,6 +183,10 @@ final class KitPage
         $lnbTitle = trim((string) ($this->ref['lnb_title'] ?? ''));
         // 레퍼런스 LNB 가 이 유형의 페이지를 담고 있을 때만 쓴다 — 아니면 LNB 제목과 활성 항목이 따로 논다(대구 서구 FAQ: 제목 '부동산', 활성 '복지')
         $refTitle = self::labels([$this->ref['title'] ?? ''], 1, 1)[0] ?? '';
+        // 이름이 정해진 화면은 레퍼런스 제목이 그 화면다운 낱말일 때만 — 다른 사이트 인사말 화면 제목 '해양'이 인사말 페이지 이름·경로가 됐다(2026-10-14 판정 '메뉴와 본문')
+        $want = ['greeting' => '/인사|환영|소개|말씀/u', 'org_chart' => '/조직/u', 'history' => '/연혁|역사|발자취/u', 'location' => '/오시는|찾아|위치|약도|교통/u',
+            'faq' => '/자주|FAQ|질문|Q&A/iu', 'board_list' => '/공지|소식|보도|게시|공고|자료|알림|뉴스/u', 'board_view' => '/공지|소식|보도|게시|공고|자료|알림|뉴스/u'][$this->type] ?? null;
+        if ($want !== null && $refTitle !== '' && !preg_match($want, $refTitle)) { $refTitle = ''; }
         if ($lnb && $refTitle !== '' && in_array($refTitle, $lnb, true)) {
             $page = $refTitle;
             $title = self::labels([$lnbTitle], 1, 1)[0] ?? $defaults[0];
@@ -236,7 +240,7 @@ final class KitPage
         $this->blocks[] = 'header';
         $gnb = implode('', array_map(fn ($l, $i) => '<li><a href="#" class="gnb-main-trigger' . ($l === $m['title'] ? ' active' : '') . '">' . self::e($l) . '</a></li>', $m['gnb'], array_keys($m['gnb'])));
         return '<header id="krds-header" class="pg-header"><div class="pg-util"><div class="pg-inner"><ul><li><a href="#">로그인</a></li><li><a href="#">회원가입</a></li><li><a href="#">사이트맵</a></li><li><a href="#">ENGLISH</a></li></ul></div></div>'
-            . '<div class="pg-inner pg-brand"><h1 class="pg-logo"><a href="#">' . $this->logo() . '</a></h1>'
+            . '<div class="pg-inner pg-brand"><div class="pg-logo"><a href="#">' . $this->logo() . '</a></div>' // 서브의 h1 은 페이지 이름(아래 제목 줄) — 로고가 h1 이면 판정 h1 "?"(2026-10-14)
             . '<nav class="pg-gnb" aria-label="주 메뉴"><ul>' . $gnb . '</ul></nav>'
             . '<div class="pg-actions"><button type="button" class="pg-ico" aria-label="통합검색" aria-controls="pg-search" aria-expanded="false" data-layer>' . self::icon('search') . '</button><button type="button" class="pg-ico" aria-label="전체메뉴" aria-controls="pg-sitemap" aria-expanded="false" data-layer>' . self::icon('menu') . '</button></div></div></header>'
             . $this->layers($m);
@@ -282,7 +286,7 @@ final class KitPage
         $this->blocks[] = 'breadcrumb';
         $this->blocks[] = 'page_title';
         return '<div class="pg-titlebar"><nav class="krds-breadcrumb-wrap" aria-label="현재 경로"><ol class="breadcrumb"><li class="home"><a href="#" class="txt">홈</a></li><li><a href="#" class="txt">' . self::e($m['title']) . '</a></li><li><a href="#" class="txt" aria-current="page">' . self::e($m['page']) . '</a></li></ol></nav>'
-            . '<div class="pg-title-row"><h2 class="pg-title">' . self::e($m['page']) . '</h2><div class="pg-title-tools"><button type="button" class="pg-ico sm" aria-label="공유">' . self::icon('share') . '</button><button type="button" class="pg-ico sm" aria-label="인쇄">' . self::icon('print') . '</button></div></div></div>';
+            . '<div class="pg-title-row"><h1 class="pg-title">' . self::e($m['page']) . '</h1><div class="pg-title-tools"><button type="button" class="pg-ico sm" aria-label="공유">' . self::icon('share') . '</button><button type="button" class="pg-ico sm" aria-label="인쇄">' . self::icon('print') . '</button></div></div></div>';
     }
 
     private function contentTabs(array $labels, string $active): string
@@ -596,7 +600,8 @@ final class KitPage
         $html = $this->masthead() . $this->header($m) . $visual
             . '<div class="pg-inner pg-body">' . $this->lnb($m) . '<main id="content" class="pg-main">' . $this->titleBar($m) . $body . $this->satisfaction($dept, $withDept) . '</main></div>'
             . $this->footer();
-        $doc = "<!doctype html>\n<html lang=\"ko\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"><title>" . self::e($m['page'] . ' | ' . $this->p['org']) . "</title>\n"
+        $html = str_replace('href="#"', 'href="#content"', $html); // 빈 링크 대신 본문 앵커(판정 '링크 90% 이상 #', 2026-10-14)
+        $doc ="<!doctype html>\n<html lang=\"ko\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"><title>" . self::e($m['page'] . ' | ' . $this->p['org']) . "</title>\n"
             . WebFont::head([WebFont::canonical((string) preg_replace("/^'([^']+)'.*/", '$1', (string) ($this->tok['font'] ?? '')))]) . "\n"
             . '<link rel="stylesheet" href="' . self::kitCss() . '">' . "\n<style>" . $this->skin() . CssPrune::prune(self::CSS, $html, 'pg-', ['pg-skip']) . MockSearch::CSS . "</style></head>\n<body class=\"hb-kit\">\n<a class=\"pg-skip\" href=\"#content\">본문 바로가기</a>\n{$html}\n<script>" . self::JS . "</script><script>" . MockSearch::JS . "</script>\n</body></html>";
         return ['html' => $doc, 'composition' => ['layout' => 'kit_subpage', 'type' => $this->type, 'blocks' => $this->blocks, 'menu' => $m] + ($this->cut ? ['cut_for_height' => $this->cut] : []), 'samples' => array_values($this->samples)];

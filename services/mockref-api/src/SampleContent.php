@@ -354,6 +354,8 @@ final class SampleContent
             $to = $extra[$s] ?? (($s === $real || $s === $tail || (in_array($s, $full, true) && (preg_match('/^[A-Za-z]+$/', $s) || (count($parts) > 1 && ($s === $parts[0] || $s === $cut((string) $parts[0])))))) ? $p['org'] : $stem);
             // 태그 밖 텍스트에서만 (속성·URL 은 그대로)
             $html = preg_replace_callback('/>([^<]*)</u', static fn ($m) => '>' . str_replace($s, $to, $m[1]) . '<', $html) ?? $html;
+            // 화면 낭독·툴팁으로 읽히는 속성도 — 캐러셀 aria-label '모두의 가슴에 국민대학교 이전'이 남았다(2026-10-14). URL 속성(src·href)은 그대로
+            $html = preg_replace_callback('/\b(aria-label|alt|title|placeholder)="([^"]*)"/u', static fn ($m) => $m[1] . '="' . str_replace($s, $to, $m[2]) . '"', $html) ?? $html;
         }
         // 수집 텍스트의 실제 전화·이메일·도메인도 가상 값으로 (푸터 링크에 원 기관 대표번호가 그대로 남던 것 — 2026-09-25 테스트)
         $html = preg_replace_callback('/>([^<]*)</u', static function ($m) use ($p) {

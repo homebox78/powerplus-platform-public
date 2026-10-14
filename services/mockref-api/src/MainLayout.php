@@ -467,7 +467,7 @@ final class MainLayout
         switch (true) {
             // ── 비주얼 ─────────────────────────────
             case $t === 'main_visual' || ($photo === 'full_bleed' && !empty($s['text_on_photo']) && $w >= 1500 && !in_array($t, ['news_tabs', 'greeting_vision', 'quick_links', 'text_band'], true) && !((int) ($st['cols'] ?? 0) >= 3 && (int) ($st['images']['photos'] ?? 0) >= 3)): // 사진 여러 장이 열로 놓인 갤러리는 히어로가 아니다(성남시의회 의정 갤러리).  // 글 띠도 비주얼이 아니다(장학재단).  바로가기는 배경 무늬가 있어도 비주얼이 아니다(여수 '시민가이드', 2026-09-26)
-                $imgs = $take(['hero-city', 'hero-nature'], 3);
+                $imgs = $take(['hero-city', 'hero-nature', 'hero-keyvisual'], 3); // 키비주얼은 대상 묶음(공공기관·부처·기업·협회)일 때만 Samples 가 통과시킨다
                 $copy = [
                     ['[슬로건 또는 핵심 메시지]', '[한두 문장 요약]', '비전 보기'],
                     [$org . ', 더 가까운 행정으로', '신청부터 결과 확인까지, 이제 누리집에서 한 번에 끝냅니다.', '자세히 보기'],
@@ -501,6 +501,7 @@ final class MainLayout
                 $cnt = max($h > $w * 1.3 ? 5 : 3, min(5, $imgN));
                 // 한 자리엔 한 비율만 — 팝업(4:3)과 카드뉴스(1:1)를 섞으면 어느 쪽이든 빈 띠가 생긴다(ledger E2). 좁은 칸 = 팝업 4:3
                 $imgs = $take($w > 700 ? ['banner'] : ['popup'], $cnt);
+                if ($imgs === []) { $imgs = $take($w > 700 ? ['popup-wide'] : ['notice-square'], $cnt); } // 관공서 밖 종류는 그 종류용 공용 팝업(한 비율만, 2026-10-14)
                 $sl = $slides($imgs, static fn ($m, $i) => '<a href="#">' . $img($m, 'mm-cover mm-contain') . '</a>');
                 // 알림판 이미지는 비율 고정(정사각) — 칸이 더 높으면 남는 자리를 알림 제목 목록으로 채운다(들어가는 줄만 보인다)
                 static $popOff = 0; $off = $popOff; $popOff += 5;
@@ -521,6 +522,7 @@ final class MainLayout
                 }
                 if ($bnStack) { // 좁거나 세로로 큰 칸 = 배너를 세로로 쌓는다(칸 높이만큼만 보인다) — 캐러셀을 칸마다 두지 않는다
                     $imgs = $take(['banner'], 3);
+                    if ($imgs === []) { $imgs = $take(['strip-banner', 'popup-wide', 'news-thumb', 'place'], 3); } // 관공서 밖 종류(2026-10-14)
                     return ['<section class="mm-cell mm-card mm-bn-stack"' . $rs . ' aria-label="홍보 배너">' . $head($title ?? '홍보', '<a class="mm-more" href="#">' . MaterialIcon::label('전체보기', 'plus') . '</a>') . '<ul class="mm-fit">' . implode('', array_map(static fn ($m) => '<li><a href="#">' . $img($m) . '</a></li>', $imgs)) . '</ul></section>', 'banner_stack'];
                 }
                 if (in_array($photo, ['split_left', 'split_right'], true) || ($cards >= 2 && $w < 1100)) { // 사진+글 배너 카드
@@ -533,6 +535,14 @@ final class MainLayout
                     $per = max(2, min($per, (int) ceil(($w * 9 / 16) / max(1, $h * 0.9 - 54))));
                 }
                 $imgs = $take(['banner'], $per + 3);
+                if (count($imgs) < $per) { // 관공서 밖 종류는 관공서 문구 배너를 못 쓴다 → 그 종류용 띠 배너, 그것도 없으면 사진 카드(빈 레일이던 것, 2026-10-14 대학)
+                    $imgs = array_merge($imgs, $take(['strip-banner', 'popup-wide'], $per + 3 - count($imgs)));
+                }
+                if (count($imgs) < $per) {
+                    $ph = $take(['news-thumb', 'place', 'citizen'], min(4, $per));
+                    $cardsH = implode('', array_map(static fn ($m, $i) => '<a class="mm-promo" href="#">' . $img($m) . '<span><em>' . ($i ? '안내' : '소식') . '</em><strong>' . htmlspecialchars(trim((string) ($m['alt'] ?? '')) ?: '[게시물 제목]', ENT_QUOTES, 'UTF-8') . '</strong></span></a>', $ph, array_keys($ph)));
+                    return ['<section class="mm-cell mm-promos">' . $head($title ?? '주요 소식') . '<div class="mm-promo-grid" style="grid-template-columns:repeat(' . max(1, count($ph)) . ',1fr)">' . $cardsH . '</div></section>', 'promo_cards_fallback'];
+                }
                 $bn = implode('', array_map(static fn ($m) => '<li class="mm-bn"><a href="#">' . $img($m) . '</a></li>', $imgs));
                 return ['<section class="mm-cell mm-banners" style="--per:' . $per . '" data-carousel data-interval="3500" data-step aria-roledescription="carousel" aria-label="배너모음">' . $head($title ?? '배너모음', $ctrl('배너모음', max(1, count($imgs) - $per + 1))) . '<div class="mm-viewport"><ul class="mm-track mm-rail">' . $bn . '</ul></div></section>', 'banner_roll_' . $per];
 
@@ -621,7 +631,10 @@ final class MainLayout
                     $btns = implode('', array_map(static fn ($l) => '<li><a href="#">' . htmlspecialchars($l, ENT_QUOTES, 'UTF-8') . MainMockup::icon('next') . '</a></li>', array_slice($labels, 0, 6)));
                     $qs = $gov ? ['정책 브리핑', '민원 신청', '조직도', '찾아오시는 길', '국민 제안'] : ['카카오톡 채널', '대표전화', '조직도', '청사 안내', '찾아오시는 길'];
                     $rid = self::rid(); $ql = implode('', array_map(static fn ($l) => '<li><a href="#"><span class="mm-qi" aria-hidden="true">' . self::rowIcon($l, $rid) . '</span>' . htmlspecialchars($l, ENT_QUOTES, 'UTF-8') . '</a></li>', $qs));
-                    return ['<section class="mm-cell mm-vpanel mm-dark" style="background:' . $acc . '"><div class="mm-wrap mm-vpanel-in"><div class="mm-vpanel-who">' . $img($pt, 'mm-vpanel-img') . '<div><p class="mm-kicker">' . $e($res) . ' 여러분 반갑습니다</p><h2>' . $e(SampleContent::head($p)) . ' <strong>' . $e($p['name']) . '</strong> 입니다</h2>' . $sigImg . '</div><ul class="mm-vpanel-q">' . $ql . '</ul></div><ul class="mm-vpanel-btns">' . $btns . '</ul></div></section>', 'vision_panel'];
+                    // 판이 내용보다 크게 높으면(레퍼런스 칸 692px 등) 단색 면이 빈 띠로 보인다 → 기관 사진을 깔고 강조색을 88% 덮는다(2026-10-14 대학 초안 363px 빈칸)
+                    $bgImg = ($take(['hero-city', 'place', 'hero-nature', 'hero-keyvisual'], 1))[0] ?? null;
+                    $bgCss = $bgImg ? 'linear-gradient(color-mix(in srgb,' . $acc . ' 88%,transparent),color-mix(in srgb,' . $acc . ' 88%,transparent)),url(&quot;' . htmlspecialchars(Samples::url((string) $bgImg['file']), ENT_QUOTES, 'UTF-8') . '&quot;) center/cover,' . $acc : $acc;
+                    return ['<section class="mm-cell mm-vpanel mm-dark" style="background:' . $bgCss . '"><div class="mm-wrap mm-vpanel-in"><div class="mm-vpanel-who">' . $img($pt, 'mm-vpanel-img') . '<div><p class="mm-kicker">' . $e($res) . ' 여러분 반갑습니다</p><h2>' . $e(SampleContent::head($p)) . ' <strong>' . $e($p['name']) . '</strong> 입니다</h2>' . $sigImg . '</div><ul class="mm-vpanel-q">' . $ql . '</ul></div><ul class="mm-vpanel-btns">' . $btns . '</ul></div></section>', 'vision_panel'];
                 }
                 if ($full || $w >= 1200) {
                     return ['<section class="mm-cell mm-vision">' . $img($m) . '<div class="mm-wrap mm-vision-copy"><p class="mm-kicker">' . $e($p['title']) . '실</p><h2>[인사말 제목 — 한 문장]</h2><p>' . $e($res) . ' 여러분의 목소리에서 답을 찾겠습니다. 현장에서 듣고, 결과로 보여 드리겠습니다.</p><p class="mm-sign">' . $e(SampleContent::head($p)) . ' <strong>' . $e($p['name']) . '</strong>' . $sigImg . '</p><ul>' . implode('', array_map(static fn ($l) => '<li><a href="#">' . htmlspecialchars($l, ENT_QUOTES, 'UTF-8') . '</a></li>', $links)) . '</ul></div></section>', 'vision_band'];

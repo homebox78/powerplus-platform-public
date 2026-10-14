@@ -780,7 +780,8 @@ final class ReplicaKit
             $k = (string) $it['kind'];
             $total[$k] = ($total[$k] ?? 0) + 1;
             if (($st ?? null) === $k) { $row[5] = trim(str_replace('style=' . $k, '', $row[5])); } // 스타일 = 종류 이름이면 되풀이하지 않는다
-            $cap = str_starts_with($k, 'icon') ? 12 : 10; // 아이콘 한 줄은 12칸이면 찬다 — 더는 more 로
+            // 아이콘 한 줄은 12칸이면 찬다 — 더는 more 로. powerAssets 세트에서 온 아이콘 종류(2026-10-14, 28종)는 맛보기 4장만(묶음 크기)
+            $cap = in_array($k, Samples::ICON_KINDS, true) ? 12 : (str_starts_with($k, 'icon') ? 4 : 10);
             if (($byKind[$k] ?? 0) >= $cap) { continue; }
             $byKind[$k] = ($byKind[$k] ?? 0) + 1;
             $out[$k][] = $row;

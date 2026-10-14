@@ -12,7 +12,7 @@ final class Samples
 {
     /** 섹션 유형 → 쓸 kind (앞일수록 우선) */
     public const FOR_SECTION = [
-        'main_visual' => ['hero-city', 'hero-nature', 'sub-visual', 'hero-illust'],
+        'main_visual' => ['hero-city', 'hero-nature', 'sub-visual', 'hero-illust', 'hero-keyvisual'], // hero-keyvisual = powerAssets 키비주얼(공공기관·부처·기업·협회 대상만, 2026-10-14)
         'sub_visual' => ['sub-visual', 'hero-city', 'hero-nature'],
         'greeting_vision' => ['leader', 'leader-cutout'],
         'news_tabs' => ['news-thumb', 'leader-field'],
@@ -21,10 +21,10 @@ final class Samples
         'sns_video' => ['video-thumb', 'leader-field', 'news-thumb', 'citizen'],
         'banner_zone' => ['banner', 'strip-banner'],
         'promo_banner' => ['banner', 'strip-banner'],
-        'hero' => ['hero-nature', 'hero-city', 'banner'], // 본문 중간의 폭 가득 큰 사진 (2026-09-26)
+        'hero' => ['hero-nature', 'hero-city', 'banner', 'hero-keyvisual'], // 본문 중간의 폭 가득 큰 사진 (2026-09-26)
         'popup_zone' => ['popup', 'popup-wide', 'popup-tall', 'notice-square', 'card-news', 'poster'],
-        'info_cards' => ['citizen', 'place', 'icon-color', 'icon-iso', 'icon-flat', 'icon-glass', 'icon-gradient', 'icon-blue'],
-        'quick_links' => ['icon-set', 'icon-color', 'icon-iso', 'icon-flat', 'icon-glass', 'icon-gradient', 'icon-blue'], // 바로가기 아이콘 (2026-10-02)
+        'info_cards' => ['citizen', 'place', 'icon-color', 'icon-iso', 'icon-flat', 'icon-glass', 'icon-gradient', 'icon-blue', 'icon-*'],
+        'quick_links' => ['icon-set', 'icon-color', 'icon-iso', 'icon-flat', 'icon-glass', 'icon-gradient', 'icon-blue', 'icon-*'], // 바로가기 아이콘 (2026-10-02) · icon-* = powerAssets 아이콘 세트 전부(2026-10-14)
         'content' => ['citizen', 'place', 'leader-field'],
         'stats' => ['infographic'],
         'sns_feed' => ['card-news', 'notice-square', 'news-thumb'],
@@ -58,6 +58,9 @@ final class Samples
 
     /** 관공서가 아닌 묶음 — 대상 태그 없는 글자 그래픽(관공서 문구)을 받지 않는다 */
     private const NON_PUBLIC = ['univ', 'school', 'welfare', 'foundation', 'assoc', 'culture', 'biz', 'academy'];
+
+    /** 목업용으로 만든 아이콘 종류 — 그 밖의 icon-… 은 powerAssets 아이콘 세트(세트 이름 = 종류 = 스타일) */
+    public const ICON_KINDS = ['icon-set', 'icon-color', 'icon-iso', 'icon-flat', 'icon-glass', 'icon-gradient', 'icon-blue'];
 
     /** 묶음이 받아 주는 사진 대상 — 학교·교육원은 교육청용(edu) 사진도 쓴다 */
     private const TARGET_FAMILY = ['univ' => ['univ', 'edu'], 'school' => ['school', 'edu'], 'academy' => ['academy', 'edu']];
@@ -275,6 +278,8 @@ final class Samples
         $rows = [];
         foreach (self::all() as $it) {
             $ki = $kinds === [] ? 0 : array_search($it['kind'], $kinds, true);
+            // 'icon-*' = powerAssets 아이콘 세트 아무것이나(세트마다 스타일이 달라 아래 스타일 고르기가 한 세트로 묶는다)
+            if ($ki === false && str_starts_with((string) $it['kind'], 'icon-') && in_array('icon-*', $kinds, true)) { $ki = array_search('icon-*', $kinds, true); }
             if ($ki === false || in_array($it['id'], $exclude, true)) {
                 continue;
             }

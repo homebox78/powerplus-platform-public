@@ -68,7 +68,7 @@ final class SectionCode
         if (in_array('leader', $kinds, true) || $greetBody) { $hint = [$persona['gender'] === 'female' ? '여성' : '남성', '단색배경', ...$hint]; }
         // 폭 가득 사진으로 그리는 섹션엔 넓은 사진만 — 4:5 기관장 사진을 띠에 깔면 몸통만 보인다 (부천 열린시장실 띠, 2026-09-25 테스트)
         $heroLike = !$greetBody && (in_array($x['type'], ['main_visual', 'sub_visual'], true) || ($style['photo'] ?? '') === 'full_bleed' || !empty($style['text_on_photo']));
-        if ($heroLike) { $kinds = $x['type'] === 'sub_visual' ? ['sub-visual', 'hero-city', 'hero-nature'] : ['hero-city', 'hero-nature']; }
+        if ($heroLike) { $kinds = $x['type'] === 'sub_visual' ? ['sub-visual', 'hero-city', 'hero-nature'] : ['hero-city', 'hero-nature', 'hero-keyvisual']; }
         if ($rural && in_array('hero-city', $kinds, true)) { $kinds = ['hero-nature']; }
         $samples = array_map([Samples::class, 'view'], Samples::find($kinds, $hint, 4, (int) $x['id'], (array) ($x['exclude'] ?? []))); // exclude = 같은 페이지에서 이미 쓴 사진
         $tok['images'] = $samples;

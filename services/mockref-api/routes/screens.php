@@ -295,7 +295,7 @@ $router->get('/api/mockups/main', static function (): void {
     }
     $ref = trim((string) ($_GET['ref'] ?? ''));
     $ot = homebox_infer_ot(trim((string) ($_GET['org_type'] ?? '')), (string) ($_GET['org_name'] ?? ''));
-    $sc = homebox_main_ref($ot, $ref, (int) ($_GET['rank'] ?? 1));
+    $sc = homebox_main_ref($ot, $ref, (int) ($_GET['rank'] ?? 1), true); // 자동 조립 — 분해 품질 조건
     if ($sc === null) {
         Response::error(404, 'NOT_FOUND', '조건에 맞는 메인 레퍼런스가 없습니다.');
     }
@@ -394,9 +394,47 @@ function homebox_ot_chain(string $ot): array
     };
 }
 
-function homebox_main_ref(string $ot, string $ref, int $rank): ?array
+/**
+ * 분해 품질 조건(자동 조립 전용, 2026-10-14) — 대학·복지·재단 등 비관공서 레퍼런스는 분해가 틀린 곳이 많아(첫 화면 영상을 달력으로,
+ * 1,156px '바로가기', 이름 없는 줄 30%+) 자동 초안이 0~33점이었다. 이름 없는 줄 25% 미만 · 목록류 칸 760px 이하 · 위 260px 안에 머리.
+ */
+const HOMEBOX_CLEAN_MAIN = "(SELECT COALESCE(SUM(CASE WHEN x.section_type_id = 'unknown' THEN x.bbox_h ELSE 0 END), 0) / GREATEST(1, MAX(x.bbox_y + x.bbox_h)) FROM sections x WHERE x.screen_id = sc.id) < 0.25"
+    . " AND NOT EXISTS (SELECT 1 FROM sections x WHERE x.screen_id = sc.id AND x.bbox_h > 760 AND x.section_type_id IN ('calendar', 'quick_links', 'news_tabs', 'news_ticker', 'banner_zone', 'text_band'))"
+    . " AND EXISTS (SELECT 1 FROM sections x WHERE x.screen_id = sc.id AND x.bbox_y < 260 AND x.section_type_id IN ('header', 'gnb', 'masthead'))";
+
+/**
+ * 자동 초안(build_homepage·main_mockup) 판정 통과가 확인된 메인 레퍼런스 — 종류별 1·2…순위로 먼저 쓴다(2026-10-14).
+ * 관공서용으로 다듬은 조립 규칙이 비관공서 레퍼런스 대부분과 안 맞아(대학 1위 국민대 0점), 실제 판정으로 고른 곳만 적는다.
+ * 고칠 때는 운영 판정기(qa/check.mjs)로 85점+ 를 확인한 곳만 더한다.
+ */
+// 10-14 판정(운영 판정기, 비관공서 6종 × 후보 6곳 + 교차): 대학 덕성여대 89 · nanro(협회) 복지관 87·협회 86·문화재단 87·학교 87·기업 86 · 덕성여대 학교 87·기업 85.
+// 품질 조건만으로 고른 1순위는 0~67점이었다(대학 국민대 0·기업 8·복지관 0).
+const HOMEBOX_AUTO_MAIN_PREFER = [
+    'edu_univ_private' => ['duksung-ac-kr-main', 'nanro-kr-main'],
+    'edu_univ' => ['duksung-ac-kr-main', 'nanro-kr-main'],
+    'edu_college' => ['duksung-ac-kr-main', 'nanro-kr-main'],
+    'edu_school' => ['nanro-kr-main', 'duksung-ac-kr-main'],
+    'etc_welfare' => ['nanro-kr-main'],
+    'etc_assoc' => ['nanro-kr-main'],
+    'etc' => ['nanro-kr-main'],
+    'private_culture' => ['nanro-kr-main', 'duksung-ac-kr-main'],
+    'private_corp' => ['nanro-kr-main', 'duksung-ac-kr-main'],
+    'private_commerce' => ['nanro-kr-main'],
+    'private_agency' => ['nanro-kr-main'],
+    'private_personal' => ['nanro-kr-main'],
+];
+
+function homebox_main_ref(string $ot, string $ref, int $rank, bool $clean = false): ?array
 {
-    $where = ["sc.page_type_id = 'main'", "sc.status = 'published'", "sc.device = 'pc'", "s.status = 'published' AND " . homebox_src($ot, $ref) . " AND " . Homebox\RefFilter::NOT_FOREIGN];
+    if ($clean && $ref === '' && $ot !== '') {
+        $pre = HOMEBOX_AUTO_MAIN_PREFER[$ot] ?? [];
+        if ($rank >= 1 && $rank <= count($pre)) {
+            $row = homebox_main_ref($ot, $pre[$rank - 1], 1);
+            if ($row !== null) { $row['preferred'] = true; return $row; }
+        }
+        $rank = max(1, $rank - count($pre)); // 검증된 곳 다음 순위부터 원래 고르기
+    }
+    $where = ["sc.page_type_id = 'main'", "sc.status = 'published'", "sc.device = 'pc'", "s.status = 'published' AND " . homebox_src($ot, $ref) . " AND " . Homebox\RefFilter::NOT_FOREIGN . ($clean && $ref === '' ? ' AND ' . HOMEBOX_CLEAN_MAIN : '')];
     $args = [];
     if ($ref !== '') { $where[] = 's.slug = ?'; $args[] = $ref; }
     elseif ($ot !== '') { $where[] = '(o.org_type_id = ? OR o.org_type_id LIKE ?)'; $args[] = $ot; $args[] = $ot . '%'; }
@@ -425,6 +463,7 @@ function homebox_main_ref(string $ot, string $ref, int $rank): ?array
             if ($row !== null) { $row['widened_to'] = $alt !== '' ? $alt : 'all'; break; }
         }
     }
+    if ($row === null && $clean) { return homebox_main_ref($ot, $ref, $rank); } // 품질 조건에 맞는 곳이 없으면 예전대로
     return $row;
 }
 
@@ -485,7 +524,7 @@ $router->get('/api/mockups/site', static function (): void {
         Response::error(402, 'UPGRADE_REQUIRED', '홈페이지 목업은 Pro 이상에서 제공합니다.', ['plan' => $plan['id']]);
     }
     $ot = homebox_infer_ot(trim((string) ($_GET['org_type'] ?? '')), (string) ($_GET['org_name'] ?? ''));
-    $sc = homebox_main_ref($ot, trim((string) ($_GET['ref'] ?? '')), (int) ($_GET['rank'] ?? 1));
+    $sc = homebox_main_ref($ot, trim((string) ($_GET['ref'] ?? '')), (int) ($_GET['rank'] ?? 1), true); // 자동 조립 — 분해 품질 조건
     if ($sc === null) { Response::error(404, 'NOT_FOUND', '조건에 맞는 메인 레퍼런스가 없습니다.'); }
     $on = homebox_client_org((string) ($_GET['org_name'] ?? ''));
     if ($on !== '') { $sc['persona_name'] = $on; }

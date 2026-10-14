@@ -58,6 +58,7 @@ EXTRA = {   # 서체 파일과 함께 넣을 라이선스 문서(배포처가 �
     "Cafe24PROSlim": ["Cafe24PROSlimMax-license.pdf"],
     "HadaRound": ["HadaRound-COPYRIGHT.txt"],
     "HakgyoansimAllimjang": ["HakgyoansimAllimjang-license.txt"],
+    "EliceDXNeolli": ["EliceDXNeolli-license.pdf"],
 }
 
 

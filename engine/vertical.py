@@ -144,11 +144,13 @@ FONT = {"title": TITLE0, "body": VBODY[VBODY_DEFAULT]}
 def use_fonts(title=None, body=None):
     """opts.font_title · font_body → FONT. 모르는 값이면 기본(목록 첫 줄)"""
     t = TITLE0
+    TITLE_IS_BOLD[0] = False
     if title and title != "gmarket":
         try:
             import fontset
             if title in fontset.TITLES:
                 t = fontset.TITLES[title]
+                TITLE_IS_BOLD[0] = fontset.TITLE_BOLD.get(title, False)
         except Exception:
             pass
     FONT["title"], FONT["body"] = t, VBODY.get(str(body or ""), VBODY[VBODY_DEFAULT])
@@ -197,6 +199,9 @@ except Exception:
     TITLE_TRACK = -0.015
 
 
+TITLE_IS_BOLD = [False]   # use_fonts 가 정한다
+
+
 def track_title(prs):
     """제목 서체로 쓴 글자(표지·목차·간지·쪽 제목·띠)의 자간을 조금 좁힌다 — 양식의 원래 자간(-300~+50)에 크기 × TITLE_TRACK 을 더한다.
     자간 0 이 명시된 글자(뱃지 — 자간 없이 크기를 잰다)는 건너뛴다"""
@@ -213,6 +218,8 @@ def track_title(prs):
             ea = rp.find(f"{{{A}}}ea")
             if not ((lat is not None and lat.get("typeface") == face) or (ea is not None and ea.get("typeface") == face)):
                 continue
+            if TITLE_IS_BOLD[0]:
+                rp.set("b", "1")   # 가족 이름 + 굵게로 고르는 제목 서체(엘리스 DX널리체) — 뱃지 글도
             if rp.get("spc") == "0":
                 continue
             sz = int(rp.get("sz") or 1800)

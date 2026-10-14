@@ -11,6 +11,7 @@ import osdep
 # 목록은 fonts/fonts.json(웹의 서체 고르기도 같은 파일을 읽는다) — 첫 줄이 기본
 _LIST = json.load(open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "fonts", "fonts.json"), encoding="utf-8"))
 TITLES = {x["id"]: (x["name"], x["face"], x["file"]) for x in _LIST["title"]}            # id: (보이는 이름, 서체 이름, 파일)
+TITLE_BOLD = {x["id"]: bool(x.get("bold")) for x in _LIST["title"]}   # 가족 이름 + 굵게 속성으로 고르는 제목 서체(엘리스 DX널리체)
 BODIES = {x["id"]: (x["name"], tuple(x["faces"]), tuple(x["files"]) if x.get("files") else None) for x in _LIST["body"]}   # id: (보이는 이름, 4단계, 파일들)
 DEFAULT_TITLE, DEFAULT_BODY = _LIST["title"][0]["id"], _LIST["body"][0]["id"]
 ASTA = ("Asta Sans Light", "Asta Sans Medium", "Asta Sans SemiBold", "Asta Sans ExtraBold")
@@ -44,6 +45,7 @@ def pick(title=None, body=None):
 
 TITLE_ID, BODY_ID, KEY_FONT, FACES, NAME = pick(os.environ.get("PD_FONT_TITLE"), os.environ.get("PD_FONT_BODY"))
 LIGHT, BODY, SEMI, BOLD = FACES
+KEY_BOLD = TITLE_BOLD.get(TITLE_ID, False)   # 제목 서체를 입힐 때 굵게도 켠다
 
 
 def env(title, body):

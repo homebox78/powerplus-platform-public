@@ -1,10 +1,6 @@
 {
- "A2Z 8 ExtraBold": {
-  "base_em": 0.387,
-  "scale": 0.9928
- },
  "Asta Sans": {
-  "base_em": 0.3583,
+  "base_em": 0.3642,
   "scale": 0.9856
  },
  "Asta Sans Bold": {
@@ -12,12 +8,16 @@
   "scale": 0.9879
  },
  "Asta Sans ExtraBold": {
-  "base_em": 0.3591,
+  "base_em": 0.365,
   "scale": 0.9879
  },
  "Asta Sans Medium": {
-  "base_em": 0.3583,
-  "scale": 0.9856
+  "base_em": 0.3632,
+  "scale": 0.9993
+ },
+ "Elice DX Neolli": {
+  "base_em": 0.2621,
+  "scale": 1.0005
  },
  "Freesentation 2 ExtraLight": {
   "base_em": 0.3644,

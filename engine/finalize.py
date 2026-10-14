@@ -62,7 +62,7 @@ def fit_pt(text, width_in):
     """키메시지가 한 줄에 들어가는 가장 큰 크기(23 → 17pt). 실제 서체로 잰다"""
     try:
         from PIL import ImageFont
-        path = fontset.INSTALLED[KEY_FONT.lower()]
+        path = fontset.INSTALLED.get(KEY_FONT.lower()) or fontset.title_file()   # 설치 이름으로 못 찾으면 엔진 서체 파일로
         w100 = ImageFont.truetype(path, 100).getlength(text)   # 100pt 일 때 폭(pt)
     except Exception:
         w100 = len(text) * 88
@@ -498,6 +498,8 @@ if "--unify-only" in sys.argv:   # 표지·목차·간지처럼 키메시지·�
                     el = rPr.find(A + tag)
                     if el is not None:
                         el.set("typeface", KEY_FONT)
+                if fontset.KEY_BOLD:
+                    rPr.set("b", "1")   # 가족 이름 + 굵게로 고르는 제목 서체
                 # 큰 글자는 탄탄하게 — 사용자가 표지 사업명(35.5pt)에 맞춘 값: 문자 간격 좁게 0.6pt, 줄 간격 고정 42pt.
                 # 다른 크기에는 같은 비율로 — 자간 = 크기 × −1.7%, 줄 간격 = 크기 × 1.18 (pt 고정)
                 z = int(rPr.get("sz") or 0) / 100
@@ -553,6 +555,8 @@ if "--polish" in sys.argv:   # 초안 다듬기 — 배치는 그대로 두고 �
                     el = rPr.find(A + tag)
                     if el is not None:
                         el.set("typeface", KEY_FONT)
+                if fontset.KEY_BOLD:
+                    rPr.set("b", "1")
                 rPr.set("spc", str(min(int(rPr.get("spc") or 0), round(fontset.TITLE_TRACK * int(rPr.get("sz"))))))   # 제목 서체 자간 조금 더 좁게 — 다시 돌아도 같은 값(더 좁아지지 않게)
                 nkey += 1
         ncon += readability(no, slide, None)
@@ -586,6 +590,8 @@ elif not FONTS_ONLY:
                     r.font.size = Pt(KEY_PT)
                     r.font.bold = None
                     set_font(r, KEY_FONT)
+                    if fontset.KEY_BOLD:
+                        r.font.bold = True
                     r._r.get_or_add_rPr().set("spc", str(round(fontset.TITLE_TRACK * KEY_PT * 100)))   # 키메시지도 제목 서체 자간
             if color_keywords(key.text_frame, keywords(no)):
                 nemph += 1

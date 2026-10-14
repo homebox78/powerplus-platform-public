@@ -18,7 +18,7 @@ cd "$ROOT/engine"
 PY=$(command -v python3 || command -v python)
 "$PY" tests/test_known.py || { echo "회귀 시험 실패 — 배포 중단"; exit 3; }
 FILES=$(ls *.py *.md *.sh *.ps1 *.bat config.example.json 2>/dev/null | grep -v '^README.md$')
-FILES="$FILES known_errors.json pipeline skill"   # 기본 규칙 원천 · 초안 다듬기 도구·si-deck 스킬 사본(2026-10-12)
+FILES="$FILES known_errors.json pipeline skill templates"   # 기본 규칙 원천 · 초안 다듬기 도구·si-deck 스킬 사본(2026-10-12) · 세로 제안서 기본 양식(2026-10-14)
 
 if [ "${FORCE:-0}" != "1" ]; then
   busy=$("${SSH[@]}" "sudo mysql -N pp_platform -e \"SELECT COUNT(*) FROM deck_jobs WHERE status='running' AND deleted_at IS NULL\"")
@@ -34,4 +34,8 @@ tar -cf - $FILES | "${SSH[@]}" "set -e; rm -rf /tmp/pd-eng && mkdir -p /tmp/pd-e
   journalctl -u powerdeck-worker -n 5 --no-pager | tail -5"
 # 디자인 지침(engine/reference-guide) → ~/powerDeck/reference/guide (design.py 가 기획·시안 때 읽는다)
 (cd "$ROOT/engine/reference-guide" && tar -cf - *.md) | "${SSH[@]}" "mkdir -p ~/powerDeck/reference/guide && tar -xf - -C ~/powerDeck/reference/guide"
+# 참조 폴더 확인(R24, 2026-10-14) — 서버 이전 때 guide(10-12)·styles·front(10-14)가 빠져, 디자인 타입·표지 템플릿 규칙 없이 기본값으로 돌았다.
+# 빠졌으면 이 PC 의 D:\powerDeck\reference 에서 올리고 scripts/reference-push.sh 로 묶음을 다시 만든다(그림 데이터라 저장소에 두지 않는다)
+miss=$("${SSH[@]}" 'r=~/powerDeck/reference; for f in styles/styles.json front/templates.json guide/학습-표지목차간지.md mockups/표지템플릿; do [ -e "$r/$f" ] || echo "$f"; done')
+if [ -n "$miss" ]; then echo "⚠️ 서버 엔진 참조 폴더에 없음: $miss — 디자인 타입·표지 규칙이 빠진 채로 돈다"; exit 4; fi
 echo "엔진 배포 완료 (백업 worker-bak-$TS.tgz)"

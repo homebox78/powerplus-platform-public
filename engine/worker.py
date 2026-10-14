@@ -1223,7 +1223,8 @@ def main():
             time.sleep(2)
 
 
-design.setup({"req": req, "download": download, "put_file": put_file, "CFG": CFG, "HERE": HERE, "log": log, "claude_exe": claude_exe})
+design.setup({"req": req, "download": download, "put_file": put_file, "CFG": CFG, "HERE": HERE, "log": log, "claude_exe": claude_exe,
+              "upload_after": upload_after, "text_map": text_map})   # 세로 제안서(vertical.py)가 기획 단계에서 결과까지 끝낸다
 
 if __name__ == "__main__":
     main()

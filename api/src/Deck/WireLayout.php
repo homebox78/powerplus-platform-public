@@ -69,6 +69,11 @@ final class WireLayout
         if ($k === 'isostack') return $th + max(3, $nn) * 2.6 * $em;
         if ($k === 'gauge') return $th + 8.5 * $em + (count($lines) > $nn ? 1.2 * $em : 0);
         if ($k === 'proportion') return $th + 4.6 * $em + (count($lines) > $nn ? 1.2 * $em : 0);
+        // 2026-10-14 원본 대조 확장 4종(docs/ppt-레퍼런스-디자인-학습-2026-10-14-원본대조.md)
+        if ($k === 'converge') return $th + max(11, 3.0 * max(1, (int) ceil($nn / 2)) + 4) * $em;   // 왼쪽 문제·오른쪽 해결 카드 + 가운데 원
+        if ($k === 'ridge') return $th + 14 * $em;   // 오르는 능선 + 위 연도 카드·아래 성과 알약
+        if ($k === 'petal') return max(13, 2.0 * $nn + 6) * $em;   // 가운데 큰 원 + 둘레 꽃잎 + 좌우 설명
+        if ($k === 'stage') return $th + 14 * $em;   // 원기둥 기단 + 고리 + 떠 있는 원
         if ($k === 'phase') {
             $n = max(1, count($lines));
             $cpl = self::cpl(($w - 3) / $n, 0.8);
@@ -197,7 +202,7 @@ final class WireLayout
 
     private static function kindClass(string $k): string
     {
-        return $k === 'band' ? 'band' : (in_array($k, ['person', 'image', 'screen', 'map', 'chart', 'flow', 'gantt', 'phase', 'fishbone', 'hub', 'pyramid', 'matrix', 'funnel', 'cycle', 'venn', 'roadmap', 'isostack', 'gauge', 'proportion'], true) ? 'visual' : 'text');
+        return $k === 'band' ? 'band' : (in_array($k, ['person', 'image', 'screen', 'map', 'chart', 'flow', 'gantt', 'phase', 'fishbone', 'hub', 'pyramid', 'matrix', 'funnel', 'cycle', 'venn', 'roadmap', 'isostack', 'gauge', 'proportion', 'converge', 'ridge', 'petal', 'stage'], true) ? 'visual' : 'text');
     }
 
     /** 글이 하나도 없는 글 상자('※ 보강 필요'만 든 것 포함) */
@@ -361,7 +366,7 @@ final class WireLayout
     public static function check(array $wire, array $slide = []): array
     {
         $out = [];
-        $name = static fn(array $b) => '「' . (mb_substr(trim((string) ($b['t'] ?? '')), 0, 14) ?: ['panel' => '패널', 'card' => '카드', 'table' => '표', 'chart' => '그래프', 'flow' => '흐름', 'band' => '결론 띠', 'badge' => '강조', 'text' => '글', 'gantt' => '일정', 'phase' => '단계', 'kpi' => '수치', 'fishbone' => '원인 분석', 'hub' => '허브', 'pyramid' => '피라미드', 'matrix' => '2×2', 'funnel' => '깔때기', 'cycle' => '순환', 'venn' => '벤 도식', 'roadmap' => '로드맵', 'isostack' => '계층', 'gauge' => '달성률', 'proportion' => '비율 막대'][$b['k'] ?? ''] ?? '그림') . '」';
+        $name = static fn(array $b) => '「' . (mb_substr(trim((string) ($b['t'] ?? '')), 0, 14) ?: ['panel' => '패널', 'card' => '카드', 'table' => '표', 'chart' => '그래프', 'flow' => '흐름', 'band' => '결론 띠', 'badge' => '강조', 'text' => '글', 'gantt' => '일정', 'phase' => '단계', 'kpi' => '수치', 'fishbone' => '원인 분석', 'hub' => '허브', 'pyramid' => '피라미드', 'matrix' => '2×2', 'funnel' => '깔때기', 'cycle' => '순환', 'venn' => '벤 도식', 'roadmap' => '로드맵', 'isostack' => '계층', 'gauge' => '달성률', 'proportion' => '비율 막대', 'converge' => '수렴-확산', 'ridge' => '능선 연혁', 'petal' => '꽃잎 전략', 'stage' => '플랫폼 무대'][$b['k'] ?? ''] ?? '그림') . '」';
         // 화면 밖 · 헤드라인 자리
         foreach ($wire as $b) {
             if ($b['y'] < 12.5) $out[] = $name($b) . ' 상자가 헤드라인 자리(맨 위)를 덮습니다';

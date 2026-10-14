@@ -439,7 +439,7 @@ export function Upload({ engine, isAdmin = false, onUploaded, onCancel, onSettin
                 {/* 태블릿·모바일은 성격 뱃지를 숨기고 카드를 줄여 한 줄 2개(모바일은 쌓기) — 데스크톱(lg)만 뱃지 */}
                 <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
                   {([["present", "발표용", "짧은 시간에 '왜 우리인가'를 남긴다", "play_arrow", ["한 장 한 메시지", "표 → 도식", "설명은 발표 대본으로", "10분 ≈ 15–20장"]],
-                     ["submit", "제출용", "평가위원이 혼자 읽고 점수를 매긴다", "description", ["RFP 순서대로", "평가 항목 빠짐없이", "근거 · 표 · 산출물 촘촘히"]]] as const).map(([k, t, d, ic, tags]) => {
+                     ["submit", "제출용", "A4 세로 제안서를 자동으로 만든다", "description", ["RFP 권고 목차대로", "표지 · 목차 · 간지 · 본문", "배경은 powerAssets 우선"]]] as const).map(([k, t, d, ic, tags]) => {
                     const on = purpose === k;
                     return (
                       <button key={k} type="button" onClick={() => setPurpose(k)} aria-pressed={on} disabled={working}

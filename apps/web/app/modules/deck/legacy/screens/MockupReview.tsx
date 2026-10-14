@@ -732,7 +732,7 @@ export function MockupReview({ job, onChange, isAdmin, me, onLogout }: { job: Jo
     ])];
     const groups = Object.entries(slides.reduce<Record<string, PlanSlide[]>>((g, s) => { const k = (s.chapter ?? (s.section ?? "").split(" · ")[0])!.trim() || "본문"; (g[k] ??= []).push(s); return g; }, {}));
     return (
-      <div className="flex flex-col gap-5">
+      <div className={cn("flex flex-col gap-5", ovMode === "canvas" && "min-h-full")}>
         {/* 제목만 읽기 · 보강 요청 목록 — 내용만큼 늘어나고(세로 스크롤은 바깥 하나, 2026-10-13 카드를 뚫고 나가던 것) 펼친 둘은 같은 높이, 접으면 머리줄만 */}
         <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_380px] items-stretch">
           <div className={cn("rounded-md bg-white border border-line flex flex-col min-h-0 self-start", ovOpen.t && "self-stretch")}>

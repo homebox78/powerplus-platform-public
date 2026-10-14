@@ -43,6 +43,10 @@ export const KINDS: { k: WireKind; label: string; hint: string }[] = [
   { k: "isostack", label: "계층", hint: "비스듬히 쌓은 시스템 층" },
   { k: "gauge", label: "달성률", hint: "도넛 링 + 가운데 % 1~4개" },
   { k: "proportion", label: "비율 막대", hint: "한 막대를 비율대로 나눔" },
+  { k: "converge", label: "수렴-확산", hint: "문제 카드 → 가운데 답 → 해결 카드" },
+  { k: "ridge", label: "능선 연혁", hint: "오르는 능선 위 연도·성과" },
+  { k: "petal", label: "꽃잎 전략", hint: "가운데 큰 숫자 + 둘레 꽃잎 3~6개" },
+  { k: "stage", label: "플랫폼 무대", hint: "기단 위에 올라선 서비스들" },
   { k: "map", label: "지도", hint: "현장·거점 분포" },
   { k: "badge", label: "강조", hint: "큰 수치·강조 배지(강조색)" },
   { k: "band", label: "결론 띠", hint: "아래 한 줄 결론(네이비)" },
@@ -53,14 +57,14 @@ const KIND_ICON: Record<WireKind, string> = {
   panel: "web_asset", card: "crop_square", person: "person", image: "image", screen: "desktop_windows", chart: "bar_chart",
   table: "table", flow: "double_arrow", map: "location_on", badge: "percent", band: "call_to_action", text: "notes",
   gantt: "view_timeline", phase: "stairs", kpi: "123", fishbone: "account_tree", hub: "hub", pyramid: "change_history", matrix: "grid_view",
-  funnel: "filter_alt", cycle: "autorenew", venn: "join", roadmap: "route", isostack: "layers", gauge: "donut_large", proportion: "stacked_bar_chart",
+  funnel: "filter_alt", cycle: "autorenew", venn: "join", roadmap: "route", isostack: "layers", gauge: "donut_large", proportion: "stacked_bar_chart", converge: "merge", ridge: "landscape", petal: "filter_vintage", stage: "deployed_code",
 };
 /** 상자를 새로 넣을 때의 기본 크기 [폭, 높이] (본문 기준 %). 본문이 가로로 넓어(약 16:9) 같은 길이로 보이려면 높이 % 가 폭 % 의 1.77배다 */
 const KIND_SIZE: Record<WireKind, [number, number]> = {
   panel: [26, 50], card: [22, 26], person: [14, 46], image: [26, 34], screen: [32, 36], chart: [30, 34],
   table: [44, 30], flow: [60, 20], map: [26, 44], badge: [16, 20], band: [96, 10], text: [30, 12],
   gantt: [96, 50], phase: [64, 36], kpi: [44, 22], fishbone: [64, 44], hub: [44, 50], pyramid: [36, 50], matrix: [40, 54],
-  funnel: [36, 54], cycle: [40, 60], venn: [40, 54], roadmap: [96, 40], isostack: [44, 54], gauge: [44, 30], proportion: [60, 20],
+  funnel: [36, 54], cycle: [40, 60], venn: [40, 54], roadmap: [96, 40], isostack: [44, 54], gauge: [44, 30], proportion: [60, 20], converge: [96, 54], ridge: [96, 46], petal: [70, 60], stage: [64, 56],
 };
 const KIND = Object.fromEntries(KINDS.map((x) => [x.k, x])) as Record<WireKind, (typeof KINDS)[number]>;
 

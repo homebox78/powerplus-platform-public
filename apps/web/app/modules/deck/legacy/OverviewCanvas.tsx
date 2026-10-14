@@ -27,9 +27,11 @@ type SlotData = { h: number };
 type Lists = number[][];   // 줄(장)마다 쪽 번호
 
 const Card = ({ data }: NodeProps<Node<CardData>>) => (
-  <div className={cn("w-[260px] flex flex-col gap-1.5 p-2 rounded-md bg-white cursor-pointer",
-    data.lift ? "shadow-[0_0_0_2px_var(--color-point),0_8px_24px_rgba(0,0,0,0.18)] cursor-grabbing"
-      : data.on ? "shadow-[0_0_0_2px_var(--color-point)]" : "shadow-[0_0_0_1px_var(--color-line-3)] hover:shadow-[0_0_0_1.5px_var(--color-point)]")}>
+  // 테두리는 그림자(box-shadow)가 아니라 border — 축소 보기에서 2px 그림자는 1px 아래로 줄어 변이 군데군데 사라진다(border 는 최소 1px 로 그려짐).
+  // 2px 일 때 안쪽 여백을 1px 줄여 글·그림 자리가 움직이지 않게.
+  <div className={cn("w-[260px] flex flex-col gap-1.5 rounded-md bg-white cursor-pointer",
+    data.lift ? "border-2 border-[var(--color-point)] p-[7px] shadow-[0_8px_24px_rgba(0,0,0,0.18)] cursor-grabbing"
+      : data.on ? "border-2 border-[var(--color-point)] p-[7px]" : "border border-[var(--color-line-3)] p-2 hover:border-2 hover:border-[var(--color-point)] hover:p-[7px]")}>
     <Handle type="target" position={Position.Left} className={PORT} isConnectable={false} />
     <div className="relative rounded-md border border-line overflow-hidden bg-white pointer-events-none">{data.thumb}{data.badge}</div>
     <div className="flex items-center gap-1.5 px-1 text-[12.5px] text-dim min-w-0">
@@ -140,7 +142,8 @@ export function OverviewCanvas({ groups, sel, title, thumb, badge, onOpen, onReo
   }, [drag, onReorder, pending, real, groups]);
 
   return (
-    <div className="relative h-[calc(100vh-260px)] min-h-[440px] rounded-md border border-line bg-panel overflow-hidden">
+    // 높이는 부모가 준다(flex-1) — 고정 calc 로는 좌우 칸보다 짧게 끝났다(2026-10-14)
+    <div className="relative flex-1 min-h-[440px] rounded-md border border-line bg-panel overflow-hidden">
       <ReactFlow
         nodes={view.nodes} edges={view.edges} nodeTypes={nodeTypes}
         onNodesChange={onNodesChange} nodesDraggable={!!onReorder && !pending}

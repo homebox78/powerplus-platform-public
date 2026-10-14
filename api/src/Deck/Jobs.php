@@ -488,7 +488,7 @@ final class Jobs
     /** $ai: AI 가 낸 것이면 자리표시 상자를 거른다(사람이 손으로 적은 것은 그대로 둔다) */
     public static function wire(array $in, bool $ai = false): array
     {
-        $kinds = ['panel', 'card', 'person', 'image', 'screen', 'chart', 'table', 'flow', 'map', 'badge', 'band', 'text', 'gantt', 'phase', 'kpi', 'fishbone', 'hub', 'pyramid', 'matrix', 'funnel', 'cycle', 'venn', 'roadmap', 'isostack', 'gauge', 'proportion'];
+        $kinds = ['panel', 'card', 'person', 'image', 'screen', 'chart', 'table', 'flow', 'map', 'badge', 'band', 'text', 'gantt', 'phase', 'kpi', 'fishbone', 'hub', 'pyramid', 'matrix', 'funnel', 'cycle', 'venn', 'roadmap', 'isostack', 'gauge', 'proportion', 'converge', 'ridge', 'petal', 'stage'];
         $out = [];
         foreach (array_slice($in, 0, 60) as $b) {
             if (!is_array($b)) continue;

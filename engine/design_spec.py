@@ -28,7 +28,7 @@ BASE = {
     ],
     "form": [
         "FORM FOLLOWS CONTENT: draw each block as the shape its content is, never as 'a box with a header band and a bullet list'. A schedule is a Gantt grid, stages are a rising staircase, a process is chevrons, results are big numbers, trends are a chart, current-vs-proposed is a small grey side against a large navy side.",
-        "ONE HERO: the wireframe's widest form block (gantt / phase / flow / kpi / chart / table / fishbone / hub / pyramid / matrix / funnel / cycle / venn / roadmap / isostack / gauge / proportion / screen) is the hero — it is the largest and darkest thing on the slide; the blocks beside it are lighter, smaller and quieter (Big–Middle–Small).",
+        "ONE HERO: the wireframe's widest form block (gantt / phase / flow / kpi / chart / table / fishbone / hub / pyramid / matrix / funnel / cycle / venn / roadmap / isostack / gauge / proportion / converge / ridge / petal / stage / screen) is the hero — it is the largest and darkest thing on the slide; the blocks beside it are lighter, smaller and quieter (Big–Middle–Small).",
         "READING FLOW: left = situation/evidence, center = our device (the hero), right = result/effect — or top → bottom. Make the flow visible with one or two large arrows or a progression of tone, not with many small arrows.",
         "Bullet lists stay short (2–5 lines) and live inside a block that already has a visual form; a slide must not be a grid of bullet boxes.",
         "NO EMPTY OR FILLER BOXES: draw only the blocks in the wireframe. Never add a box that holds only a title or one word, and never leave a box without its content.",
@@ -52,10 +52,21 @@ BASE = {
         "HUB: one dark {primary} circle in the center (our platform), 4–8 satellite nodes evenly around it on thin 1.5 px connectors; each node = small rounded box, bold name + one short line. No arrows between satellites.",
         "PYRAMID: 3–5 stacked trapezoid layers, the top narrowest and darkest ({primary}), lighter going down; layer name centered inside; one-line descriptions to the right on thin leader lines, all left-aligned on one x.",
         "2×2 MATRIX: an L-shaped axis with the axis names in plain text (horizontal name at bottom-right with '→', vertical name above the top-left with '↑'); the top-right quadrant is the target — filled {primary} with white text, the other three pale tint.",
+        # 2026-10-14 원본 대조 보강(본문 228장·해외 레퍼런스 80장 원본 확인) — 반복 확인된 표현
+        "KEY MESSAGE LINE: directly under the header band, one centered key-message sentence (optionally in 「 」 or [ ]) where only the key phrase takes {accent}; it is the slide's thesis, not a second title.",
+        "CURRENT vs SOLUTION CARDS: for problem→solution, a left card with a grey-blue head (#64748B, '현황/AS-IS') and a right card with a {primary} head ('개선/TO-BE'), joined by one wedge arrow; the right card is slightly larger.",
+        "SORTED BARS: a ranking chart sorts bars by value (largest first); the largest bars are darkest {primary}, smaller ones lighter tint, irrelevant 'others' in grey; one callout pill points at the bar the conclusion is about.",
+        "FUNNEL WITH ROWS: each funnel layer lines up with a row — a short description on the left and the layer's number on the right at exactly the same height; only the one layer the message is about gets an {accent} band.",
+        "HUB WITH TOTAL: when the parts add up to a total, the center circle shows the total number and each satellite shows its share as a small '+N%' pill.",
+        "ISOSTACK FOCUS: when the slide explains one layer, that layer is solid {primary} and the other layers are pale/semi-transparent — never every layer at full color.",
+        "CONVERGE-DIVERGE: 2–4 problem cards on the left (grey) whose curved lines meet in ONE {primary} circle (our answer), then a soft light fan opens to 2–4 solution cards on the right (tint heads); the circle is the darkest thing.",
+        "RIDGE TIMELINE: a pale ridge silhouette rising left→right, a dot on each peak (later = darker {primary}), the year in {primary} bold on a small card above, the achievement in a small pill on the baseline below.",
+        "NUMBER PETALS: a big {primary} center circle with the key number/phrase, 3–6 rounded petals numbered 01… around it (tint → {primary}), thin dotted leaders to short description cards in left/right columns.",
+        "PLATFORM STAGE: a wide flat dark cylinder base (the platform name on it), a thin glowing ring above, 2–5 service circles floating over the ring at slightly different heights with an icon, bold name and one line each.",
     ],
     "quality": [
         "Pixel-precise alignment: left edges of stacked items line up; same-kind gaps are identical; nothing is crooked, overlapping or clipped.",
-        "Generous white space: content fills about 85% of the body area, never cramped to the edges and never with large empty holes.",
+        "Generous white space: content fills about 80% of the body area (real proposals keep ~19% white, 2026-10-14 원본 확인), never cramped to the edges and never with large empty holes.",
         "Big–Middle–Small: one dominant element, two or three secondary, the rest small text — never a grid of equal boxes with equal weight.",
         "Every Korean string is spelled exactly as given, sharp and evenly kerned; no broken syllables, no invented filler text, no lorem ipsum, no English labels.",
         "NO TEXT THAT IS NOT IN THE CONTENT: no invented speech bubbles, thought bubbles, questions, quotes, captions, slogans or labels — characters and pictures carry no words; a speech bubble appears only when the content gives its exact words.",
@@ -148,7 +159,8 @@ def spec_text(type_id, accent="#FF2A6D"):
     acc = accent or "#FF2A6D"
     pal = dict((k.split(" ")[0], v.replace("{accent}", acc)) for k, v in t["palette"])
     fill = {"card": t["card"], "icon": t["icon"], "primary": pal.get("primary", "#1E3A8A"),
-            "tint_strong": pal.get("tint_strong", "#DCE8FC"), "line": pal.get("line", "#D5DEEC")}
+            "tint_strong": pal.get("tint_strong", "#DCE8FC"), "line": pal.get("line", "#D5DEEC"),
+            "accent": acc}   # 규칙 글의 {accent} — 빠져 있어 10-14 표현 규칙 추가 뒤 시안이 KeyError 'accent' 로 멈췄다
     L = [f"DESIGN SYSTEM — {t['name']} (follow these exact values on every slide of this deck; they override any other color or size mentioned elsewhere)"]
     L.append("PALETTE (use ONLY these colors, by role):")
     L += [f"- {k}: {v.replace('{accent}', acc)}" for k, v in t["palette"]]

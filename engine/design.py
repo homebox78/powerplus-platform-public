@@ -1150,7 +1150,8 @@ def make_plan(job, brief, note, context="", slide_count=0, purpose="present", ra
 
 
 WIRE_KINDS = ("panel", "card", "person", "image", "screen", "chart", "table", "flow", "map", "badge", "band", "text", "gantt", "phase", "kpi",
-              "fishbone", "hub", "pyramid", "matrix", "funnel", "cycle", "venn", "roadmap", "isostack", "gauge", "proportion")
+              "fishbone", "hub", "pyramid", "matrix", "funnel", "cycle", "venn", "roadmap", "isostack", "gauge", "proportion",
+              "converge", "ridge", "petal", "stage")   # 2026-10-14 원본 대조 확장 — 수렴-확산·능선 연혁·꽃잎 전략·플랫폼 무대
 # 서버가 직접 그리는 도식 틀(2026-10-12 PPT 레퍼런스 학습) — 피시본·허브·피라미드·2×2, 이어서 퍼널·순환·벤·로드맵·층 쌓기·게이지·비율 막대.
 # 글 형식은 prompt_wire.md 와 같다. 오르는 계단은 phase 가 이미 그린다(따로 두지 않음)
 
@@ -1296,6 +1297,28 @@ def wire_road(d):
         m = re.match(r"^\s*\[([^\]]+)\]\s*(.*)$", t)
         out.append(((m.group(1).strip(), m.group(2).strip(), x) if m else ("", t, x)))
     return out
+
+
+def wire_conv(d):
+    """converge 글 → (문제[(이름, 설명)], 해결[(이름, 설명)]) — 줄마다 '문제 | 이름: 설명' / '해결 | 이름: 설명'.
+    머리말이 없으면 앞 절반을 문제, 뒤 절반을 해결로 본다"""
+    pr, so, plain = [], [], []
+    for l in str(d or "").splitlines():
+        if not l.strip() or SOURCE_LINE.match(l):
+            continue
+        l = re.sub(r"^\s*[-•]\s*", "", l).strip()
+        tag, _, rest = l.partition("|")
+        tag = tag.strip()
+        if rest and re.match(r"^(문제|현황|원인|AS-?IS|before)", tag, re.I):
+            pr.extend(wire_steps(rest))
+        elif rest and re.match(r"^(해결|개선|효과|TO-?BE|after)", tag, re.I):
+            so.extend(wire_steps(rest))
+        else:
+            plain.extend(wire_steps(l))
+    if not pr and not so and plain:
+        h = (len(plain) + 1) // 2
+        pr, so = plain[:h], plain[h:]
+    return pr[:4], so[:4]
 
 
 def wire_parts(d):
@@ -1888,6 +1911,111 @@ def wire_png(s, size=(1600, 900)):
             if src:
                 d.text((x0 + 10, y1 - 22), "출처: " + src, font=_font(15, False), fill=SUB)
             continue
+        # 2026-10-14 원본 대조 확장 4종(해외 레퍼런스 refc 262·234·254·152·71)
+        if k == "converge" and all(wire_conv(body)):
+            pr, so = wire_conv(body)
+            yy = title(b, x0, y0, x1)
+            cw = (x1 - x0) * 0.28
+            cx, cy = (x0 + x1) / 2, (yy + y1) / 2
+            r = min((x1 - x0) * 0.11, (y1 - yy) * 0.26)
+            for side, items in ((-1, pr), (1, so)):
+                n = len(items)
+                ch = (y1 - yy) / n
+                for i, (st, ds) in enumerate(items):
+                    cy0 = yy + i * ch + 4
+                    bx0 = x0 if side < 0 else x1 - cw
+                    d.rounded_rectangle([bx0, cy0, bx0 + cw, cy0 + ch - 8], radius=10, fill=PALE if side < 0 else (219, 234, 254), outline=(203, 213, 225), width=2)
+                    ty = lines_in(bx0 + 12, cy0 + 8, cw - 24, cy0 + ch - 8, st, _font(19), INK, 23)
+                    lines_in(bx0 + 12, ty, cw - 24, cy0 + ch - 10, ds, _font(15, False), SUB, 18)
+                    ex = bx0 + cw if side < 0 else bx0   # 카드 가장자리 → 가운데 원(곡선은 꺾은선 두 마디로)
+                    my = cy0 + (ch - 8) / 2
+                    mx = (ex + cx + side * r) / 2
+                    d.line([(ex, my), (mx, my), (cx + side * r, cy)], fill=LINE if side < 0 else (96, 165, 250), width=3, joint="curve")
+            d.ellipse([cx - r, cy - r, cx + r, cy + r], fill=(30, 41, 59))
+            ls = _wrap(d, b.get("t") or "", _font(20), 2 * r - 30)[:3]   # 원 안 가운데 정렬
+            for li, ln in enumerate(ls):
+                d.text((cx - d.textlength(ln, font=_font(20)) / 2, cy - len(ls) * 12 + li * 24), ln, font=_font(20), fill=(255, 255, 255))
+            continue
+        if k == "ridge" and len(wire_road(body)) >= 2:
+            ss = wire_road(body)[:6]
+            yy = title(b, x0, y0, x1)
+            n = len(ss)
+            base = y1 - 46   # 아래 46px = 성과 알약 줄
+            top = yy + 96    # 위 96px = 가장 높은 연도 카드 자리
+            pts = []
+            for i in range(n):
+                px = x0 + 40 + (x1 - x0 - 80) * (i + 0.5) / n
+                py = base - (base - top) * (0.25 + 0.75 * (i + 1) / n)
+                pts.append((px, py))
+            d.polygon([(x0, base)] + pts + [(x1, pts[-1][1]), (x1, base)], fill=(226, 232, 240))   # 마지막 봉우리 뒤는 그 높이로 오른쪽 끝까지
+            d.line([(x0, base - (base - top) * 0.18)] + pts, fill=(71, 85, 105), width=4, joint="curve")
+            sw = (x1 - x0 - 80) / n
+            for i, ((px, py), (per, st, ds)) in enumerate(zip(pts, ss)):
+                tone = 200 - int(130 * i / max(1, n - 1))
+                d.ellipse([px - 11, py - 11, px + 11, py + 11], fill=(tone, tone + 10, tone + 25), outline=(255, 255, 255), width=3)
+                cy0 = max(yy, py - 92)
+                ty = lines_in(px - sw / 2 + 6, cy0, sw - 12, py - 14, per, _font(18), (37, 99, 235), 22) if per else cy0
+                lines_in(px - sw / 2 + 6, ty, sw - 12, py - 14, st, _font(18), INK, 22)
+                if ds:
+                    pw = min(sw - 10, d.textlength(ds, font=_font(14, False)) + 22)
+                    d.rounded_rectangle([px - pw / 2, base + 8, px + pw / 2, base + 38], radius=15, fill=PALE, outline=(203, 213, 225))
+                    lines_in(px - pw / 2 + 11, base + 14, pw - 18, base + 38, ds, _font(14, False), SUB, 18)
+            continue
+        if k == "petal" and len(wire_steps(body)) >= 3:
+            import math
+            ss = wire_steps(body)[:6]
+            n = len(ss)
+            cx, cy = (x0 + x1) / 2, (y0 + y1) / 2
+            r = min((x1 - x0) * 0.09, (y1 - y0) * 0.17)
+            pr_ = r * 0.62
+            colw = (x1 - x0) * 0.27
+            for i, (st, ds) in enumerate(ss):
+                a = -math.pi / 2 + 2 * math.pi * i / n
+                px, py = cx + r * 1.45 * math.cos(a), cy + r * 1.45 * math.sin(a)
+                tone = 205 - int(100 * i / max(1, n - 1))
+                d.ellipse([px - pr_, py - pr_, px + pr_, py + pr_], fill=(tone, tone + 10, tone + 25), outline=(255, 255, 255), width=3)
+                no = f"{i + 1:02d}"
+                tw = d.textlength(no, font=_font(20))
+                d.text((px - tw / 2, py - 13), no, font=_font(20), fill=(255, 255, 255) if tone < 160 else INK)
+                rows_ = (n + 1) // 2   # 시계 방향 앞 절반 = 오른쪽 열(위→아래), 뒤 절반 = 왼쪽 열(위→아래)
+                left = i >= rows_
+                j = (n - 1 - i) if left else i
+                tx0 = x0 if left else x1 - colw
+                ty0 = y0 + 10 + j * (y1 - y0 - 20) / rows_
+                d.line([(px + (-pr_ if left else pr_), py), (tx0 + (colw if left else 0), ty0 + 14)], fill=LINE, width=1)
+                ty = lines_in(tx0, ty0, colw, ty0 + 60, f"{no} {st}", _font(18), INK, 22)
+                lines_in(tx0, ty, colw, ty0 + (y1 - y0 - 20) / rows_, ds, _font(15, False), SUB, 18)
+            d.ellipse([cx - r, cy - r, cx + r, cy + r], fill=(30, 41, 59))
+            ls = _wrap(d, b.get("t") or "", _font(22), 2 * r - 24)[:3]   # 원 안 가운데 정렬
+            for li, ln in enumerate(ls):
+                d.text((cx - d.textlength(ln, font=_font(22)) / 2, cy - len(ls) * 13 + li * 26), ln, font=_font(22), fill=(255, 255, 255))
+            continue
+        if k == "stage" and len(wire_steps(body)) >= 2:
+            ss = wire_steps(body)[:5]
+            yy = title(b, x0, y0, x1)
+            n = len(ss)
+            cx = (x0 + x1) / 2
+            bw = (x1 - x0) * 0.78
+            bh = min(56, (y1 - yy) * 0.14)   # 기단 옆면 높이
+            eh = min(46, (y1 - yy) * 0.12)   # 타원 윗면 높이
+            by1 = y1 - 6
+            by0 = by1 - bh - eh / 2
+            d.ellipse([cx - bw / 2, by1 - eh, cx + bw / 2, by1], fill=(51, 65, 85))
+            d.rectangle([cx - bw / 2, by0, cx + bw / 2, by1 - eh / 2], fill=(51, 65, 85))
+            d.ellipse([cx - bw / 2, by0 - eh / 2, cx + bw / 2, by0 + eh / 2], fill=(100, 116, 139))
+            tw = d.textlength(b.get("t") or "", font=_font(20))
+            d.text((cx - tw / 2, by0 + eh / 2 + 4), b.get("t") or "", font=_font(20), fill=(255, 255, 255))
+            ring_y = by0 - eh * 1.6
+            d.ellipse([cx - bw * 0.42, ring_y - eh * 0.55, cx + bw * 0.42, ring_y + eh * 0.55], outline=(96, 165, 250), width=3)
+            cr = min(bw * 0.76 / n * 0.42, (ring_y - yy) * 0.28)   # 원끼리 겹치지 않게 간격의 84% 지름
+            for i, (st, ds) in enumerate(ss):
+                px = cx - bw * 0.38 + bw * 0.76 * (i + 0.5) / n
+                py = yy + cr + 6 + (cr * 0.5 if i % 2 else 0)
+                d.line([px, py + cr, px, ring_y], fill=LINE, width=1)
+                d.ellipse([px - cr, py - cr, px + cr, py + cr], fill=PALE, outline=(147, 197, 253), width=3)
+                ty = lines_in(px - cr * 0.8, py - 16, cr * 1.6, py + cr, st, _font(17), INK, 20)
+                lines_in(px - cr * 0.8, ty, cr * 1.6, py + cr, ds, _font(13, False), SUB, 16)
+            continue
         if k == "badge":
             f_n = _font(int(min(64, max(30, (y1 - y0) * 0.35))))
             tw = d.textlength(b.get("t") or "", font=f_n)
@@ -2006,6 +2134,24 @@ def wire_text(s):
             src = wire_source(b.get("d"))
             rows.append(head + f': "{b.get("t", "")}" — PROPORTION BAR: ONE horizontal bar split into segments whose widths are exactly proportional to the values,'
                         f' the largest segment darkest, the % inside each segment, names and values under it: {ss}' + (f'; small source line: "출처: {src}"' if src else ""))
+        elif b["k"] == "converge" and all(wire_conv(b.get("d"))):
+            pr, so = wire_conv(b.get("d"))
+            ps = " ; ".join(f'[{t}]' + (f" ({x})" if x else "") for t, x in pr)
+            qs = " ; ".join(f'[{t}]' + (f" ({x})" if x else "") for t, x in so)
+            rows.append(head + f': "{b.get("t", "")}" — CONVERGE-DIVERGE DIAGRAM: problem cards stacked on the LEFT (pale grey) send smooth curved lines that converge into ONE dark circle'
+                        f' in the CENTER labeled "{b.get("t", "")}"; from the circle a soft fan of light opens to solution cards stacked on the RIGHT (light blue heads). Problems: {ps}. Solutions: {qs}')
+        elif b["k"] == "ridge" and len(wire_road(b.get("d"))) >= 2:
+            ss = " → ".join((f'[{p}] ' if p else "") + f'"{t}"' + (f" ({x})" if x else "") for p, t, x in wire_road(b.get("d")))
+            rows.append(head + f': "{b.get("t", "")}" — RIDGE TIMELINE: a soft mountain-ridge silhouette rising from left to right; on each rising point a dot (later = darker),'
+                        f' above it a small card with the year bold in the primary color and the name, below on the baseline a small pill with the achievement: {ss}')
+        elif b["k"] == "petal" and len(wire_steps(b.get("d"))) >= 3:
+            ss = " ; ".join(f'petal {i + 1:02d} [{t}]' + (f" — {x}" if x else "") for i, (t, x) in enumerate(wire_steps(b.get("d"))))
+            rows.append(head + f': "{b.get("t", "")}" — NUMBER PETALS: one big dark circle in the CENTER with "{b.get("t", "")}" in large type, ringed by rounded petals numbered 01·02…'
+                        f' (blue family, light → dark); each petal joined by a thin dotted line to its description card in a left or right column: {ss}')
+        elif b["k"] == "stage" and len(wire_steps(b.get("d"))) >= 2:
+            ss = " ; ".join(f'[{t}]' + (f" ({x})" if x else "") for t, x in wire_steps(b.get("d")))
+            rows.append(head + f': "{b.get("t", "")}" — PLATFORM STAGE: a wide flat cylinder base at the bottom labeled "{b.get("t", "")}" (dark), a thin glowing ellipse ring above it,'
+                        f' and service circles floating above the ring at slightly different heights, each with a small icon, a bold name and one short line: {ss}')
         else:
             rows.append(head + f': "{b.get("t", "")}"' + (f' — contents: {" / ".join(lines[:8])}' if lines else ""))
     return "\n".join(rows)
@@ -2605,6 +2751,15 @@ FRONT_TREATMENTS = [
 ]
 
 
+# 간지 라이트톤 — 템플릿 한 벌 8개 중 7개가 '전면 코발트·짙은 남색 덮개' 간지라 그대로 따르면 밝은 표지 뒤에 어두운 간지가 붙었다(2026-10-14 시험 작업).
+# 사용자 기준: 표지·간지는 밝은 라이트톤, 그림은 오른쪽 아래에 옅게, 왼쪽·위는 흰색으로 날림, 정면 인물 X. 한 벌·참고 그림의 어두운 배경보다 이것이 먼저다.
+DIV_LIGHT = ("\nLIGHT TONE (this overrides any dark, cobalt or navy full-page background named in the rules, the template set or the reference images — take only their layout from them): "
+             "the divider is a bright, light page like the cover — a white or very pale tint background, never a full-page dark or saturated fill and never a dark color veil over a photo. "
+             "The picture sits at the LOWER RIGHT, faint (as if under about a 75% white veil), and fades to pure white toward the left and the top. "
+             "The chapter number and title are in the deck's dark color on the light background, the key words highlighted with the accent color. "
+             "No large frontal faces — people only from the side, from behind or at a distance.\n")
+
+
 def front_treatment(job, k, accent):
     """이 덱 앞장의 배경 장식 한 줄(영문). 간지는 더 조용하게"""
     import zlib
@@ -2783,9 +2938,10 @@ def make_front_mockup(job, f, plan, accent, feedback=""):
                        "the same typeface feeling and the same picture STYLE (same kind of photograph / illustration / render, same colors). "
                        "But the picture itself must be NEW — a different scene that fits THIS page's own subject (see the theme); never reuse or redraw the cover's picture. Do not repeat the cover's title text or logos.\n")
             if k == "div":
-                prompt += ("A CHAPTER DIVIDER IS A QUIET PAGE — it only announces that a new section starts; it must NOT look like a cover. Flat, calm background in the deck's color; the chapter number, title and one line are the whole page. "
+                prompt += ("A CHAPTER DIVIDER IS A QUIET PAGE — it only announces that a new section starts; it must NOT look like a cover. Calm, LIGHT background (see LIGHT TONE below); the chapter number, title and one line are the whole page. "
                            "Any picture is either washed out to a faint texture (about 10-20% visibility under a flat color veil) or one small element in a corner (no more than about 15-20% of the page). "
                            "No vivid photograph, no large illustration scene, no decorative icons scattered around. At least two thirds of the page is empty.\n")
+                prompt += DIV_LIGHT
     cover_bg = os.path.join(job.dir, "_mockup", "cover_bg.png")
     # 타입마다 정한 모델(front_engine): main = 기본 시안 모델 / nb2 = 나노바나나 2 로 통째 / both = 배경 그림은 나노바나나 2, 글은 기본 모델
     mode = str(((st.get("front_engine") or {}).get(k)) or "main")
@@ -2818,6 +2974,8 @@ def make_front_mockup(job, f, plan, accent, feedback=""):
                 if k == "div" and not panel:
                     bgp += ("QUIET PAGE: a chapter divider only announces a new section. The picture is small and simple — at most 2 elements (for a hexagon cluster: 2 hexagons, not a honeycomb), "
                             "occupying no more than about 20% of the page at the lower right; everything else is calm, flat, empty background. Low contrast, no busy detail.\n")
+                if k == "div":
+                    bgp += DIV_LIGHT
             if not panel and not (tset and tset.get(k + "_what")):
                 bgp += front_treatment(job, k, accent) + "\n"
             if feedback:
@@ -3205,6 +3363,10 @@ def _plan_phase(job, j):
         except Exception:
             opts = None
     opts = opts or {"mockups": "all"}  # 옵션 없는 옛 작업은 전체
+    if str(opts.get("purpose") or "") == "submit" and j.get("source_kind") != "pptx":
+        import vertical   # 제출용 = A4 세로 제안서 — 기획부터 표지·목차·간지·본문 제작·결과 보고까지 한 번에(시안 확인 단계 없음)
+        vertical.run(job, j, opts, brief, note)
+        return
     first_run = not (plan and plan.get("slides"))
 
     # 2) 기획 (다시 만들기면 기존 기획을 쓴다)

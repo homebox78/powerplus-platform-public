@@ -15,7 +15,7 @@ use Pp\Core\Triage;
  */
 final class Kit
 {
-    public const WIRE_KINDS = ['card', 'panel', 'text', 'table', 'chart', 'flow', 'band', 'badge', 'kpi', 'gantt', 'phase', 'fishbone', 'hub', 'pyramid', 'matrix', 'funnel', 'cycle', 'venn', 'roadmap', 'isostack', 'gauge', 'proportion', 'person', 'image', 'screen', 'map'];
+    public const WIRE_KINDS = ['card', 'panel', 'text', 'table', 'chart', 'flow', 'band', 'badge', 'kpi', 'gantt', 'phase', 'fishbone', 'hub', 'pyramid', 'matrix', 'funnel', 'cycle', 'venn', 'roadmap', 'isostack', 'gauge', 'proportion', 'converge', 'ridge', 'petal', 'stage', 'person', 'image', 'screen', 'map'];
     public const MOODS = ['문제 제기', '배경·현황', '해결·제안', '절차·방법', '성과·증명', '조직·인력', '마무리'];
     private const META = '/(도식화하면|도식화 하면|이 장표는|이 슬라이드|여기에 (?:넣|들어)|예시 이미지|화살표가 중요|하면 딱|placeholder|lorem|TBD|TODO|\[(?:이미지|그림|사진|표) ?(?:삽입|자리)\])/iu';
     private const VAGUE = '/(체계적(으로|인)|효율적(으로|인)|최선을 다|적극적(으로|인)|원활(하게|한)|안정적(으로|인) 수행|만전을 기|다양한 방안|최적의|성공적(으로|인) 수행|극대화)/u';
@@ -524,7 +524,7 @@ final class Kit
                 ],
                 'keys' => ['k' => '상자 종류(kinds)', 't' => '상자 제목·큰 글', 'd' => '상자 본문(줄바꿈 \\n, 표는 "칸 | 칸")', 'span' => '12칸 가운데 차지할 칸 수', 'h' => '높이 비중'],
             ],
-            'kinds' => ['panel', 'card', 'table', 'chart', 'flow', 'gantt', 'phase', 'kpi', 'fishbone', 'hub', 'pyramid', 'matrix', 'funnel', 'cycle', 'venn', 'roadmap', 'isostack', 'gauge', 'proportion', 'badge', 'band', 'text', 'person', 'image', 'screen', 'map'],
+            'kinds' => ['panel', 'card', 'table', 'chart', 'flow', 'gantt', 'phase', 'kpi', 'fishbone', 'hub', 'pyramid', 'matrix', 'funnel', 'cycle', 'venn', 'roadmap', 'isostack', 'gauge', 'proportion', 'converge', 'ridge', 'petal', 'stage', 'badge', 'band', 'text', 'person', 'image', 'screen', 'map'],
             'chars_per_line' => ['2' => 9, '3' => 15, '4' => 21, '5' => 27, '6' => 33, '8' => 45, '12' => 70, 'per_slide_lines' => 22],
             'templates' => $tpls,
             'rules_md' => trim($rules),
@@ -632,7 +632,7 @@ final class Kit
     {
         $W = 1600; $H = 900;
         $e = static fn($s) => htmlspecialchars((string) $s, ENT_QUOTES | ENT_XML1, 'UTF-8');
-        $label = ['panel' => '패널', 'card' => '카드', 'table' => '표', 'chart' => '그래프', 'flow' => '흐름', 'gantt' => '일정', 'phase' => '단계', 'kpi' => '수치', 'fishbone' => '원인 분석', 'hub' => '허브', 'pyramid' => '피라미드', 'matrix' => '2×2', 'funnel' => '깔때기', 'cycle' => '순환', 'venn' => '벤 도식', 'roadmap' => '로드맵', 'isostack' => '계층', 'gauge' => '달성률', 'proportion' => '비율 막대', 'badge' => '강조', 'band' => '결론 띠', 'text' => '글', 'person' => '인물', 'image' => '그림', 'screen' => '화면', 'map' => '지도'];
+        $label = ['panel' => '패널', 'card' => '카드', 'table' => '표', 'chart' => '그래프', 'flow' => '흐름', 'gantt' => '일정', 'phase' => '단계', 'kpi' => '수치', 'fishbone' => '원인 분석', 'hub' => '허브', 'pyramid' => '피라미드', 'matrix' => '2×2', 'funnel' => '깔때기', 'cycle' => '순환', 'venn' => '벤 도식', 'roadmap' => '로드맵', 'isostack' => '계층', 'gauge' => '달성률', 'proportion' => '비율 막대', 'converge' => '수렴-확산', 'ridge' => '능선 연혁', 'petal' => '꽃잎 전략', 'stage' => '플랫폼 무대', 'badge' => '강조', 'band' => '결론 띠', 'text' => '글', 'person' => '인물', 'image' => '그림', 'screen' => '화면', 'map' => '지도'];
         $o = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ' . $W . ' ' . $H . '" width="' . $W . '" height="' . $H . '" font-family="Pretendard, \'Malgun Gothic\', sans-serif">';
         $o .= '<rect width="' . $W . '" height="' . $H . '" fill="#ffffff"/>';
         $o .= '<rect x="' . (0.02 * $W) . '" y="' . (0.03 * $H) . '" width="' . (0.96 * $W) . '" height="' . (0.09 * $H) . '" fill="#f4f4f4"/>';

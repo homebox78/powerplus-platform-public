@@ -81,7 +81,7 @@ export type PlanSlide = {
 /** 대본 한 장 — sec 배정 초, keep 남길 문장, screen 화면·시선, cues 동작, notes 말하는 법, cut 줄이는 법 */
 export type ScriptSlide = { n: number; title: string; lines: string[]; sec?: number; keep?: string; screen?: string; cues?: string[]; notes?: string[]; cut?: string };
 export type QA = { q: string; a: string; slide: number; kind?: string; need?: string };
-export type WireKind = "panel" | "card" | "person" | "image" | "screen" | "chart" | "table" | "flow" | "map" | "badge" | "band" | "text" | "gantt" | "phase" | "kpi" | "fishbone" | "hub" | "pyramid" | "matrix" | "funnel" | "cycle" | "venn" | "roadmap" | "isostack" | "gauge" | "proportion";
+export type WireKind = "panel" | "card" | "person" | "image" | "screen" | "chart" | "table" | "flow" | "map" | "badge" | "band" | "text" | "gantt" | "phase" | "kpi" | "fishbone" | "hub" | "pyramid" | "matrix" | "funnel" | "cycle" | "venn" | "roadmap" | "isostack" | "gauge" | "proportion" | "converge" | "ridge" | "petal" | "stage";
 /** 와이어프레임 상자 — x·y·w·h 는 본문(머리 띠·바닥 사이) 기준 %, t 제목, d 들어갈 글(줄마다) */
 export type WireBlock = { id: string; k: WireKind; x: number; y: number; w: number; h: number; t: string; d?: string };
 /** 표지·목차·간지 시안 — id: cover · toc · div1… (시안 파일은 mockup/<id>.jpg) */

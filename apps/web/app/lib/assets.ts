@@ -60,7 +60,7 @@ const SET_WORD_KO: Record<string, string> = {
   realistic: "실사", tech: "기술", device: "기기", drop: "물방울", badge: "배지", pedestal: "받침", people: "사람", scene: "장면",
   standard: "기본", cheer: "응원", fullbody: "전신", control: "관제", building: "건물", faceless: "얼굴 없는", half: "반신",
   char: "캐릭터", front: "정면", cute: "귀여운", kr: "한국", biz: "비즈니스", western: "서양", banner: "배너", objects: "사물", semi: "세미",
-  si: "SI", deck: "장표", handdrawn: "손그림", gradient: "그라데이션",
+  si: "SI", deck: "장표", handdrawn: "손그림", gradient: "그라데이션", vp: "세로 제안서", bg: "배경",
 };
 export function setLabel(code: string): string {
   const words = code.replace(/^(icon|illust|photo|diagram|logo)-/, "").split("-").filter(Boolean);

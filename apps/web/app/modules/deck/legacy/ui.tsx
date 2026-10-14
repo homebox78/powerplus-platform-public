@@ -157,10 +157,14 @@ export function StatusPill({ status, small }: { status: string; small?: boolean 
 
 export const STEP_LABELS = ["초안 올리기", "대기·분석", "디자인 변환", "완료"];
 export const STEP_LABELS_DESIGN = ["내용 입력", "기획", "시안", "장표 제작", "완료"];
+/** 세로 제안서(제출용) — 시안 이미지 없이 기획에서 바로 PPT(engine/vertical.py) */
+export const STEP_LABELS_VERTICAL = ["내용 입력", "기획", "PPT 제작", "완료"];
+const isSubmitJob = (job: Job) => job.kind === "design" && job.opts?.purpose === "submit";
 
 /** 작업이 지금 몇 번째 단계인가 — 장표 변환 0~3, 기획 작업 0~4(내용·기획·시안·장표·완료) */
 export const jobStep = (job: Job) => {
   // 실패·취소는 멈춘 단계에 머문다(그 단계가 빨간 ! 로 보인다)
+  if (isSubmitJob(job)) return job.status === "done" ? 3 : job.stage === "시안 생성" || job.stage === "시안 정리" ? 2 : 1;   // 엔진 보고 이름은 그대로(stages.ts STAGES_VERTICAL)
   if (job.kind === "design") return job.status === "done" ? 4 : !isPlanPhase(job) && job.status !== "review" ? 3 : hasMockup(job) ? 2 : 1;
   return job.status === "queued" || job.status === "hold" ? 1 : job.status === "done" ? 3 : 2;
 };
@@ -238,7 +242,7 @@ export function JobSettings({ job, onEdit }: { job: Job; onEdit?: () => void }) 
     ...(design ? [
       ["강조색", job.theme ? <span className="inline-flex items-center gap-1.5"><span className="w-3.5 h-3.5 rounded-full border border-black/10" style={{ background: job.theme.slice(0, 7) }} /><span className="font-mono text-[13px]">{job.theme.slice(0, 7).toUpperCase()}</span></span> : "기본"],
       ["장 수", o?.slides ? `${o.slides}장으로 지정` : `알아서${job.slides ? ` — 지금 ${job.slides}장` : ""}`],
-      ["시안", o?.mockups === "all" ? "전부 바로 만들기" : o?.mockups === "sample" ? `샘플 ${o.sample}장 먼저` : "기획부터 보기"],
+      ...(o?.purpose === "submit" ? [] : [["시안", o?.mockups === "all" ? "전부 바로 만들기" : o?.mockups === "sample" ? `샘플 ${o.sample}장 먼저` : "기획부터 보기"] as [string, ReactNode]]),
       ["구성", front.length ? front.join(" · ") + " 넣기" : "본문만"],
     ] as [string, ReactNode][] : []),
     ["자료", job.docs?.length ? <span className="block">{job.docs.slice(0, 4).map((d) => <span key={d.id} className="block truncate" title={d.name}>{d.name}</span>)}{job.docs.length > 4 && <span className="text-dim">외 {job.docs.length - 4}개</span>}</span>
@@ -303,7 +307,7 @@ export function JobHeader<T extends string>({ job, meta, actions, tabs, tab, onT
           </div>
           <div className="flex flex-wrap items-center gap-x-3.5 gap-y-1 mt-[5px] min-w-0">
             {meta && <><span className="text-[13px] text-dim truncate min-w-0">{meta}</span><span className="w-px h-3 bg-line flex-none" /></>}
-            <StepTrail labels={job.kind === "design" ? STEP_LABELS_DESIGN : STEP_LABELS} step={step} failed={job.status === "failed" || job.status === "canceled"} done={job.status === "done"} />
+            <StepTrail labels={isSubmitJob(job) ? STEP_LABELS_VERTICAL : job.kind === "design" ? STEP_LABELS_DESIGN : STEP_LABELS} step={step} failed={job.status === "failed" || job.status === "canceled"} done={job.status === "done"} />
           </div>
         </div>
         <div className="pd-acts flex flex-wrap items-center gap-2 max-lg:w-full">{actions}<WideToggle inline size="icon" /></div>

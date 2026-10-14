@@ -8,7 +8,7 @@
  */
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import {
-  Background, Controls, Handle, MiniMap, Position, ReactFlow,
+  Background, Controls, Handle, MiniMap, Position, ReactFlow, useNodesInitialized, useReactFlow,
   type Edge, type Node, type NodeChange, type NodeProps,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
@@ -58,6 +58,25 @@ const Slot = ({ data }: NodeProps<Node<SlotData>>) => (
 );
 
 const nodeTypes = { card: Card, head: Head, slot: Slot };
+
+// 처음 맞추기 — fitView 는 위아래 가운데로 놓아 줄이 적으면 한참 아래서 시작했다(2026-10-14).
+// 배율은 fitView 로 정하고, 세로만 맨 윗줄이 안내 문구 바로 밑(TOP)에 오게 옮긴다.
+const TOP = 52;
+function FitTop({ nodes }: { nodes: { id: string }[] }) {
+  const ready = useNodesInitialized();
+  const { fitView, getViewport, setViewport, getNodesBounds } = useReactFlow();
+  const [done, setDone] = useState(false);
+  useEffect(() => {
+    if (!ready || done) return;
+    setDone(true);
+    void fitView({ padding: 0.12, maxZoom: 1, nodes }).then(() => {
+      const { x, zoom } = getViewport();
+      const b = getNodesBounds(nodes.map((n) => n.id));
+      if (b.height) setViewport({ x, y: TOP - b.y * zoom, zoom });
+    });
+  }, [ready, done, nodes, fitView, getViewport, setViewport, getNodesBounds]);
+  return null;
+}
 export function OverviewCanvas({ groups, sel, title, thumb, badge, onOpen, onReorder, portrait }: {
   jobId: string;
   groups: [string, PlanSlide[]][];
@@ -146,7 +165,7 @@ export function OverviewCanvas({ groups, sel, title, thumb, badge, onOpen, onReo
   }, [drag, onReorder, pending, real, groups]);
 
   // 세로 장표는 줄이 많아 전부 맞추면 카드가 점처럼 작다 — 처음엔 위 3줄만 맞춰 보이고 나머지는 끌어서 본다
-  const fitNodes = useMemo(() => (portrait ? groups.slice(0, 3).flatMap(([, ss], r) => [{ id: `h${r}` }, ...ss.map((x) => ({ id: `s${x.n}` }))]) : undefined), [portrait, groups]);
+  const fitNodes = useMemo(() => (portrait ? groups.slice(0, 3) : groups).flatMap(([, ss], r) => [{ id: `h${r}` }, ...ss.map((x) => ({ id: `s${x.n}` }))]), [portrait, groups]);
   return (
     // 높이는 부모가 준다(flex-1) — 고정 calc 로는 좌우 칸보다 짧게 끝났다(2026-10-14)
     <div className={cn("relative flex-1 rounded-md border border-line bg-panel overflow-hidden", portrait ? "min-h-[760px]" : "min-h-[440px]")}>
@@ -154,10 +173,11 @@ export function OverviewCanvas({ groups, sel, title, thumb, badge, onOpen, onReo
         nodes={view.nodes} edges={view.edges} nodeTypes={nodeTypes}
         onNodesChange={onNodesChange} nodesDraggable={!!onReorder && !pending}
         onNodeClick={(_, n) => { if (n.type === "card") onOpen((n.data as CardData).s.n); }}
-        fitView fitViewOptions={{ padding: 0.12, maxZoom: 1, nodes: fitNodes }} minZoom={0.15} maxZoom={1.6}
+        minZoom={0.15} maxZoom={1.6}
         zoomOnScroll={false} zoomActivationKeyCode="Control" panOnScroll={false} preventScrolling={false}
         nodesConnectable={false} edgesFocusable={false} proOptions={{ hideAttribution: true }}
       >
+        <FitTop nodes={fitNodes} />
         <Background gap={24} color="var(--color-line)" />
         <Controls showInteractive={false} position="bottom-right" />
         <MiniMap pannable zoomable position="top-right" nodeColor={(n) => (n.type === "head" ? "transparent" : "#D4D4D4")} className="!bg-white !border !border-line max-md:!hidden" />

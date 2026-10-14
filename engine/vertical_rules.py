@@ -183,18 +183,25 @@ def brief_for(item, section, reqs, excerpt=""):
             "evidence": [{"id": e["id"], "name": e["name"], "define": e["define"], "detail": e["detail"][:500]} for e in ev]}
 
 
+def allowed_first(b):
+    """항목 첫 블록에 쓸 수 있는 구성 — 규칙 첫 후보 + 필수 구성(표·글 제외). 후보가 하나뿐이면 연속 금지와 부딪힌다(5차: 관리 절차 항목이 이어지면 둘 다 '절차')"""
+    return list(dict.fromkeys(list(b["first"]) + [m for m in b["must"] if m not in ("text", "effect")]))
+
+
 def assign_kinds(items):
-    """목차 단계 — 항목 주 구성(kind) 조건문: 규칙 후보에 없으면 규칙 첫 후보로, 같은 kind 세 번 연속이면 다음 후보로"""
-    prev = []
+    """목차 단계 — 항목 주 구성(kind) 조건문: 후보(allowed_first) 밖이면 첫 후보로, 앞 항목과 같으면 다음 후보로"""
+    prev = None
     for it in items:
         b = it["_brief"]
+        cand = allowed_first(b)
+        b["first"] = cand   # 검사·기획 모두 넓힌 후보를 쓴다
         k = it.get("kind")
-        if k not in b["first"]:
-            k = b["first"][0]
-        if len(prev) >= 2 and prev[-1] == prev[-2] == k:
-            k = next((x for x in b["first"] if x != k), k)
+        if k not in cand:
+            k = cand[0]
+        if k == prev:
+            k = next((x for x in cand if x != k), k)
         it["kind"] = k
-        prev.append(k)
+        prev = k
     return items
 
 
@@ -231,6 +238,7 @@ def check(items, pages, fig_ok, fill=None, empty=None):
         by_item.setdefault(m.group(1) if m else "", []).append(pg)
     texts = total = 0
     prev_first = None
+    brief_of = {(re.match(r"(\d+\.\d+)", it["item"]) or [""])[0]: it["_brief"] for it in items}
     for pg in pages:
         t = str(pg.get("title") or "")
         bl = pg.get("blocks") or []
@@ -253,7 +261,8 @@ def check(items, pages, fig_ok, fill=None, empty=None):
         dup = sorted({k for k in ks if k != "text" and ks.count(k) > 1})
         if dup:
             bad.append({"title": t, "why": f"한 쪽에 같은 구성을 두 번 썼다({', '.join(NAMES.get(k, k) for k in dup)})"})
-        if prev_first and ks[0] == prev_first and ks[0] != "text":
+        only = brief_of.get((re.match(r"(\d+\.\d+)", t) or [""])[0], {}).get("first") or []
+        if prev_first and ks[0] == prev_first and ks[0] != "text" and not (len(only) == 1 and only[0] == ks[0]):   # 후보가 그것 하나뿐인 항목은 예외(규칙끼리 충돌)
             bad.append({"title": t, "why": f"앞 쪽과 첫 블록 구성이 같다({NAMES.get(ks[0], ks[0])}) — 다른 구성으로"})
         prev_first = ks[0]
         for b, k in zip(bl, ks):
@@ -336,7 +345,7 @@ def markdown():
          "1. **자료 수집** — RFP 요구사항 상세표에서 고유번호마다 명칭·정의·세부내용을 모은다. 목차 항목마다 그 항목의 요구사항 근거와 '자료 신호'(절차·기간·조직·현행/개선·수치)를 붙인다.",
          "2. **규칙 고르기** — 아래 표의 조건을 위에서부터 보고 처음 맞는 규칙 하나. 기능 요구사항(SFR 등)이 걸린 항목은 '기능 요구사항 대응'.",
          "3. **기획** — 항목마다 규칙의 내용 순서·첫 구성·필수 구성과 근거 자료를 AI 에 함께 준다.",
-         "4. **검사(조건문)** — 생성된 쪽을 아래 검사로 확인하고, 어긴 쪽만 위반 사유와 함께 한 번 다시 쓰게 한다. 요구사항 번호 누락은 코드가 바로 채운다.", "",
+         "4. **검사(조건문)** — 생성된 쪽을 아래 검사로 확인하고, 어긴 쪽만 위반 사유(채움 위반엔 블록별 높이 cm)와 함께 다시 쓰게 한다(최대 두 번). 요구사항 번호 누락은 코드가 바로 채운다.", "",
          "## 2. 쪽 유형 규칙 — 만약 제목이 이렇다면", "",
          "| 순서 | 조건(항목 제목) | 유형 | 쓸 내용(순서대로) | 첫 블록 구성 | 반드시 들어갈 구성 | 쓰는 법 |",
          "|:---:|---|---|---|:---:|:---:|---|"]
@@ -352,7 +361,7 @@ def markdown():
           "- 한 쪽 = 도입 2문장 → 띠 문구 → 블록 2~3개. 첫 블록은 그 쪽 핵심을 한눈에 보여 주는 도식.",
           "- 한 쪽에 같은 구성 두 번 금지. 글 블록만으로 된 쪽 금지. 글 블록은 장 전체의 4분의 1 이하.",
           "- 바로 이어진 두 쪽의 첫 블록 구성이 같으면 안 된다(같은 항목의 (1/2)·(2/2)도).",
-          "- 목차 단계에서 같은 주 구성이 세 항목 연속이면 다음 후보로 바꾼다.",
+          "- 목차 단계에서 항목 주 구성은 '첫 후보 + 필수 구성' 안에서 고르고, 앞 항목과 같으면 다음 후보로 바꾼다(후보가 하나뿐인 항목은 연속 금지에서 예외).",
           "- 도식 글은 짧게: 제목 10자, 항목 한 줄 25자 이내, 개조식.",
           "- 사실·수치는 자료에 있는 것만. 제안사 정보(실적·인력 이름·지분)는 「[제안사 작성]」.", "",
           "## 5. 생성물 검사(조건문)", "",

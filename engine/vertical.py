@@ -209,6 +209,28 @@ def _font(file, size):
 
 
 _FONTS = {}
+NO_SHIP = ("RIXGO",)   # 산출물에 넣지 않는 서체 파일(상용 — Rix고딕 폰트릭스). 작성 가이드에 '설치해야 할 글꼴'로만 안내
+
+
+def font_paths():
+    """이 제안서에 쓴 서체 파일 경로(제목 + 본문 굵기들) — 산출물 '5_서체' 에 넣는다(fonts/licenses/README.md 규칙, 가로 장표와 같게).
+    상용 서체는 빼고 그 이름을 돌려준다"""
+    files = list(dict.fromkeys([FONT["title"][2]] + list(FONT["body"][2])))
+    found, skipped = [], []
+    for f in files:
+        if any(f.upper().startswith(x) for x in NO_SHIP):
+            skipped.append(f)
+            continue
+        for d in (os.path.join(HERE, "fonts"), os.path.join(HERE, "fonts", "private"), "C:/Windows/Fonts",
+                  os.path.expanduser("~/AppData/Local/Microsoft/Windows/Fonts"), os.path.expanduser("~/.local/share/fonts/powerdeck"),
+                  "/usr/share/fonts/truetype", os.path.expanduser("~/.fonts")):
+            p_ = os.path.join(d, f if f.lower().endswith((".ttf", ".otf")) else f + ".ttf")
+            if os.path.isfile(p_):
+                found.append(p_)
+                break
+        else:
+            skipped.append(f)
+    return found, skipped
 
 
 def text_cm(t, pt, face="a시월구일2"):
@@ -295,38 +317,51 @@ def chapter_pages(job, o, ch, ctx, raw):
     normalize_blocks(pages)
     ok = lambda b: bool(fig_data(b))
     bad, fixed = vertical_rules.check(items, pages, ok, page_fill, block_empty)   # 규칙 검사(조건문)
-    if bad:   # 어긴 쪽만 위반 사유와 함께 한 번 다시 쓰게 한다
-        job.event(f"{ch['no']} 규칙 검사 위반 {len(bad)}건 — " + " / ".join(f"{b['title']}: {b['why']}" for b in bad[:4]) + " … 고쳐 씁니다.", "warn")
+    key = lambda t: (re.match(r"(\d+\.\d+)", str(t or "")) or [""])[0]
+    for rnd in (1, 2):   # 어긴 쪽만 사유와 함께 다시 쓴다 — 최대 두 번(5차: 한 번으로는 채움 위반이 남아 '(계속)' 쪽 5개)
+        if not bad or (rnd == 2 and not any(re.search(r"찼다|넘친다|블록 조합|첫 블록|구성을", b["why"]) for b in bad)):
+            break
+        job.event(f"{ch['no']} 규칙 검사 위반 {len(bad)}건 — " + " / ".join(f"{b['title']}: {b['why']}" for b in bad[:4]) + f" … 고쳐 씁니다({rnd}차).", "warn")
         whole = any(b["title"] == "(장 전체)" for b in bad)
         names = {b["title"] for b in bad}
         redo = [pg for pg in pages if whole or pg.get("title") in names]
-        if redo:
-            fix_user = (user + "\n\n# 먼저 쓴 쪽(이 중 고칠 것)\n" + json.dumps(redo, ensure_ascii=False)
-                        + '\n\n# 규칙 검사 위반 — 이 쪽들만 고쳐 같은 JSON 형식({"pages": [...]})으로 다시 낸다. 제목은 그대로.\n'
-                        + "\n".join(f"- {b['title']}: {b['why']}" for b in bad))
-            try:
-                d2 = design._plan_call(job, CHAPTER_SYSTEM, fix_user, 16000, f"{ch['no']} 규칙 맞춰 고쳐 쓰기")
-                # 항목 번호 기준으로 합친다 — 제목이 바뀌거나 빠졌던 항목 쪽도 받는다(4차: 고쳐 쓴 뒤 '이 항목의 쪽이 없다')
-                key = lambda t: (re.match(r"(\d+\.\d+)", str(t or "")) or [""])[0]
-                new_by, old_by = {}, {}
-                for pg in d2.get("pages") or []:
-                    if pg.get("title"):
-                        new_by.setdefault(key(pg["title"]), []).append(pg)
-                for pg in pages:
-                    old_by.setdefault(key(pg.get("title")), []).append(pg)
-                redo_keys = {key(pg.get("title")) for pg in redo}
-                merged = []
-                for it in items:
-                    k = key(it["item"])
-                    merged += new_by[k] if (k in new_by and (k in redo_keys or k not in old_by)) else old_by.get(k, [])
-                pages = merged
-                normalize_blocks(pages)
-                bad2, fixed2 = vertical_rules.check(items, pages, ok, page_fill, block_empty)
-                fixed += fixed2
-                job.event(f"{ch['no']} 고쳐 쓴 뒤 규칙 위반 {len(bad)} → {len(bad2)}건"
-                          + (" — " + " / ".join(f"{b['title']}: {b['why']}" for b in bad2[:3]) if bad2 else ""), "warn" if bad2 else "done")
-            except Exception as e:
-                job.event(f"{ch['no']} 고쳐 쓰기 실패(처음 쓴 것으로 만듭니다): {str(e)[:100]}", "warn")
+        if not redo:
+            break
+        by_t = {str(pg.get("title")): pg for pg in pages}
+        why = []
+        for b in bad:   # 채움 위반엔 그 쪽 블록별 높이를 붙인다 — 무엇을 얼마나 줄이고 늘릴지 AI 가 알게
+            w = f"- {b['title']}: {b['why']}"
+            pg = by_t.get(str(b["title"]))
+            if pg is not None and re.search(r"찼다|넘친다", b["why"]):
+                w += " (지금 블록: " + " · ".join(f"{vertical_rules.NAMES.get(str(x.get('kind') or 'text'), x.get('kind'))} {block_height(x):.1f}cm"
+                                                for x in pg.get("blocks") or [] if not block_empty(x)) + f" / 본문 영역 {BODY_BOTTOM - 7.55:.1f}cm)"
+            why.append(w)
+        fix_user = (user + "\n\n# 먼저 쓴 쪽(이 중 고칠 것)\n" + json.dumps(redo, ensure_ascii=False)
+                    + '\n\n# 규칙 검사 위반 — 이 쪽들만 고쳐 같은 JSON 형식({"pages": [...]})으로 다시 낸다. 제목은 그대로.\n' + "\n".join(why))
+        try:
+            d2 = design._plan_call(job, CHAPTER_SYSTEM, fix_user, 16000, f"{ch['no']} 규칙 맞춰 고쳐 쓰기 {rnd}")
+            # 항목 번호 기준으로 합친다 — 제목이 바뀌거나 빠졌던 항목 쪽도 받는다(4차: 고쳐 쓴 뒤 '이 항목의 쪽이 없다')
+            new_by, old_by = {}, {}
+            for pg in d2.get("pages") or []:
+                if pg.get("title"):
+                    new_by.setdefault(key(pg["title"]), []).append(pg)
+            for pg in pages:
+                old_by.setdefault(key(pg.get("title")), []).append(pg)
+            redo_keys = {key(pg.get("title")) for pg in redo}
+            merged = []
+            for it in items:
+                k = key(it["item"])
+                merged += new_by[k] if (k in new_by and (k in redo_keys or k not in old_by)) else old_by.get(k, [])
+            pages = merged
+            normalize_blocks(pages)
+            bad2, fixed2 = vertical_rules.check(items, pages, ok, page_fill, block_empty)
+            fixed += fixed2
+            job.event(f"{ch['no']} 고쳐 쓴 뒤({rnd}차) 규칙 위반 {len(bad)} → {len(bad2)}건"
+                      + (" — " + " / ".join(f"{b['title']}: {b['why']}" for b in bad2[:3]) if bad2 else ""), "warn" if bad2 else "done")
+            bad = bad2
+        except Exception as e:
+            job.event(f"{ch['no']} 고쳐 쓰기 실패(지금 것으로 만듭니다): {str(e)[:100]}", "warn")
+            break
     if fixed:
         job.event(f"{ch['no']} 엔진이 바로 고침 {len(fixed)}건 — " + " / ".join(fixed[:3]))
     for pg in pages:   # table 구성은 기존 표 블록으로 그린다(kind 만 table 이고 표가 비면 글 블록)
@@ -2457,6 +2492,14 @@ def run(job, j, opts, brief, note):
         job.event("작성 가이드(사용법·서식 규칙표·1~4 depth 견본)를 함께 넣었습니다.", "done")
     except Exception as e:
         job.event(f"작성 가이드를 만들지 못했습니다(결과 장표는 정상): {str(e)[:120]}", "warn")
+    try:   # 쓴 서체 파일 — 산출물 묶음(zip)의 '5_서체'(가로 장표와 같은 규칙). 사용자 2026-10-14 "산출물에 폰트가 없는데?"
+        fp, skip = font_paths()
+        for f in fp:
+            put_file(job.id, "extra", f)
+        job.event(f"서체 파일 {len(fp)}개를 산출물에 넣었습니다(" + ", ".join(os.path.basename(f) for f in fp) + ")"
+                  + (f" · 넣지 않음: {', '.join(skip)}(상용이거나 엔진에 없음 — 작성 가이드의 설치 안내 참고)" if skip else ""), "done" if fp else "warn")
+    except Exception as e:
+        job.event(f"서체 파일을 산출물에 넣지 못했습니다: {str(e)[:100]}", "warn")
     job.push("시안 정리", 96)
     try:
         design.W.get("upload_after", lambda *a, **k: None)(job, out)

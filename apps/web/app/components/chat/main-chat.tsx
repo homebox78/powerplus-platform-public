@@ -4,7 +4,7 @@
 // 규칙: 홈(full)은 칸 안쪽 스크롤 없음, 챗봇(dock)은 떠 있는 창이라 안쪽 스크롤. 같은 줄 버튼 높이 같게, 주황은 주 버튼·진행 막대만.
 import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowUp, Check, CircleHelp, Code2, Copy as CopyIcon, FileText, FileUp, LayoutTemplate, Lock, Minus, Paperclip, Plug, Plus, Search, Sparkles, Trash2, X } from "lucide-react";
+import { ArrowUp, BookOpen, Check, CircleHelp, Code2, Copy as CopyIcon, FileText, FileUp, Image as ImageIcon, LayoutTemplate, Lock, MessagesSquare, Minus, Paperclip, Plug, Plus, Presentation, Search, Sparkles, Trash2, X } from "lucide-react";
 import { Link, useNavigate } from "react-router";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -30,14 +30,29 @@ type AnonTurn = { q: string; a: Reply };
 const KEY = "pp:chat";
 const DRAFT = "pp:chat-draft";
 const ANON = "pp:chat-anon";
+const MODE_KEY = "pp:chat-mode";
 const GREET = "무엇을 도와드릴까요? 에셋 찾기·제안서 만들기·홈페이지 목업·디자인 규칙까지 이 대화에서 시키거나 물어보세요.";
-// 네 모듈을 고루 — 일 시키기와 묻기 둘 다(2026-10-08 사용자 "4가지 솔루션을 모두 포괄")
-const EXAMPLES = [
-  { icon: Search, label: "에셋 찾기", q: "기후위기 아이콘 찾아 줘" },
-  { icon: FileText, label: "제안서", q: "AI 민원 플랫폼 제안서 만들어 줘" },
-  { icon: LayoutTemplate, label: "목업", q: "시청 메인 목업 만들어 줘" },
-  { icon: Code2, label: "부품 코드", q: "KRDS 탭 부품 코드 줘" },
-  { icon: Plug, label: "powerMCP", q: "powerMCP 연결 방법은?" },
+// 입력창 탭 — 무엇을 할지 먼저 고른다(2026-10-15 사용자 "이미지·비디오·텍스트처럼 에셋 장표 목업 가이드 기타로 구분").
+// 서버 Concierge::route 가 탭을 받아 그 모듈로 보낸다. 기타 = 지금처럼 말을 보고 알아서 고른다(질문·안내·MCP 연결 등).
+type Mode = "assets" | "deck" | "mock" | "guide" | "auto";
+const MODES: { k: Mode; label: string; icon: typeof Search; hint: string }[] = [
+  { k: "assets", label: "에셋", icon: ImageIcon, hint: "찾을 아이콘·사진·일러스트를 적어 주세요" },
+  { k: "deck", label: "장표", icon: Presentation, hint: "만들 제안서 주제나 사업 이름을 적어 주세요" },
+  { k: "mock", label: "목업", icon: LayoutTemplate, hint: "만들 홈페이지 목업을 적어 주세요" },
+  { k: "guide", label: "가이드", icon: BookOpen, hint: "찾을 부품·토큰·KRDS 규칙을 적어 주세요" },
+  { k: "auto", label: "기타", icon: MessagesSquare, hint: "무엇을 도와드릴까요?" },
+];
+const modeStore = {
+  get: (): Mode => { try { const v = localStorage.getItem(MODE_KEY); return MODES.some((m) => m.k === v) ? (v as Mode) : "auto"; } catch { return "auto"; } },
+  set: (v: Mode) => { try { localStorage.setItem(MODE_KEY, v); } catch { /* 저장 못 해도 동작 */ } },
+};
+// 네 모듈을 고루 — 일 시키기와 묻기 둘 다(2026-10-08 사용자 "4가지 솔루션을 모두 포괄"). 누르면 그 탭도 같이 고른다
+const EXAMPLES: { icon: typeof Search; label: string; q: string; mode: Mode }[] = [
+  { icon: Search, label: "에셋 찾기", q: "기후위기 아이콘 찾아 줘", mode: "assets" },
+  { icon: FileText, label: "제안서", q: "AI 민원 플랫폼 제안서 만들어 줘", mode: "deck" },
+  { icon: LayoutTemplate, label: "목업", q: "시청 메인 목업 만들어 줘", mode: "mock" },
+  { icon: Code2, label: "부품 코드", q: "KRDS 탭 부품 코드 줘", mode: "guide" },
+  { icon: Plug, label: "powerMCP", q: "powerMCP 연결 방법은?", mode: "auto" },
 ];
 const STEPS = ["자료", "검토", "목차", "기획", "시안", "원고", "결과물"];
 const ACCEPT = ".pdf,.docx,.hwpx,.hwp,.xlsx,.pptx,.md,.txt,.csv";
@@ -71,6 +86,9 @@ export function MainChat({ variant = "full", onClose }: { variant?: "full" | "do
   const [pid, setPid] = useState<string | null>(() => (typeof window === "undefined" ? null : store.get()));
   const [text, setText] = useState(() => { try { const d = sessionStorage.getItem(DRAFT); if (d) sessionStorage.removeItem(DRAFT); return d ?? ""; } catch { return ""; } });
   const [busy, setBusy] = useState(false);
+  const [mode, setModeState] = useState<Mode>("auto");
+  useEffect(() => { setModeState(modeStore.get()); }, []);   // 브라우저에서만 읽는다(서버 렌더와 첫 화면을 맞춘다)
+  const setMode = (v: Mode) => { setModeState(v); modeStore.set(v); };
   const [anon, setAnon] = useState<AnonTurn[]>(() => (typeof window === "undefined" ? [] : anonStore.get()));   // 로그인 전 대화 — 탭을 닫으면 사라진다
   const [notice, setNotice] = useState<{ text: string; upgrade?: boolean; link?: string | null } | null>(null);
   const [upl, setUpl] = useState<{ name: string; pct: number } | null>(null);
@@ -119,15 +137,15 @@ export function MainChat({ variant = "full", onClose }: { variant?: "full" | "do
     try {
       if (!me) {
         // 로그인 전 — 답만(저장 안 함). 제안서 만들기는 로그인 뒤 같은 말로 이어 간다.
-        const r = await postJson<{ reply: Reply }>("/chat/ask", { text: t, history: anonHistory(anon) });
+        const r = await postJson<{ reply: Reply }>("/chat/ask", { text: t, mode, history: anonHistory(anon) });
         const next = [...anon, { q: t, a: r.reply }];
         setAnon(next); anonStore.set(next);
         if (r.reply.login) { try { sessionStorage.setItem(DRAFT, t); } catch { /* 없음 */ } }
       } else if (!p) {
-        const r = await postJson<{ project: Project }>("/chat/projects", { text: t, history: anonHistory(anon) });
+        const r = await postJson<{ project: Project }>("/chat/projects", { text: t, mode, history: anonHistory(anon) });
         put(r.project); setPid(r.project.id); store.set(r.project.id); setAnon([]); anonStore.set([]);
       } else {
-        put(await postJson<Project>(`/chat/projects/${pid}/messages`, { text: t }));
+        put(await postJson<Project>(`/chat/projects/${pid}/messages`, { text: t, mode }));
       }
     } catch (e) { setText(t); fail(e); } finally { setBusy(false); }
   }
@@ -269,16 +287,29 @@ export function MainChat({ variant = "full", onClose }: { variant?: "full" | "do
             onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) { e.preventDefault(); void send(); } }}
             rows={dock ? 1 : 2}
             maxLength={4000}
-            placeholder={p?.job ? (running ? (dock ? "고칠 점을 남겨 주세요" : "기다리는 동안 고칠 점을 남기면 다음 단계에서 반영합니다") : (dock ? "더 알려 줄 내용을 적어 주세요" : "더 알려 줄 내용이나 고칠 점을 적어 주세요")) : "무엇을 도와드릴까요?"}
+            placeholder={p?.job ? (running ? (dock ? "고칠 점을 남겨 주세요" : "기다리는 동안 고칠 점을 남기면 다음 단계에서 반영합니다") : (dock ? "더 알려 줄 내용을 적어 주세요" : "더 알려 줄 내용이나 고칠 점을 적어 주세요")) : MODES.find((m) => m.k === mode)!.hint}
             aria-label="채팅 입력"
             className={cn("min-w-0 resize-none bg-transparent text-md leading-[1.6] outline-none placeholder:text-ink-4", dock ? "min-h-10 py-1.5" : "min-h-14 py-1.5")}
           />
           <div className="mt-1 flex items-center justify-between gap-2">
-            {p?.job?.status === "hold"
-              ? <button type="button" onClick={() => fileRef.current?.click()} aria-label="자료 올리기" title="자료 올리기" className="inline-flex size-9 items-center justify-center rounded-full text-ink-2 transition-colors hover:bg-ground-3"><Plus className="size-5" aria-hidden /></button>
-              : <span className="inline-flex size-9 items-center justify-center text-ink-4/60" title="제안서 작업을 시작하면 자료를 올릴 수 있습니다" aria-hidden><Plus className="size-5" /></span>}
-            <div className="flex items-center gap-3">
-              <span className="text-sm text-ink-4">powerPlus AI</span>
+            <div className="flex min-w-0 items-center gap-1">
+              {p?.job?.status === "hold"
+                ? <button type="button" onClick={() => fileRef.current?.click()} aria-label="자료 올리기" title="자료 올리기" className="inline-flex size-9 shrink-0 items-center justify-center rounded-full text-ink-2 transition-colors hover:bg-ground-3"><Plus className="size-5" aria-hidden /></button>
+                : <span className="hidden size-9 shrink-0 items-center justify-center text-ink-4/60 @md:inline-flex" title="제안서 작업을 시작하면 자료를 올릴 수 있습니다" aria-hidden><Plus className="size-5" /></span>}
+              {/* 탭 — 고른 것만 옅은 면(LLM 입력창의 이미지·비디오·텍스트 탭 문법). 좁은 칸은 그림 없이 글자만 */}
+              <div role="radiogroup" aria-label="무엇을 할까요" className="flex min-w-0 items-center">
+                {MODES.map((m) => (
+                  <button key={m.k} type="button" role="radio" aria-checked={mode === m.k} onClick={() => { setMode(m.k); inputRef.current?.focus(); }}
+                    title={m.k === "auto" ? "질문·안내·MCP 연결 — 말을 보고 알아서 고릅니다" : undefined}
+                    className={cn("inline-flex h-9 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full px-1.5 text-[calc(var(--text-sm)*0.9)] transition-colors @sm:px-2.5 @xl:px-3",   // 모바일 챗봇 창(286px)에서도 다섯 개가 한 줄에. 글자·그림 = 기본의 90%(사용자)
+                      mode === m.k ? "bg-ground-3 font-semibold text-ink" : "text-ink-4 hover:text-ink-2")}>
+                    <m.icon className="hidden size-[14.4px] @xl:block" aria-hidden />{m.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="flex shrink-0 items-center gap-3">
+              <span className="hidden text-sm text-ink-4 @2xl:inline">powerPlus AI</span>
               <button type="submit" disabled={busy || !text.trim()} aria-label="보내기"
                 className="inline-flex size-9 items-center justify-center rounded-full bg-ink text-ground transition-colors hover:bg-ink-2 disabled:cursor-default disabled:bg-ground-3 disabled:text-ink-4">
                 <ArrowUp className="size-5" aria-hidden />
@@ -291,7 +322,7 @@ export function MainChat({ variant = "full", onClose }: { variant?: "full" | "do
         {empty && (
           <div className={cn("mt-4 flex flex-wrap gap-2", !dock && "justify-center")}>
             {(dock ? EXAMPLES.slice(0, 3) : EXAMPLES).map((x) => (
-              <button key={x.q} type="button" onClick={() => { setText(x.q); requestAnimationFrame(() => { const t = inputRef.current; if (t) { t.focus(); t.setSelectionRange(x.q.length, x.q.length); } }); }} title={x.q}
+              <button key={x.q} type="button" onClick={() => { setText(x.q); setMode(x.mode); requestAnimationFrame(() => { const t = inputRef.current; if (t) { t.focus(); t.setSelectionRange(x.q.length, x.q.length); } }); }} title={x.q}
                 className="inline-flex h-9 items-center gap-1.5 whitespace-nowrap rounded-panel border border-line bg-ground px-3 text-sm text-ink-3 transition-colors hover:bg-ground-2 hover:text-ink">
                 <x.icon className="size-4" aria-hidden />{x.label}
               </button>

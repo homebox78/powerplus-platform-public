@@ -274,9 +274,9 @@ async function doCheck({ html, ref, refImage, launch, sharp, width = 1920, peers
       });
       mob = { ...mob, ...r };
       // 모바일·태블릿 구성(2026-10-15 사용자 지적: 모바일에서 다 깨짐 — 입력칸·단추 짝, 탭 줄 잘림, 짧은 이름 꺾임, 구분선 줄바꿈, 열린 판이 화면 밖)
-      dev = [...(await deviceChecks(p, 390, lay.r.font ?? null).catch(() => ({ fails: [] }))).fails];
+      dev = [...(await deviceChecks(p, 390, lay.r.font ?? null, textKeys).catch(() => ({ fails: [] }))).fails];
       await p.setViewportSize({ width: 768, height: 1024 }); await p.waitForTimeout(400);
-      dev.push(...(await deviceChecks(p, 768, lay.r.font ?? null).catch(() => ({ fails: [] }))).fails);
+      dev.push(...(await deviceChecks(p, 768, lay.r.font ?? null, textKeys).catch(() => ({ fails: [] }))).fails);
       await p.setViewportSize({ width, height: 1080 });
     }
 

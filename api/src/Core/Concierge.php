@@ -27,9 +27,17 @@ final class Concierge
 
     private const STOP = '/(좀|조금|찾아\s?줘|찾아\s?주세요|찾아|보여\s?줘|보여\s?주세요|보여|주세요|해\s?줘|해주세요|알려\s?줘|있어\??|있나요\??|있나\??|필요해|필요한데|필요합니다|원해|에셋|자산|이미지|그림|넣을|쓸|만한|관련|어울리는|같은|추천)/u';
 
-    /** 말 → 모듈 */
-    public static function route(string $text): string
+    /** 말 → 모듈. $mode = 입력창 탭(assets·deck·mock·guide — 그 밖·빈 값은 '기타' = 알아서 고른다, 2026-10-15 사용자 "에셋 장표 목업 가이드 기타로 구분") */
+    public static function route(string $text, string $mode = ''): string
     {
+        if (in_array($mode, ['assets', 'mock', 'guide'], true)) {
+            return $mode;
+        }
+        if ($mode === 'deck') {   // 장표 탭이어도 묻는 말("요금은?")은 안내로 — 작업이 되지 않게
+            $ask = (bool) preg_match('/[?？]\s*$|가능|할 수 있|되나|돼요|될까|어떻게|뭐야|무엇|궁금|얼마|요금|가격|차이/u', $text);
+            $make = (bool) preg_match('/만들어|작성해|써\s?줘|짜\s?줘|진행해|시작해|부탁/u', $text);
+            return $ask && !$make ? 'help' : 'deck';
+        }
         $c = null;
         try {
             $c = Jev::choose('chat_intent', Triage::scrub($text, 1500), '사용자가 powerPlus 채팅에 보낸 말이 어떤 요청인지 고른다. 묻는 말(가능한지·어떻게)이면 help 다.', self::MODULES, 0.55);

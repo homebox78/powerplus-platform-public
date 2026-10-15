@@ -319,7 +319,7 @@ return static function (Router $r): void {
                 $prev[] = ['role' => $h['role'], 'content' => mb_substr($h['content'], 0, 1500)];
             }
         }
-        $module = Concierge::route($text);
+        $module = Concierge::route($text, (string) (Response::input()['mode'] ?? ''));   // 입력창 탭(에셋·장표·목업·가이드·기타)
         if ($module === 'deck') {
             $pub = $startDeck(null, $text, $a, $uid, $email);
             Response::json(['project' => $view($sync($proj($pub, $uid), $a, $uid, $email), $a, $uid, $email)], 201);
@@ -353,7 +353,7 @@ return static function (Router $r): void {
                 $hist[] = ['role' => $h['role'], 'content' => mb_substr($h['content'], 0, 1500)];
             }
         }
-        $module = Concierge::route($text);
+        $module = Concierge::route($text, (string) ($b['mode'] ?? ''));
         if ($module === 'deck') {
             Response::json(['reply' => ['kind' => 'reply', 'module' => 'deck', 'login' => true,
                 'body' => "제안서는 이 대화에서 자료를 받아 목차·기획·시안까지 단계별로 만들어 드려요.\n로그인하면 지금 적은 말로 바로 시작합니다.", 'items' => [], 'links' => []]]);
@@ -386,11 +386,12 @@ return static function (Router $r): void {
     $r->post('/chat/projects/{pid}/messages', static function (array $p, Actor $a) use ($need, $proj, $add, $msg, $intent, $isQuestion, $sync, $view, $save, $hist, $startDeck): void {
         [$uid, $email] = $need($a);
         $row = $proj((string) $p['pid'], $uid);
+        $mode = (string) (Response::input()['mode'] ?? '');   // 입력창 탭 — 빈 값·기타는 알아서 고른다
         // 질문이면 powerLLM 이 답한다(어느 단계에서든) — 에셋·부품을 물으면 결과까지 붙는다
-        $answer = static function (string $q) use ($add, $row, $a, $hist): void {
+        $answer = static function (string $q) use ($add, $row, $a, $hist, $mode): void {
             $h = $hist((int) $row['id']);
             array_pop($h);   // 방금 넣은 질문은 reply 가 따로 붙인다
-            $module = Concierge::route($q);
+            $module = Concierge::route($q, $mode);
             $add((int) $row['id'], 'ai', 'reply', null, Concierge::reply($a, $q, $module === 'deck' ? 'help' : $module, $h));
         };
         $text = trim((string) (Response::input()['text'] ?? ''));
@@ -399,7 +400,7 @@ return static function (Router $r): void {
         $add((int) $row['id'], 'user', 'text', $text);
         if (!$row['deck_job_id']) {
             // 일반 대화 — 제안서 만들기로 넘어가면 같은 대화에 powerDeck 작업을 붙인다
-            if (Concierge::route($text) === 'deck') {
+            if (Concierge::route($text, $mode) === 'deck') {
                 $startDeck((int) $row['id'], $text, $a, $uid, $email);
             } else {
                 $answer($text);
@@ -409,7 +410,7 @@ return static function (Router $r): void {
         $jobId = (string) $row['deck_job_id'];
         $status = (string) Db::val('SELECT status FROM deck_jobs WHERE id = ?', [$jobId]);
         // 작업과 관계없는 말(에셋 찾기·부품·목업·범위 밖)은 어느 단계에서든 바로 답한다 — 작업은 위에 고정된 채 계속 돈다(2026-10-08 사용자)
-        $other = in_array(Concierge::route($text), ['assets', 'guide', 'mock', 'out'], true);
+        $other = in_array(Concierge::route($text, $mode), ['assets', 'guide', 'mock', 'out'], true);
         if ($other) {
             $answer($text);
         } elseif ($status === 'hold' && $isQuestion($text)) {

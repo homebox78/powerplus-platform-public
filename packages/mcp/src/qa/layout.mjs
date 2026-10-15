@@ -156,11 +156,19 @@ export async function layoutChecks(p, o = {}) {
  * 입력칸이 작아지고 단추와 짝이 안 맞음, 탭 줄이 잘림).
  * @param {import("playwright-core").Page} p @param {number} w
  */
-export async function deviceChecks(p, w, pcFont = null) {
-  const r = await p.evaluate(({ w, pcFont }) => {
+export async function deviceChecks(p, w, pcFont = null, textKeys = []) {
+  const r = await p.evaluate(({ w, pcFont, textKeys }) => {
     const vis = (el) => { const s = getComputedStyle(el); const q = el.getBoundingClientRect(); return s.display !== "none" && s.visibility !== "hidden" && +s.opacity > 0.05 && q.width > 0 && q.height > 0; };
     const nm = (el) => el.tagName.toLowerCase() + (typeof el.className === "string" && el.className.trim() ? "." + el.className.trim().split(/\s+/)[0] : "");
-    const out = { pair: [], input: [], tabsCut: [], tap: [], overflow: Math.max(document.documentElement.scrollWidth, document.body.scrollWidth) - w };
+    const out = { pair: [], input: [], tabsCut: [], tap: [], textCrop: [], overflow: Math.max(document.documentElement.scrollWidth, document.body.scrollWidth) - w };
+    // 글자 든 그림(배너·팝업·카드뉴스)이 이 폭에서 잘림 — PC 에선 맞던 칸 비율이 태블릿·모바일에서 바뀌어 cover 로 글자가 잘렸다
+    // (2026-10-15 사용자 지적 '새소식' 배너 좌우 잘림). 글자 그림은 aspect-ratio 를 그림 비율로 고정하거나 contain.
+    { const tk = new Set(textKeys); const key = (src) => { const q = String(src || "").split("?")[0].split("/").filter(Boolean); const n = q.pop() || ""; return /^(original|web|thumb|card)$/.test(n) ? q.pop() || "" : n; };
+      for (const im of document.images) { if (!vis(im) || !im.naturalWidth) continue; const kk = key(im.currentSrc || im.src); if (!tk.has(kk)) continue; const q = im.getBoundingClientRect(); if (q.width < 80) continue;
+        const s = getComputedStyle(im); const nr = im.naturalWidth / im.naturalHeight, br = q.width / q.height, k = Math.max(nr / br, br / nr);
+        let clip = false; for (let a = im.parentElement; a && a !== document.body; a = a.parentElement) { if (getComputedStyle(a).overflow !== "visible") { const ab = a.getBoundingClientRect(); if (q.right > ab.left && q.left < ab.right && (ab.bottom < q.bottom - 3 || ab.top > q.top + 3)) { clip = true; break; } /* 위아래 잘림만 — 옆으로 넘어간 캐러셀 장은 화면 밖일 뿐 */ } }
+        if ((s.objectFit === "cover" && k > 1.04) || s.objectFit === "fill" && k > 1.06 || clip) out.textCrop.push(`${kk} 자리 ${br.toFixed(2)} vs 그림 ${nr.toFixed(2)}${clip ? "·부모가 자름" : ""}`); }
+      out.textCrop = [...new Set(out.textCrop)].slice(0, 5); }
     // 같은 줄(위끝 6px 안)·같은 묶음의 한 줄 입력·선택·단추 높이가 다름 / 위아래로 쌓인 선택 상자와 입력칸 폭이 다름
     const ctl = (e) => e.matches("input:not([type=radio]):not([type=checkbox]):not([type=hidden]), select, button, [aria-haspopup], a[class*=btn]") && vis(e) && e.getBoundingClientRect().height < 80;
     for (const g of document.querySelectorAll("form, [role=search], [class*=search], [class*=filter], [class*=form]")) { if (!vis(g) || g.closest("header [data-hb=menu]")) continue;
@@ -200,7 +208,7 @@ export async function deviceChecks(p, w, pcFont = null) {
       const pp = pcFont.p, np = fsOf("main p"); if (pp && np > pp + 0.5) out.font.push(`본문 PC ${pp}px → ${np}px(PC 이하로)`); }
     let small = 0; for (const b of document.querySelectorAll("button, [role=button], a[class*=btn]")) { if (!vis(b)) continue; const q = b.getBoundingClientRect(); if (q.height < 40 && q.width < 40) small++; } if (small >= 3) out.tap.push(`누르기 작은 단추 ${small}개(40px 미만)`);
     return out;
-  }, { w, pcFont });
+  }, { w, pcFont, textKeys: (textKeys ?? []).map((k) => String(k).replace(/^pa-/, "")) });
   // 열리는 판(드롭다운·관련 사이트)이 화면 밖으로 나감 — 실제로 눌러 본다
   r.popOut = [];
   const openers = await p.$$("main button[aria-expanded=false], footer button[aria-expanded=false], main [aria-haspopup]:not([aria-expanded=true]), footer [aria-haspopup]:not([aria-expanded=true])");
@@ -222,6 +230,7 @@ export async function deviceChecks(p, w, pcFont = null) {
   if (r.input.length) fails.push(`${tag} 입력칸 작음: ${r.input.join(" | ")}`);
   if (r.tabsCut.length) fails.push(`${tag} 탭 줄 잘림: ${r.tabsCut.join(" | ")}`);
   if (r.tap.length) fails.push(`${tag} ${r.tap[0]}`);
+  if (r.textCrop.length) fails.push(`${tag} 글자 든 그림 잘림: ${r.textCrop.join(" | ")} — 칸에 aspect-ratio 를 그림 비율로 주거나 object-fit:contain`);
   if (r.font.length) fails.push(`${tag} 글자 크기가 PC 와 같음: ${r.font.join(" | ")} — @media 로 PC>태블릿>모바일 단계별로 줄인다`);
   return { r, fails };
 }

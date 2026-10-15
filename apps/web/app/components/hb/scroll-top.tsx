@@ -38,7 +38,7 @@ export function ScrollTop() {
     <>
       {bot && !home && (
         <div role="dialog" aria-label="powerPlus AI"
-          className="hb-pop fixed bottom-24 right-[84px] z-50 flex h-[min(640px,calc(100dvh-140px))] w-[min(460px,calc(100vw-104px))] flex-col overflow-hidden rounded-2xl bg-ground shadow-[0_16px_48px_rgba(0,0,0,.18)] ring-1 ring-line md:bottom-8 md:right-[104px]">
+          className="hb-pop fixed inset-x-4 bottom-[156px] z-50 flex h-[min(640px,calc(100dvh-236px))] flex-col overflow-hidden rounded-2xl bg-ground shadow-[0_16px_48px_rgba(0,0,0,.18)] ring-1 ring-line md:inset-x-auto md:bottom-8 md:right-[104px] md:h-[min(640px,calc(100dvh-140px))] md:w-[min(460px,calc(100vw-104px))]">
           <Suspense fallback={<p className="p-5 text-sm text-ink-4">불러오는 중…</p>}><MainChat variant="dock" onClose={() => setBot(false)} /></Suspense>
         </div>
       )}

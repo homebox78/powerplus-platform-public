@@ -129,8 +129,10 @@ const ORIGIN = new URL(API).origin;
 let textKeyCache: { at: number; keys: string[]; icons: string[] } = { at: 0, keys: [], icons: [] };
 async function textSampleKeys(): Promise<string[]> {
   if (Date.now() - textKeyCache.at < 600_000) return textKeyCache.keys;
-  try { const r = await fetch(`${PP_API}/assets/mock-samples`); const j = (await r.json()) as { data?: { items?: Array<{ id: string; has_text?: boolean; kind?: string }> } }; const it = j.data?.items ?? [];
-    textKeyCache = { at: Date.now(), keys: it.filter((x) => x.has_text).map((x) => String(x.id).replace(/^pa-/, "")), icons: it.filter((x) => String(x.kind ?? "").startsWith("icon")).map((x) => String(x.id).replace(/^pa-/, "")) }; } catch { textKeyCache.at = Date.now(); }
+  try { const r = await fetch(`${PP_API}/assets/mock-samples`); const j = (await r.json()) as { data?: { items?: Array<{ id: string; file?: string; has_text?: boolean; kind?: string }> } }; const it = j.data?.items ?? [];
+    // 열쇠는 그림 주소의 …/samples/{열쇠}/… — id 는 옛 이름(banner-03-festival-promo)이라 주소와 안 맞아 글자 그림 잘림을 하나도 못 잡았다(2026-10-15)
+    const keyOf = (x: { id: string; file?: string }) => (String(x.file ?? "").match(/\/samples\/([a-z0-9]{8,32})\//) ?? [])[1] ?? String(x.id).replace(/^pa-/, "");
+    textKeyCache = { at: Date.now(), keys: it.filter((x) => x.has_text).map(keyOf), icons: it.filter((x) => String(x.kind ?? "").startsWith("icon")).map(keyOf) }; } catch { textKeyCache.at = Date.now(); }
   return textKeyCache.keys;
 }
 /** 샘플 이미지를 외부(사용자 목업)에서 열 공개 주소의 앞부분 — 운영은 https://hom2box.com, 개발은 HOMEBOX_PUBLIC_ORIGIN 로 */

@@ -11,7 +11,7 @@ import { Tag } from "@/components/hb/tag";
 import { ThumbFrame } from "@/components/hb/thumb-frame";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { apiFetch } from "@/lib/api";
+import { ApiError, apiFetch } from "@/lib/api";
 import type { Route } from "./+types/report";
 
 type AssetItem = {
@@ -66,11 +66,15 @@ export default function ReportPage() {
     );
   }
   if (q.isError || !q.data) {
+    // 공개 범위가 '임직원만'·'만든 사람만'인 보고서(O-41)는 403 — 지워진 보고서와 다르게 로그인 안내를 준다
+    const err = q.error instanceof ApiError ? q.error : null;
+    const denied = err?.status === 403;
     return (
       <div className="container-page flex flex-col items-center py-28 text-center">
-        <FileText className="size-8 text-ink-4" aria-hidden />
-        <h1 className="mt-4 text-2xl font-bold">보고서를 열 수 없습니다.</h1>
-        <Copy className="mt-2 text-md text-ink-3" text="링크가 잘못됐거나, 기간이 지났거나, 만든 사람이 지운 보고서입니다." />
+        {denied ? <Lock className="size-8 text-ink-4" aria-hidden /> : <FileText className="size-8 text-ink-4" aria-hidden />}
+        <h1 className="mt-4 text-2xl font-bold">{denied ? "볼 수 있는 사람이 정해진 보고서입니다." : "보고서를 열 수 없습니다."}</h1>
+        <Copy className="mt-2 text-md text-ink-3" text={denied && err ? `${err.message} ${err.hint ?? ""}`.trim() : "링크가 잘못됐거나, 기간이 지났거나, 만든 사람이 지운 보고서입니다."} />
+        {denied && <Link to={`/login?next=${encodeURIComponent(`/r/${token}`)}`} className="mt-6 text-md font-semibold underline underline-offset-4">로그인</Link>}
         <Link to="/" className="mt-6 text-md font-semibold underline underline-offset-4">powerPlus 둘러보기</Link>
       </div>
     );

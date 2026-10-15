@@ -97,7 +97,7 @@ async function api<T>(p: string, plan: "pro" | "free", extra?: Record<string, st
   const body = (await res.json().catch(() => null)) as T | { error?: { code: string; message: string } } | null;
   if (!res.ok) {
     const e = new Error((body as { error?: { message: string } } | null)?.error?.message ?? `레퍼런스 API HTTP ${res.status}${LEGACY_KEY ? "" : " (LEGACY_HOMEBOX_KEY 미설정)"}`) as Error & { code?: string };
-    e.code = (body as { error?: { code?: string } } | null)?.error?.code ?? (res.status === 404 ? "NOT_FOUND" : res.status === 402 || res.status === 403 ? "PLAN_REQUIRED" : res.status === 400 ? "BAD_REQUEST" : "ERROR");
+    e.code = (body as { error?: { code?: string } } | null)?.error?.code ?? (res.status === 404 ? "NOT_FOUND" : res.status === 402 ? "UPGRADE_REQUIRED" : res.status === 403 ? "FORBIDDEN" : res.status === 400 ? "BAD_REQUEST" : "ERROR");
     throw e;
   }
   if (body === null || typeof body !== "object") throw new Error(`레퍼런스 API 응답을 읽지 못했습니다(HTTP ${res.status}). 잠시 뒤 다시 시도하세요.`);
@@ -124,7 +124,7 @@ const ppMsg = (r: PpRes<unknown>, fallback: string) => {
 };
 /** 오류 코드 — 서버가 준 code(FORBIDDEN_SCOPE 등)를 먼저, 없으면 HTTP 상태로(MC-21: 도구마다 403 을 FORBIDDEN·ERROR 로 다르게 내던 것) */
 const ppCode = (r: PpRes<unknown>) => (typeof r.body?.code === "string" && r.body.code) ? r.body.code
-  : r.status === 404 ? "NOT_FOUND" : r.status === 401 ? "UNAUTHORIZED" : r.status === 403 ? "FORBIDDEN" : r.status === 402 ? "PLAN_REQUIRED" : r.status === 429 ? "RATE_LIMITED" : r.status === 400 || r.status === 422 ? "INVALID_ARGS" : "ERROR";
+  : r.status === 404 ? "NOT_FOUND" : r.status === 401 ? "UNAUTHORIZED" : r.status === 403 ? "FORBIDDEN" : r.status === 402 ? "UPGRADE_REQUIRED" : r.status === 429 ? "RATE_LIMITED" : r.status === 400 || r.status === 422 ? "INVALID_ARGS" : "ERROR";
 /** AI 가 흔히 쓰는 기관 유형 별칭 → taxonomy id (2026-09-30 요청 시험 R28: 'committee' 로 보내 검증 오류) */
 const ALIAS: Record<string, string> = {
   committee: "central_committee", commission: "central_committee", ministry: "central_ministry", agency: "central_affiliate",
@@ -133,6 +133,8 @@ const ALIAS: Record<string, string> = {
   corporation: "public_corp", public_enterprise: "public_corp", quasi: "public_quasi", education: "edu_office", edu: "edu_office", assembly: "council",
   // 도구 설명 예시가 'univ' 로 적혀 있었는데 taxonomy 에 없는 값이라 예시대로 부르면 INVALID_ARGS 였다(2026-10-15 MC-06 점검)
   univ: "edu_univ", university: "edu_univ", school: "edu_school", welfare: "etc_welfare",
+  // 보건소는 따로 모은 레퍼런스가 없다(2026-10-15 O-41: 보건소 기관 0곳) — 가장 가까운 공공의료로 받는다. 보건소 사이트를 모으면 종류를 따로 만든다
+  health_center: "public_medical", 보건소: "public_medical", 의료원: "public_medical", 병원: "public_medical", 대학교: "edu_univ", 학교: "edu_school", 복지관: "etc_welfare",
 };
 /** 배열 파라미터 — 문자열("a,b")도 받는다. 2026-09-24 테스트에서 org_type:"local_basic" 같은 호출이 전부 검증 오류로 튕겼다 */
 function listOf<T extends z.ZodTypeAny>(inner: T) {
@@ -527,8 +529,8 @@ function buildServer(key: string | null): McpServer {
     if (fmt === "css" || fmt === "tailwind") {
       const res = await fetch(`${API}${path}`, { headers: legacyHeaders(pro ? "pro" : "free", "text/css") });
       const body = await res.text();
-      // 오류 코드는 api() 와 같은 규칙(402·403 = PLAN_REQUIRED) — 이 갈래만 UPGRADE_REQUIRED 로 달랐다(MC-21)
-      if (!res.ok) { let m = `HTTP ${res.status}`; let code = res.status === 404 ? "NOT_FOUND" : res.status === 402 || res.status === 403 ? "PLAN_REQUIRED" : res.status === 400 ? "BAD_REQUEST" : "ERROR"; try { const j = JSON.parse(body) as { error?: { message?: string; code?: string } }; m = j.error?.message ?? m; code = j.error?.code ?? code; } catch { /* 텍스트 */ } return err(m, code); }
+      // 오류 코드는 api() 와 같은 규칙(402 = UPGRADE_REQUIRED·403 = FORBIDDEN, /docs/errors 와 같은 이름 — O-31 2026-10-15)
+      if (!res.ok) { let m = `HTTP ${res.status}`; let code = res.status === 404 ? "NOT_FOUND" : res.status === 402 ? "UPGRADE_REQUIRED" : res.status === 403 ? "FORBIDDEN" : res.status === 400 ? "BAD_REQUEST" : "ERROR"; try { const j = JSON.parse(body) as { error?: { message?: string; code?: string } }; m = j.error?.message ?? m; code = j.error?.code ?? code; } catch { /* 텍스트 */ } return err(m, code); }
       return { content: [{ type: "text" as const, text: body }] };
     }
     const r = await get<Record<string, unknown>>(path);
@@ -722,7 +724,7 @@ function buildServer(key: string | null): McpServer {
     },
   }, async (a) => {
     const g = await guard("mock_publish_mockup"); if (g) return g;
-    if (!pro) return err("시안 미리보기 주소는 Pro 이상 키에서 쓸 수 있습니다. 무료 키는 HTML 파일로 저장해 브라우저로 여세요.", "PLAN_REQUIRED");
+    if (!pro) return err("시안 미리보기 주소는 Pro 이상 키에서 쓸 수 있습니다. 무료 키는 HTML 파일로 저장해 브라우저로 여세요.", "UPGRADE_REQUIRED");
     const r = await internal("mockup-pages", { mode: "publish", token: a.token, title: a.title });
     if (!r.ok || !r.json?.token) return err(r.json?.error?.message ?? `게시하지 못했습니다(HTTP ${r.status}).`, r.json?.error?.code ?? "ERROR");
     return text({ url: `${PP_PUBLIC}${String(r.json.path ?? `/api/v1/p/${String(r.json.token)}`)}`, token: r.json.token, expires_at: r.json.expires_at, bytes: r.json.bytes, note: "이 주소를 사용자에게 그대로 준다. 고칠 때는 mock_check_mockup(token, edits) 로 다시 판정한 뒤 같은 token 으로 게시하면 주소가 그대로다." });

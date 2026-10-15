@@ -89,16 +89,26 @@ function measure({ primary }) {
   out.imgTop = [...new Set(out.imgTop)].slice(0, 4); out.cardMix = [...new Set(out.cardMix)].slice(0, 4);
 
   // ⑤ 칠한 칸(300×300 이상)인데 아래쪽 35% 에 내용이 없음
+  // box-shadow 를 크게 펼쳐(spread 100px 이상) 섹션 띠를 칠한 칸은 띠의 일부라 '칠한 칸'이 아니다(O-53, 시안 696 .biz-left 0 0 0 100vmax)
+  const bandShadow = (s) => s.boxShadow !== "none" && s.boxShadow.replace(/rgba?\([^)]*\)|#[0-9a-f]+/gi, "").split(",").some((part) => { if (/inset/.test(part)) return false; const n = part.match(/-?[\d.]+px/g) || []; return n.length >= 4 && parseFloat(n[3]) >= 100; });
+  // 칸 밖 요소가 칸 위에 겹쳐 그려지면(absolute 넘김 단추 줄 등) 그 칸의 내용으로 센다(O-53, 시안 697 .hero-box + .hero-ctrlbar) — 그 자리 맨 위 요소가 칸 쪽이 아니면 겹친 쪽이 위
+  const sy0 = scrollY;
+  const onTop = (z, box) => { const cx = (z.l + z.r) / 2, cy = (z.t + z.b) / 2; if (cy - scrollY < 0 || cy - scrollY >= innerHeight) scrollTo(0, Math.max(0, cy - innerHeight / 2));
+    const hit = document.elementFromPoint(cx, cy - scrollY); return !!hit && !box.contains(hit) && (hit === z.el || z.el.contains(hit) || hit.contains(z.el)); };
   for (const box of document.querySelectorAll("body *")) { if (!vis(box) || box.closest("header, footer") || !painted(box) || /^(IMG|VIDEO|IFRAME|UL|OL|TABLE)$/.test(box.tagName)) continue;
-    const q = box.getBoundingClientRect(); if (q.width < 300 || q.height < 300 || q.width > W * 0.9 || getComputedStyle(box).backgroundImage !== "none") continue;
-    const T = q.top + scrollY, B = q.bottom + scrollY; const mine = leaves.filter((z) => z.el !== box && box.contains(z.el)); if (!mine.length) continue;
-    const end = Math.max(...mine.map((z) => z.b)); const empty = (B - end) / (B - T);
-    if (empty > 0.35) out.bottomEmpty.push(`${nm(box)} y${Y(q)} ${Math.round(q.width)}×${Math.round(q.height)} 아래 ${Math.round(empty * 100)}% 빔 — 항목을 늘리거나 칸 높이를 내용에 맞춘다`); }
+    const q = box.getBoundingClientRect(); if (q.width < 300 || q.height < 300 || q.width > W * 0.9 || getComputedStyle(box).backgroundImage !== "none" || bandShadow(getComputedStyle(box))) continue;
+    const T = q.top + scrollY, B = q.bottom + scrollY, L = q.left, R = q.right; const mine = leaves.filter((z) => z.el !== box && box.contains(z.el)); if (!mine.length) continue;
+    let end = Math.max(...mine.map((z) => z.b)); let empty = (B - end) / (B - T);
+    if (empty > 0.35) { const over = leaves.filter((z) => !box.contains(z.el) && !z.el.contains(box) && z.l >= L - 2 && z.r <= R + 2 && z.t >= T - 2 && z.b <= B + 2 && z.b > end && onTop(z, box));
+      if (over.length) { end = Math.max(end, ...over.map((z) => z.b)); empty = (B - end) / (B - T); } }
+    if (empty > 0.35) out.bottomEmpty.push(`${nm(box)} y${Y(box.getBoundingClientRect())} ${Math.round(q.width)}×${Math.round(q.height)} 아래 ${Math.round(empty * 100)}% 빔 — 항목을 늘리거나 칸 높이를 내용에 맞춘다`); }
+  if (scrollY !== sy0) scrollTo(0, sy0);
   out.bottomEmpty = [...new Set(out.bottomEmpty)].slice(0, 4);
 
   // ⑥ 꼬리 한 줄 — 두 줄 이상 문장의 마지막 줄이 4글자 이하(PREFERENCES "꼬리 한 줄 금지")
-  for (const el of document.querySelectorAll("p, li, dd, span, a, h2, h3, h4")) { if (!vis(el) || el.closest("header, footer") || el.children.length) continue;
-    const node = el.firstChild; if (!node || node.nodeType !== 3) continue; const t = node.nodeValue; if (t.trim().length < 16) continue;
+  // 16자 이상 글은 마지막 줄이 한 낱말(8자 이하)이면, 16자 미만 짧은 글(카드 제목 "학교 시설 점검 결과 / 공개")은 두 줄 + 마지막 줄 3자 이하 한 낱말일 때만(O-52)
+  const tailIn = (scope, note) => { for (const el of scope.querySelectorAll("p, li, dd, span, a, h2, h3, h4")) { if (!vis(el) || el.closest("header, footer") || el.children.length) continue;
+    const node = el.firstChild; if (!node || node.nodeType !== 3) continue; const t = node.nodeValue; const short = t.trim().length < 16; if (short && (t.trim().length < 4 || !/\s/.test(t.trim()))) continue;
     // line-clamp·overflow 로 잘려 안 보이는 줄은 줄로 세지 않는다(693 제목 3번째 줄을 꼬리로 잡던 것) — 보이는 아래 끝 = 자기·잘라 내는 조상 중 가장 위
     let visB = el.getBoundingClientRect().bottom; for (let a = el; a && a !== document.body; a = a.parentElement) { const st = getComputedStyle(a); if (/hidden|clip/.test(st.overflowY + st.overflow)) visB = Math.min(visB, a.getBoundingClientRect().bottom); }
     const tops = []; for (let i = 0; i < t.length; i++) { if (!t[i].trim()) continue; const r2 = document.createRange(); r2.setStart(node, i); r2.setEnd(node, i + 1); const rr = r2.getClientRects()[0]; tops.push(rr && rr.bottom <= visB + 1 ? Math.round(rr.top) : null); }
@@ -106,8 +116,21 @@ function measure({ primary }) {
     // 마지막 줄 글자 — 공백 없는 한 낱말(8자 이하)만 떨어졌으면 꼬리("…자격을 / 확인하세요.")
     let lastTxt = ""; for (let i = 0, k = 0; i < t.length; i++) { if (!t[i].trim()) { if (k && tops[k - 1] === last) lastTxt += " "; continue; } if (tops[k] === last) lastTxt += t[i]; k++; }
     lastTxt = lastTxt.trim();
-    if (lastTxt && !/\s/.test(lastTxt) && lastTxt.length <= 8) out.tail.push(`"…${t.trim().slice(-14)}" 마지막 줄 "${lastTxt}" 한 낱말 — 문장을 줄이거나 둘로 나눈다`); }
-  out.tail = out.tail.slice(0, 6);
+    if (short && (lines.length !== 2 || lastTxt.length > 3)) continue;
+    if (lastTxt && !/\s/.test(lastTxt) && lastTxt.length <= 8) out.tail.push(`${note}"…${t.trim().slice(-14)}" 마지막 줄 "${lastTxt}" 한 낱말 — 문장을 줄이거나 둘로 나눈다`); } };
+  tailIn(document, "");
+  // 숨은 탭 패널·넘김 카드의 다른 장도 잰다(O-52) — 한 번에 한 장만 보이게(같은 묶음의 다른 장은 숨김) 재고, hidden 을 원래대로 되돌린다
+  const kinds = ["data-hb-panel", "data-hb-slide"];
+  const kindOf = (e) => kinds.find((k) => e.hasAttribute(k));
+  for (const pg of document.querySelectorAll("[data-hb-panel][hidden], [data-hb-slide][hidden]")) { if (pg.closest("header, footer")) continue;
+    const saved = [];
+    try {
+      for (let a = pg; a && a !== document.body; a = a.parentElement) { const k = kindOf(a); if (!k || !a.hidden) continue;
+        for (const s of a.parentElement ? [...a.parentElement.children] : []) if (s !== a && s.hasAttribute(k) && !s.hidden) { saved.push([s, false]); s.hidden = true; }
+        saved.push([a, true]); a.hidden = false; }
+      if (vis(pg)) tailIn(pg, kindOf(pg) === "data-hb-panel" ? "(숨은 탭) " : "(넘김 다른 장) ");
+    } finally { for (let i = saved.length - 1; i >= 0; i--) saved[i][0].hidden = saved[i][1]; } }
+  out.tail = [...new Set(out.tail)].slice(0, 6);
   return out;
 }
 

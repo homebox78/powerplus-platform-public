@@ -2822,12 +2822,18 @@ DIV_LIGHT = ("\nLIGHT TONE (this overrides any dark, cobalt or navy full-page ba
              "No large frontal faces — people only from the side, from behind or at a distance.\n")
 
 
+def deck_blue(st):
+    """앞장 그림·장식에 쓸 덱의 파랑 — 강조색(사용자 선택, 기본 분홍)은 엔진이 얹는 글(핵심어·뱃지)에만 쓴다"""
+    return str(((st or {}).get("front_draw") or {}).get("key") or "#2563EB")
+
+
 def front_treatment(job, k, accent):
     """이 덱 앞장의 배경 장식 한 줄(영문). 간지는 더 조용하게"""
     import zlib
     if (getattr(job, "style", None) or {}).get("front_accent") is False:   # 배경 처리가 프롬프트에 이미 있는 타입(B·E) — 강조색 고리·물결을 얹으면 그 규칙과 부딪힌다(2026-10-15 분홍 고리)
         return ""
-    t = FRONT_TREATMENTS[zlib.crc32(str(getattr(job, "id", "")).encode()) % len(FRONT_TREATMENTS)].replace("{accent}", accent or "#FF2A6D")
+    blue = deck_blue(getattr(job, "style", None))   # 장식은 덱의 파랑 — 강조색(기본 분홍)으로 그리면 배경과 안 어울린다(10-15)
+    t = FRONT_TREATMENTS[zlib.crc32(str(getattr(job, "id", "")).encode()) % len(FRONT_TREATMENTS)].replace("the accent color {accent}", "a soft blue " + blue).replace("{accent}", blue)
     if k == "div":
         return ("BACKGROUND ACCENT (same deck decoration as the cover, but quieter): " + t
                 + " — kept small and faint, only near one edge, never behind the chapter title.")
@@ -2839,7 +2845,9 @@ def front_logo_zones(st, kind="cover"):
     """(발주기관 자리, 제안사 자리) — 그 타입의 템플릿 한 벌(sets[].logos)에서. 자리: tl·tr·bl·br·bc, 없으면 None"""
     sid = str((st or {}).get("front_set") or "")
     tset = next((x for x in (front_templates().get("sets") or []) if x.get("id") == sid), None) or {}
-    lg = (tset.get("logos") or {}).get(kind) or (["tl", "bl"] if kind == "cover" else ["bl", "br"])
+    lg = list((tset.get("logos") or {}).get(kind) or (["tl", "bl"] if kind == "cover" else ["bl", "br"]))
+    if kind == "cover":   # 표지는 타입과 상관없이 발주기관 왼쪽 위 · 주관사 왼쪽 아래(사용자 10-15) — 한 벌 설정이 거꾸로(헥사곤)거나 오른쪽 아래(네이비)면 그림 자리와 부딪혔다
+        return "tl", "bl"
     return lg[0], lg[1]
 
 
@@ -3048,10 +3056,10 @@ def make_front_mockup(job, f, plan, accent, feedback=""):
                        "center": "\nComposition: keep the TOP HALF of the picture calm, even and low in detail (large centered text is laid there later); put the subject in the LOWER HALF, centered. Keep the corners plain.\n"}[__import__("frontdraw").layout_of(st, k)])
                    + "Every object sits fully inside the frame with a comfortable margin — nothing is cut off at the edges.\n")
             if k == "cover":   # 글꼴 설명(Typography …)은 넘기지 않는다 — 넘기면 그림 모델이 제목을 그려 넣는다
-                bgp += str(st.get("front") or "").split("Typography")[0].replace("{accent}", accent or "#FF2A6D")
+                bgp += str(st.get("front") or "").split("Typography")[0].replace("{accent}", deck_blue(st))
             else:   # 목차·간지 — 표지와 같은 화풍·색, 그러나 다른 장면(표지 설명을 그대로 넘기면 같은 그림이 나온다)
                 bgp += (f"Picture style of this deck (keep the same style, lighting and color mood): {(tset or {}).get('art', '')} "
-                        + str(st.get("front") or "").split("Typography")[0].replace("{accent}", accent or "#FF2A6D") + "\n"
+                        + str(st.get("front") or "").split("Typography")[0].replace("{accent}", deck_blue(st)) + "\n"
                         "This is NOT the cover. Show a DIFFERENT subject and composition from the cover of the same deck — different people (or no people), a different place, object or moment that fits the Subject above. "
                         "Never repeat the cover's scene. " + ("For the contents page show the PLACE or the EQUIPMENT of the project (a wide, calm view) with no people in the foreground. " if k == "toc" else "") + "\n")
                 if tset and tset.get(k + "_what"):

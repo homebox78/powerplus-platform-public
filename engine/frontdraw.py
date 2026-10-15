@@ -137,7 +137,7 @@ def _calm_corners(im, logo_pos, kind, calm_box, solid=False):
             continue
         busy = False
         for pos in ps:
-            x0 = W - int(W * 0.30) if pos.endswith("r") else 0
+            x0 = W - X0 - int(W * 0.30) if pos.endswith("r") else X0   # 로고가 실제로 붙는 자리(logo_boxes 와 같다) — 넓게 재면 비켜 놓은 그림 끝에 걸려 띠가 그림을 덮었다
             y0 = 0 if side == "t" else H - bh
             if ImageStat.Stat(im.crop((x0, y0, x0 + int(W * 0.30), y0 + bh)).convert("L")).stddev[0] > 14:
                 busy = True
@@ -156,87 +156,97 @@ def _calm_corners(im, logo_pos, kind, calm_box, solid=False):
     return im
 
 
-def _busy(im):
-    """그림이 있는 곳(1/8 축소 격자) — 윤곽이 서거나 채도가 있는 칸. 밝은 회백색 바닥·옅은 홈 선은 비어 있는 것으로 본다.
+def _busy(im, side="left"):
+    """그림이 있는 곳(1/8 축소 격자) — 윤곽이 서거나 바탕색과 색이 크게 다른 칸. 밝은 회백색 바닥·옅은 홈 선은 비어 있는 것으로 본다.
+    바탕색 = 글 쪽 가장자리 띠의 중앙값(채도로 재면 짙은 코발트 단색 바탕 전체가 그림으로 잡혔다 — 10-15 F 표지).
     가장자리 한 줄은 뺀다(윤곽 필터가 그림 테두리를 통째로 윤곽으로 잡는다)"""
     from PIL import ImageChops
     sm = im.convert("RGB").resize((W // 8, H // 8), Image.BILINEAR)
     edge = sm.convert("L").filter(ImageFilter.FIND_EDGES).point(lambda v: 255 if v > 60 else 0)
-    sat = sm.convert("HSV").split()[1].point(lambda v: 255 if v > 90 else 0)
-    m = ImageChops.lighter(edge, sat)
+    bw = max(2, sm.width // 12)
+    strip = (sm.width - bw, 0, sm.width, sm.height) if side == "right" else (0, 0, bw, sm.height)
+    base = tuple(int(v) for v in ImageStat.Stat(sm.crop(strip)).median)
+    diff = ImageChops.difference(sm, Image.new("RGB", sm.size, base)).convert("L").point(lambda v: 255 if v > 45 else 0)
+    m = ImageChops.lighter(edge, diff)
     ImageDraw.Draw(m).rectangle([0, 0, m.width - 1, m.height - 1], outline=0, width=2)
     return m.filter(ImageFilter.MaxFilter(3))
 
 
-def _clear_text(bg, text_alpha, lay, margin=0.035, min_scale=0.6):
-    """글(text_alpha = 글만 그린 투명 층의 알파)이 그림에 걸리면 그림을 줄여(아래·반대쪽 기준) 글에서 떼어 낸 새 바탕을 돌려준다. 안 걸리면 None.
+def logo_boxes(logo_pos, kind):
+    """앞장 로고가 놓이는 대략의 자리(2400×1600 기준) — design.make_front_mockup 이 로고를 붙이는 자리와 같은 모서리.
+    그림을 밀어낼 때 글과 함께 비워 둘 곳"""
+    out = []
+    bw, bh = int(W * 0.30), int(H * (0.16 if kind == "cover" else 0.14))   # _calm_corners 가 띠를 깔지 재는 자리와 같은 크기
+    for pos in (logo_pos or []):
+        if not pos or len(pos) < 2:
+            continue
+        x0 = W - X0 - bw if pos.endswith("r") else (X0 if pos.endswith("l") else (W - bw) // 2)
+        y0 = 0 if pos.startswith("t") else H - bh
+        out.append((x0, y0, x0 + bw, y0 + bh))
+    return out
+
+
+def _clear_text(bg, text_alpha, lay, margin=0.05, min_scale=0.6):
+    """글(+로고 자리)(text_alpha = 그 자리만 칠한 알파)이 그림에 걸리면 그림을 줄여 비켜 놓은 새 바탕을 돌려준다. 안 걸리면 None.
     판정은 글이 실제로 있는 칸마다 — 글 상자 사각형으로 재면 짧은 날짜 줄 옆 빈자리까지 글로 친다.
+    줄이는 기준점은 글 반대쪽의 아래·가운데·위를 차례로 시험해, 가장 덜 줄이고 비켜지는 것을 고른다(로고가 아래 모서리에 있으면 위로 붙인다).
     빈 자리는 그림의 차분한 바탕색으로 채우고 경계는 부드럽게 녹인다"""
+    from PIL import ImageChops
     g = 8
-    m = _busy(bg)
-    mx, my = int(W * margin), int(H * margin)
+    m = _busy(bg, "right" if lay == "right" else "left")
+    mx = int(W * margin)
     tm = text_alpha.resize((W // g, H // g), Image.BOX).point(lambda v: 255 if v > 8 else 0)
     zone = tm.filter(ImageFilter.MaxFilter(2 * (mx // g) + 1))   # 글 둘레 여백까지
-    zp, mp = zone.load(), m.load()
-    cells = hit = 0
-    for y in range(zone.height):
-        for x in range(zone.width):
-            if zp[x, y]:
-                cells += 1
-                hit += 1 if mp[x, y] else 0
-    if not cells or hit / cells < 0.03:
+    cells = sum(zone.histogram()[128:])
+    if not cells:
         return None
-    s = 1.0
-    if lay == "center":   # 글이 위 가운데 — 글이 있는 열마다 그림의 가장 위쪽 끝이 글 아래 끝(+여백)보다 내려가게
-        for x in range(zone.width):
-            ys = [y for y in range(zone.height) if zp[x, y]]
-            if not ys:
-                continue
-            need = (max(ys) + 1) * g
-            yb = next((y * g for y in range(min(ys), m.height) if mp[x, y]), None)
-            if yb is not None and yb < need:
-                s = min(s, (H - need) / max(1, H - yb))
-        ax, ay = 0.5, 1.0
-    else:   # 글이 왼쪽(오른쪽) — 글이 있는 줄마다 그림의 글 쪽 끝이 글 끝(+여백) 너머로
-        right = lay == "right"
-        for y in range(zone.height):
-            xs = [x for x in range(zone.width) if zp[x, y]]
-            if not xs:
-                continue
-            if right:
-                need = min(xs) * g
-                xb = next((((x + 1) * g) for x in range(max(xs), -1, -1) if mp[x, y]), None)
-                if xb is not None and xb > need:
-                    s = min(s, need / max(1, xb))
-            else:
-                need = (max(xs) + 1) * g
-                xb = next((x * g for x in range(min(xs), m.width) if mp[x, y]), None)
-                if xb is not None and xb < need:
-                    s = min(s, (W - need) / max(1, W - xb))
-        ax, ay = (0.0 if right else 1.0), 1.0
-    s = max(min_scale, min(1.0, s))
+
+    def overlap(mask):
+        return sum(ImageChops.multiply(mask, zone).histogram()[128:]) / cells
+
+    if overlap(m) < 0.03:
+        return None
+    # 그림은 오른쪽(왼쪽) 아래 자리가 기본(제안서 표지 규칙) — 아래 기준으로 75% 이상 크기에서 비켜지면 그것을 쓰고, 안 될 때만 가운데·위 기준을 본다
+    anchors = {"center": [(0.5, 1.0)], "right": [(0.0, 1.0), (0.0, 0.5), (0.0, 0.0)]}.get(lay, [(1.0, 1.0), (1.0, 0.5), (1.0, 0.0)])
+    best = None
+    for ax, ay in anchors:
+        s = 1.0
+        while s >= min_scale - 1e-6:
+            sw, sh = max(1, int(m.width * s)), max(1, int(m.height * s))
+            mm = Image.new("L", m.size, 0)
+            mm.paste(m.resize((sw, sh), Image.NEAREST), (int((m.width - sw) * ax), int((m.height - sh) * ay)))
+            if overlap(mm) < 0.002:   # 거의 0 — 조금이라도 남으면 로고 띠(위로 페이드)가 다시 깔려 그림 아래를 덮는다(10-15 F 표지)
+                break
+            s -= 0.025
+        cleared = s >= min_scale - 1e-6
+        s = max(min_scale, s)
+        if cleared and s >= 0.75:   # 아래 기준이 먼저 — 충분히 크면 바로 쓴다
+            best = (s, ax, ay)
+            break
+        if best is None or s > best[0] + 1e-6:
+            best = (s, ax, ay)
+    s, ax, ay = best
     if s >= 0.995:
         return None
     sw, sh = int(W * s), int(H * s)
     small = bg.convert("RGB").resize((sw, sh), Image.LANCZOS)
     px, py = int((W - sw) * ax), int((H - sh) * ay)
-    cb = (W - int(W * 0.12), 0, W, int(H * 0.12)) if lay == "right" else (0, 0, int(W * 0.12), int(H * 0.12))
+    cb = (W - int(W * 0.12), 0, W, int(H * 0.12)) if lay == "right" else (0, int(H * 0.3), int(W * 0.12), int(H * 0.5))
     col = tuple(int(v) for v in ImageStat.Stat(bg.convert("RGB").crop(cb)).median)
     out = Image.new("RGB", (W, H), col)
-    fw = int(min(sw, sh) * 0.12)   # 줄인 그림 가장자리를 바탕색으로 녹인다(붙인 경계가 보이지 않게)
+    fw = max(1, int(min(sw, sh) * 0.05))   # 줄인 그림 가장자리를 바탕색으로 녹인다(붙인 경계가 보이지 않게). 넓히면 가장자리 가까운 그림이 흐려져 잘려 보인다(10-15 F 표지)
     ramp = [int(255 * (i / fw) ** 1.5) for i in range(fw)]
-    mask = Image.new("L", (sw, sh), 255)
     gx = Image.new("L", (sw, 1), 255)
-    for i in range(fw):
+    gy = Image.new("L", (1, sh), 255)
+    for i in range(min(fw, sw, sh)):
         if px > 0:
             gx.putpixel((i, 0), ramp[i])
         if px + sw < W:
             gx.putpixel((sw - 1 - i, 0), min(gx.getpixel((sw - 1 - i, 0)), ramp[i]))
-    gy = Image.new("L", (1, sh), 255)
-    for i in range(fw):
         if py > 0:
             gy.putpixel((0, i), ramp[i])
-    from PIL import ImageChops
+        if py + sh < H:
+            gy.putpixel((0, sh - 1 - i), min(gy.getpixel((0, sh - 1 - i)), ramp[i]))
     mask = ImageChops.multiply(gx.resize((sw, sh)), gy.resize((sw, sh)))
     out.paste(small, (px, py), mask)
     return out
@@ -279,7 +289,8 @@ def compose(kind, bg_png, texts, st, accent, title_font=None, body_font=None, lo
                     "center": (int(W * 0.2), int(H * 0.05), int(W * 0.8), int(H * 0.45))}[lay]
             dk = _lum(src, zone) < 120
             out = src
-            if not card:
+            calm_dark = dk and ImageStat.Stat(src.crop(zone).convert("L")).stddev[0] < 12   # 어두운 단색 바탕(F 표지) — 덮개를 깔면 남색·바탕색으로 갈라진다
+            if not card and not calm_dark:
                 out = _veil_dir(src.convert("RGB"), dk, lay if lay != "center" else "top", (0.92 if kind == "cover" else 0.80) if lay != "center" else 0.62, ((0.88 if kind == "cover" else 0.74) if dk else 0.82) if lay != "center" else 0.93)
             return out, dk
         im, dark = prep(bg)
@@ -325,10 +336,13 @@ def compose(kind, bg_png, texts, st, accent, title_font=None, body_font=None, lo
             y += H * 0.055 - (lh - size)   # 사업명 끝에서 1cm 아래
             tail = texts.get("tail") or "제안설명회"
             tw = f_tail.getlength(tail)
-            px, py = H * 0.018, H * 0.010
-            bh = H * 0.034 * 1.25 + py * 2
-            d.rounded_rectangle([X, y, X + tw + px * 2, y + bh], radius=bh / 2, fill=acc)
-            d.text((X + px, y + bh / 2), tail, font=f_tail, fill=(255, 255, 255, 255), anchor="lm")
+            ib = f_tail.getbbox(tail)   # 잉크 상자 — 뱃지 여백은 글자 칸이 아니라 잉크로 잰다(R29·R30)
+            ink_w, ink_h = ib[2] - ib[0], ib[3] - ib[1]
+            pv = ink_h * 0.55   # 상하 여백
+            ph = pv * 3.0   # 좌우 = 상하 × 3 — 뱃지는 좌우를 넉넉히(사용자 반복 지적, A~F 공통)
+            bh = ink_h + pv * 2
+            d.rounded_rectangle([X, y, X + ink_w + ph * 2, y + bh], radius=bh / 2, fill=acc)
+            d.text((X + ph - ib[0], y + pv - ib[1]), tail, font=f_tail, fill=(255, 255, 255, 255))
             y += bh + H * 0.03
             d.text((X, y), texts.get("date", ""), font=f_date, fill=sub_c)
             y += H * 0.04
@@ -395,7 +409,7 @@ def compose(kind, bg_png, texts, st, accent, title_font=None, body_font=None, lo
                 y += H * 0.05
                 band = _hex(fd.get("band_dark", "1D4ED8")) if dark else _hex(fd.get("band", fd.get("key", "1D4ED8")))   # 빨강은 핵심어에만 — 띠는 파랑
                 bw = max(f_ln.getlength(l) for l in line)
-                px, py = H * 0.022, H * 0.016
+                px, py = H * 0.040, H * 0.016   # 좌우 = 상하 × 2.5 — 문구 상자도 좌우를 넉넉히
                 bx = xo(bw + px * 2)
                 bh = py * 2 + H * 0.032 * 1.0 * len(line) + gap * (len(line) - 1)
                 d.rectangle([bx, y, bx + bw + px * 2, y + bh], fill=band)   # 한 판 안에 줄바꿈(줄 사이 0.3cm)
@@ -409,12 +423,16 @@ def compose(kind, bg_png, texts, st, accent, title_font=None, body_font=None, lo
 
     if not panel and not card:   # 글과 그림이 겹치면 그림을 줄여 글 반대쪽으로 민다(R45) — 그림 모델이 '왼쪽을 비워라'를 어기는 일이 잦다
         probe = Image.new("RGBA", (W, H))
-        body(ImageDraw.Draw(probe))
+        pd = ImageDraw.Draw(probe)
+        body(pd)
+        for lb in logo_boxes(logo_pos, kind):   # 로고 자리도 비운다 — 그림이 붐비면 예전엔 페이지 폭 띠로 덮어 그림 아래가 잘렸다(10-15 F 표지)
+            pd.rectangle(lb, fill=(0, 0, 0, 255))
         if probe.getbbox():
             moved = _clear_text(bg, probe.split()[3], lay)
             if moved is not None:
                 im, dark = prep(moved)
-                im = _calm_corners(im, logo_pos, kind, calm).convert("RGBA")
+                busy_logo = any(ImageStat.Stat(moved.crop(b).convert("L")).stddev[0] > 14 for b in logo_boxes(logo_pos, kind))
+                im = (_calm_corners(im, logo_pos, kind, calm) if busy_logo else im.convert("RGB")).convert("RGBA")   # 다 비켰으면 띠를 깔지 않는다
                 title_c = _hex(fd.get("title_dark", "FFFFFF")) if dark else _hex(fd.get("title", st.get("head_color") or "#0B2E6B"))
                 key_c = _hex(fd.get("key_dark", "7DD3FC")) if dark else _hex(fd.get("key", "1D4ED8"))
                 sub_c = _hex("D6E0F0") if dark else _hex("5B6475")

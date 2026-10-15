@@ -325,12 +325,12 @@
       "id": "f",
       "name": "딥 컬러 선화",
       "samples": 4,
-      "desc": "짙은 단색 바탕에 가는 선 일러스트 표지·간지 · 차분한 흰 목차",
+      "desc": "짙은 코발트 단색 바탕에 가는 선 일러스트 표지 · 차분한 흰 목차·간지",
       "fits": "공공 SI 제안서·제안설명회",
       "bg": "a clean white (or very light blue-white) background",
       "head_color": "#0B2E6B",
       "image": "Match the visual system of the reference body area(s): same card/panel system, same 3D clay icon and character style, same spacing and text density. Do NOT copy the reference's content; only its grammar.\n\nPEOPLE / ILLUSTRATION STYLE (strict — copy it from the reference images, especially the small character sample): soft 3D clay-render characters like a Korean public-sector proposal deck (matte clay material, NOT a Disney/Pixar animation look). Characters are young KOREAN (East Asian) office workers and civil servants in their late 20s to 30s, black or dark-brown hair, realistic adult head-to-body proportions (normal head size). FACES: small natural almond-shaped eyes with dark pupils, simple small nose and mouth, calm composed expressions — NO big round glossy eyes, no large irises or eye highlights, no raised cartoon eyebrows, no exaggerated surprise or grin; navy or cobalt business suits, white shirts. NOT photorealistic, NOT photographs, NOT Western/Caucasian, NOT elderly, no wrinkles, no beards, no realistic skin texture. Objects and icons are the same soft 3D clay style in cobalt/sky-blue tones.\n\nColors: main Cobalt Blue #3B82F6, Sky Blue #DBEAFE cards, Deep cobalt #1E40AF for subtitles/numbers, body text Dark Gray #1F2937, caption #6B7280. ACCENT color {accent}: use it for the headline keyword, callout labels given in the content, and ONE emphasis spot — nowhere else. White rounded cards with light gray border, 90% soft 3D clay icons + 10% flat icons, characters exactly as in PEOPLE / ILLUSTRATION STYLE above (no chibi), no heavy shadows, never white text on white.",
-      "front": "Solid color block: the user's accent {accent} IS the background of the COVER and the CHAPTER DIVIDERS — full-bleed solid {accent} with a very faint dotted wave at the edges, white bold title on the left, and on the right a thin-outline flat vector illustration (2-3 white panels with small figures at work, limited palette). The TABLE OF CONTENTS is a calm white page: near-black title and chapter names, only the numbers in {accent}. No photographs, no 3D, no second vivid hue. Contents and divider pages follow the reference set of the same deck (see the rules below).",
+      "front": "Solid deep color block: the COVER background is ONE flat solid DEEP COBALT BLUE (#1B3FA8) filling the whole page — no gradient, no second hue, no pink or red — with a very faint dotted wave texture only at the far edges; the left half stays plain for the title. On the right, a thin-outline flat vector illustration (2-3 white panels with small figures at work in the project's own field, limited palette of white, pale sky and cobalt), fully inside the frame with a comfortable margin, ending above the bottom-right corner (a logo goes there later). The TABLE OF CONTENTS is a calm white page. No photographs, no 3D. Typography (laid on later by the engine in real type, never painted into the picture): white bold title on the left, key words in the accent {accent}.",
       "frame": {
         "head": "band",
         "fill": [
@@ -349,8 +349,8 @@
         "cover": {
           "text": "공통 뼈대(왼쪽), 전부 흰 글자: 작은 슬로건 한 줄(있을 때), 사업명 2줄 굵게, 꼬리 글은 흰색 작은 글.",
           "logo": "로고를 그리지 않는다 — 엔진이 넣는다(자리만 비운다).",
-          "image": "오른쪽 45% 에 가는 선의 플랫 벡터 일러스트 — 흰 면 패널 2~3개 안에서 일하는 작은 인물들(사업 현장의 장면). 사진·3D·누끼 이미지 없음.",
-          "bg": "전면 강조색 단색 — 사용자가 고른 강조색이 곧 배경색이다. 가장자리에 아주 옅은 점 물결 무늬."
+          "image": "오른쪽 45% 에 가는 선의 플랫 벡터 일러스트 — 흰 면 패널 2~3개 안에서 일하는 작은 인물들(사업 현장의 장면). 색은 흰색·옅은 하늘·코발트만. 그림 전체가 화면 안에 들어오고 오른쪽 아래 모서리(로고 자리)는 비운다. 사진·3D·누끼 이미지 없음.",
+          "bg": "전면 짙은 코발트 단색(#1B3FA8) — 그라데이션·두 번째 색(분홍·빨강) 없음. 가장자리에만 아주 옅은 점 물결. 강조색은 글(핵심어·꼬리 글)에만 쓴다."
         },
         "toc": {
           "text": "공통 뼈대 + 아래 '이 덱의 한 벌' 안내의 글 자리·글자 색을 따른다.",

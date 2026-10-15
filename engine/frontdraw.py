@@ -7,7 +7,7 @@ from PIL import Image, ImageDraw, ImageFilter, ImageFont, ImageStat
 import fontset
 
 W, H = 2400, 1600
-X0 = int(W * 0.07)
+X0 = 56   # 좌우 가이드 = 본문 장표 틀 여백(design.FRAME pad 56px, 2400 폭) — 앞장·본문이 같은 선에 서게(10-15 사용자)
 
 
 def _hex(c, a=255):
@@ -172,6 +172,76 @@ def _busy(im, side="left"):
     return m.filter(ImageFilter.MaxFilter(3))
 
 
+def _seams(im, axis="v"):
+    """그림 모델이 남긴 곧은 경계선(판·액자 끝) — 한 줄(열)이 긴 길이로 밝기가 같은 쪽으로 툭 바뀌는 곳.
+    반환: [(위치 px, 시작 px, 끝 px)] (axis v = 세로선 x, h = 가로선 y)"""
+    from PIL import ImageChops
+    g = 4
+    sm = im.convert("L").resize((W // g, H // g), Image.BILINEAR)
+    if axis == "h":
+        sm = sm.transpose(Image.TRANSPOSE)
+    w, h = sm.size
+    a = sm.crop((0, 0, w - 1, h))
+    b = sm.crop((1, 0, w, h))
+    d = ImageChops.subtract(b, a).point(lambda v: 255 if v > 5 else 0)   # 오른쪽(아래)이 밝아지는 곳
+    e = ImageChops.subtract(a, b).point(lambda v: 255 if v > 5 else 0)   # 어두워지는 곳
+    out = []
+    for m in (d, e):
+        px = m.load()
+        cols = []
+        for x in range(m.width):
+            run = best = 0
+            st = bst = 0
+            for y in range(m.height):
+                if px[x, y]:
+                    if not run:
+                        st = y
+                    run += 1
+                    if run > best:
+                        best, bst = run, st
+                else:
+                    run = 0
+            cols.append((best, bst))
+        for x in range(int(m.width * 0.04), int(m.width * 0.96)):
+            best, bst = cols[x]
+            near = max(cols[i][0] for i in range(max(0, x - 6), min(m.width, x + 7)) if abs(i - x) > 2)
+            if best >= h * 0.30 and best >= near * 2.5:   # 길게 곧은 선, 둘레보다 뚜렷이
+                out.append(((x + 1) * g, bst * g, (bst + best) * g))
+    return out
+
+
+def _soften_seams(im):
+    """곧은 경계선 둘레를 양쪽 색을 잇는 그라데이션으로 덮어 녹인다(흰 알파 그라데이션 레이어 효과). 경계가 없으면 그대로"""
+    im = im.convert("RGB")
+    bw = int(W * 0.06)
+    for axis in ("v", "h"):
+        for pos, a, b in _seams(im, axis):
+            if axis == "h":
+                im = im.transpose(Image.TRANSPOSE)
+            x0, x1 = max(0, pos - bw), min(im.width, pos + bw)
+            y0, y1 = max(0, a - bw), min(im.height, b + bw)
+            band = im.crop((x0, y0, x1, y1))
+            ends = Image.new("RGB", (2, band.height))
+            ends.paste(band.crop((0, 0, 1, band.height)), (0, 0))
+            ends.paste(band.crop((band.width - 1, 0, band.width, band.height)), (1, 0))
+            lin = ends.resize((band.width, band.height), Image.BILINEAR)   # 줄마다 양 끝 색을 잇는 그라데이션
+            mx = Image.new("L", (band.width, 1))
+            for i in range(band.width):
+                t = 1 - abs(i - (pos - x0)) / max(1, bw)
+                mx.putpixel((i, 0), int(255 * max(0.0, t) ** 0.8))
+            my = Image.new("L", (1, band.height))
+            for j in range(band.height):
+                t = min(1.0, (j + 1) / max(1, (a - y0) or 1), (band.height - j) / max(1, (y1 - b) or 1))
+                my.putpixel((0, j), int(255 * max(0.0, t)))
+            from PIL import ImageChops
+            mask = ImageChops.multiply(mx.resize(band.size), my.resize(band.size))
+            band.paste(lin, (0, 0), mask)
+            im.paste(band, (x0, y0))
+            if axis == "h":
+                im = im.transpose(Image.TRANSPOSE)
+    return im
+
+
 def logo_boxes(logo_pos, kind):
     """앞장 로고가 놓이는 대략의 자리(2400×1600 기준) — design.make_front_mockup 이 로고를 붙이는 자리와 같은 모서리.
     그림을 밀어낼 때 글과 함께 비워 둘 곳"""
@@ -186,7 +256,7 @@ def logo_boxes(logo_pos, kind):
     return out
 
 
-def _clear_text(bg, text_alpha, lay, margin=0.05, min_scale=0.6):
+def _clear_text(bg, text_alpha, lay, margin=0.05, min_scale=0.6, logo_alpha=None):
     """글(+로고 자리)(text_alpha = 그 자리만 칠한 알파)이 그림에 걸리면 그림을 줄여 비켜 놓은 새 바탕을 돌려준다. 안 걸리면 None.
     판정은 글이 실제로 있는 칸마다 — 글 상자 사각형으로 재면 짧은 날짜 줄 옆 빈자리까지 글로 친다.
     줄이는 기준점은 글 반대쪽의 아래·가운데·위를 차례로 시험해, 가장 덜 줄이고 비켜지는 것을 고른다(로고가 아래 모서리에 있으면 위로 붙인다).
@@ -204,7 +274,13 @@ def _clear_text(bg, text_alpha, lay, margin=0.05, min_scale=0.6):
     def overlap(mask):
         return sum(ImageChops.multiply(mask, zone).histogram()[128:]) / cells
 
-    if overlap(m) < 0.03:
+    lz = None
+    if logo_alpha is not None:   # 로고 자리는 따로, 더 엄격하게 — 글+로고 합친 면적으로 재면 로고 자리에 조금 걸린 그림을 놓쳐 띠가 그림 아래를 덮었다(10-15 B 간지)
+        lz = logo_alpha.resize((W // g, H // g), Image.BOX).point(lambda v: 255 if v > 8 else 0)
+        lcells = sum(lz.histogram()[128:])
+    def logo_hit(mask):
+        return sum(ImageChops.multiply(mask, lz).histogram()[128:]) / lcells if lz is not None and lcells else 0.0
+    if overlap(m) < 0.03 and logo_hit(m) < 0.02:
         return None
     # 그림은 오른쪽(왼쪽) 아래 자리가 기본(제안서 표지 규칙) — 아래 기준으로 75% 이상 크기에서 비켜지면 그것을 쓰고, 안 될 때만 가운데·위 기준을 본다
     anchors = {"center": [(0.5, 1.0)], "right": [(0.0, 1.0), (0.0, 0.5), (0.0, 0.0)]}.get(lay, [(1.0, 1.0), (1.0, 0.5), (1.0, 0.0)])
@@ -234,19 +310,26 @@ def _clear_text(bg, text_alpha, lay, margin=0.05, min_scale=0.6):
     cb = (W - int(W * 0.12), 0, W, int(H * 0.12)) if lay == "right" else (0, int(H * 0.3), int(W * 0.12), int(H * 0.5))
     col = tuple(int(v) for v in ImageStat.Stat(bg.convert("RGB").crop(cb)).median)
     out = Image.new("RGB", (W, H), col)
-    fw = max(1, int(min(sw, sh) * 0.05))   # 줄인 그림 가장자리를 바탕색으로 녹인다(붙인 경계가 보이지 않게). 넓히면 가장자리 가까운 그림이 흐려져 잘려 보인다(10-15 F 표지)
-    ramp = [int(255 * (i / fw) ** 1.5) for i in range(fw)]
+    # 가장자리 녹임 — 글 쪽을 향한 끝은 넓게(바탕색으로 자연스럽게 사라지게, 10-15 C 목차 '잘린 듯'), 바깥쪽 끝은 좁게(넓히면 그림이 흐려져 잘려 보인다, F 표지)
+    wide, thin = max(1, int(sw * 0.18)), max(1, int(min(sw, sh) * 0.05))
+    face = {"left": "l", "right": "r", "center": "t"}.get(lay, "l")
+    def ramp(n):
+        return [int(255 * (i / n) ** 1.6) for i in range(n)]
     gx = Image.new("L", (sw, 1), 255)
     gy = Image.new("L", (1, sh), 255)
-    for i in range(min(fw, sw, sh)):
-        if px > 0:
-            gx.putpixel((i, 0), ramp[i])
-        if px + sw < W:
-            gx.putpixel((sw - 1 - i, 0), min(gx.getpixel((sw - 1 - i, 0)), ramp[i]))
-        if py > 0:
-            gy.putpixel((0, i), ramp[i])
-        if py + sh < H:
-            gy.putpixel((0, sh - 1 - i), min(gy.getpixel((0, sh - 1 - i)), ramp[i]))
+    for side, on in (("l", px > 0), ("r", px + sw < W), ("t", py > 0), ("b", py + sh < H)):
+        if not on:
+            continue
+        n = min(wide if side == face else thin, (sw if side in "lr" else sh) // 2)
+        for i, v in enumerate(ramp(n)):
+            if side == "l":
+                gx.putpixel((i, 0), min(gx.getpixel((i, 0)), v))
+            elif side == "r":
+                gx.putpixel((sw - 1 - i, 0), min(gx.getpixel((sw - 1 - i, 0)), v))
+            elif side == "t":
+                gy.putpixel((0, i), min(gy.getpixel((0, i)), v))
+            else:
+                gy.putpixel((0, sh - 1 - i), min(gy.getpixel((0, sh - 1 - i)), v))
     mask = ImageChops.multiply(gx.resize((sw, sh)), gy.resize((sw, sh)))
     out.paste(small, (px, py), mask)
     return out
@@ -266,7 +349,7 @@ def compose(kind, bg_png, texts, st, accent, title_font=None, body_font=None, lo
     fd = (st or {}).get("front_draw") or {}
     tpath = fontset.title_file(title_font)
     bold, semi, reg = fontset.file(3, body_font), fontset.file(2, body_font), fontset.file(1, body_font)
-    bg = _cover(Image.open(io.BytesIO(bg_png)).convert("RGB"), W, H)
+    bg = _soften_seams(_cover(Image.open(io.BytesIO(bg_png)).convert("RGB"), W, H))   # 그림 모델이 남긴 곧은 판·액자 경계를 녹인다(10-15 C 목차·D 표지 '잘린 듯')
     panel = (fd.get("panel") or {}).get(kind)   # 판: 글 쪽을 단색 면으로(사진은 나머지 쪽에)
     lay = layout_of(st, kind)
     card = bool((fd.get("card") or {}).get(kind))
@@ -301,7 +384,7 @@ def compose(kind, bg_png, texts, st, accent, title_font=None, body_font=None, lo
         else:
             X, textw = X0, int(W * (0.46 if kind == "cover" else 0.46))
     calm = (0, int(H * 0.3), int(W * 0.3), int(H * 0.7)) if (panel or lay == "left") else ((int(W * 0.7), int(H * 0.3), W, int(H * 0.7)) if lay == "right" else (int(W * 0.3), int(H * 0.02), int(W * 0.7), int(H * 0.12)))
-    im = (im.convert("RGB") if panel else _calm_corners(im, logo_pos, kind, calm)).convert("RGBA")   # 판 장은 띠 없이(로고는 흰색판으로 사진 위에)
+    im = im.convert("RGBA")   # 로고 자리에 띠를 깔지 않는다 — 로고는 그대로 올린다(띠가 그림 아래를 잘린 듯 가렸다, 10-15 사용자). 그림은 _clear_text 가 로고 자리에서 비킨다
     if card:
         dark = False
     d = ImageDraw.Draw(im)
@@ -390,13 +473,20 @@ def compose(kind, bg_png, texts, st, accent, title_font=None, body_font=None, lo
             no = texts.get("no", 1)
             f_no = _font(tpath, H * 0.10)
             f_nm, tr, lines, size = _fit(texts.get("name", ""), tpath, H * 0.078, textw, 2)
-            f_ln = _font(semi, H * 0.032)   # 한 단계 가늘게
-            line = [w for l in str(texts.get("line") or "").split("\n") if l.strip() for w in _wrap_even(l.strip(), f_ln, 0, textw - H * 0.03)]
-            gap = H * 0.3 / 19.05   # 0.3cm (장 높이 19.05cm)
-            lh_ln = H * 0.032 * 1.0 + gap
+            # 한 줄 문장 — 장 이름의 약 60% 크기, 한 줄, 핵심어(**…**)만 색 띠 + 흰 글자(표지템플릿 T015~T037 문법, 10-15 사용자)
+            raw = re.sub(r"\s+", " ", str(texts.get("line") or "").replace("\n", " ")).strip()
+            segs = [(t, i % 2 == 1) for i, t in enumerate(raw.split("**")) if t]
+            plain = "".join(t for t, _ in segs)
+            ls = H * 0.046
+            while plain and ls > H * 0.03 and _font(bold, ls).getlength(plain) + ls * 0.6 > textw:
+                ls -= H * 0.002
+            f_ln = _font(bold, ls)
             head = (H * 0.10 * 1.15 + H * 0.02) if no is not None else 0   # 엔딩·질의응답은 PART 번호 없이
-            block = head + size * 1.18 * len(lines) + (H * 0.05 + lh_ln * len(line) if line else 0)
-            y = top + (bottom - top - block) / 2 if lay != "center" else H * 0.10
+            block = head + size * 1.18 * len(lines) + ((H * 0.045 + ls * 1.5) if plain else 0)
+            if no is not None and lay != "center":   # 간지는 왼쪽 위 — 템플릿처럼 글 덩어리가 화면 위쪽 1/3 에서 시작
+                y = H * 0.17
+            else:
+                y = top + (bottom - top - block) / 2 if lay != "center" else H * 0.10
             y_top = y
             if no is not None:
                 part = f"PART {no}"
@@ -405,34 +495,39 @@ def compose(kind, bg_png, texts, st, accent, title_font=None, body_font=None, lo
             for ln in lines:
                 _draw(d, xo(_width(ln, f_nm, tr)), y, ln, f_nm, title_c, tr)
                 y += size * 1.18
-            if line:
-                y += H * 0.05
+            if plain:
+                y += H * 0.045
                 band = _hex(fd.get("band_dark", "1D4ED8")) if dark else _hex(fd.get("band", fd.get("key", "1D4ED8")))   # 빨강은 핵심어에만 — 띠는 파랑
-                bw = max(f_ln.getlength(l) for l in line)
-                px, py = H * 0.040, H * 0.016   # 좌우 = 상하 × 2.5 — 문구 상자도 좌우를 넉넉히
-                bx = xo(bw + px * 2)
-                bh = py * 2 + H * 0.032 * 1.0 * len(line) + gap * (len(line) - 1)
-                d.rectangle([bx, y, bx + bw + px * 2, y + bh], fill=band)   # 한 판 안에 줄바꿈(줄 사이 0.3cm)
-                RIGHT[0] = max(RIGHT[0], bx + bw + px * 2)
-                ty = y + py
-                for ln in line:
-                    d.text((bx + px, ty + H * 0.032 * 0.5), ln, font=f_ln, fill=(255, 255, 255, 255), anchor="lm")
-                    ty += H * 0.032 * 1.0 + gap   # 글자 높이 + 0.3cm (글자 아래 끝 ~ 다음 줄 위 끝)
-                y += bh
+                total = sum(f_ln.getlength(t) for t, _ in segs) + sum(ls * 0.3 for _, k in segs if k)
+                x = xo(total)
+                ib = f_ln.getbbox("가")
+                for t, key in segs:
+                    w = f_ln.getlength(t)
+                    if key:   # 핵심어 — 글자보다 조금 큰 색 띠, 흰 글자
+                        pad = ls * 0.15
+                        d.rectangle([x, y + ib[1] - pad, x + w + pad * 2, y + ib[3] + pad], fill=band)
+                        d.text((x + pad, y), t, font=f_ln, fill=(255, 255, 255, 255))
+                        x += w + pad * 2
+                    else:
+                        d.text((x, y), t, font=f_ln, fill=title_c)
+                        x += w
+                RIGHT[0] = max(RIGHT[0], x)
+                y += ls * 1.5
         return y_top, y
 
     if not panel and not card:   # 글과 그림이 겹치면 그림을 줄여 글 반대쪽으로 민다(R45) — 그림 모델이 '왼쪽을 비워라'를 어기는 일이 잦다
         probe = Image.new("RGBA", (W, H))
         pd = ImageDraw.Draw(probe)
         body(pd)
+        logo_l = Image.new("L", (W, H), 0)
         for lb in logo_boxes(logo_pos, kind):   # 로고 자리도 비운다 — 그림이 붐비면 예전엔 페이지 폭 띠로 덮어 그림 아래가 잘렸다(10-15 F 표지)
             pd.rectangle(lb, fill=(0, 0, 0, 255))
+            ImageDraw.Draw(logo_l).rectangle(lb, fill=255)
         if probe.getbbox():
-            moved = _clear_text(bg, probe.split()[3], lay)
+            moved = _clear_text(bg, probe.split()[3], lay, logo_alpha=logo_l)
             if moved is not None:
                 im, dark = prep(moved)
-                busy_logo = any(ImageStat.Stat(moved.crop(b).convert("L")).stddev[0] > 14 for b in logo_boxes(logo_pos, kind))
-                im = (_calm_corners(im, logo_pos, kind, calm) if busy_logo else im.convert("RGB")).convert("RGBA")   # 다 비켰으면 띠를 깔지 않는다
+                im = im.convert("RGBA")   # 띠 없이 — 로고는 그대로 올린다
                 title_c = _hex(fd.get("title_dark", "FFFFFF")) if dark else _hex(fd.get("title", st.get("head_color") or "#0B2E6B"))
                 key_c = _hex(fd.get("key_dark", "7DD3FC")) if dark else _hex(fd.get("key", "1D4ED8"))
                 sub_c = _hex("D6E0F0") if dark else _hex("5B6475")

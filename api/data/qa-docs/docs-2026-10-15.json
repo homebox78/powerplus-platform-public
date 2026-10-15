@@ -1,0 +1,1910 @@
+[
+ {
+  "module": "deck",
+  "slug": "doc:deck-selfcheck:title-is-chat",
+  "area": "plan",
+  "title": "표지 제목에 채팅 첫 말(\"목차부터 잡아 주세요\" 같은 요청 말투)이 들어간다",
+  "detail": "채팅에서 시작한 design 작업이 첫 말을 title 로 넘긴다. 프로젝트명이 비면 plan.title 을 쓰고 요청 말투면 버린다. checkPlan 에 요청 말투 제목 fatal 검사도 없다.",
+  "status": "open",
+  "note": "deck-plan-selfcheck-2026-10-08.md §4-5·§6.4"
+ },
+ {
+  "module": "deck",
+  "slug": "doc:deck-selfcheck:section-dup",
+  "area": "plan",
+  "title": "장 section 이 \"추진 전략·체계 · 추진 전략·체계 · …\"처럼 부문명이 두 번 붙는다",
+  "detail": "장 그룹 이름을 section 앞에 붙이는 단계의 결합 버그로 보인다(자동 장 수 37장 작업 6~27쪽). 같은 조각이 ' · '로 두 번 나오면 판정기 warn 도 필요.",
+  "status": "open",
+  "note": "deck-plan-selfcheck-2026-10-08.md §4-6·§6.4"
+ },
+ {
+  "module": "deck",
+  "slug": "doc:deck-selfcheck:year-abbrev-normalize",
+  "area": "plan",
+  "title": "수치 대조가 '14년·’14년 축약 연도를 2014년과 다른 수로 보고 치명 판정한다",
+  "detail": "연도 정규화('14년↔2014년, 26년 10월↔2026년 10월)가 없다. 축약 연도가 든 원자료로 checkPlan 을 돌려 치명 0인지 본다.",
+  "status": "open",
+  "note": "deck-plan-selfcheck-2026-10-08.md §6.2-3"
+ },
+ {
+  "module": "deck",
+  "slug": "doc:deck-selfcheck:thousand-sep-typo",
+  "area": "plan",
+  "title": "원문 \"2.400원\"(천 단위 오기)과 기획 \"2,400원\"을 다른 수치로 치명 판정한다",
+  "detail": "소수점 뒤가 정확히 3자리이고 단위가 원·건·명이면 같은 값으로 본다.",
+  "status": "open",
+  "note": "deck-plan-selfcheck-2026-10-08.md §6.2-4"
+ },
+ {
+  "module": "deck",
+  "slug": "doc:deck-selfcheck:missing-num-cap",
+  "area": "plan",
+  "title": "'원자료 수치 누락' 경고가 5장 덱에도 수십 개씩 나와 모든 작업 점수를 깎는다",
+  "detail": "누락은 min(누락, 장 수×2)까지만 세고, 원자료 '핵심 수치' 절에 있는 것만 대상으로.",
+  "status": "open",
+  "note": "deck-plan-selfcheck-2026-10-08.md §4·§6.2-6"
+ },
+ {
+  "module": "deck",
+  "slug": "doc:deck-selfcheck:summary-source-info",
+  "area": "plan",
+  "title": "원자료가 요약본(context.md)뿐일 때 원문에 없는 숫자를 fatal 이 아니라 '원문 대조 불가' info 로",
+  "detail": "요구사항 번호 개수(18종 등)처럼 원 RFP 에서 센 값은 요약본으로 판정할 수 없다. 원 RFP 가 작업 폴더에 있을 때만 fatal.",
+  "status": "open",
+  "note": "deck-plan-selfcheck-2026-10-08.md §6.2-8"
+ },
+ {
+  "module": "deck",
+  "slug": "doc:deck-selfcheck:consistency-false-positive",
+  "area": "plan",
+  "title": "덱 안 수치 일관성 경고가 서로 다른 항목(\"건당 5명/44명\")을 같은 값으로 오탐한다",
+  "detail": "같은 장에 늘 함께 나오는 값은 빼도록 고쳤으나, 같은 단위 + 같은 대상 낱말(앞 2어절) 조건은 아직 없다.",
+  "status": "fixing",
+  "fix_note": "값들이 늘 같은 장에 함께 나오면 서로 다른 항목으로 보고 건너뜀(Kit::checkPlan)",
+  "note": "deck-plan-selfcheck-2026-10-08.md §6.2-7"
+ },
+ {
+  "module": "deck",
+  "slug": "doc:deck-selfcheck:vague-promise",
+  "area": "plan",
+  "title": "모호한 약속 판정에 '보답하겠·증명하겠·할 수 있다·고려·검토하겠·노력하겠'이 빠져 있다",
+  "detail": "VAGUE 목록에 다짐형·이행 불가 표현이 없고, 원자료 '표현 제한' 원문 낱말을 런타임에 합치지 않는다(표현 제한이 있으면 fatal).",
+  "status": "fixing",
+  "fix_note": "VAGUE(체계적·최선을 다·차질 없 등) 정보 판정은 있음",
+  "note": "deck-plan-selfcheck-2026-10-08.md §6.1 vague-promise·§6.5"
+ },
+ {
+  "module": "deck",
+  "slug": "doc:deck-selfcheck:time-count-warning-ui",
+  "area": "plan",
+  "title": "요청 장 수가 발표 시간 권장 장 수와 어긋나도 화면·채팅에 경고가 보이지 않는다",
+  "detail": "15분 발표인데 5장 요청이 조용히 우선된다. 기획은 진행하되 plan.warnings 에 남기고 화면·채팅이 보여 준다.",
+  "status": "open",
+  "note": "deck-plan-selfcheck-2026-10-08.md §4-3·§6.3"
+ },
+ {
+  "module": "deck",
+  "slug": "doc:deck-selfcheck:keep-rfp-original",
+  "area": "engine",
+  "title": "원 RFP 원문을 작업 폴더에 보존하지 않아 수치 원문 일치를 요약본으로만 대조한다",
+  "detail": "작업 폴더에 원문 파일이 남는지 확인하고, 없으면 보존 경로를 만든다.",
+  "status": "open",
+  "note": "deck-plan-selfcheck-2026-10-08.md §6.6"
+ },
+ {
+  "module": "deck",
+  "slug": "doc:deck-selfcheck:slides-vs-time",
+  "area": "plan",
+  "title": "발표 시간 대비 장 수 판정(10분 8~10·15분 12~15장)이 판정기에 없었다",
+  "status": "fixed",
+  "fix_note": "checkPlan 이 발표 시간·평가 규정 기준 장 수 범위 밖이면 warn, 분량 상한 초과는 fatal",
+  "note": "deck-plan-selfcheck-2026-10-08.md §6.1"
+ },
+ {
+  "module": "deck",
+  "slug": "doc:deck-selfcheck:top3-coverage",
+  "area": "plan",
+  "title": "배점 상위 항목 장 수 커버리지 판정이 없었다",
+  "status": "fixed",
+  "fix_note": "배점 상위 항목을 한 장만 다루면 warn, 뒤쪽 몰림 warn(stat.priority)",
+  "note": "deck-plan-selfcheck-2026-10-08.md §6.1"
+ },
+ {
+  "module": "deck",
+  "slug": "doc:deck-selfcheck:eval-term-in-title",
+  "area": "plan",
+  "title": "평가 항목명 원문이 장 제목·절 이름에 하나도 없어도 판정하지 않았다",
+  "status": "fixed",
+  "fix_note": "평가 항목명이 title·section 에 없으면 warn, 상위 항목 누락은 info",
+  "note": "deck-plan-selfcheck-2026-10-08.md §4-1·§6.1"
+ },
+ {
+  "module": "deck",
+  "slug": "doc:deck-selfcheck:first-slide-figures",
+  "area": "plan",
+  "title": "첫 장표에 발주처 핵심 수치를 되돌려주는지 판정하지 않았다",
+  "status": "fixed",
+  "fix_note": "첫 장에 원자료 수치가 2개 미만이면 warn",
+  "note": "deck-plan-selfcheck-2026-10-08.md §4-4·§6.1"
+ },
+ {
+  "module": "deck",
+  "slug": "doc:deck-selfcheck:echo-tail",
+  "area": "plan",
+  "title": "메시지 끝을 \"…평가에 답합니다\" 되받기 꼬리로 닫는다",
+  "status": "fixed",
+  "fix_note": "Kit ECHO_TAIL warn + design.py 지침에 산출물·수치·기한으로 끝내라 명시(DCK-108)",
+  "note": "deck-plan-selfcheck-2026-10-08.md §6.3"
+ },
+ {
+  "module": "deck",
+  "slug": "doc:deck-selfcheck:num-normalize",
+  "area": "plan",
+  "title": "퍼센트↔%·이름 속 숫자(소상공인24)·연혁 숫자를 원자료에 없는 수치로 치명 오탐",
+  "status": "fixed",
+  "fix_note": "수치 표기 맞추기(퍼센트→%, 억·천 환산)·글자에 붙은 숫자 제외",
+  "fix_commit": "349bd7e",
+  "note": "deck-plan-selfcheck-2026-10-08.md §2·§6.2-1·2·5"
+ },
+ {
+  "module": "deck",
+  "slug": "doc:deck-selfcheck:script-checks",
+  "area": "script",
+  "title": "대본 판정에 PM 1인칭·블라인드 '저희 제안사'·배점 큰 항목 예상 질문 검사가 없었다",
+  "status": "fixed",
+  "fix_note": "checkScript 에 1인칭 0회 warn, 블라인드 회사명 표기 warn, 배점 큰 항목 qa 누락 warn",
+  "fix_commit": "349bd7e",
+  "note": "deck-plan-selfcheck-2026-10-08.md §6.5"
+ },
+ {
+  "module": "deck",
+  "slug": "doc:ppt-learn-1012:accent-one-place",
+  "area": "mockup",
+  "title": "강조색은 한 장에 한 자리(핵심 낱말 하나) — 밝은 바탕 핑크·빨강, 어두운 바탕 노랑·민트",
+  "detail": "시안·장표마다 강조색이 쓰인 곳을 세어 2곳 이상이면 고친다.",
+  "status": "watch",
+  "note": "ppt-레퍼런스-디자인-학습-2026-10-12.md §2.1·§3·§8"
+ },
+ {
+  "module": "deck",
+  "slug": "doc:ppt-learn-1012:ai-accent-blue",
+  "area": "mockup",
+  "title": "AI 시안이 사람판의 빨강 핵심 구절 강조를 파랑으로 바꿔 포인트가 약해진다",
+  "detail": "같은 장 사람판과 AI 시안을 나란히 보고 강조색이 유지됐는지 확인.",
+  "status": "watch",
+  "note": "ppt-레퍼런스-디자인-학습-2026-10-12.md §4"
+ },
+ {
+  "module": "deck",
+  "slug": "doc:ppt-learn-1012:ai-no-figures",
+  "area": "mockup",
+  "title": "AI 시안은 바탕·아이콘·구도만 — 표·흐름도·숫자·고유명은 서버가 그려 얹는다",
+  "detail": "AI 시안에 깨지거나 지어낸 글자가 생긴다. 시안 이미지 안 표·숫자 글자를 그대로 장표에 옮기지 않는다.",
+  "status": "watch",
+  "note": "ppt-레퍼런스-디자인-학습-2026-10-12.md §4·§5-8"
+ },
+ {
+  "module": "deck",
+  "slug": "doc:ppt-learn-1012:real-photo-keep",
+  "area": "assets",
+  "title": "실제 사진(인물·수상 증서·화면 캡처)을 일러스트로 바꾸지 않고 원본을 지정 자리에",
+  "detail": "AI 시안에서 증빙 사진이 일러로 바뀌어 사라졌다.",
+  "status": "watch",
+  "note": "ppt-레퍼런스-디자인-학습-2026-10-12.md §4·§5-7"
+ },
+ {
+  "module": "deck",
+  "slug": "doc:ppt-learn-1012:person-illust-limit",
+  "area": "assets",
+  "title": "인물 일러스트는 장당 최대 1개, 같은 인물 반복 금지",
+  "detail": "AI 시안에 큰 3D 인물 일러가 많고 같은 인물이 반복됐다. 덱 전체에서 같은 인물 자산 id 중복을 센다.",
+  "status": "watch",
+  "note": "ppt-레퍼런스-디자인-학습-2026-10-12.md §4·§5-9"
+ },
+ {
+  "module": "deck",
+  "slug": "doc:ppt-learn-1012:logo-slot-fixed",
+  "area": "build",
+  "title": "머리 띠 오른쪽 사업명·발주처 로고 자리와 바닥 쪽번호·로고 자리는 고정 좌표로 비운다",
+  "status": "watch",
+  "note": "ppt-레퍼런스-디자인-학습-2026-10-12.md §5-1·§5-10"
+ },
+ {
+  "module": "deck",
+  "slug": "doc:ppt-learn-1012:swimlane",
+  "area": "wire",
+  "title": "스윔레인 + 점선 강조 영역 도식이 와이어 상자 종류에 없다",
+  "detail": "레퍼런스 확장 후보 중 피시본·허브·피라미드·2×2·퍼널·계단·능선 등은 들어갔고 스윔레인만 지침 문서에만 있다.",
+  "status": "open",
+  "note": "ppt-레퍼런스-디자인-학습-2026-10-12.md §7.4"
+ },
+ {
+  "module": "deck",
+  "slug": "doc:ppt-learn-1014:unverified-records",
+  "area": "misc",
+  "title": "학습 기록 중 원본 미대조분 — 컨텐츠모음 288/540장·해외 refc 232/312장",
+  "detail": "옛 기록 대부분이 같은 틀 복사 값이었다. 미대조 줄은 통계에 쓰지 않고 원본 대조를 마저 한다.",
+  "status": "open",
+  "note": "ppt-레퍼런스-디자인-학습-2026-10-14-원본대조.md 확인 비율"
+ },
+ {
+  "module": "deck",
+  "slug": "doc:ppt-learn-1014:cover-no-frontal-person",
+  "area": "mockup",
+  "title": "표지·간지 사진 인물은 정면 응시 지양 — 그림은 오른쪽 아래 옅게, 왼쪽·위는 흰 페이드",
+  "status": "watch",
+  "note": "ppt-레퍼런스-디자인-학습-2026-10-14-원본대조.md §표지·목차·간지 3·5"
+ },
+ {
+  "module": "deck",
+  "slug": "doc:ppt-learn-1014:new-wire-kinds",
+  "area": "wire",
+  "title": "새 도식 종류 후보 4가지(수렴-확산·능선 연혁·숫자 꽃잎·무대형 플랫폼)",
+  "status": "fixed",
+  "fix_note": "와이어 도식 4종 추가",
+  "fix_commit": "1cdfd4e",
+  "note": "ppt-레퍼런스-디자인-학습-2026-10-14-원본대조.md §해외 레퍼런스 확장 후보"
+ },
+ {
+  "module": "assets",
+  "slug": "doc:asset-prompts-1015:kind-tag-required",
+  "area": "register",
+  "title": "목업 샘플 자산은 카테고리 mockup_sample(또는 공개 사진) + kind 태그 1개가 있어야 시안 풀에 들어간다",
+  "detail": "kind 없이 일반 사진으로만 올리면 시안에서 워터마크가 찍히거나 404(MockSamples::sampleWhere).",
+  "status": "watch",
+  "note": "파워에셋-채울-이미지-프롬프트-2026-10-15.md §등록할 때"
+ },
+ {
+  "module": "assets",
+  "slug": "doc:asset-prompts-1015:target-tag",
+  "area": "register",
+  "title": "목업 샘플에 target 태그(기관 종류: univ·school·library·welfare·gov·local 등)를 단다",
+  "detail": "target 이 있어야 그 기관 종류 시안에 먼저 뽑힌다.",
+  "status": "watch",
+  "note": "파워에셋-채울-이미지-프롬프트-2026-10-15.md §등록할 때"
+ },
+ {
+  "module": "assets",
+  "slug": "doc:asset-prompts-1015:no-text-in-photo",
+  "area": "quality",
+  "title": "목업 샘플 사진 안에 글자·로고·실존 기관명이 없어야 한다",
+  "status": "watch",
+  "note": "파워에셋-채울-이미지-프롬프트-2026-10-15.md §등록할 때"
+ },
+ {
+  "module": "assets",
+  "slug": "doc:asset-prompts-1015:hero-7",
+  "area": "quality",
+  "title": "첫 화면·서브 띠 사진 7장 부족(S1·W1·W4·C1·L1·G1·P1) — 덜 맞는 사진이 대신 들어간다",
+  "detail": "고교 서브 띠에 초등 교실, 복지관 메인에 어르신 체조 4번 반복, 미술관에 공연장 사진 등. 생성 후 kind·target 태그로 등록.",
+  "status": "open",
+  "note": "파워에셋-채울-이미지-프롬프트-2026-10-15.md §우선순위 1"
+ },
+ {
+  "module": "assets",
+  "slug": "doc:asset-prompts-1015:vertical-5",
+  "area": "quality",
+  "title": "세로(9:16·2:3) 사진이 없어 세로 카드·포스터에 엉뚱한 사진이 들어간다(U1~U4·A1)",
+  "status": "open",
+  "note": "파워에셋-채울-이미지-프롬프트-2026-10-15.md §1·§6·우선순위 2"
+ },
+ {
+  "module": "assets",
+  "slug": "doc:asset-prompts-1015:green-icon-set",
+  "area": "quality",
+  "title": "초록 유리 아이콘 세트(icon-glass-green, 학교 바로가기 12종)가 없어 초록 사이트에 파랑 아이콘이 튄다",
+  "status": "open",
+  "note": "파워에셋-채울-이미지-프롬프트-2026-10-15.md §2 S5"
+ },
+ {
+  "module": "assets",
+  "slug": "doc:asset-prompts-1015:wide-illust",
+  "area": "quality",
+  "title": "가로(2.3:1) 비즈니스 일러스트가 없어 세로 일러를 cover 로 넣어 머리가 잘린다(B3)",
+  "status": "open",
+  "note": "파워에셋-채울-이미지-프롬프트-2026-10-15.md §7 B3"
+ },
+ {
+  "module": "assets",
+  "slug": "doc:asset-prompts-1015:rest-cards",
+  "area": "quality",
+  "title": "소식 썸네일·카드·소식지 표지 등 나머지 목업 샘플 약 19장 부족(library 새 종류 포함)",
+  "status": "open",
+  "note": "파워에셋-채울-이미지-프롬프트-2026-10-15.md §우선순위 3"
+ },
+ {
+  "module": "assets",
+  "slug": "doc:legacy-audit:unverified-1354",
+  "area": "license",
+  "title": "출처 미확인 초기 묶음 1,354건(icon·illust·photo·diagram 초기 번호대) 출처 확정",
+  "detail": "자체 제작이면 own 으로 올려 pro 공개, 상용 소스(클립아트 등)면 삭제. 확정 전까지 internal 유지·목업 샘플 제외.",
+  "status": "open",
+  "note": "legacy-asset-audit.md §3 사용자 확정 요청 1"
+ },
+ {
+  "module": "assets",
+  "slug": "doc:legacy-audit:gov-logo-export",
+  "area": "license",
+  "title": "공공기관 로고 545건(gov_logo)을 외부 Pro 에 내보내도 되는지 확정",
+  "detail": "기관 저작물·사실 표기 범위지만 상표 이슈는 자문 대상.",
+  "status": "open",
+  "note": "legacy-asset-audit.md §3 사용자 확정 요청 2"
+ },
+ {
+  "module": "assets",
+  "slug": "doc:legacy-audit:logo-513-530-identical",
+  "area": "quality",
+  "title": "logo_513~530 9개가 지각 해시 거리 0 — 같은 로고 변형 또는 빈 썸네일 의심",
+  "status": "open",
+  "note": "legacy-asset-audit.md §4"
+ },
+ {
+  "module": "assets",
+  "slug": "doc:legacy-audit:illust-regen-dup",
+  "area": "quality",
+  "title": "illust_1242~1277 ↔ 1560~1661 같은 인물 일러 재생성본 중복(얼굴 보정본) 정리",
+  "status": "open",
+  "note": "legacy-asset-audit.md §4"
+ },
+ {
+  "module": "assets",
+  "slug": "doc:legacy-audit:pp-near-review",
+  "area": "quality",
+  "title": "지각 해시 거리 0~5 근접 쌍(약 67쌍) 사람 검토 후 중복 삭제",
+  "detail": "Tabler 변형이 섞여 자동 적용 안 함. 컨택트시트(sheet-pp-near.mjs)로 보고 지운다.",
+  "status": "open",
+  "note": "legacy-asset-audit.md §4"
+ },
+ {
+  "module": "mcp",
+  "slug": "doc:mcp-materials:deck-render-pptx",
+  "area": "kit",
+  "title": "deck_render_pptx 미구현 — 장표 명세 JSON → 서버 결정적 조립(LLM 0)",
+  "detail": "상자 종류(k)별 pptx 그리기 함수 + 마스터 + ppt_metrics·finalize + 렌더. 기존 엔진 결과와 나란히 비교해 넘침·고아 줄 0.",
+  "status": "open",
+  "note": "mcp-materials-research.md §1.2·§6-4"
+ },
+ {
+  "module": "mcp",
+  "slug": "doc:mcp-materials:deck-extract-text",
+  "area": "kit",
+  "title": "deck_extract_text 미구현 — pptx·docx·pdf·md 본문 텍스트를 장별로 돌려주는 무료 도구",
+  "status": "open",
+  "note": "mcp-materials-research.md §2"
+ },
+ {
+  "module": "mcp",
+  "slug": "doc:mcp-materials:deck-design-kit",
+  "area": "kit",
+  "title": "시안 단계 도구 미구현 — deck_get_design_kit·deck_render_mockup(크레딧)·HTML 시안 게시 미리보기",
+  "detail": "이미지 생성이 없는 클라이언트(Claude)에서도 시안을 확인할 수 있어야 한다.",
+  "status": "open",
+  "note": "mcp-materials-research.md §2·§6-5"
+ },
+ {
+  "module": "mcp",
+  "slug": "doc:mcp-materials:deck-check-deck",
+  "area": "judge",
+  "title": "deck_check_deck 미구현 — pptx 업로드를 렌더해 9×10 점수표·넘침·고아 줄·서체·색 수 판정",
+  "status": "open",
+  "note": "mcp-materials-research.md §2"
+ },
+ {
+  "module": "mcp",
+  "slug": "doc:mcp-materials:assets-set-kit-request",
+  "area": "kit",
+  "title": "assets_get_set_kit(세트 전부+쓰임 규칙)·assets_request(부족 자산 요청) 미구현",
+  "status": "open",
+  "note": "mcp-materials-research.md §3 재료형으로 더 줄 수 있는 것"
+ },
+ {
+  "module": "mcp",
+  "slug": "doc:mcp-materials:guide-ref-in-mock-kit",
+  "area": "kit",
+  "title": "목업 재료 응답에 powerGuide 정본 참조(guide_tool·tokens_ref)가 없어 토큰·부품이 따로 나간다",
+  "status": "open",
+  "note": "mcp-materials-research.md §4 추천 C·§6-3"
+ },
+ {
+  "module": "mcp",
+  "slug": "doc:mcp-materials:per-tool-limit",
+  "area": "keys",
+  "title": "도구별 별도 한도 없음 — 판정·렌더 호출을 재료 조회와 따로 세지 않는다",
+  "detail": "일 한도 초과 429, 같은 내용 해시면 이전 판정 결과 반환(캐시), 판정 동시 실행 키당 1.",
+  "status": "open",
+  "note": "mcp-materials-research.md §5 남용 방지"
+ },
+ {
+  "module": "mock",
+  "slug": "doc:mydesign1013:d1-d25",
+  "area": "visual",
+  "title": "D1·D25 사진·그라데이션 위 글자 대비를 캡처 픽셀로 잰다(히어로 제목 3 미만 치명)",
+  "status": "fixed",
+  "detail": "617·635·648 대비 1.0 인데 통과했다. 글 상자 둘레 6px 화소로 배경을 재 85·15 백분위 대비.",
+  "fix_note": "extra.mjs 캡처 대비, 큰 글 3·보통 4.5 미만 곳당 -3, 첫 화면 h1 3 미만 치명",
+  "note": "내시안-디자인·프론트-점검-2026-10-13.md §E5·구현 상태 3차",
+  "fix_commit": "52adf3a"
+ },
+ {
+  "module": "mock",
+  "slug": "doc:mydesign1013:d2",
+  "area": "mockup",
+  "title": "D2 h1 이 정확히 하나인지 본다(없음 17건)",
+  "status": "fixed",
+  "detail": "메인은 로고 기관명이나 숨김 h1, 서브는 페이지 제목. 판정 구조 게이트.",
+  "fix_note": "판정 1차 반영(visual.mjs·check.mjs, 2026-10-13) — h1 하나 아니면 -2",
+  "note": "내시안-디자인·프론트-점검-2026-10-13.md §D·구현 상태"
+ },
+ {
+  "module": "mock",
+  "slug": "doc:mydesign1013:d3-d21-d38",
+  "area": "layout",
+  "title": "D3·D21·D38 보이는 것 없는 세로 빈 띠 160px+ 감점, 메인 400px+ 치명",
+  "status": "fixed",
+  "detail": "상자 기준이면 빈 껍데기에 속는다. 잉크(글·그림·면·테두리) 기준으로 잰다. 618 604px·638 816px.",
+  "fix_note": "판정 1차 반영(visual.mjs·check.mjs, 2026-10-13) — 곳당 -3, 400px+ 치명",
+  "note": "내시안-디자인·프론트-점검-2026-10-13.md §D·§H5·구현 상태"
+ },
+ {
+  "module": "mock",
+  "slug": "doc:mydesign1013:d6",
+  "area": "content",
+  "title": "D6 서브 화면 종류와 h1·경로·옆 메뉴 활성 낱말을 대조한다",
+  "status": "fixed",
+  "detail": "611·645 인사말인데 경로 '수산 > 해양'. 없으면 -4, 다른 종류 이름이면 -8.",
+  "fix_note": "check_mockup 화면 종류 대조",
+  "note": "내시안-디자인·프론트-점검-2026-10-13.md §D·구현 상태 3차",
+  "fix_commit": "52adf3a"
+ },
+ {
+  "module": "mock",
+  "slug": "doc:mydesign1013:d7",
+  "area": "layout",
+  "title": "D7 같은 줄 형제 카드 높이 차(1.6배+)를 감점한다",
+  "status": "fixed",
+  "detail": "609 78px 차·빈 카드. 칸 높이 -3.",
+  "fix_note": "판정 2차 반영(visual.mjs more 측정·390 폭, 2026-10-13)",
+  "note": "내시안-디자인·프론트-점검-2026-10-13.md §D·구현 상태 2차"
+ },
+ {
+  "module": "mock",
+  "slug": "doc:mydesign1013:d8-d18",
+  "area": "layout",
+  "title": "D8·D18 390 폭에서 칸 밖으로 잘린 글·첫 화면 절반 넘는 머리를 잰다",
+  "status": "fixed",
+  "detail": "611·645 모바일 LNB 37px 잘림, 620 '평가하기' 74px 잘림, 638 SNS. 곳당 -2(최대 -8), 머리 절반 넘으면 -4.",
+  "fix_note": "판정 2차 반영(visual.mjs more 측정·390 폭, 2026-10-13)",
+  "note": "내시안-디자인·프론트-점검-2026-10-13.md §D·§E5·구현 상태 2차"
+ },
+ {
+  "module": "mock",
+  "slug": "doc:mydesign1013:d9-d17-d22",
+  "area": "content",
+  "title": "D9·D17·D22 같은 그림 2번+, cover 로 크게 잘린 사진·글자 그림을 감점한다",
+  "status": "fixed",
+  "detail": "609 사진 반복, 514 글자 그림 잘림, 506 세로 사진 cover. 글자 그림 1.25배·사진 2.5배 넘게 잘리면 곳당 -2.",
+  "fix_note": "판정 2차 반영(visual.mjs more 측정·390 폭, 2026-10-13)",
+  "note": "내시안-디자인·프론트-점검-2026-10-13.md §D·§F4·구현 상태 2차"
+ },
+ {
+  "module": "mock",
+  "slug": "doc:mydesign1013:d10",
+  "area": "behavior",
+  "title": "D10 # 링크가 절반 넘으면 감점한다",
+  "status": "fixed",
+  "detail": "58건 전부 # 링크 50%+ 라 동작 확인이 빈 껍데기. 재료에 메뉴 파일 링크를 준다.",
+  "fix_note": "판정 1차 반영(visual.mjs·check.mjs, 2026-10-13) — -2",
+  "note": "내시안-디자인·프론트-점검-2026-10-13.md §D·구현 상태"
+ },
+ {
+  "module": "mock",
+  "slug": "doc:mydesign1013:d11",
+  "area": "mockup",
+  "title": "D11 같은 종류 고칠 점이 3개+ 남으면 84점 상한(통과 불가)",
+  "status": "fixed",
+  "detail": "밝기 구성 차이 34건 등이 남은 채 통과했다.",
+  "fix_note": "판정 1차 반영(visual.mjs·check.mjs, 2026-10-13)",
+  "note": "내시안-디자인·프론트-점검-2026-10-13.md §D·구현 상태"
+ },
+ {
+  "module": "mock",
+  "slug": "doc:mydesign1013:d12-d19",
+  "area": "layout",
+  "title": "D12·D19 높이가 정해진 상자 밖으로 글·단추가 4px+ 잘리거나 넘치면 치명",
+  "status": "fixed",
+  "detail": "648 버튼 8px 잘림, 514 공지 62px 넘침, 506 CTA. overflow hidden·visible 둘 다.",
+  "fix_note": "판정 1차 반영(visual.mjs·check.mjs, 2026-10-13)",
+  "note": "내시안-디자인·프론트-점검-2026-10-13.md §E5·§F4·구현 상태"
+ },
+ {
+  "module": "mock",
+  "slug": "doc:mydesign1013:d13",
+  "area": "layout",
+  "title": "D13 흐름 안 형제 블록이 세로로 6px+ 겹치면 치명",
+  "status": "fixed",
+  "detail": "648·618 목록 마지막 줄이 다음 띠 밑으로, 77 음수 마진으로 제목 덮임. 테두리 위 알약·SVG 내부 제외.",
+  "fix_note": "판정 1차 반영(visual.mjs·check.mjs, 2026-10-13)",
+  "note": "내시안-디자인·프론트-점검-2026-10-13.md §E5·§G1·구현 상태"
+ },
+ {
+  "module": "mock",
+  "slug": "doc:mydesign1013:d14-d32",
+  "area": "layout",
+  "title": "D14·D32 카드 속 틈 80px+·카드 안 그림 아래 흰 띠 6px+ 를 감점한다",
+  "status": "fixed",
+  "detail": "617 213px·618 131px·512 뉴스 카드 122~218px(space-between), 638 그림 아래 15px.",
+  "fix_note": "판정 2차 반영(visual.mjs more 측정·390 폭, 2026-10-13) — 각 -2",
+  "note": "내시안-디자인·프론트-점검-2026-10-13.md §E5·§G4·구현 상태 2차"
+ },
+ {
+  "module": "mock",
+  "slug": "doc:mydesign1013:d15",
+  "area": "behavior",
+  "title": "D15 보이는 그림·글 없는 캐러셀 칸은 치명",
+  "status": "fixed",
+  "detail": "618 빈 슬라이드가 첫 화면, 610px 공백.",
+  "fix_note": "판정 1차 반영(visual.mjs·check.mjs, 2026-10-13)",
+  "note": "내시안-디자인·프론트-점검-2026-10-13.md §E5·구현 상태"
+ },
+ {
+  "module": "mock",
+  "slug": "doc:mydesign1013:d16",
+  "area": "layout",
+  "title": "D16 높이 300px 아래 칸에 안쪽 세로 스크롤이 생기면 감점",
+  "status": "fixed",
+  "detail": "507·595~604 채용정보 목록 기본 스크롤바. 칸 안쪽 스크롤 금지 규칙.",
+  "fix_note": "판정 2차 반영(visual.mjs more 측정·390 폭, 2026-10-13) — -3",
+  "note": "내시안-디자인·프론트-점검-2026-10-13.md §E3·§E5·구현 상태 2차"
+ },
+ {
+  "module": "mock",
+  "slug": "doc:mydesign1013:d20",
+  "area": "layout",
+  "title": "D20 그림·글 없는 빈 카드와 칸 대비 내용이 너무 작은 칸을 감점한다",
+  "status": "fixed",
+  "detail": "506 빈 카드 301px, 514 배너 65/503px, 90 조직도 빈 상자.",
+  "fix_note": "판정 2차 반영(visual.mjs more 측정·390 폭, 2026-10-13) — 빈 카드 -4",
+  "note": "내시안-디자인·프론트-점검-2026-10-13.md §F4·구현 상태 2차"
+ },
+ {
+  "module": "mock",
+  "slug": "doc:mydesign1013:d23",
+  "area": "type",
+  "title": "D23 기울임 글자·문자 기호 단추(‖·▯·▶)를 감점한다",
+  "status": "fixed",
+  "detail": "506 em 기본 italic, 정지 단추가 글자 '▯▯'. 넘김·정지는 머티리얼 아이콘.",
+  "fix_note": "판정 1차 반영(visual.mjs·check.mjs, 2026-10-13) + 기본 CSS em 기울임 없앰",
+  "note": "내시안-디자인·프론트-점검-2026-10-13.md §F4·구현 상태"
+ },
+ {
+  "module": "mock",
+  "slug": "doc:mydesign1013:d24",
+  "area": "visual",
+  "title": "D24 같은 역할 카드의 면 색 2종+ 를 감점한다",
+  "status": "fixed",
+  "detail": "506 .tc.wide 검정·.tc 회색, 511 주 버튼만 버건디.",
+  "fix_note": "판정 2차 반영(visual.mjs more 측정·390 폭, 2026-10-13) — -3",
+  "note": "내시안-디자인·프론트-점검-2026-10-13.md §F4·구현 상태 2차"
+ },
+ {
+  "module": "mock",
+  "slug": "doc:mydesign1013:d26",
+  "area": "layout",
+  "title": "D26 바닥 사이트맵 단 항목 수가 3배+ 차이 나면 감점",
+  "status": "fixed",
+  "detail": "512·510 한 단만 12줄, 나머지 2~3줄.",
+  "fix_note": "판정 2차 반영(visual.mjs more 측정·390 폭, 2026-10-13) — -2",
+  "note": "내시안-디자인·프론트-점검-2026-10-13.md §F4·구현 상태 2차"
+ },
+ {
+  "module": "mock",
+  "slug": "doc:mydesign1013:d27-d35",
+  "area": "layout",
+  "title": "D27·D35 바닥글 위 간격 하한·상한을 잰다(붙음 -8, 40 미만·120 넘음 -4, 300 넘음 -8)",
+  "status": "fixed",
+  "detail": "58건 중 30건이 바닥글에 붙음, 638 760px. 기본 CSS --hb-foot 80/48 과 짝.",
+  "fix_note": "판정 1차 반영(visual.mjs·check.mjs, 2026-10-13)",
+  "note": "내시안-디자인·프론트-점검-2026-10-13.md §G4·§H1·§H5·구현 상태"
+ },
+ {
+  "module": "mock",
+  "slug": "doc:mydesign1013:d28",
+  "area": "behavior",
+  "title": "D28 지도는 구글 지도 임베드만 인정(오픈스트리트맵은 게시 화면에서 차단)",
+  "status": "fixed",
+  "detail": "81·91 'Access blocked' 회색 판. 절차 7-7 문구도 구글 지도만.",
+  "fix_note": "판정 1차 반영(visual.mjs·check.mjs, 2026-10-13)",
+  "note": "내시안-디자인·프론트-점검-2026-10-13.md §G3·§G4·구현 상태"
+ },
+ {
+  "module": "mock",
+  "slug": "doc:mydesign1013:d29",
+  "area": "behavior",
+  "title": "D29 펼친 메뉴 항목이 다른 층에 가려지면 치명",
+  "status": "fixed",
+  "detail": "87 메가 메뉴가 히어로 뒤로 숨음. 항목 가운데 점 elementFromPoint 로 확인.",
+  "fix_note": "behavior.mjs 메뉴 열어 가림 확인, 기본 CSS [data-hb-mega] z-index 100",
+  "note": "내시안-디자인·프론트-점검-2026-10-13.md §G4·구현 상태 3차",
+  "fix_commit": "52adf3a"
+ },
+ {
+  "module": "mock",
+  "slug": "doc:mydesign1013:d30",
+  "area": "behavior",
+  "title": "D30 펼친 메뉴 판 안에 GNB 이름이 다시 나오면 감점",
+  "status": "fixed",
+  "detail": "87 단 머리에 GNB 이름 반복.",
+  "fix_note": "behavior.mjs",
+  "note": "내시안-디자인·프론트-점검-2026-10-13.md §G4·구현 상태 3차",
+  "fix_commit": "52adf3a"
+ },
+ {
+  "module": "mock",
+  "slug": "doc:mydesign1013:d31",
+  "area": "visual",
+  "title": "D31 형제 3개+ 중 하나만 그림자·떠오름이 다르면 감점(굳은 호버, 선택 상태 제외)",
+  "status": "fixed",
+  "detail": "86·508~510 카드 하나만 떠 있음. 쪽 번호·탭·aria-current·aria-selected 는 정상이라 뺀다.",
+  "fix_note": "판정 1차 반영(visual.mjs·check.mjs, 2026-10-13)",
+  "note": "내시안-디자인·프론트-점검-2026-10-13.md §G3·§G4·구현 상태"
+ },
+ {
+  "module": "mock",
+  "slug": "doc:mydesign1013:d33",
+  "area": "behavior",
+  "title": "D33 드롭다운이 단추와 8px+ 떨어지거나 고른 항목 표시가 없으면 감점",
+  "status": "fixed",
+  "detail": "85 부속기관 목록이 위로 떨어져 열리고 선택 표시 없음.",
+  "fix_note": "behavior.mjs",
+  "note": "내시안-디자인·프론트-점검-2026-10-13.md §G4·구현 상태 3차",
+  "fix_commit": "52adf3a"
+ },
+ {
+  "module": "mock",
+  "slug": "doc:mydesign1013:d34",
+  "area": "layout",
+  "title": "D34 가로 넘김 줄에서 오른쪽 끝 카드가 잘리는데 넘김 단추가 없으면 감점",
+  "status": "fixed",
+  "detail": "78 '하천 산책길 정비' 카드 잘림.",
+  "fix_note": "판정 2차 반영(visual.mjs more 측정·390 폭, 2026-10-13) — -3",
+  "note": "내시안-디자인·프론트-점검-2026-10-13.md §G4·구현 상태 2차"
+ },
+ {
+  "module": "mock",
+  "slug": "doc:mydesign1013:d37",
+  "area": "visual",
+  "title": "D37 넓은 섹션의 글·꾸밈 비율이 둘 다 밑이면 감점, 둘 다 0 이면 치명",
+  "status": "fixed",
+  "detail": "폭 70%+·높이 300+ 기준. 618 .u-pride 1440×801 글 3%·꾸밈 1%, 638 .gap8 완전 빈 띠.",
+  "fix_note": "판정 1차 반영(visual.mjs·check.mjs, 2026-10-13)",
+  "note": "내시안-디자인·프론트-점검-2026-10-13.md §H2·§H5·구현 상태"
+ },
+ {
+  "module": "mock",
+  "slug": "doc:mydesign1013:d39",
+  "area": "layout",
+  "title": "D39 한 시안 안 섹션 간격 최대÷중앙값 3배+ 면 감점",
+  "status": "fixed",
+  "detail": "77·86·618 바닥글 붙음과 큰 빈 띠가 같이 나옴 — 여백이 고르지 않음.",
+  "fix_note": "판정 1차 반영(visual.mjs·check.mjs, 2026-10-13)",
+  "note": "내시안-디자인·프론트-점검-2026-10-13.md §H5·구현 상태"
+ },
+ {
+  "module": "mock",
+  "slug": "doc:mydesign1013:fonts3",
+  "area": "type",
+  "title": "한 시안에 글꼴 3종+ 면 감점(한 사이트 서체 하나)",
+  "status": "fixed",
+  "detail": "Pretendard·에스코어드림·나눔고딕·나눔명조 혼용.",
+  "fix_note": "판정 2차 반영(visual.mjs more 측정·390 폭, 2026-10-13) — -3",
+  "note": "내시안-디자인·프론트-점검-2026-10-13.md §A4·구현 상태 2차"
+ },
+ {
+  "module": "mock",
+  "slug": "doc:mydesign1013:rule-min-height",
+  "area": "layout",
+  "title": "레퍼런스 줄·카드 높이를 height 로 박지 않는다 — min-height 만, 높이는 내용이 정한다",
+  "status": "watch",
+  "detail": "E·F·G 세 차례 같은 뿌리(648 .intro·514 .uv-nbox·86 .lead). 절차 7-9 고정 높이 카드 금지.",
+  "note": "내시안-디자인·프론트-점검-2026-10-13.md §E6·§F5·§G5"
+ },
+ {
+  "module": "mock",
+  "slug": "doc:mydesign1013:rule-overflow-img",
+  "area": "layout",
+  "title": "overflow:hidden 은 그림 상자에만 둔다(히어로·카드·게시글 머리 금지)",
+  "status": "watch",
+  "detail": "버튼·배지·제목이 잘림(648·617·620·644).",
+  "note": "내시안-디자인·프론트-점검-2026-10-13.md §E6"
+ },
+ {
+  "module": "mock",
+  "slug": "doc:mydesign1013:rule-carousel",
+  "area": "behavior",
+  "title": "캐러셀은 장수 1 이하면 만들지 않고, 넘김 단추는 넘기는 내용 바로 아래(24px 안)·카드 안에",
+  "status": "watch",
+  "detail": "618 버튼–내용 128px, 648 270px, 609 세로 넘김 버튼.",
+  "note": "내시안-디자인·프론트-점검-2026-10-13.md §E2·§E6·§G5"
+ },
+ {
+  "module": "mock",
+  "slug": "doc:mydesign1013:rule-no-space-between",
+  "area": "layout",
+  "title": "카드 안 날짜·버튼을 space-between 으로 바닥에 밀지 않는다 — 위에서부터 쌓는다",
+  "status": "watch",
+  "detail": "512 뉴스 카드 틈 122~218px, 618 숫자 카드 131px.",
+  "note": "내시안-디자인·프론트-점검-2026-10-13.md §E6·§F5"
+ },
+ {
+  "module": "mock",
+  "slug": "doc:mydesign1013:rule-text-image-contain",
+  "area": "content",
+  "title": "글자 박힌 그림은 contain 으로만, 설명을 그림 문구에 맞추고 영상 카드에 쓰지 않는다",
+  "status": "watch",
+  "detail": "514 글자 잘림, 638 썸네일 문구와 설명 다름, 512 글자 그림 위 재생 단추.",
+  "note": "내시안-디자인·프론트-점검-2026-10-13.md §E4·§F3·§F5"
+ },
+ {
+  "module": "mock",
+  "slug": "doc:mydesign1013:rule-pattern-sample",
+  "area": "content",
+  "title": "무늬·지도 배경 샘플을 대표 그림·썸네일 자리에 쓰지 않는다(샘플 kind 로 막음)",
+  "status": "watch",
+  "detail": "512 점 무늬·세계지도 자리표시가 '사진 없음'으로 보임.",
+  "note": "내시안-디자인·프론트-점검-2026-10-13.md §F2·§F3·§F5"
+ },
+ {
+  "module": "mock",
+  "slug": "doc:mydesign1013:rule-mobile-lnb",
+  "area": "layout",
+  "title": "모바일 LNB 는 가로 스크롤 탭이나 줄바꿈 — 글자 칸 고정 폭 금지",
+  "status": "watch",
+  "detail": "611 '수산' 37px·595 '알림마당' 57px·644 73px 잘림.",
+  "note": "내시안-디자인·프론트-점검-2026-10-13.md §E1·§E6"
+ },
+ {
+  "module": "mock",
+  "slug": "doc:mydesign1013:rule-portrait-photo",
+  "area": "content",
+  "title": "세로 사진은 object-position 위쪽 30%, 넓고 낮은 칸에는 가로 사진만",
+  "status": "watch",
+  "detail": "506 사람·강아지 잘림, s08 세로 일러스트 머리 잘림.",
+  "note": "내시안-디자인·프론트-점검-2026-10-13.md §F1·§F5"
+ },
+ {
+  "module": "mock",
+  "slug": "doc:mydesign1013:rule-section-top-only",
+  "area": "layout",
+  "title": "섹션은 위 여백만 쓰고 아래 여백 0 — 위아래가 겹쳐 160px+ 빈 띠가 생기지 않게",
+  "status": "watch",
+  "detail": "H3 11건: 아래 80 + 위 100 겹침. 섹션 간격은 --hb-section-gap(96/56) 하나.",
+  "note": "내시안-디자인·프론트-점검-2026-10-13.md §H3·§H6"
+ },
+ {
+  "module": "mock",
+  "slug": "doc:mydesign1013:rule-no-placeholder",
+  "area": "content",
+  "title": "'웹 접근성 인증 마크 자리' 같은 자리표시 문구를 재료·시안에 넣지 않는다",
+  "status": "watch",
+  "detail": "바닥에 그대로 노출됐다. 절차 7-10 자리표시 문구 금지.",
+  "note": "내시안-디자인·프론트-점검-2026-10-13.md §A10·§D 재료"
+ },
+ {
+  "module": "mock",
+  "slug": "doc:mydesign1013:rule-subvisual-seed",
+  "area": "content",
+  "title": "서브 비주얼은 시안마다 다른 샘플, 고르기 실패해도 단색 띠로 떨어지지 않게",
+  "status": "watch",
+  "detail": "같은 회색 군중 사진 반복, 611·645 단색 띠.",
+  "note": "내시안-디자인·프론트-점검-2026-10-13.md §A5·§E4·§D 재료"
+ },
+ {
+  "module": "mock",
+  "slug": "doc:mydesign1013:footer-contrast-base",
+  "area": "visual",
+  "title": "기본 CSS 바닥 저작권 글자 대비 3.54 → 4.5 이상",
+  "status": "fixed",
+  "detail": "대비 미달 47건 중 다수가 기본값 하나에서 나왔다.",
+  "fix_note": "절차 7-10 바닥 글자 대비 4.5+",
+  "note": "내시안-디자인·프론트-점검-2026-10-13.md §0·§D 재료"
+ },
+ {
+  "module": "mock",
+  "slug": "doc:mydesign1013:emoji",
+  "area": "content",
+  "title": "이모지가 든 시안 47건 — 관공서·기관 화면은 아이콘 부품으로",
+  "status": "open",
+  "note": "내시안-디자인·프론트-점검-2026-10-13.md §A4"
+ },
+ {
+  "module": "mock",
+  "slug": "doc:mydesign1013:font-under-12",
+  "area": "type",
+  "title": "12px 미만 글자(84·85·98·514·595~603·644) — 본문 13px 이상",
+  "status": "open",
+  "note": "내시안-디자인·프론트-점검-2026-10-13.md §A4"
+ },
+ {
+  "module": "mock",
+  "slug": "doc:mydesign1013:type-scale",
+  "area": "type",
+  "title": "한 화면 글자 크기 12종+(33건)·글자색 12종+(19건) — 제목 3·본문 2단계로",
+  "status": "open",
+  "note": "내시안-디자인·프론트-점검-2026-10-13.md §A4"
+ },
+ {
+  "module": "mock",
+  "slug": "doc:mydesign1013:hex-colors",
+  "area": "visual",
+  "title": "CSS hex 색 25종+(41건)·변수 적음 — 주색·보조·회색 단계를 :root 토큰으로",
+  "status": "open",
+  "note": "내시안-디자인·프론트-점검-2026-10-13.md §A3·§B4"
+ },
+ {
+  "module": "mock",
+  "slug": "doc:mydesign1013:native-select",
+  "area": "behavior",
+  "title": "네이티브 select 사용(92·96·102·104·106·620) — 공통 커스텀 드롭다운으로",
+  "status": "open",
+  "note": "내시안-디자인·프론트-점검-2026-10-13.md §A7"
+ },
+ {
+  "module": "mock",
+  "slug": "doc:mydesign1013:row-control-height",
+  "area": "layout",
+  "title": "같은 줄 입력·버튼 높이가 다름(77·78·84·85·86·97·108·504·617·635·648)",
+  "status": "open",
+  "note": "내시안-디자인·프론트-점검-2026-10-13.md §A7"
+ },
+ {
+  "module": "mock",
+  "slug": "doc:mydesign1013:tap-target",
+  "area": "behavior",
+  "title": "24px 미만 누름 영역(PC 44건·모바일 26건) — 쪽 번호·첨부·공유·인쇄 40px 이상",
+  "status": "open",
+  "note": "내시안-디자인·프론트-점검-2026-10-13.md §B2"
+ },
+ {
+  "module": "mock",
+  "slug": "doc:mydesign1013:skip-link",
+  "area": "behavior",
+  "title": "본문 바로가기(skip) 링크 없음(49건)",
+  "status": "open",
+  "note": "내시안-디자인·프론트-점검-2026-10-13.md §B1"
+ },
+ {
+  "module": "mock",
+  "slug": "doc:mydesign1013:heading-skip-id-dup",
+  "area": "mockup",
+  "title": "제목 단계 건너뜀(609)·id 중복(85)을 판정이 안 본다",
+  "status": "open",
+  "note": "내시안-디자인·프론트-점검-2026-10-13.md §B1"
+ },
+ {
+  "module": "mock",
+  "slug": "doc:mydesign1013:font-cors",
+  "area": "mockup",
+  "title": "에스코어드림 웹폰트를 다른 출처에서 받다 CORS 실패 — 플랫폼이 내주거나 Pretendard 로",
+  "status": "open",
+  "note": "내시안-디자인·프론트-점검-2026-10-13.md §B4·§D 재료"
+ },
+ {
+  "module": "mock",
+  "slug": "doc:mydesign1013:template-particle",
+  "area": "content",
+  "title": "템플릿 조사가 그대로 노출('새솔군은(는)', 604)",
+  "status": "open",
+  "note": "내시안-디자인·프론트-점검-2026-10-13.md §C"
+ },
+ {
+  "module": "mock",
+  "slug": "doc:mydesign1013:duplicate-mockups",
+  "area": "content",
+  "title": "똑같은 시안 중복(597=599, 601=603, 새솔시청 메인 617·638)",
+  "status": "open",
+  "note": "내시안-디자인·프론트-점검-2026-10-13.md §C"
+ },
+ {
+  "module": "mock",
+  "slug": "doc:mydesign1013:untitled-mockups",
+  "area": "content",
+  "title": "제목 없는 시안(635·644·645) — 목록에서 구분 안 됨",
+  "status": "open",
+  "note": "내시안-디자인·프론트-점검-2026-10-13.md §C"
+ },
+ {
+  "module": "mock",
+  "slug": "doc:mydesign1013:prev-next-order",
+  "area": "content",
+  "title": "게시글 이전·다음 글 순서 거꾸로(626) — 이전 = 더 최근 글",
+  "status": "open",
+  "note": "내시안-디자인·프론트-점검-2026-10-13.md §A10"
+ },
+ {
+  "module": "mock",
+  "slug": "doc:mydesign1013:phone-mixed",
+  "area": "content",
+  "title": "실제처럼 보이는 전화번호와 가상 번호가 섞임(105·108)",
+  "status": "open",
+  "note": "내시안-디자인·프론트-점검-2026-10-13.md §A10"
+ },
+ {
+  "module": "mock",
+  "slug": "doc:mydesign1013:org-type-frame",
+  "area": "content",
+  "title": "기관 종류에 맞지 않는 틀(512 기업 사이트를 관공서 틀로)",
+  "status": "open",
+  "note": "내시안-디자인·프론트-점검-2026-10-13.md §A10"
+ },
+ {
+  "module": "mock",
+  "slug": "doc:mydesign1013:container-1440",
+  "area": "layout",
+  "title": "1440 폭에서 본문 최대 폭 1520~1600 이라 좌우 여백 없음 — 최소 24~40px",
+  "status": "open",
+  "note": "내시안-디자인·프론트-점검-2026-10-13.md §A2"
+ },
+ {
+  "module": "mock",
+  "slug": "doc:mydesign1013:container-align",
+  "area": "layout",
+  "title": "머리·바닥은 x=0, 본문만 안쪽(음성군 계열·611 바닥 20 대 44px) — 같은 컨테이너에",
+  "status": "open",
+  "note": "내시안-디자인·프론트-점검-2026-10-13.md §A2"
+ },
+ {
+  "module": "mock",
+  "slug": "doc:mydesign1013:subvisual-seam",
+  "area": "content",
+  "title": "서브 비주얼에 두 사진을 이어 붙인 이음매(95·96)",
+  "status": "open",
+  "note": "내시안-디자인·프론트-점검-2026-10-13.md §A5"
+ },
+ {
+  "module": "mock",
+  "slug": "doc:mydesign1013:image-stretch",
+  "area": "content",
+  "title": "이미지 비율이 깨져 늘어남(88·514) — 판정은 cover 잘림만 본다",
+  "status": "open",
+  "note": "내시안-디자인·프론트-점검-2026-10-13.md §A5"
+ },
+ {
+  "module": "mock",
+  "slug": "doc:mydesign1013:input-narrow",
+  "area": "layout",
+  "title": "입력칸이 좁아 안내문이 잘림(96·508)",
+  "status": "open",
+  "note": "내시안-디자인·프론트-점검-2026-10-13.md §A7"
+ },
+ {
+  "module": "mock",
+  "slug": "doc:mydesign1013:carousel-ctrl-overlap",
+  "area": "behavior",
+  "title": "캐러셀 조작부(이전·정지·다음)가 쪽 표시와 겹침(635)",
+  "status": "open",
+  "note": "내시안-디자인·프론트-점검-2026-10-13.md §A1"
+ },
+ {
+  "module": "mock",
+  "slug": "doc:mydesign1013:hero-btn-wrap",
+  "area": "type",
+  "title": "히어로 '자세히 보기' 버튼 글자가 두 줄로 접힘(648)",
+  "status": "open",
+  "note": "내시안-디자인·프론트-점검-2026-10-13.md §A1"
+ },
+ {
+  "module": "mock",
+  "slug": "doc:mydesign1013:survey-missing",
+  "area": "content",
+  "title": "서브 화면 일부에 만족도 조사 칸이 없음",
+  "status": "open",
+  "note": "내시안-디자인·프론트-점검-2026-10-13.md §A9"
+ },
+ {
+  "module": "mock",
+  "slug": "doc:mydesign1013:kit-frame-gaps",
+  "area": "mcp",
+  "title": "재현 묶음 frame 에 section_gap·footer_gap 을 레퍼런스 실측 중앙값으로 싣기",
+  "status": "open",
+  "note": "내시안-디자인·프론트-점검-2026-10-13.md §H6",
+  "detail": "같은 기관 메인·서브가 같은 값을 쓰게(635 68 ↔ 638 760)."
+ },
+ {
+  "module": "mock",
+  "slug": "doc:mydesign1013:fix-hint-values",
+  "area": "mcp",
+  "title": "판정 고칠 점에 바꿀 값을 같이 준다(예: '바닥글 위 여백 N px — 80 으로')",
+  "status": "open",
+  "note": "내시안-디자인·프론트-점검-2026-10-13.md §H6",
+  "detail": "AI 가 0 이나 760 으로 고치지 않게."
+ },
+ {
+  "module": "mock",
+  "slug": "doc:kfe1015:k1",
+  "area": "layout",
+  "title": "K1 섹션 사이 간격이 들쭉날쭉(140·0·0·0·80·140·109·0·40px)",
+  "status": "fixed",
+  "detail": "간격 검사가 묶음 안 칸 간격 위주라 섹션 사이 편차를 안 봤다.",
+  "fix_note": "판정 compose.mjs 구성 일관성 검사 — 구역 간격 한 값",
+  "fix_commit": "5908839",
+  "note": "한국미래에너지공사-시안-점검-2026-10-15.md §메인 507"
+ },
+ {
+  "module": "mock",
+  "slug": "doc:kfe1015:k2-k3",
+  "area": "visual",
+  "title": "K2·K3 주색과 부딪히는 원색 배너·포스터·SNS 버튼 원색 면",
+  "status": "fixed",
+  "detail": "색 검사는 한 색 계열 비율만 봤다. 507 보라·빨강·노랑 포스터, SNS 5색.",
+  "fix_note": "판정 compose.mjs 구성 일관성 검사 — 주색과 부딪히는 원색 면·원색 단추 묶음(주색 오탐은 ef3e818 보정)",
+  "fix_commit": "5908839",
+  "note": "한국미래에너지공사-시안-점검-2026-10-15.md §메인 507"
+ },
+ {
+  "module": "mock",
+  "slug": "doc:kfe1015:k4",
+  "area": "layout",
+  "title": "K4 한 줄 카드의 사진 시작 높이가 제각각(111px 차)",
+  "status": "fixed",
+  "detail": "줄 높이 차는 보지만 카드 안 요소 정렬은 안 봤다.",
+  "fix_note": "판정 compose.mjs 구성 일관성 검사 — 한 줄 카드 사진 높이",
+  "fix_commit": "5908839",
+  "note": "한국미래에너지공사-시안-점검-2026-10-15.md §메인 507"
+ },
+ {
+  "module": "mock",
+  "slug": "doc:kfe1015:k6",
+  "area": "visual",
+  "title": "K6 한 줄에 카드 모양 3~4종(포스터·목록·영상·SNS)",
+  "status": "fixed",
+  "fix_note": "판정 compose.mjs 구성 일관성 검사 — 카드 모양 섞임",
+  "fix_commit": "5908839",
+  "note": "한국미래에너지공사-시안-점검-2026-10-15.md §메인 507"
+ },
+ {
+  "module": "mock",
+  "slug": "doc:kfe1015:k5",
+  "area": "visual",
+  "title": "K5 카드 모서리 삼각 장식 등 섹션당 효과 하나를 넘는 장식",
+  "status": "open",
+  "detail": "장식 검사 없음. '조잡하다' = 한 화면에 효과 여러 개.",
+  "note": "한국미래에너지공사-시안-점검-2026-10-15.md §메인 507"
+ },
+ {
+  "module": "mock",
+  "slug": "doc:kfe1015:k9",
+  "area": "visual",
+  "title": "K9 같은 아이콘 세트 안에서도 그림체가 다른 번호대가 섞임",
+  "status": "open",
+  "detail": "icon-flat 100번대(번개·확성기·사이렌)가 다른 그림체. 세트 이름만으로는 같은 스타일로 본다.",
+  "note": "한국미래에너지공사-시안-점검-2026-10-15.md §메인 507"
+ },
+ {
+  "module": "mock",
+  "slug": "doc:kfe1015:k10",
+  "area": "content",
+  "title": "K10 섹션 제목 없는 줄이 많음(뉴스 카드·포스터·영상 줄)",
+  "status": "open",
+  "note": "한국미래에너지공사-시안-점검-2026-10-15.md §메인 507"
+ },
+ {
+  "module": "mock",
+  "slug": "doc:kfe1015:s1",
+  "area": "visual",
+  "title": "S1 서브 한 화면에 장식 효과 4종(겹친 원·알약 띠·역삼각형·4분면 원형)",
+  "status": "open",
+  "note": "한국미래에너지공사-시안-점검-2026-10-15.md §서브 510"
+ },
+ {
+  "module": "mock",
+  "slug": "doc:kfe1015:s2",
+  "area": "layout",
+  "title": "S2 4분면 중 한 칸만 오른쪽 정렬·목록형 — 형식 일관성",
+  "status": "open",
+  "note": "한국미래에너지공사-시안-점검-2026-10-15.md §서브 510"
+ },
+ {
+  "module": "mock",
+  "slug": "doc:kfe1015:s3",
+  "area": "type",
+  "title": "S3 본문 설명 12~13px·옅은 회색 — 글자 크기·대비",
+  "status": "open",
+  "note": "한국미래에너지공사-시안-점검-2026-10-15.md §서브 510"
+ },
+ {
+  "module": "mock",
+  "slug": "doc:refclass1010:private-not-in-all",
+  "area": "data",
+  "title": "민간 사이트는 '화면|private' 묶음에만 — all 에 섞지 않는다",
+  "status": "watch",
+  "detail": "관공서 평균이 민간 구성으로 흐려지지 않게.",
+  "note": "목업-레퍼런스-분류-증적-2026-10-10.md §1"
+ },
+ {
+  "module": "mock",
+  "slug": "doc:refclass1010:min-sample-5",
+  "area": "data",
+  "title": "표본 5개 미만인 기관 묶음은 만들지 않는다(넘어가는 묶음으로 대체)",
+  "status": "watch",
+  "note": "목업-레퍼런스-분류-증적-2026-10-10.md §2"
+ },
+ {
+  "module": "mock",
+  "slug": "doc:refclass1010:row-extract-rules",
+  "area": "data",
+  "title": "줄 구성 추출: 미분류 칸 25% 넘는 화면 버림·줄 3~18개·머리와 바닥 필수",
+  "status": "watch",
+  "note": "목업-레퍼런스-분류-증적-2026-10-10.md §3"
+ },
+ {
+  "module": "mock",
+  "slug": "doc:refclass1010:rebuild-after-publish",
+  "area": "data",
+  "title": "대학·민간 화면 게시 뒤 build-wire-patterns.mjs 를 다시 돌려 묶음 표본 반영",
+  "status": "open",
+  "detail": "university 묶음 표본이 거의 없다(대기열 952곳).",
+  "note": "목업-레퍼런스-분류-증적-2026-10-10.md §2"
+ },
+ {
+  "module": "mock",
+  "slug": "doc:refclass1010:archetype-required-warn",
+  "area": "mcp",
+  "title": "랜딩·기업형 원형이 메인 필수 섹션 경고로 60~75점",
+  "status": "fixed",
+  "fix_note": "원형은 필수 섹션 경고 제외, 반복은 줄 단위로 셈",
+  "note": "목업-레퍼런스-분류-증적-2026-10-10.md §5"
+ },
+ {
+  "module": "mock",
+  "slug": "doc:downsites1012:retry-blank-timeout",
+  "area": "data",
+  "title": "빈 화면·타임아웃 draft 30곳(외교부·법무부 등)은 다음 resurvey 에 다시 본다",
+  "status": "open",
+  "detail": "봇 차단·일시 장애 가능성. 도메인 없음·4xx 만 removed.",
+  "note": "불통사이트-정리-2026-10-12.md §draft.csv"
+ },
+ {
+  "module": "mock",
+  "slug": "doc:downsites1012:down-false-positive",
+  "area": "data",
+  "title": "resurvey down 판정이 queued·published 사이트에서 오탐 — 수집 중인 곳은 손대지 않는다",
+  "status": "watch",
+  "detail": "16곳이 수집 중인데 down 으로 나왔다.",
+  "note": "불통사이트-정리-2026-10-12.md §판정 기준"
+ },
+ {
+  "module": "assets",
+  "slug": "doc:mcpcall1010:d-01",
+  "area": "search",
+  "title": "D-01 띄어 쓴 말('데이터 베이스')을 낱말별 오타 교정해 '케이스'로 바꿈",
+  "status": "fixed",
+  "fix_note": "사전에 있는 붙인 말로 먼저 합치기(glue), 아는 말 조각은 교정 안 함",
+  "note": "MCP-실호출-테스트보고서-2026-10-10.md §1"
+ },
+ {
+  "module": "assets",
+  "slug": "doc:mcpcall1010:d-02",
+  "area": "search",
+  "title": "D-02 검색이 최신순뿐 — '국토교통부' 로고 1위가 다른 기관",
+  "status": "fixed",
+  "fix_note": "태그·이름 포함·이름 일치·장표 종류 점수로 관련도 정렬",
+  "note": "MCP-실호출-테스트보고서-2026-10-10.md §1"
+ },
+ {
+  "module": "assets",
+  "slug": "doc:mcpcall1010:d-03",
+  "area": "search",
+  "title": "D-03 한 글자 검색('차')이 부분 일치로 수천 건",
+  "status": "fixed",
+  "fix_note": "한 글자는 정확 일치, 0건일 때만 부분 일치",
+  "note": "MCP-실호출-테스트보고서-2026-10-10.md §1"
+ },
+ {
+  "module": "assets",
+  "slug": "doc:mcpcall1010:d-04",
+  "area": "search",
+  "title": "D-04 주제 목록 상위에 대부분 자산에 붙은 낱말(파랑·3D)",
+  "status": "fixed",
+  "fix_note": "분류의 20% 넘게 붙은 태그·스타일 낱말 제외",
+  "note": "MCP-실호출-테스트보고서-2026-10-10.md §1"
+ },
+ {
+  "module": "deck",
+  "slug": "doc:mcpcall1010:d-09",
+  "area": "script",
+  "title": "D-09 수치 없는 모호한 약속('최선을 다해') 문장이 감점 없음",
+  "status": "fixed",
+  "fix_note": "말하는 줄의 모호한 약속은 경고",
+  "note": "MCP-실호출-테스트보고서-2026-10-10.md §1"
+ },
+ {
+  "module": "deck",
+  "slug": "doc:mcpcall1010:d-11",
+  "area": "wire",
+  "title": "D-11 와이어에 모르는 상자 종류를 써도 통과",
+  "status": "fixed",
+  "fix_note": "모르는 종류는 경고(카드로 그린다고 알림)",
+  "note": "MCP-실호출-테스트보고서-2026-10-10.md §1"
+ },
+ {
+  "module": "guide",
+  "slug": "doc:mcpcall1010:d-13",
+  "area": "rules",
+  "title": "D-13 KRDS 분류를 한글('입력')로 주면 NOT_FOUND",
+  "status": "fixed",
+  "fix_note": "한글 분류 이름 대응, 없으면 가능한 분류 목록",
+  "note": "MCP-실호출-테스트보고서-2026-10-10.md §1"
+ },
+ {
+  "module": "guide",
+  "slug": "doc:mcpcall1010:d-14",
+  "area": "tokens",
+  "title": "D-14 tokens.css 로 부르면 파일 없음(실제 solideo-tokens.css)",
+  "status": "fixed",
+  "fix_note": "끝이 같은 파일이 하나면 그 파일로",
+  "note": "MCP-실호출-테스트보고서-2026-10-10.md §1"
+ },
+ {
+  "module": "guide",
+  "slug": "doc:mcpcall1010:d-15",
+  "area": "rules",
+  "title": "D-15 지침 검색 '포커스'·'로그인' 0건(원문은 '초점'·'본인 확인')",
+  "status": "fixed",
+  "fix_note": "동의어·근거·고칠 점까지 검색, 0건이면 힌트",
+  "note": "MCP-실호출-테스트보고서-2026-10-10.md §1"
+ },
+ {
+  "module": "mcp",
+  "slug": "doc:mcploop1012:2-clarify",
+  "area": "args",
+  "title": "2 애매한 요청에 확신 낮은 서비스 하나만 답함(powerplus_check_request)",
+  "status": "fixed",
+  "fix_note": "확신 0.7 미만·1·2위 차 0.3 미만이면 needs_clarification + 되물을 질문·대안",
+  "note": "MCP-반복시험-2026-10-12.md §2"
+ },
+ {
+  "module": "deck",
+  "slug": "doc:mcploop1012:4-priority",
+  "area": "plan",
+  "title": "4 배점 상위 항목이 덱 뒤쪽에 몰리거나 한 장뿐이어도 기획 판정 통과",
+  "status": "fixed",
+  "fix_note": "deck_check_plan 배점 순위 판정(stat.priority)·경고",
+  "note": "MCP-반복시험-2026-10-12.md §2"
+ },
+ {
+  "module": "deck",
+  "slug": "doc:mcploop1012:5-thin",
+  "area": "plan",
+  "title": "5 짧은 원자료에도 '얇은 장' 경고",
+  "status": "fixed",
+  "fix_note": "장당 원자료 분량에 비례한 기준",
+  "note": "MCP-반복시험-2026-10-12.md §2"
+ },
+ {
+  "module": "deck",
+  "slug": "doc:mcploop1012:6-short-script",
+  "area": "script",
+  "title": "6 15분 발표에 7분 대본 통과, 30초 대본 기준 없음",
+  "status": "fixed",
+  "fix_note": "목표의 60% 미만 치명·80% 미만 경고, seconds_per_slide 인자",
+  "note": "MCP-반복시험-2026-10-12.md §2"
+ },
+ {
+  "module": "deck",
+  "slug": "doc:mcploop1012:7-cross-slide-num",
+  "area": "plan",
+  "title": "7 원자료·다른 장에 있는 수치를 '지어낸 수치'로 치명",
+  "status": "fixed",
+  "fix_note": "기획 전체+원자료와 대조, 다른 장에 있으면 경고만",
+  "note": "MCP-반복시험-2026-10-12.md §2"
+ },
+ {
+  "module": "guide",
+  "slug": "doc:mcploop1012:8-elem-path",
+  "area": "check",
+  "title": "8 한 줄 HTML 코드 판정에 줄 번호가 늘 1",
+  "status": "fixed",
+  "fix_note": "요소 경로(tag:nth-of-type(n))로 위치",
+  "note": "MCP-반복시험-2026-10-12.md §2"
+ },
+ {
+  "module": "guide",
+  "slug": "doc:mcploop1012:9-var-fallback",
+  "area": "check",
+  "title": "9 var(--토큰, #폴백) 의 폴백 hex 를 정본 밖 색으로 셈",
+  "status": "fixed",
+  "fix_note": "폴백 제거 후 판정",
+  "note": "MCP-반복시험-2026-10-12.md §2"
+ },
+ {
+  "module": "guide",
+  "slug": "doc:mcploop1012:10-fake-button",
+  "area": "check",
+  "title": "10 onclick 만 있는 div 버튼을 못 잡음",
+  "status": "fixed",
+  "fix_note": "fake_button 감점(최대 -20)",
+  "note": "MCP-반복시험-2026-10-12.md §2"
+ },
+ {
+  "module": "mock",
+  "slug": "doc:mcploop1012:11-page-pattern",
+  "area": "mcp",
+  "title": "11 페이지 패턴 예시에 미분류 50%+ 화면·같은 구성 중복",
+  "status": "fixed",
+  "fix_note": "미분류 절반 넘으면 제외, 구성 서명으로 중복 제거, 최대 4",
+  "note": "MCP-반복시험-2026-10-12.md §2"
+ },
+ {
+  "module": "mock",
+  "slug": "doc:mcploop1012:12-pref-match",
+  "area": "preference",
+  "title": "12 디자인 선호 찾기가 정확 일치와 부분 일치 규칙을 섞음",
+  "status": "fixed",
+  "fix_note": "정확·부분 구분 + match_note",
+  "note": "MCP-반복시험-2026-10-12.md §2"
+ },
+ {
+  "module": "mock",
+  "slug": "doc:mcploop1012:13-sample-org",
+  "area": "content",
+  "title": "13 샘플 이미지가 요청 기관 종류를 안 봄",
+  "status": "fixed",
+  "fix_note": "org_name·org_type 으로 가상 기관 맥락",
+  "note": "MCP-반복시험-2026-10-12.md §2"
+ },
+ {
+  "module": "mcp",
+  "slug": "doc:mcploop1012:18-staff-quota",
+  "area": "keys",
+  "title": "18 임직원 하루 시안 보관 한도가 고정",
+  "status": "fixed",
+  "fix_note": "mock.per_day_staff 설정(기본 300)",
+  "note": "MCP-반복시험-2026-10-12.md §2"
+ },
+ {
+  "module": "guide",
+  "slug": "doc:mcploop1012:19-tw4-theme",
+  "area": "kit",
+  "title": "19 Tailwind v4 에서 쓸 토큰 파일 없음",
+  "status": "fixed",
+  "fix_note": "solideo-tailwind.theme.css(@theme) 산출물",
+  "note": "MCP-반복시험-2026-10-12.md §2"
+ },
+ {
+  "module": "mock",
+  "slug": "doc:mcpex1012:wire-archetype-words",
+  "area": "mcp",
+  "title": "큰 검색·LLM 원형 요청인데 일반 메인 와이어가 나옴",
+  "status": "fixed",
+  "fix_note": "원형 선택 낱말 보강",
+  "fix_commit": "f0facd6",
+  "note": "MCP-예시검증-2026-10-12.md §고친 것"
+ },
+ {
+  "module": "mock",
+  "slug": "doc:mcpex1012:gnb-util-links",
+  "area": "content",
+  "title": "홈페이지 주 메뉴에 유틸 링크·가족 사이트가 섞임",
+  "status": "fixed",
+  "fix_note": "주 메뉴에서 제외",
+  "fix_commit": "f0facd6",
+  "note": "MCP-예시검증-2026-10-12.md §고친 것"
+ },
+ {
+  "module": "mock",
+  "slug": "doc:mcpex1012:fullwidth-wrap",
+  "area": "layout",
+  "title": "폭 가득 줄의 내용이 화면 끝까지 퍼짐",
+  "status": "fixed",
+  "fix_note": "내용은 본문 폭으로 감쌈(그려진 클래스로 판단)",
+  "fix_commit": "451d705",
+  "note": "MCP-예시검증-2026-10-12.md §고친 것"
+ },
+ {
+  "module": "mock",
+  "slug": "doc:mcpex1012:judge-unpainted-padding",
+  "area": "mockup",
+  "title": "판정이 보이지 않는 감싸개·칠하지 않은 칸 안쪽 여백까지 끝선으로 잼",
+  "status": "fixed",
+  "fix_note": "칠하지 않은 칸은 안쪽 여백 빼고 잼",
+  "fix_commit": "451d705",
+  "note": "MCP-예시검증-2026-10-12.md §고친 것"
+ },
+ {
+  "module": "mock",
+  "slug": "doc:mcpex1012:judge-aria-behavior",
+  "area": "behavior",
+  "title": "표준 속성(aria-expanded 등)으로 움직이는 조작을 '동작 없음'으로 감점",
+  "status": "fixed",
+  "fix_note": "감점하지 않음",
+  "fix_commit": "f0facd6",
+  "note": "MCP-예시검증-2026-10-12.md §고친 것"
+ },
+ {
+  "module": "mock",
+  "slug": "doc:mcpex1012:subvisual-near-white",
+  "area": "layout",
+  "title": "서브 비주얼 배경이 거의 흰색이면 띠로 인식 안 됨",
+  "status": "fixed",
+  "fix_note": "거의 흰 배경은 기본 색",
+  "fix_commit": "46f3299",
+  "note": "MCP-예시검증-2026-10-12.md §고친 것"
+ },
+ {
+  "module": "mock",
+  "slug": "doc:mcpex1012:sub-search-sitemap",
+  "area": "behavior",
+  "title": "서브 통합검색·전체메뉴 버튼이 아무것도 열지 않음",
+  "status": "fixed",
+  "fix_note": "실제 검색·사이트맵 레이어(Esc·바깥 클릭 닫기)",
+  "fix_commit": "46f3299",
+  "note": "MCP-예시검증-2026-10-12.md §고친 것"
+ },
+ {
+  "module": "mock",
+  "slug": "doc:mcpex1012:board-view-length",
+  "area": "content",
+  "title": "게시글 상세 본문이 레퍼런스보다 40~62% 김",
+  "status": "fixed",
+  "fix_note": "본문 큰 그림 제거",
+  "fix_commit": "46f3299",
+  "note": "MCP-예시검증-2026-10-12.md §고친 것 · MCP-반복시험-2026-10-12.md §3"
+ },
+ {
+  "module": "site",
+  "slug": "doc:errprev:R01",
+  "area": "ops",
+  "title": "R01 PHP 클로저가 바깥 변수를 use 없이 쓰지 않는다(php -l 통과해도 500)",
+  "detail": "사례: mockref 사이트 상세 전체 500(1802c49 배포 직후).\n확인: bash scripts/preflight.sh mockref|web — preflight/closures.php 자동 검사.",
+  "status": "watch",
+  "note": "오류-재발방지-체크리스트.md §1"
+ },
+ {
+  "module": "site",
+  "slug": "doc:errprev:R02",
+  "area": "ops",
+  "title": "R02 PHP 는 Edit 도구로만 고친다 — sed·heredoc·node 문자열이 네임스페이스 역슬래시를 먹음",
+  "detail": "사례: use HomeboxPlan; · PpCoreDb 로 역슬래시 소실.\n확인: preflight 네임스페이스 패턴 검사.",
+  "status": "watch",
+  "note": "오류-재발방지-체크리스트.md §1"
+ },
+ {
+  "module": "site",
+  "slug": "doc:errprev:R04",
+  "area": "ops",
+  "title": "R04 배포 범위에 커밋 안 한 변경(다른 세션 작업)이 있으면 배포를 멈춘다",
+  "detail": "deploy.sh 는 작업 트리를 그대로 싣는다. PP_ALLOW_DIRTY=1 은 사용자 지시가 있을 때만.\n확인: git status --porcelain -- 범위.",
+  "status": "watch",
+  "note": "오류-재발방지-체크리스트.md §1"
+ },
+ {
+  "module": "site",
+  "slug": "doc:errprev:R15",
+  "area": "ops",
+  "title": "R15 공유 작업 트리에서 git stash·checkout -- .·add -A 를 쓰지 않는다",
+  "detail": "확인: git stash list 가 비어 있는지. 커밋은 고친 파일 이름만.",
+  "status": "watch",
+  "note": "오류-재발방지-체크리스트.md §1"
+ },
+ {
+  "module": "site",
+  "slug": "doc:errprev:R11",
+  "area": "ops",
+  "title": "R11 실패를 조용히 삼키지 않고 로그에 남긴다(판정 점수가 DB 에 NULL 로 남은 사례)",
+  "detail": "원인: 서명 비밀 PP_JUDGE_SECRET 누락 시 기록 실패를 삼킴.\n확인: 서버 오류 로그.",
+  "status": "watch",
+  "fix_commit": "76d980b",
+  "note": "오류-재발방지-체크리스트.md §1"
+ },
+ {
+  "module": "site",
+  "slug": "doc:errprev:R10",
+  "area": "a11y",
+  "title": "R10 aria-label·title 에는 문자열만 넘긴다(접근 이름 [object Object] 사례)",
+  "detail": "확인: 접근성 트리에서 해당 요소 이름.",
+  "status": "watch",
+  "fix_commit": "d31384b",
+  "note": "오류-재발방지-체크리스트.md §1"
+ },
+ {
+  "module": "site",
+  "slug": "doc:errprev:R08",
+  "area": "rsp",
+  "title": "R08 모바일 고정 폭 표는 칸 폭 = 내용 + 셀 여백 30px, 합 358px 이하를 먼저 계산",
+  "detail": "사례: 내 시안 표 모바일 넘침을 4번 커밋해 고침.\n확인: 390 폭 scrollWidth − clientWidth = 0.",
+  "status": "watch",
+  "note": "오류-재발방지-체크리스트.md §1"
+ },
+ {
+  "module": "site",
+  "slug": "doc:errprev:R22",
+  "area": "sec",
+  "title": "R22 관리자 응답에 사람 이름 칸을 새로 만들면 *_name 키로 쓰거나 Mask 목록에 더한다",
+  "detail": "사례: 테스트 계정에 장표·시안 owner 이름이 그대로 보임(NAME_KEYS 에 owner 없음).\n확인: 테스트 계정 /admin/mockups '주인' 칸이 가려졌는지.",
+  "status": "watch",
+  "fix_note": "Mask::NAME_KEYS 에 owner 추가",
+  "note": "오류-재발방지-체크리스트.md §1"
+ },
+ {
+  "module": "guide",
+  "slug": "doc:errprev:R09",
+  "area": "site",
+  "title": "R09 외부·생성 JSON 은 빈 값부터 처리 — 접근성 판정표 '사이트 담당' 선택 시 화면 오류",
+  "detail": "원인: 148줄 중 73줄 근거가 null 인데 문자열로 가정.\n확인: 필터·선택지를 하나씩 전부 눌러 본다.",
+  "status": "watch",
+  "fix_commit": "d875c46",
+  "note": "오류-재발방지-체크리스트.md §1"
+ },
+ {
+  "module": "assets",
+  "slug": "doc:errprev:R24",
+  "area": "search",
+  "title": "R24 긴 문장 검색 시 검색 넓히기가 '결과가 가장 많이 남는 낱말'을 골라 핵심어를 버림",
+  "detail": "사례: '제안서 표지에 어울리는 파란 톤 보안 아이콘' → 무전기·반도체 장비.\n챗봇 쪽은 쓰임새 말 제거로 고쳤으나 MCP·검색창 긴 문장은 같은 일이 날 수 있다.",
+  "status": "fixing",
+  "fix_note": "Concierge::query 가 쓰임새 말(제안서·표지·톤…)을 검색어에서 뺌. 검색 넓히기 기준 자체는 그대로.",
+  "note": "오류-재발방지-체크리스트.md §1"
+ },
+ {
+  "module": "mcp",
+  "slug": "doc:errprev:R42",
+  "area": "judge",
+  "title": "R42 칠한 단추 위 '보이지만 못 읽는' 글(3.3:1)을 판정이 통과시킴",
+  "detail": "판정 게이트가 대비 1.6 미만만 잡았다.\n확인: 오염본(.lhelp>a 글 #1a1f24)이 '글자가 바탕과 구분 안 됨'으로 걸리는지.",
+  "status": "fixed",
+  "fix_note": "layout.mjs textLow — 64px 이하 칠한 단추 글 4.5:1, 그 밖 3:1, 운영 표본 40장 음성 대조",
+  "fix_commit": "09a4c02",
+  "note": "오류-재발방지-체크리스트.md §1"
+ },
+ {
+  "module": "mock",
+  "slug": "doc:errprev:R36",
+  "area": "behavior",
+  "title": "R36 미리보기 iframe 높이가 줄지 않아 바닥글 아래 흰 띠(새 창에선 없음)",
+  "detail": "scrollHeight 는 iframe 자기 높이보다 작아지지 않는다.\n확인: 미리보기에서 펼친 판·탭을 열고 닫은 뒤 바닥글 아래 0px.",
+  "status": "fixed",
+  "fix_note": "FrameHeight — body 직계 요소의 실제 바닥(고정 위치 제외)으로 높이 계산",
+  "fix_commit": "f7d6ffc",
+  "note": "오류-재발방지-체크리스트.md §1"
+ },
+ {
+  "module": "mock",
+  "slug": "doc:errprev:R40",
+  "area": "data",
+  "title": "R40 수집·재수집 뒤 레퍼런스 캡처 빈 화면·팝업 가림 검사를 돌린다",
+  "detail": "깨진 캡처로 만든 시안은 '밝기 구성' 감점이 고칠 수 없이 남는다.\n확인: node scripts/capture-blank-scan.mjs --ids 14081,51911 가 잡는지.",
+  "status": "watch",
+  "note": "오류-재발방지-체크리스트.md §1"
+ },
+ {
+  "module": "mock",
+  "slug": "doc:errprev:R41",
+  "area": "data",
+  "title": "R41 갤러리 '구분: 메인'에 서브 시안이 섞임 — 판정 안 거친 시안의 page 가 빔",
+  "detail": "확인: 갤러리 type=main 전 페이지에 서브 이름 0.\n규칙: 분류 칸을 새로 만들면 옛 행과 가져오기 경로도 같은 값을 채운다.",
+  "status": "fixed",
+  "fix_note": "옛 시안 360장 page 백필 + 저장 때 마크업으로 page 미리 채움",
+  "fix_commit": "c082042",
+  "note": "오류-재발방지-체크리스트.md §1"
+ },
+ {
+  "module": "deck",
+  "slug": "doc:errprev:R25",
+  "area": "engine",
+  "title": "R25 서버 엔진 참조 폴더(styles·front) 누락 시 조용히 기본 타입으로 떨어짐",
+  "detail": "사례: 타입 C 로 고른 장표 간지가 진한 파랑 + 무관한 노트북 사진.\n확인: deploy-engine.sh 끝의 참조 4곳 존재 검사(없으면 exit 4).",
+  "status": "fixed",
+  "fix_note": "styles·front 업로드, 엔진 배포가 참조 4곳 확인",
+  "fix_commit": "5fe904d",
+  "note": "오류-재발방지-체크리스트.md §1"
+ },
+ {
+  "module": "deck",
+  "slug": "doc:errprev:R26",
+  "area": "mockup",
+  "title": "R26 design_spec 규칙 글의 {이름} 채움값 누락으로 시안 전부 실패('accent')",
+  "detail": "규칙: design_spec 에 {이름}을 더하면 spec_text(t) 를 타입 a~f 전부 불러 본 뒤 배포. 표지·간지 규칙을 바꾸면 표지 1·간지 1 을 실제로 만들어 본다.",
+  "status": "fixed",
+  "fix_note": "fill 에 accent 추가, 간지 지시에 DIV_LIGHT(라이트톤) 우선",
+  "note": "오류-재발방지-체크리스트.md §1"
+ },
+ {
+  "module": "deck",
+  "slug": "doc:errprev:R27",
+  "area": "engine",
+  "title": "R27 엔진 finish 보고 화이트리스트에 guard 가 빠져 known:* 체크리스트가 안 쌓임",
+  "detail": "규칙: 엔진→서버 새 키는 보내는 쪽 화이트리스트와 받는 쪽을 같은 커밋에서 확인하고 운영 DB 에 쌓였는지 본다.\n시험: test_guard_reported.",
+  "status": "fixed",
+  "fix_note": "worker.py 보고 키 화이트리스트에 guard 추가",
+  "note": "오류-재발방지-체크리스트.md §1"
+ },
+ {
+  "module": "deck",
+  "slug": "doc:errprev:R28",
+  "area": "build",
+  "title": "R28 세로 제안서 왼쪽 기준선이 '거의 같은데 다름'(0.05~0.9cm), 톤 색이 글자까지 덮음",
+  "detail": "확인: engine/vertical.py audit_align 0건 + 고치기 전 파일로 음성 대조. 글자는 먹색, 톤은 머리 띠·강조에만.",
+  "status": "fixed",
+  "fix_note": "본문 기준선 G 2.04·블록 글 T 2.54, 색 계층(INK·SUB·head·point·calm), audit_align 자동 검사",
+  "fix_commit": "10cb4a3",
+  "note": "오류-재발방지-체크리스트.md §1"
+ },
+ {
+  "module": "deck",
+  "slug": "doc:errprev:R29",
+  "area": "type",
+  "title": "R29 뱃지 좌우 여백 부족 — 글자 크기·잉크 높이를 짐작으로 계산",
+  "detail": "확인: 고해상도 렌더(2280px)에서 잉크와 면을 픽셀로 잰다(숫자 계산만 믿지 않음).",
+  "status": "fixed",
+  "fix_note": "fit_badge·badge_size — 실제 크기·잉크로 상하 여백 = 잉크 높이×0.42",
+  "fix_commit": "d09c908",
+  "note": "오류-재발방지-체크리스트.md §1"
+ },
+ {
+  "module": "deck",
+  "slug": "doc:errprev:R30",
+  "area": "type",
+  "title": "R30 영문 뱃지('CHAPTER Ⅰ') 글이 위로 뜨고 왼쪽으로 쏠림",
+  "detail": "규칙: 서체를 새로 더하면 tools_baseline_calib.py 를 윈도우 PC 에서 다시 돌려 baseline.json 갱신.\n확인: 렌더 픽셀 좌=우·위=아래 ±1px.",
+  "status": "fixed",
+  "fix_note": "잉크 실측으로 가로·세로 가운데 보정, 뱃지 자간 제거",
+  "fix_commit": "cfeef45",
+  "note": "오류-재발방지-체크리스트.md §1"
+ },
+ {
+  "module": "deck",
+  "slug": "doc:errprev:R33",
+  "area": "type",
+  "title": "R33 사이트 쪽 캡처(LibreOffice)에서만 간지 뱃지 영문이 아래로 치우침",
+  "detail": "규칙: 렌더러가 둘(PowerPoint·LibreOffice)이면 위치 보정은 두 렌더 모두에서 잰다. 서체를 더하면 baseline 실측 두 번(기본, --lo).\n확인: 서버 렌더 위·아래 차 ±2px.",
+  "status": "fixed",
+  "fix_note": "baseline.json 에 lo_em, lo.render 가 렌더용 사본에서만 뱃지 글 보정(장·레이아웃·마스터)",
+  "note": "오류-재발방지-체크리스트.md §1"
+ },
+ {
+  "module": "deck",
+  "slug": "doc:errprev:R31",
+  "area": "misc",
+  "title": "R31 기획 진행 화면에 멈추기 없음 — 관리자는 자기 작업도 주인이 아니게 나옴, 자료 바꿔도 옛 요약 재사용",
+  "detail": "규칙: 권한 플래그는 관리자·주인·공유 세 경우를 표로 확인. 캐시는 입력이 바뀌면 무효가 되는 열쇠를 같이 둔다.\n확인: /deck/jobs/{id}/back 경로 존재.",
+  "status": "fixed",
+  "fix_note": "is_owner = 메일 같음, POST /back → hold, 자료 추가·삭제 때 context.md 무효(context.sig)",
+  "note": "오류-재발방지-체크리스트.md §1"
+ },
+ {
+  "module": "deck",
+  "slug": "doc:errprev:R32",
+  "area": "plan",
+  "title": "R32 세로 제안서 본문이 모든 쪽 같은 구성 — 한 kind 가 40% 넘으면 기획 규칙부터",
+  "detail": "확인: 작업 기록 '본문 구성(쪽 첫 블록)' 분포, 규칙 위반 건수, 검사 음성 대조.",
+  "status": "fixed",
+  "fix_note": "구성 블록 10종 + 목차 단계 kind 배정 + vertical_rules.py 쪽 유형 규칙 22개·검사 10종",
+  "fix_commit": "4860bea",
+  "note": "오류-재발방지-체크리스트.md §1"
+ },
+ {
+  "module": "deck",
+  "slug": "doc:errprev:R45",
+  "area": "mockup",
+  "title": "R45 표지 사업명이 그림 위에 겹침 + 분홍 고리·물결 장식이 앞장 배경에 섞임",
+  "detail": "규칙: 그림 모델에 '비워라'만 지시하고 끝내지 않는다 — 글을 얹는 쪽이 실제 픽셀로 확인. 타입이 배경 처리를 갖고 있으면 공통 장식을 끈다.\n시험: test_front_text_clears_picture.",
+  "status": "fixed",
+  "fix_note": "frontdraw 가 글 칸마다 그림 유무를 재고 그림을 반대쪽으로 줄여 밂, front_accent:false 타입은 공통 장식 제외",
+  "fix_commit": "6a44ede",
+  "note": "오류-재발방지-체크리스트.md §1"
+ },
+ {
+  "module": "deck",
+  "slug": "doc:errprev:R46-front-f",
+  "area": "mockup",
+  "title": "R46 F 표지 분홍 그라데이션·그림 잘림·흰 원 정부 로고·뱃지 여백 부족",
+  "detail": "규칙: 그림 모델 지시에 사용자 강조색을 넣지 않는다(강조색은 엔진이 얹는 글에만). 픽셀 판정은 밝은·어두운 단색 바탕으로 음성 대조.",
+  "status": "fixed",
+  "fix_note": "F 표지 코발트 단색 고정, 그림·장식 색은 덱 파랑, 그림 판정 = 바탕색 차이, 흰색판 로고 투명 처리, 뱃지 좌우 = 상하×3",
+  "fix_commit": "1e07e74",
+  "note": "오류-재발방지-체크리스트.md §1"
+ },
+ {
+  "module": "deck",
+  "slug": "doc:errprev:R46-concurrency",
+  "area": "engine",
+  "title": "R46 덱 작업 여러 개를 올리면 하나씩만 돎(slots=1·세로 제안서 모듈 변수 공유)",
+  "detail": "규칙: 작업이 쓰는 값을 모듈 변수에 두지 않는다. 동시 수를 올리기 전에 global·X[0]= 쓰기를 훑는다.\n확인: 엔진 시작 로그 '동시 3개, 그중 장표 제작 2개', 두 작업 claimed_at 겹침.",
+  "status": "fixed",
+  "fix_note": "vertical.py contextvars 작업별 상태, purpose=submit 을 무거운 작업으로, 운영 slots 3·heavy_slots 2",
+  "fix_commit": "3df7b45",
+  "note": "오류-재발방지-체크리스트.md §1"
+ },
+ {
+  "module": "mcp",
+  "slug": "doc:remain1012:A5",
+  "area": "ops",
+  "title": "A5 claude.ai 의 옛 homebox 커넥터를 /mcp 주소로 교체(사용자 몫)",
+  "detail": "옛 주소는 끊겼다.",
+  "status": "open",
+  "note": "남은작업-체크리스트-2026-10-12.md §A"
+ },
+ {
+  "module": "assets",
+  "slug": "doc:remain1012:A6",
+  "area": "addin",
+  "title": "A6 옛 PowerPoint 애드인 사용자에게 새 설치 파일 재설치 안내",
+  "detail": "옛 매니페스트는 지워진 서버를 본다.",
+  "status": "open",
+  "note": "남은작업-체크리스트-2026-10-12.md §A"
+ },
+ {
+  "module": "deck",
+  "slug": "doc:remain1012:B1",
+  "area": "engine",
+  "title": "B1 초안 다듬기(polish) 리눅스 경로 — 실제 다듬기 작업 1건으로 결과 확인",
+  "detail": "10-12 리눅스 엔진으로 다시 엶(b20bb8c). 실작업 결과 확인이 남음.",
+  "status": "open",
+  "note": "남은작업-체크리스트-2026-10-12.md §B"
+ },
+ {
+  "module": "deck",
+  "slug": "doc:remain1012:C0",
+  "area": "plan",
+  "title": "C0 제작 언어(영어 등) 선택 — 실제 영어 작업에서 기획·대본·시안 글 확인",
+  "status": "open",
+  "note": "남은작업-체크리스트-2026-10-12.md §C"
+ },
+ {
+  "module": "deck",
+  "slug": "doc:remain1012:C1",
+  "area": "wire",
+  "title": "C1 새 와이어 종류(원인 분석·허브·피라미드·2×2)·우리 열·전/후 막대가 실제 작업에서 쓰이는지 확인",
+  "status": "open",
+  "note": "남은작업-체크리스트-2026-10-12.md §C"
+ },
+ {
+  "module": "deck",
+  "slug": "doc:remain1012:C2",
+  "area": "mockup",
+  "title": "C2 표지 배경 장식(유리 리본 등)이 시안에 어떻게 나오는지 확인",
+  "status": "open",
+  "note": "남은작업-체크리스트-2026-10-12.md §C"
+ },
+ {
+  "module": "deck",
+  "slug": "doc:remain1012:C5",
+  "area": "mockup",
+  "title": "C5 시안 디자인 재설계(와이어·design_spec 다듬기) — 통합 전에 멈춘 일",
+  "status": "open",
+  "note": "남은작업-체크리스트-2026-10-12.md §C"
+ },
+ {
+  "module": "site",
+  "slug": "doc:remain1012:C7",
+  "area": "acc",
+  "title": "C7 구독 자동 재결제(매월) 예약 작업 — 결제 공개 전",
+  "status": "open",
+  "note": "남은작업-체크리스트-2026-10-12.md §C"
+ },
+ {
+  "module": "mock",
+  "slug": "doc:remain1012:D1",
+  "area": "data",
+  "title": "D1 대학·GDWEB 수집 계속 → 끝날 때마다 서버 동기화(sync-mockref-data.sh)",
+  "status": "fixing",
+  "fix_note": "10-12 동기화: 서버 게시 1,465·화면 68,182",
+  "note": "남은작업-체크리스트-2026-10-12.md §D"
+ },
+ {
+  "module": "mock",
+  "slug": "doc:remain1012:D2",
+  "area": "data",
+  "title": "D2 수집이 끝나면 와이어 패턴 다시 만들기(build-wire-patterns.mjs)",
+  "status": "fixing",
+  "fix_note": "10-12 재생성(메인 1038·대학 226·민간 361)",
+  "fix_commit": "c4db184",
+  "note": "남은작업-체크리스트-2026-10-12.md §D"
+ },
+ {
+  "module": "mock",
+  "slug": "doc:remain1012:D4",
+  "area": "data",
+  "title": "D4 교육청·고교 인사말 화면 레퍼런스 부족",
+  "detail": "시청 인사말 greeting_vision 은 규칙으로 204건 분해. 교육청·고교는 수집 몫.",
+  "status": "fixing",
+  "note": "남은작업-체크리스트-2026-10-12.md §D"
+ },
+ {
+  "module": "mock",
+  "slug": "doc:remain1012:D7",
+  "area": "mcp",
+  "title": "D7 자동 초안(build_homepage) 대학·복지관·재단 메인 0~33점 — 비관공서 분해가 큰 빈 칸을 만듦",
+  "detail": "관공서 메인·상세·콘텐츠는 98점대로 해소.",
+  "status": "fixing",
+  "fix_commit": "aebad88",
+  "note": "남은작업-체크리스트-2026-10-12.md §D"
+ },
+ {
+  "module": "site",
+  "slug": "doc:remain1012:E8",
+  "area": "sec",
+  "title": "E8 phpMyAdmin 접근 제한(IP·비밀번호) 확인",
+  "status": "open",
+  "note": "남은작업-체크리스트-2026-10-12.md §E"
+ },
+ {
+  "module": "guide",
+  "slug": "doc:handover-sds:krds-license",
+  "area": "rules",
+  "title": "KRDS 원문(krds.go.kr) 이용 라이선스 고지 문안을 powerGuide 에 표기",
+  "detail": "KRDS 캐시를 저장소에 두고 지침을 재사용한다. 화면에 원문 링크만 있고 라이선스 고지는 없음.",
+  "status": "open",
+  "note": "handover-solideos.md §8·§10"
+ },
+ {
+  "module": "guide",
+  "slug": "doc:handover-sds:brand-neutral-names",
+  "area": "tokens",
+  "title": "토큰 산출물 파일 이름(solideo-*.css·SolideoTokens.java)·.sds- 접두에 회사명이 남음",
+  "detail": "공용 규칙이라 회사 종속 제거 대상. 중립 이름 결정 뒤 산출물·문서 예시 일괄. 크림슨은 예시 스킨으로 내려가 있음.\n확인: git grep -i solideo -- apps/web/app/modules/guide.",
+  "status": "open",
+  "note": "handover-solideos.md §4·§7"
+ },
+ {
+  "module": "guide",
+  "slug": "doc:handover-sds:contrast-verify",
+  "area": "check",
+  "title": "가이드 토큰 색을 바꾸면 대비 검사(4.5/3)를 다시 돌린다 — 검사기(verify.mjs)가 플랫폼에 없음",
+  "detail": "사례: 입력 테두리 2.23:1 로 KWCAG 3:1 미달(gray.300 → 400).\n폐쇄망 감사(audit-offline: CDN·NET·PII 규칙)도 미이식.",
+  "status": "open",
+  "note": "handover-solideos.md §5"
+ },
+ {
+  "module": "guide",
+  "slug": "doc:handover-sds:field-label",
+  "area": "parts",
+  "title": "Radix Checkbox·Radio·Switch·Select 는 label 만으로 이름이 안 붙는다 — field 래퍼 역할 유지",
+  "detail": "Solid Flow 에서 35건 발견. 키트와 합칠 때 이 역할이 사라지지 않게.\n확인: 접근성 트리에서 컨트롤 이름.",
+  "status": "watch",
+  "note": "handover-solideos.md §5"
+ },
+ {
+  "module": "guide",
+  "slug": "doc:handover-sds:verify-dist",
+  "area": "kit",
+  "title": "문서 사이트가 아니라 배포 산출물(토큰 CSS·부품)만으로 동작을 검증한다",
+  "detail": "사례: 글자 크기 규칙이 문서 사이트 CSS 에만 있고 배포 토큰 CSS 에 빠져 HTML·JSP 에서 무효였다.",
+  "status": "watch",
+  "note": "handover-solideos.md §5"
+ },
+ {
+  "module": "guide",
+  "slug": "doc:handover-sds:starters",
+  "area": "kit",
+  "title": "스타터 킷 React·Quasar·Spring Boot 3종 미완(HTML 만 있었음)",
+  "status": "open",
+  "note": "handover-solideos.md §7"
+ },
+ {
+  "module": "guide",
+  "slug": "doc:handover-sds:krds-service-patterns",
+  "area": "rules",
+  "title": "KRDS 서비스 패턴 5종(방문·검색·로그인·신청·정책 정보 확인) 원문 지침 미반영",
+  "status": "open",
+  "note": "handover-solideos.md §7"
+ },
+ {
+  "module": "guide",
+  "slug": "doc:handover-sds:solideos-redirect",
+  "area": "site",
+  "title": "옛 문서 사이트 /solideos → /guide 301 리다이렉트와 해시 깊은 링크 재매핑",
+  "detail": "HashRouter 북마크(#/foundations)는 서버에 해시가 안 와 /guide 홈으로 떨어진다. 사내 참조처 확인 뒤 진행.",
+  "status": "open",
+  "note": "handover-solideos.md §9"
+ },
+ {
+  "module": "mock",
+  "slug": "doc:hackathon:fake-org-real-place",
+  "area": "content",
+  "title": "가상 기관명 시안 본문에 실제 지명이 남아 발주처와 겹치지 않는지 확인",
+  "detail": "시연·공개 시안 노출 금지 점검 항목.",
+  "status": "open",
+  "note": "해커톤-심사-체크리스트.md §6.2"
+ }
+]

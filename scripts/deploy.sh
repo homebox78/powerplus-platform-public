@@ -89,6 +89,10 @@ if [ -n "$PHPB" ]; then
   if ! sudo crontab -u www-data -l 2>/dev/null | grep -q sample-metrics.php; then
     { sudo crontab -u www-data -l 2>/dev/null || true; echo "*/5 * * * * $PHPB /var/www/platform/api/bin/sample-metrics.php >/dev/null 2>&1"; } | sudo crontab -u www-data - && echo "크론 등록: sample-metrics ($PHPB)"
   fi
+  # powerAssets 개선 체크리스트 자가 고리 — 결과 0건 검색어를 매일 쌓고, 결과가 생기면 자동 '고침'(qa-feed.php 머리 주석에만 있고 등록이 빠져 있었다, 2026-10-15 점검)
+  if ! sudo crontab -u www-data -l 2>/dev/null | grep -q qa-feed.php; then
+    { sudo crontab -u www-data -l 2>/dev/null || true; echo "20 5 * * * $PHPB /var/www/platform/api/bin/qa-feed.php assets-search >/dev/null 2>&1"; } | sudo crontab -u www-data - && echo "크론 등록: qa-feed assets-search ($PHPB)"
+  fi
   sudo -u www-data "$PHPB" /var/www/platform/api/bin/sample-metrics.php || echo "⚠ 서버 자원 표본 실패(error_log 확인)"
 fi
 echo "설치 완료"

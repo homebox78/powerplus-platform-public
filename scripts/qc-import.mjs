@@ -3,7 +3,7 @@
 // 사용: node scripts/qc-import.mjs <verdicts.json> [--dry]
 //   id 접두 DCK → deck_checklist, MCK → mock_checklist, 나머지 → site_checklist. slug = 'qc-' + id 소문자.
 //   상태: 미흡 → open · 통과 → fixed · 확인불가 → watch · 해당없음 → wontfix.
-//   멱등: 같은 slug 가 있으면 상태·detail·evidence 만 갱신하고 hits 는 늘리지 않는다(regressed 도 건드리지 않는다).
+//   멱등: 같은 slug 가 있으면 상태·detail·evidence 만 갱신하고 hits 는 늘리지 않는다. 고침 → 미흡이면 regressed=1(장표 되먹임에 실린다), 통과면 0(2026-10-15 점검 — 전에는 다시 걸림을 지웠다).
 //   장표 엔진 되먹임(Checklist::lessons)은 hits>=2 또는 regressed=1 인 열린 항목만 싣는다 → 여기서 넣은 행(hits=1, regressed=0)은 실리지 않는다.
 import { readFileSync, existsSync } from "node:fs";
 import { resolve, dirname } from "node:path";
@@ -93,7 +93,8 @@ for (const v of verdicts) {
   }
   if (!dry) {
     await db.query(
-      `UPDATE ${p.table} SET title = ?, detail = ?, status = ?, evidence = ?, fixed_at = ${status === "fixed" ? "COALESCE(fixed_at, NOW(3))" : "NULL"} WHERE id = ?`,
+      `UPDATE ${p.table} SET title = ?, detail = ?, status = ?, evidence = ?, fixed_at = ${status === "fixed" ? "COALESCE(fixed_at, NOW(3))" : "NULL"},
+        regressed = ${row.status === "fixed" && status === "open" ? 1 : status === "fixed" ? 0 : "regressed"} WHERE id = ?`,
       [title, detail, status, evidence, row.id],
     );
   }

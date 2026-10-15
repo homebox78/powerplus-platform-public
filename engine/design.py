@@ -2817,7 +2817,7 @@ FRONT_TREATMENTS = [
 # 사용자 기준: 표지·간지는 밝은 라이트톤, 그림은 오른쪽 아래에 옅게, 왼쪽·위는 흰색으로 날림, 정면 인물 X. 한 벌·참고 그림의 어두운 배경보다 이것이 먼저다.
 DIV_LIGHT = ("\nLIGHT TONE (this overrides any dark, cobalt or navy full-page background named in the rules, the template set or the reference images — take only their layout from them): "
              "the divider is a bright, light page like the cover — a white or very pale tint background, never a full-page dark or saturated fill and never a dark color veil over a photo. "
-             "The picture sits at the LOWER RIGHT, faint (as if under about a 75% white veil), and fades to pure white toward the left and the top. "
+             "The picture sits at the RIGHT / LOWER RIGHT and takes about 40-50% of the page, light but clearly visible (at most a soft 20-25% white veil), and fades to white toward the left and the top. "
              "The chapter number and title are in the deck's dark color on the light background, the key words highlighted with the accent color. "
              "No large frontal faces — people only from the side, from behind or at a distance.\n")
 
@@ -2906,6 +2906,29 @@ def front_refs(kind, st=None, tset=None):
     return [b for b in (file_b64(p) for p in fs[:3]) if b]
 
 
+def divider_short(job, plan, f, long_line=""):
+    """간지 장 이름 아래 한 줄 — 8~20자 약속 한 줄, 핵심어 하나를 **이렇게**. 한 번 지으면 plan['div_lines'][장 이름] 에 남긴다. 실패하면 빈 글"""
+    name = str(f.get("name") or "").strip()
+    keep = plan.setdefault("div_lines", {}) if isinstance(plan.get("div_lines", {}), dict) else {}
+    if keep.get(name):
+        return keep[name]
+    items = " / ".join(str(t).replace("**", "") for t in (f.get("items") or [])[:6])
+    try:
+        o = _plan_call(job, '너는 공공 SI 제안서 간지 카피라이터다. JSON 하나만 출력한다: {"line": "…"}',
+                       f"사업: {plan.get('title') or ''}\n장 이름: {name}\n이 장의 내용: {items}\n참고 문장: {long_line.replace('**', '')}\n\n"
+                       "간지에서 장 이름 바로 아래 찍을 한 줄을 지어라 — 이 장이 무엇을 말하는지 짧고 분명하게, 제안사가 위원에게 말하는 1인칭 존댓말"
+                       "(~습니다! / ~하겠습니다), 공백 포함 8~18자, 한 줄, 수치를 늘어놓지 않는다. 핵심어 하나만 **이렇게** 감싼다. "
+                       "예: '**정확하게** 알고 있습니다!', '**치밀하게** 준비했습니다!', '누수를 **먼저** 찾겠습니다'", 300, "간지 한 줄", timeout=120)
+        t = re.sub(r"\s+", " ", str((o or {}).get("line") or "")).strip().strip('"「」')
+        t = t if 4 <= len(t.replace("**", "")) <= 24 else ""
+    except Exception as e:
+        job.event(f"간지 한 줄을 짓지 못해 원래 문장을 씁니다: {str(e)[:100]}", "warn")
+        t = ""
+    if t:
+        plan["div_lines"] = dict(keep, **{name: t})
+    return t
+
+
 def cover_slogan(job, plan, project=""):
     """표지 사업명 위 작은 키메시지 — 기획에 없으면(옛 작업·MD 기획) 글 모델로 한 번 짓고 기획에 남긴다. 실패하면 빈 글"""
     s = str(plan.get("slogan") or "").strip()
@@ -2962,10 +2985,9 @@ def make_front_mockup(job, f, plan, accent, feedback=""):
         if f.get("no") is not None and MEMO_TONE.search(desc.replace("**", "").strip()):
             desc = ""   # 옛 기획의 메모 말투(goal)는 간지에 찍지 않는다 — known_errors divider-memo-tone
         line = desc if f.get("no") is None else (desc or str((first or {}).get("title") or (f.get("items") or [""])[0]))
-        line = re.sub(r"\s*(\.\.\.|…)+\s*", " ", line.replace("**", "")).strip()
-        if len(line) > 22 and "," in line:   # 간지 설명은 짧게 — 길면 쉼표에서 줄을 바꾼다
-            a, _, b = line.partition(",")
-            line = a.strip() + ",\n" + b.strip()
+        line = re.sub(r"\s*(\.\.\.|…)+\s*", " ", line).strip()
+        if f.get("no") is not None and (not desc or len(line.replace("**", "")) > 22):   # 간지 한 줄은 8~20자 약속 한 줄 — 개요를 안 거친 짧은 기획은 장 첫 제목(긴 문장)이 들어갔다(10-15)
+            line = divider_short(job, plan, f, line) or line
         name = re.sub(r"^[ⅠⅡⅢⅣⅤⅥⅦⅧⅨⅩIVX0-9]+[.．]\s*", "", f["name"]) or f["name"]
         draw = {"no": f["no"], "name": name, "line": line, "tag": plan.get("title") or ""}
         detail = ((f'Closing page of the deck ({"thank-you page" if f.get("closing") == "end" else "questions and answers page"}) — NO chapter number, NO "PART". Only the big title "{name}" in the largest bold type.\n') if f.get("no") is None else
@@ -3032,7 +3054,7 @@ def make_front_mockup(job, f, plan, accent, feedback=""):
                        "But the picture itself must be NEW — a different scene that fits THIS page's own subject (see the theme); never reuse or redraw the cover's picture. Do not repeat the cover's title text or logos.\n")
             if k == "div":
                 prompt += ("A CHAPTER DIVIDER IS A QUIET PAGE — it only announces that a new section starts; it must NOT look like a cover. Calm, LIGHT background (see LIGHT TONE below); the chapter number, title and one line are the whole page. "
-                           "Any picture is either washed out to a faint texture (about 10-20% visibility under a flat color veil) or one small element in a corner (no more than about 15-20% of the page). "
+                           "The picture is one clear scene at the right / lower right (about 40-50% of the page), light and calm; the title block stays at the top-left. "
                            "No vivid photograph, no large illustration scene, no decorative icons scattered around. At least two thirds of the page is empty.\n")
                 prompt += DIV_LIGHT
     cover_bg = os.path.join(job.dir, "_mockup", "cover_bg.png")
@@ -3067,8 +3089,9 @@ def make_front_mockup(job, f, plan, accent, feedback=""):
                             "Take ONLY the background color, shapes and where the picture sits from that description. Draw NO list, numbers, dots, bullets, "
                             "placeholder lines, titles, labels or words (no '목차', no '제안서') — every text and list marker is added afterwards by the engine.\n")   # 10-15 A 목차 배경에 GPT 가 '제안서 목차'·점 목록을 그렸다
                 if k == "div" and not panel:
-                    bgp += ("QUIET PAGE: a chapter divider only announces a new section. The picture is small and simple — at most 2 elements (for a hexagon cluster: 2 hexagons, not a honeycomb), "
-                            "occupying no more than about 20% of the page at the lower right; everything else is calm, flat, empty background. Low contrast, no busy detail.\n")
+                    bgp += ("DIVIDER PAGE (follows the company's divider templates): the big chapter title and one short line are laid later on the calm TOP-LEFT area, so keep the LEFT 45% and the top band plain. "
+                            "The picture is ONE clear scene or object group of this chapter's subject at the RIGHT / LOWER RIGHT, about 40-50% of the page, fully inside the frame — not a tiny corner element. "
+                            "Everything else is calm background.\n")   # 10-15 사용자: 간지 그림이 너무 작다 — 20% 이하 지시를 고침
                 if k == "div":
                     bgp += DIV_LIGHT
             if not panel and not (tset and tset.get(k + "_what")):
@@ -3177,7 +3200,7 @@ def save_front(job, fid, png, kind):
             lg = lg.resize((max(1, int(lg.width * r)), max(1, int(lg.height * r))), Image.LANCZOS)
             if lg.width > 640:
                 lg = lg.resize((640, max(1, int(lg.height * 640 / lg.width))), Image.LANCZOS)
-            mx = int(F["w"] * 0.07)   # 왼쪽 로고는 글 시작선(왼쪽 7%)에서 시작한다 — 가운데 자리는 쓰지 않는다
+            mx = F["pad"]   # 로고도 좌우 가이드(본문 틀 여백 56px)에 맞춘다 — 앞장 글 시작선과 같다
             x0 = F["w"] - mx - lg.width if pos.endswith("r") else mx
             y0 = 70 if pos.startswith("t") else F["h"] - lg.height - 70
             box = (x0, y0, x0 + lg.width, y0 + lg.height)

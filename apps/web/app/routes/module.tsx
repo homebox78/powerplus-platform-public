@@ -45,9 +45,10 @@ export default function ModulePage() {
         <Link to="/" className="pp-hit hover:text-ink">powerPlus</Link> <span aria-hidden>›</span> <Link to={m.to} className="pp-hit hover:text-ink">{m.name}</Link>
         {!landing && <> <span aria-hidden>›</span> {item.label}</>}
       </nav>
-      <div className="wide-hide mt-3 flex items-center gap-4">
-        <span className="inline-flex size-12 items-center justify-center rounded-ci bg-ink text-white"><m.icon className="size-5" aria-hidden /></span>
-        <div><h1 className="pp-module-title text-5xl"><BrandName name={m.name} /></h1><p className="mt-0.5 text-md text-ink-3">{m.sub}</p></div>
+      {/* 모바일은 아이콘·타이틀·설명글 모두 75%(2026-10-15 사용자 "25% 작게") */}
+      <div className="wide-hide mt-3 flex items-center gap-4 max-sm:gap-3">
+        <span className="inline-flex size-12 items-center justify-center rounded-ci bg-ink text-white max-sm:size-9"><m.icon className="size-5 max-sm:size-[15px]" aria-hidden /></span>
+        <div><h1 className="pp-module-title text-5xl max-sm:text-[calc(var(--text-5xl)*0.75)]"><BrandName name={m.name} /></h1><p className="mt-0.5 text-md text-ink-3 max-sm:text-[calc(var(--text-md)*0.75)]">{m.sub}</p></div>
       </div>
       <nav className="wide-hide mt-8 flex flex-wrap gap-0 border-b border-line" aria-label={`${m.name} 메뉴`}>
         {m.menu.map((i) => (

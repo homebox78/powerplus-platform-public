@@ -20,7 +20,7 @@ const qs = (o: Record<string, string | number | undefined>) =>
 
 /** 오류 코드 — 서버가 준 code 를 먼저(FORBIDDEN_SCOPE 등), 없으면 상태로. 잘못된 인자는 다른 도구와 같은 INVALID_ARGS(MC-21, index.ts ppCode 와 같은 규칙) */
 const codeOf = (r: PpRes): string => (typeof r.body?.code === "string" && r.body.code !== "" && r.body.code !== "INVALID") ? r.body.code
-  : r.status === 404 ? "NOT_FOUND" : r.status === 401 ? "UNAUTHORIZED" : r.status === 403 ? "FORBIDDEN" : r.status === 402 ? "PLAN_REQUIRED" : r.status === 429 ? "RATE_LIMITED" : r.status === 400 || r.status === 422 ? "INVALID_ARGS" : "ERROR";
+  : r.status === 404 ? "NOT_FOUND" : r.status === 401 ? "UNAUTHORIZED" : r.status === 403 ? "FORBIDDEN" : r.status === 402 ? "UPGRADE_REQUIRED" : r.status === 429 ? "RATE_LIMITED" : r.status === 400 || r.status === 422 ? "INVALID_ARGS" : "ERROR";
 const VERDICTS = ["P", "F", "수정됨", "의도", "?", "사이트"] as const;
 const SECTIONS = ["style", "component", "pattern", "service"] as const;
 
@@ -106,13 +106,14 @@ export function registerGuideTools(server: McpServer, ctx: GuideCtx): void {
   // 분석 보고서 게시 — 추천·분석 결과를 사이트 디자인의 보고서 한 장(썸네일 포함)으로 남기고 url 을 준다. 모든 키에 열림
   server.registerTool("powerplus_publish_report", {
     title: "분석 보고서 게시",
-    description: "추천·분석 답(자산 추천, 비교, 배치 제안 등)을 powerPlus 사이트 디자인의 보고서 페이지 한 장으로 게시하고 url 을 준다. 자산 칸은 id 만 주면 서버가 이름·썸네일·키워드를 채운다(지어낸 이름 금지 — 반드시 assets_search·assets_pick 으로 받은 id). 링크를 아는 누구나 로그인 없이 본다(검색 노출 없음, 180일 보관). 자산 3개 이상을 추천했거나 표·목록이 길면 답을 표로 늘어놓는 대신 이것으로 게시하고, 채팅에는 요약 2~3줄과 url 만 준다.",
+    description: "추천·분석 답(자산 추천, 비교, 배치 제안 등)을 powerPlus 사이트 디자인의 보고서 페이지 한 장으로 게시하고 url 을 준다. 자산 칸은 id 만 주면 서버가 이름·썸네일·키워드를 채운다(지어낸 이름 금지 — 반드시 assets_search·assets_pick 으로 받은 id). 기본은 링크를 아는 누구나 로그인 없이 본다(검색 노출 없음, 180일 보관) — visibility 로 임직원만·나만 볼 수 있게 줄일 수 있다. 자산 3개 이상을 추천했거나 표·목록이 길면 답을 표로 늘어놓는 대신 이것으로 게시하고, 채팅에는 요약 2~3줄과 url 만 준다.",
     inputSchema: {
       title: z.string().describe("보고서 제목(200자 이하)"),
       question: z.string().optional().describe("사용자가 한 질문 원문"),
       summary: z.string().optional().describe("요약 2~4문장. 마침표마다 문장을 끊는다"),
       highlights: z.array(z.string()).max(4).optional().describe("한눈에 볼 숫자·핵심 최대 4개(예: '추천 아이콘 12개')"),
       module: z.enum(["assets", "deck", "mock", "guide", "all"]).optional(),
+      visibility: z.enum(["link", "staff", "private"]).optional().describe("공개 범위 — link: 링크 아는 누구나(기본) · staff: 로그인한 임직원만 · private: 만든 사람만. 사내 자료·발주처 이름이 든 보고서는 staff 이상"),
       blocks: z.array(z.object({
         type: z.enum(["assets", "text", "list", "table"]),
         heading: z.string().optional(),

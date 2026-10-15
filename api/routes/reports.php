@@ -124,12 +124,14 @@ return static function (Router $r): void {
             'highlights' => array_values(array_filter(array_map(static fn ($x) => mb_substr(is_scalar($x) ? trim((string) $x) : '', 0, 120), array_slice((array) ($in['highlights'] ?? []), 0, 4)), 'strlen')),
             'blocks' => $blocks,
             'via' => $a->via === 'key' ? 'mcp' : 'web',
+            // 공개 범위(O-41, 2026-10-15): link = 링크 아는 누구나(기본) · staff = 로그인한 임직원만 · private = 만든 사람만. 표가 아니라 payload 에 둔다(스키마 변경 없음)
+            'visibility' => in_array($in['visibility'] ?? '', ['link', 'staff', 'private'], true) ? (string) $in['visibility'] : 'link',
         ];
         $pid = Ids::publicId();
         Db::exec('INSERT INTO core_reports (public_id, user_id, api_key_id, module, title, payload, expires_at) VALUES (?, ?, ?, ?, ?, ?, NOW() + INTERVAL 180 DAY)',
             [$pid, $a->id(), $a->key['id'] ?? null, $module, $title, json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)]);
         $site = rtrim((string) \Pp\Core\Config::get('app.url', 'https://powerplus.hom2box.com'), '/');
-        $res = ['id' => $pid, 'url' => $site . '/r/' . $pid, 'blocks' => count($blocks), 'assets' => $assetN];
+        $res = ['id' => $pid, 'url' => $site . '/r/' . $pid, 'blocks' => count($blocks), 'assets' => $assetN, 'visibility' => $payload['visibility']];
         if ($ignored) {
             $res['ignored'] = $ignored;
             $res['warnings'] = ['없거나 형식이 틀린 에셋 ' . count($ignored) . '개는 보고서에 넣지 않았습니다.'];
@@ -145,8 +147,16 @@ return static function (Router $r): void {
         if (!$row) {
             throw HttpError::notFound('보고서');
         }
-        Db::exec('UPDATE core_reports SET views = views + 1 WHERE id = ?', [$row['id']]);
         $pl = json_decode((string) $row['payload'], true) ?: [];
+        $mine = $a->id() !== null && (int) $row['user_id'] === $a->id();
+        $vis = (string) ($pl['visibility'] ?? 'link');
+        if ($vis === 'private' && !$mine) {
+            throw new HttpError('FORBIDDEN', '만든 사람만 볼 수 있는 보고서입니다.', 403, '보고서를 만든 계정으로 로그인해 주세요.');
+        }
+        if ($vis === 'staff' && !$mine && !$a->isStaff()) {
+            throw new HttpError('FORBIDDEN', '임직원만 볼 수 있는 보고서입니다.', 403, $a->id() === null ? '회사 메일 계정으로 로그인해 주세요.' : '이 보고서는 임직원 계정에만 열립니다.');
+        }
+        Db::exec('UPDATE core_reports SET views = views + 1 WHERE id = ?', [$row['id']]);
         Response::json([
             'id' => $row['public_id'], 'title' => $row['title'], 'module' => $row['module'],
             // 링크를 아는 누구나 보는 화면 — 만든 사람 이름은 본인에게만(공개 화면엔 개인 이름을 내지 않는다)

@@ -81,12 +81,14 @@ export async function measureVisual(p) {
       for (const k of el.querySelectorAll("a, button, h1, h2, h3, h4, p, li, span, strong, dt, dd, td, label")) {
         if (!vis(k) || k.closest("[data-hb-track]") ) continue;
         if (![...k.childNodes].some((n) => n.nodeType === 3 && n.textContent.trim()) && !/^(A|BUTTON)$/.test(k.tagName)) continue;
+        // 글 없는 사진 링크(사진 틀 div.photo 안 a > img)는 틀이 사진을 자르는 게 정상이다 — 대상 글이 빈 '잘림' 치명 오탐(2026-10-15 수리 배치)
+        const kt = (k.textContent || "").trim(); if (!kt && k.querySelector("img, picture, video")) continue;
         const ks = getComputedStyle(k); if (ks.position === "absolute" || ks.position === "fixed") continue;
         const kr = k.getBoundingClientRect(); if (kr.left >= r.right || kr.right <= r.left) continue;
         const over = Math.max(kr.bottom - r.bottom, r.top - kr.top);
-        if (over > worst && over < kr.height + 1) { worst = over; what = (k.textContent || "").trim().slice(0, 16); }
+        if (over > worst && over < kr.height + 1) { worst = over; what = kt.slice(0, 16) || `${k.getAttribute("aria-label") || ""} <${name(k)}>`.trim(); } // 글 없는 아이콘 단추는 요소 경로로 짚는다
       }
-      if (worst > 4) out.clip.push({ who: name(el), y: Math.round(r.top + scrollY), h: Math.round(r.height), over: Math.round(worst), what });
+      if (worst > 4) out.clip.push({ who: (el.parentElement && el.parentElement !== document.body ? name(el.parentElement) + " > " : "") + name(el), y: Math.round(r.top + scrollY), h: Math.round(r.height), over: Math.round(worst), what });
     }
     out.clip = out.clip.filter((c, i, a) => a.findIndex((o) => o.what === c.what) === i).slice(0, 8);
     // D13 형제 겹침: 흐름 안 형제(정적·상대 위치)가 세로로 6px 넘게 겹침

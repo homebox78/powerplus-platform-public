@@ -88,8 +88,15 @@ export async function layoutChecks(p, o = {}) {
     // ⑨ 첫 화면: 머리 + 히어로(+ 바로 아래 바로가기 줄)가 첫 화면(VH) 안에 다 들어온다
     // 머리가 히어로 위에 겹쳐 뜨면(absolute·fixed) 히어로는 0 에서 시작한다 — 그때는 0 기준으로 찾는다(배치3 미탐: 바닥 990 인데 안 걸림)
     const hdr = [...document.querySelectorAll("header")].find(vis); const hdrOver = hdr && /absolute|fixed/.test(getComputedStyle(hdr).position); const hb = hdr && !hdrOver ? hdr.getBoundingClientRect().bottom + scrollY : 0;
-    const hero = all.find((e) => { if (!vis(e) || e.closest("header") || e.matches("main, body > div")) return false; const q = e.getBoundingClientRect(); return q.top + scrollY >= hb - 4 && q.top + scrollY < hb + 60 && q.width >= W * 0.6 && q.height >= 300 && q.height <= 1600; });
-    if (hero) { const q = hero.getBoundingClientRect(); let bottom = q.bottom + scrollY; const ctr = [...hero.querySelectorAll("button, [role=tab]")].filter(vis).map((x) => x.getBoundingClientRect().bottom + scrollY); bottom = Math.max(bottom, ...ctr);
+    // 머리 아래 본문 감싸개(.hb-wrap 1458px·서브 .lc)는 히어로가 아니다 — 화면보다 크고 여러 구역을 위아래로 품었거나 옆 메뉴·본문을 나란히 품은 것은 건너뛰고
+    // 그 안쪽 첫 구역을 히어로 후보로 본다(2026-10-15 수리 배치). 히어로 하나가 큰 것(1000px 사진 한 장)은 그대로 걸린다
+    const wrapper = (e, q) => { if (q.height <= VH * 1.05) return false; const ks = [...e.children].filter((k) => vis(k) && !/absolute|fixed/.test(getComputedStyle(k).position)).map((k) => k.getBoundingClientRect()).filter((z) => z.height >= 120);
+      let stacked = 0; for (let i = 1; i < ks.length; i++) if (ks[i].top >= ks[i - 1].bottom - 4 && ks[i].width >= W * 0.5 && ks[i - 1].width >= W * 0.5) stacked++;
+      return stacked >= 1 || [...e.querySelectorAll("aside, nav, [class*=lnb], [class*=snb]")].some((n) => { const z = n.getBoundingClientRect(); return vis(n) && z.height >= 200 && z.width < W * 0.4; }); }; // 세로 옆 메뉴(서브 LNB)를 품음 — 히어로 안 점 내비는 낮아서 빠진다
+    const besideLnb = (e) => !!e.parentElement && [...e.parentElement.children].some((k) => k !== e && vis(k) && k.matches("aside, nav, [class*=lnb], [class*=snb]") && k.getBoundingClientRect().height >= 200); // 옆 메뉴 옆 본문 칸도 히어로가 아니다
+    const hero = all.find((e) => { if (!vis(e) || e.closest("header") || e.matches("main, body > div")) return false; const q = e.getBoundingClientRect(); return q.top + scrollY >= hb - 4 && q.top + scrollY < hb + 60 && q.width >= W * 0.6 && q.height >= 300 && q.height <= 1600 && !wrapper(e, q) && !besideLnb(e); });
+    out.heroBox = null;
+    if (hero) { const q = hero.getBoundingClientRect(); out.heroBox = { y: Math.round(q.top + scrollY), h: Math.round(q.height) }; /* 높이 비교에서 kit 고정 구간(히어로)을 따로 셀 때 쓴다 */ let bottom = q.bottom + scrollY; const ctr = [...hero.querySelectorAll("button, [role=tab]")].filter(vis).map((x) => x.getBoundingClientRect().bottom + scrollY); bottom = Math.max(bottom, ...ctr);
       let nx = hero.nextElementSibling; while (nx && !vis(nx)) nx = nx.nextElementSibling;
       if (nx) { const z = nx.getBoundingClientRect(); const links = nx.querySelectorAll("a, button").length; if (z.height < 280 && links >= 4 && z.top + scrollY - bottom < 40) bottom = Math.max(bottom, z.bottom + scrollY); }
       if (bottom > VH + 1) out.hero.push(`머리 ${Math.round(hb)} + 히어로${bottom > q.bottom + scrollY + 2 ? "·바로가기" : ""} → 바닥 ${Math.round(bottom)}px — 첫 화면 ${VH}px 안에 다 보여야 한다(히어로 높이를 줄인다)`); }
@@ -103,7 +110,10 @@ export async function layoutChecks(p, o = {}) {
       // 바탕색이 다른 띠(흰 안내 띠 → 어두운 판)를 건너는 간격은 띠 padding 이라 줄 사이가 아니다 — 청주 81px 약한 오탐(2차 배치5)
       const band = (el) => { for (let a = el; a && a !== ft.parentElement; a = a.parentElement) { const s = getComputedStyle(a); if (!transparent(s.backgroundColor) || s.backgroundImage !== "none") return a; } return ft; };
       { const parts = leaves.filter((z) => z.el !== ft && ft.contains(z.el) && z.b - z.t < 120 && z.r - z.l < innerWidth * 0.95 && !floats(z.el)).sort((a, b) => a.t - b.t); const gaps = []; let bot = null, bd = null;
-        for (const z of parts) { const nb = band(z.el); if (bd !== null && nb !== bd && !bd.contains(nb) && !nb.contains(bd)) bot = null; bd = nb; if (bot !== null && z.t - bot > 56) gaps.push(Math.round(z.t - bot)); bot = bot === null ? z.b : Math.max(bot, z.b); }
+        // 포함 관계라도 바탕색이 다르면 경계다 — 바탕 있는 footer 안 흰 띠(.foot-quick)를 같은 띠로 보고 57px 를 세던 오탐(2026-10-15 ACMh)
+        const paint = (a) => { const s = getComputedStyle(a); return s.backgroundColor + "|" + s.backgroundImage; };
+        for (const z of parts) { const nb = band(z.el); let cross = false; if (bd !== null && nb !== bd) { if (!bd.contains(nb) && !nb.contains(bd)) bot = null; else if (paint(nb) !== paint(bd)) cross = true; } bd = nb; /* 바탕이 다른 띠 경계를 건너는 간격만 안 센다 — 앞 조각들의 바닥(bot)은 그대로 둔다(되돌리면 옆에 길게 걸친 조각을 잊어 새 간격이 생겼다) */
+          if (bot !== null && !cross && z.t - bot > 56) gaps.push(Math.round(z.t - bot)); bot = bot === null ? z.b : Math.max(bot, z.b); }
         if (gaps.length) out.footGap = [`바닥글 안 묶음 사이 ${gaps.join("·")}px — 줄 사이는 24~48px(기관 정보·정책 링크·저작권을 붙여 쓴다, 큰 margin·padding·gap·row-gap·고정 높이를 줄인다 — KRDS kit 의 #krds-footer .inner gap 40px 도 확인)`]; } }
     out.footGap = out.footGap ?? [];
     // ③ 같은 메인에 게시판 목록 두 번: 글 제목만 4줄 이상인 목록이 서로 다른 구역에 둘 이상(탭으로 묶을 것)
@@ -145,7 +155,15 @@ export async function layoutChecks(p, o = {}) {
     // 글자 뒤 첫 불투명 면을 바탕으로 — 단추(a·button)가 제 바탕을 칠했으면 4.5:1, 그 밖 글은 3:1. 사진·그라데이션 위 글은 extra.mjs 가 캡처로 잰다.
     out.textLow = [];
     { const rgb = (c) => { const v = (c.match(/[\d.]+/g) || []).map(Number); return c.startsWith("color(") ? [v[0] * 255, v[1] * 255, v[2] * 255, v[3] ?? 1] : v; }; const L = (v) => { const f = (x) => { x /= 255; return x <= 0.03928 ? x / 12.92 : ((x + 0.055) / 1.055) ** 2.4; }; return 0.2126 * f(v[0]) + 0.7152 * f(v[1]) + 0.0722 * f(v[2]); };
-      const bgOf = (el) => { for (let n = el; n; n = n.parentElement) { const s = getComputedStyle(n); if (s.backgroundImage !== "none") return null; for (const ps of ["::before", "::after"]) { const p = getComputedStyle(n, ps); if (p.content && p.content !== "none" && p.position === "absolute" && (p.backgroundImage !== "none" || !transparent(p.backgroundColor))) return null; } const c = rgb(s.backgroundColor); if (c.length >= 3 && (c[3] ?? 1) > 0.5) return { c, n }; } return { c: [255, 255, 255], n: document.body }; };
+      const pageBg = (() => { for (const n of [document.body, document.documentElement]) { const c = rgb(getComputedStyle(n).backgroundColor); if (c.length >= 3 && (c[3] ?? 1) > 0.5) return c; } return [255, 255, 255]; })(); // body·html 바탕은 아래 '깔린 면' 판단 뒤 마지막에 쓴다
+      const bgOf = (el) => { for (let n = el; n && n !== document.body && n !== document.documentElement; n = n.parentElement) { const s = getComputedStyle(n); if (s.backgroundImage !== "none") return null; for (const ps of ["::before", "::after"]) { const p = getComputedStyle(n, ps); if (p.content && p.content !== "none" && p.content !== "normal" && p.display !== "none" && p.visibility !== "hidden" && parseFloat(p.width) !== 0 && parseFloat(p.height) !== 0 && p.position === "absolute" && (p.backgroundImage !== "none" || !transparent(p.backgroundColor))) return null; } /* 숨긴 가상 요소(display:none·크기 0)는 면이 아니다 */ const c = rgb(s.backgroundColor); if (c.length >= 3 && (c[3] ?? 1) > 0.5) return { c, n }; }
+        // 조상에 면이 없는데 absolute·fixed 로 떠 있는 글(짙은 서브 비주얼 위 투명 머리 #hd)은 body 흰색이 아니라 실제로 그 아래 깔린 면이 바탕이다
+        // — 흰 글을 1.0:1 로 잡던 오탐(2026-10-15 ZHEd). 글 중심 아래 첫 불투명 면을 찾고, 그림·그라데이션이면 판정 보류(extra.mjs 캡처 대비가 맡는다)
+        let fl = false; for (let a = el; a && a !== document.body; a = a.parentElement) if (/absolute|fixed/.test(getComputedStyle(a).position)) { fl = true; break; }
+        if (fl) { const q = el.getBoundingClientRect(); const x = q.left + q.width / 2, y = q.top + q.height / 2; if (x < 0 || y < 0 || x >= innerWidth || y >= innerHeight) return null;
+          for (const u of document.elementsFromPoint(x, y)) { if (u.contains(el)) continue; const us = getComputedStyle(u); if (/^(IMG|VIDEO|CANVAS|IFRAME|PICTURE|svg)$/i.test(u.tagName) || us.backgroundImage !== "none") return null; const c = rgb(us.backgroundColor); if (c.length >= 3 && (c[3] ?? 1) > 0.5) return { c, n: u }; }
+          return { c: pageBg, n: document.body }; }
+        return { c: pageBg, n: document.body }; };
       const seen = new Set();
       for (const el of document.querySelectorAll("body *")) { if (out.textLow.length >= 6 || /^(SCRIPT|STYLE|svg|OPTION)$/i.test(el.tagName)) continue;
         const t = [...el.childNodes].filter((x) => x.nodeType === 3).map((x) => x.textContent).join("").trim(); if (t.length < 2 || !vis(el)) continue;
@@ -231,7 +249,11 @@ export async function deviceChecks(p, w, pcFont = null, textKeys = []) {
     // 입력칸: 높이 44px 미만·글자 16px 미만(아이폰 확대)
     for (const e of document.querySelectorAll("input:not([type=radio]):not([type=checkbox]):not([type=hidden]), textarea, select")) { if (!vis(e) || e.closest("header")) continue; const q = e.getBoundingClientRect(); const fs = parseFloat(getComputedStyle(e).fontSize);
       // 투명한 입력칸을 칠한 상자(검색창 틀)가 감싸면 그 상자 높이가 누르는 크기다
-      const box = (() => { if (!/rgba\(0, 0, 0, 0\)|transparent/.test(getComputedStyle(e).backgroundColor)) return q; for (let a = e.parentElement; a && a !== document.body; a = a.parentElement) { const s = getComputedStyle(a); if (!/rgba\(0, 0, 0, 0\)|transparent/.test(s.backgroundColor) || parseFloat(s.borderTopWidth) > 0) return a.getBoundingClientRect(); } return q; })();
+      // 파일 입력칸은 보이는 상자 기준 — 숨긴 input 이면 짝 label, 아니면 자기 상자. 감싸는 칠한 상자까지 올라가면 양식 전체 높이(1235px)를 입력칸 높이로 쟀다(2026-10-15 수리 배치)
+      if (e.type === "file") { const lb = (e.id && document.querySelector(`label[for="${CSS.escape(e.id)}"]`)) || e.closest("label"); const lq = lb && vis(lb) ? lb.getBoundingClientRect() : null; const hidden = q.width <= 2 || q.height <= 2 || +getComputedStyle(e).opacity < 0.1;
+        if (hidden && !lq) continue; const fq = hidden ? lq : q; if (fq.height < 44) out.input.push(`${(lb?.textContent || "").trim().slice(0, 12) || nm(e)} 파일 칸 높이 ${Math.round(fq.height)}px`); continue; } // 파일 칸은 글을 치지 않아 16px(아이폰 확대) 기준이 없다
+      // 감싸는 칠한 상자는 검색창 틀 크기(입력칸 3배·120px 이하)일 때만 누르는 크기로 본다 — 그보다 큰 상자는 틀이 아니라 구역이다(측정 오류값 제외)
+      const box = (() => { if (!/rgba\(0, 0, 0, 0\)|transparent/.test(getComputedStyle(e).backgroundColor)) return q; for (let a = e.parentElement; a && a !== document.body; a = a.parentElement) { const s = getComputedStyle(a); if (!/rgba\(0, 0, 0, 0\)|transparent/.test(s.backgroundColor) || parseFloat(s.borderTopWidth) > 0) { const ab = a.getBoundingClientRect(); return ab.height <= Math.max(120, q.height * 3) ? ab : q; } } return q; })();
       if ((e.tagName === "TEXTAREA" ? box.height < 88 : box.height < 44) || fs < 16) out.input.push(`${e.getAttribute("placeholder")?.slice(0, 12) || nm(e)} 높이 ${Math.round(box.height)}·글자 ${fs}px`); }
     out.input = [...new Set(out.input)].slice(0, 5);
     // 탭·칩 줄이 화면 밖으로 잘림(줄바꿈도 선택 단추도 없이 마지막 칸이 반쯤 보임)

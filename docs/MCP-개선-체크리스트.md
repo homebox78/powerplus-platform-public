@@ -131,6 +131,9 @@
 | MC-85 | 예시 인자 값은 실제 허용값 목록(taxonomy)에 있는지 대조한다 | description 예시 `org_type=univ` 가 taxonomy 에 없어 예시대로 부르면 INVALID_ARGS(bc2324a) | 예시 문구 그대로 호출 |
 | MC-86 | 요청 판정(Triage) capability 를 더하면 MCP 설명·사이트 도우미 바로가기(Assist CAP_LINKS)·낱말 규칙을 같은 이름으로 함께 | 판정은 됐는데 도우미가 "답을 찾지 못했다"(0740c1f) | /assist/scope 의 start 가 null 이 아닌지 |
 | MC-87 | 판정 검사를 더하면 운영 시안 표본 40장으로 음성 대조 후 배포 | 글자 대비 검사 첫 판은 아이콘 글꼴(chevron_right)·장식 숫자('01')·카드 링크 날짜를 잡았다 — 표본으로 걸러 7/40 실제 대비 부족만 남김 | scratchpad lt.mjs 식 로컬 렌더 + layoutChecks |
+| MC-88 | 판정 규칙 하나가 고치라는 방향을 다른 규칙이 치명으로 막지 않는지 규칙 표를 만들어 본다(높이 ±6% vs 히어로 900·바닥글 축소, 학교 어두운 띠 금지 vs 밝기 유사도, 구역 간격 한 값 vs 세로 간격 median) | 10-15 수리 배치가 고칠수록 다른 규칙에 걸림 — kit 고정 구간은 높이 차에서 빼고, 금지 규칙이 걸린 구간은 유사도에서 뺀다 | check.mjs height.kit_segments · frame.sec_gaps |
+| MC-89 | 바탕을 찾는 계측은 조상 사슬만 보지 않는다 — absolute·fixed 로 뜬 요소는 elementsFromPoint 로 아래 면을 찾고, 그림·그라데이션이면 판정 보류. 숨긴 가상 요소(display:none·content:none)는 면이 아니다 | 투명 머리 흰 글 1.0:1, 숨긴 ::before 를 글자 뒤 면으로 본 오탐 | layout.mjs textLow · gates.mjs pseudoBg |
+| MC-90 | 사람 눈 지적 시안은 '판정 통과'가 아니라 새 계측의 0건으로 닫는다 — 고치기 전 걸림·고친 뒤 0·잘 만든 표본 0 을 세 줄로 남긴다 | 88·93점 통과 시안이 엉성(R43) | docs/한국미래에너지공사-시안-점검-2026-10-15.md |
 
 ---
 

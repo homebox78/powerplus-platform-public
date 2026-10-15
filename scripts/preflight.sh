@@ -54,7 +54,8 @@ fi
 
 # 6. 역슬래시가 빠진 정규식(R38) — sed·heredoc·node 문자열로 JS 를 고치다 \d·\(·\s 가 사라져 검사가 아예 안 돌았다
 #    (2026-10-15 판정기 layout.mjs·check.mjs 3곳: 어두운 배경·투명 입력칸·덮임 — 통과만 시키고 아무것도 못 잡음)
-if [ "$SCOPE" = web ]; then
+# 판정기는 deploy-mcp.sh 로 올라가므로 mcp 범위에서도 돈다(2026-10-15: web 에만 걸려 MCP 배포 때는 안 돌던 것)
+if [ "$SCOPE" = web ] || [ "$SCOPE" = mcp ]; then
   BADRE=$(grep -rnF -e 'rgba(0, 0, 0, 0)|' -e '[d.]+' -e '[d.,' -e '(.*,s*0)' -e '/^s*' packages/mcp/src --include='*.mjs' --include='*.ts' 2>/dev/null || true)
   [ -n "$BADRE" ] && { echo "$BADRE" | head -5; bad "역슬래시가 빠진 정규식 — 정규식은 Edit 도구로 고친다(R02·R38)"; }
 fi

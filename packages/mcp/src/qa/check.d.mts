@@ -2,7 +2,7 @@
 // check.mjs 타입 선언 — MCP(index.ts)에서 가져다 쓴다.
 export type CheckResult = {
   pass: boolean; score: number; hard_fails: string[]; summary: string;
-  height: { reference: number; mockup: number; diff_pct: number; scope: string };
+  height: { reference: number; mockup: number; diff_pct: number; scope: string; kit_segments?: Record<string, { ref: number; mock: number } | null> };
   rows: Array<Record<string, unknown>>; similarity: number | null;
   behavior: unknown; images: { total: number; broken: string[]; foreign: string[] };
   fixes: string[];

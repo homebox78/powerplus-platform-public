@@ -172,15 +172,33 @@ export async function behavior(p, { force = false, errors = [] } = {}) {
         const rep = labs.filter((t) => tops.has(t)).length;
         // 판 바탕(불투명 배경을 칠한 자기 또는 조상) 밖으로 나온 링크 — 판에 고정 높이가 걸려 아랫줄 링크가 히어로 위에 비쳐 보였다
         // (2026-10-15 사용자 지적: 머리 줄 .hb-wrap{height:114px} 가 펼침판 안 .hb-wrap 에도 걸려 판 191px·링크 438px)
-        const opaque = (el) => { const c = getComputedStyle(el).backgroundColor; return c && !/rgba\(0, 0, 0, 0\)|transparent/.test(c) && !/rgba\(.*,\s*0(\.[0-4]\d*)?\)$/.test(c); };
+        const opaqueC = (c) => !!c && !/rgba\(0, 0, 0, 0\)|transparent/.test(c) && !/rgba\(.*,\s*0(\.[0-4]\d*)?\)$/.test(c);
+        const opaque = (el) => opaqueC(getComputedStyle(el).backgroundColor);
         // 바탕은 판 자신·안쪽 감싸개(.mega .in)에 칠하기도 한다 — 안쪽부터 링크 절반 이상을 품은 칠한 상자를 찾고, 없을 때만 조상(옆 메뉴 바탕을 잡던 오탐, 일괄 수정 배치2)
         const allL = [...s.querySelectorAll("a[href]")].filter((a) => a.getBoundingClientRect().width > 0);
         const holds = (el) => { const r = el.getBoundingClientRect(); return allL.filter((a) => { const q = a.getBoundingClientRect(); return q.left >= r.left - 1 && q.right <= r.right + 1 && q.top >= r.top - 1 && q.bottom <= r.bottom + 1; }).length; };
-        let bgEl = [s, ...s.querySelectorAll("div, ul, section, nav")].find((e) => opaque(e) && holds(e) >= Math.ceil(allL.length / 2)) || null;
-        if (!bgEl) { bgEl = s; while (bgEl && bgEl !== document.body && !opaque(bgEl)) bgEl = bgEl.parentElement; }
+        // 판 바탕 = 칠한 판·칠한 칸들·가상 요소(::before·::after) 바탕의 합집합(2026-10-15 수리 배치: 바탕을 ::after 로 깐 판은 못 봐서 '판 밖 링크' 치명,
+        // 판을 칸별로 칠하면 칸 하나가 링크 절반을 못 품어 머리 띠까지 올라가 치명). 숨긴 가상 요소(display:none·content:none·크기 0)는 뺀다
+        const pseudoRects = (el) => { const res = []; for (const ps of ["::before", "::after"]) { const p = getComputedStyle(el, ps);
+          if (!p.content || p.content === "none" || p.content === "normal" || p.display === "none" || p.visibility === "hidden" || (p.position !== "absolute" && p.position !== "fixed")) continue;
+          if (!opaqueC(p.backgroundColor) && p.backgroundImage === "none") continue;
+          const w = parseFloat(p.width), h = parseFloat(p.height); if (!(w > 0 && h > 0)) continue;
+          let cb = el; if (p.position === "fixed") cb = null; else while (cb && cb !== document.body && getComputedStyle(cb).position === "static") cb = cb.parentElement;
+          const cr = cb ? cb.getBoundingClientRect() : { left: 0, top: 0 }; const cs = cb ? getComputedStyle(cb) : null; const bl = cs ? parseFloat(cs.borderLeftWidth) || 0 : 0, bt = cs ? parseFloat(cs.borderTopWidth) || 0 : 0;
+          let l = parseFloat(p.left), t = parseFloat(p.top);
+          if (Number.isNaN(l)) { const rr = parseFloat(p.right); l = Number.isNaN(rr) ? 0 : (cb ? cb.clientWidth : innerWidth) - rr - w; }
+          if (Number.isNaN(t)) { const bb = parseFloat(p.bottom); t = Number.isNaN(bb) ? 0 : (cb ? cb.clientHeight : innerHeight) - bb - h; }
+          let tx = 0, ty = 0; const mt = (p.transform || "").match(/matrix\(([^)]+)\)/); if (mt) { const v = mt[1].split(",").map(Number); tx = v[4] || 0; ty = v[5] || 0; }
+          const L0 = cr.left + bl + l + tx, T0 = cr.top + bt + t + ty; res.push({ left: L0, top: T0, right: L0 + w, bottom: T0 + h }); } return res; };
+        const regions = [];
+        if (opaque(s)) regions.push(s.getBoundingClientRect());
+        for (const e of [s, ...s.querySelectorAll("*")]) { regions.push(...pseudoRects(e)); if (e !== s && !e.matches("a, button") && opaque(e) && holds(e) >= 1) regions.push(e.getBoundingClientRect()); }
+        let bgEl = null;
+        if (!regions.length) { bgEl = s; while (bgEl && bgEl !== document.body && !opaque(bgEl)) bgEl = bgEl.parentElement; if (bgEl && bgEl !== document.body) regions.push(bgEl.getBoundingClientRect(), ...pseudoRects(bgEl)); }
+        const inR = (x, y) => regions.some((g) => x >= g.left - 1 && x <= g.right + 1 && y >= g.top - 1 && y <= g.bottom + 1);
         let out = 0; const outN = [];
-        if (bgEl && bgEl !== document.body) { const pr = bgEl.getBoundingClientRect();
-          for (const a of s.querySelectorAll("a[href]")) { const r = a.getBoundingClientRect(); if (!r.width || !r.height) continue; if (r.bottom > pr.bottom + 1 || r.right > pr.right + 1 || r.top < pr.top - 1) { out++; if (outN.length < 3) outN.push(a.textContent.trim().slice(0, 10)); } } }
+        if (regions.length) {
+          for (const a of s.querySelectorAll("a[href]")) { const r = a.getBoundingClientRect(); if (!r.width || !r.height) continue; const cx = r.left + r.width / 2; if (!inR(cx, r.top + 1) || !inR(cx, r.bottom - 1) || !inR(r.right - 1, r.top + r.height / 2)) { out++; if (outN.length < 3) outN.push(a.textContent.trim().slice(0, 10)); } } }
         return { hid, n: links.length, rep, labs: labs.length, out, outN };
       }, !!mega);
       if (pv.out) { const m = `#${n + 1} 펼친 판 바탕 밖으로 나온 링크 ${pv.out}개(${pv.outN.join("·")}) — 판에 고정 height 가 걸렸는지(머리 줄의 .hb-wrap 같은 자손 선택자) 확인, 판은 height:auto`; if (!hard.includes(m)) hard.push(m); }

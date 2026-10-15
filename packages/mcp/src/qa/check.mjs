@@ -5,6 +5,7 @@
 import { behavior } from "./behavior.mjs";
 import { gates } from "./gates.mjs";
 import { layoutChecks, deviceChecks } from "./layout.mjs";
+import { composeChecks } from "./compose.mjs";
 import { measureDesign, designFixes, colorShare } from "./design.mjs";
 import { measureVisual, visualFixes, capByKinds } from "./visual.mjs";
 import { guardContext } from "./netguard.mjs";
@@ -125,7 +126,22 @@ async function measure(p, ref) {
         // 레퍼런스에서도 맞닿은 띠(배경 가득 줄, gap_above 8 미만)는 0이 정상이라 붙음 감점에서 뺀다
         frame.touch = vs.filter((o) => o.v < 8 && (o.refGap ?? 8) >= 8);
         const okv = vs.filter((o) => o.v >= 8).map((o) => o.v).sort((a, b) => a - b);
-        if (okv.length >= 3) { frame.row_gap = okv[Math.floor(okv.length / 2)]; frame.row_off = vs.slice(1).filter((o) => o.v >= 8 && Math.abs(o.v - frame.row_gap) > 40 && !(ref.rows[sorted.find((s) => s.T === o.y)?.refIdx]?.gap_above != null && Math.abs(o.v - ref.rows[sorted.find((s) => s.T === o.y).refIdx].gap_above) <= 40)); } // 레퍼런스 그 자리 간격대로 맞춘 줄은 다수와 달라도 정상(2026-10-05 R1: 기준이 시안 자기 중앙값이라 레퍼런스를 따르면 감점)
+        // R34·MC-07 "구역 간격은 한 값"(사용자 지시)이 우선 — 흰 구역 사이 보이는 간격이 서로 같으면(편차 24px 이하) 구역 경계의 간격은
+        // '다른 줄 median 과 ±40 벗어남'으로 감점하지 않는다. 레퍼런스 간격 대조는 구역 안 묶음 간격에만 남긴다(MC-08 규칙 충돌, 2026-10-15 507 구역 간격 80 한 값 → 감점)
+        // 구역 간격 재는 법은 compose.mjs ① 과 같다(main 직계 구역, 칠한 띠와 맞닿은 곳 제외, 앞 구역 내용 끝 → 다음 구역 내용 시작)
+        const secB = (() => { const main = document.querySelector("main") || document.body; const clr = (s) => { const c = getComputedStyle(s).backgroundColor; return (c === "rgba(0, 0, 0, 0)" || c === "transparent") && getComputedStyle(s).backgroundImage === "none"; };
+          const secs = [...main.children].filter((s) => vis(s) && s.getBoundingClientRect().height >= 80 && !/^(SCRIPT|STYLE)$/.test(s.tagName));
+          const ink = (s, top) => { let v = null; const tw = document.createTreeWalker(s, NodeFilter.SHOW_TEXT); let n; while ((n = tw.nextNode())) { if (!n.nodeValue.trim() || !n.parentElement || !vis(n.parentElement)) continue; const rg = document.createRange(); rg.selectNodeContents(n); const q = rg.getBoundingClientRect(); if (!q.height) continue; const y = top ? q.top + scrollY : q.bottom + scrollY; v = v === null ? y : top ? Math.min(v, y) : Math.max(v, y); }
+            for (const e of s.querySelectorAll("*")) { if (!vis(e)) continue; const q = e.getBoundingClientRect(); const media = /^(IMG|VIDEO|IFRAME|SVG|CANVAS)$/i.test(e.tagName); if (!media && (clr(e) || q.width < 120 || q.height < 40 || q.width > innerWidth * 0.95)) continue; /* 칠한 카드·패널도 보이는 내용(compose.mjs 와 같이) */ const y = top ? q.top + scrollY : q.bottom + scrollY; v = v === null ? y : top ? Math.min(v, y) : Math.max(v, y); }
+            const q = s.getBoundingClientRect(); return v === null ? (top ? q.top + scrollY : q.bottom + scrollY) : v; };
+          const gs = []; for (let i = 1; i < secs.length; i++) { if (!clr(secs[i]) || !clr(secs[i - 1])) continue; gs.push({ y: ink(secs[i], true), g: ink(secs[i], true) - ink(secs[i - 1], false), top: secs[i].getBoundingClientRect().top + scrollY, first: i === 1 && secs[0].getBoundingClientRect().height >= innerHeight * 0.6 }); }
+          return gs; })();
+        // 히어로 바로 아래 간격은 편차 계산에서 빼되(compose 와 같이), 그 값도 같은 한 값이면 그 경계도 감점에서 뺀다
+        const secN = secB.filter((s) => !s.first).map((s) => s.g).sort((a, b) => a - b); const secMed = secN.length ? secN[Math.floor(secN.length / 2)] : 0;
+        const secUniform = secN.length >= 2 && secN[secN.length - 1] - secN[0] <= 24;
+        const atSecEdge = (o) => secB.some((s) => (!s.first || Math.abs(s.g - secMed) <= 24) && (Math.abs(o.y - s.y) <= 60 || Math.abs(o.y - s.top) <= 60));
+        frame.sec_gaps = secB.map((s) => Math.round(s.g));
+        if (okv.length >= 3) { frame.row_gap = okv[Math.floor(okv.length / 2)]; frame.row_off = vs.slice(1).filter((o) => o.v >= 8 && !(secUniform && atSecEdge(o)) &&Math.abs(o.v - frame.row_gap) > 40 && !(ref.rows[sorted.find((s) => s.T === o.y)?.refIdx]?.gap_above != null && Math.abs(o.v - ref.rows[sorted.find((s) => s.T === o.y).refIdx].gap_above) <= 40)); } // 레퍼런스 그 자리 간격대로 맞춘 줄은 다수와 달라도 정상(2026-10-05 R1: 기준이 시안 자기 중앙값이라 레퍼런스를 따르면 감점)
       }
     }
     // 부모 밖으로 크게 삐져나온 불투명 상자 = 다른 구역을 덮는다(클래스 이름 충돌로 405px 어두운 상자가 윗줄을 덮었는데 100점이었다)
@@ -163,7 +179,9 @@ async function measure(p, ref) {
 }
 
 /** 두 캡처의 밝기 구성 유사도(0~100)와 크게 다른 세로 구간. 본문 구간끼리 같은 높이로 맞춰 비교한다. */
-async function similarity(sharp, refBuf, refBox, mockBuf, mockBox) {
+// skipDark: 학교·어린이·복지 기관은 '어두운 띠 금지'(layout.mjs darkBand)라 레퍼런스의 짙은 띠를 밝게 바꾸는 게 맞다 —
+// 그 구간(레퍼런스 줄이 짙고 시안이 더 밝은 줄)은 밝기 유사도에서 뺀다(MC-08 규칙 충돌, 2026-10-15 수리 배치)
+async function similarity(sharp, refBuf, refBox, mockBuf, mockBox, { skipDark = false } = {}) {
   const G = { w: 24, h: 120 };
   const norm = async (buf, box) => {
     const m = await sharp(buf, { limitInputPixels: false }).metadata();
@@ -172,12 +190,14 @@ async function similarity(sharp, refBuf, refBox, mockBuf, mockBox) {
     return sharp(buf, { limitInputPixels: false }).extract({ left: 0, top, width: m.width, height: h }).resize(G.w, G.h, { fit: "fill" }).greyscale().raw().toBuffer();
   };
   const a = await norm(refBuf, refBox), b = await norm(mockBuf, mockBox);
-  let diff = 0; const rowD = [];
-  for (let y = 0; y < G.h; y++) { let d = 0; for (let x = 0; x < G.w; x++) d += Math.abs(a[y * G.w + x] - b[y * G.w + x]); rowD.push(d / G.w); diff += d; }
-  const sim = Math.max(0, Math.round(100 - (diff / (G.w * G.h)) / 1.6));
+  let diff = 0, used = 0, skipped = 0; const rowD = [];
+  for (let y = 0; y < G.h; y++) { let d = 0, ra = 0, rb = 0; for (let x = 0; x < G.w; x++) { d += Math.abs(a[y * G.w + x] - b[y * G.w + x]); ra += a[y * G.w + x]; rb += b[y * G.w + x]; }
+    if (skipDark && ra / G.w < 60 && rb / G.w > ra / G.w + 40) { rowD.push(0); skipped++; continue; }
+    rowD.push(d / G.w); diff += d; used++; }
+  const sim = used ? Math.max(0, Math.round(100 - (diff / (G.w * used)) / 1.6)) : 100;
   const bands = []; let s = -1;
   for (let y = 0; y <= G.h; y++) { const bad = y < G.h && rowD[y] > 70; if (bad && s < 0) s = y; if (!bad && s >= 0) { if (y - s >= 3) bands.push([s / G.h, y / G.h]); s = -1; } }
-  return { sim, bands };
+  return { sim, bands, skipped };
 }
 
 /** 레퍼런스(왼쪽)·시안(오른쪽)을 같은 폭으로 나란히 — 긴 화면은 여러 장으로 잘라 준다. */
@@ -227,6 +247,8 @@ async function doCheck({ html, ref, refImage, launch, sharp, width = 1920, peers
     const g = await gates(p);
     // 구성·균형(2026-10-15 사용자 눈 점검 20건, R35) — 첫 화면은 900px 로 잰다(노트북 브라우저 안쪽 높이)
     const lay = width >= 800 ? await layoutChecks(p, { textKeys, iconKeys, sub: !!ref.sub, viewportH: 900, org: want }).catch(() => ({ r: {}, fails: [] })) : { r: {}, fails: [] };
+    // 구성 일관성(compose.mjs — '한국미래에너지공사' 88점 통과 지적): 구역 간격·원색 면·한 줄 카드·칸 아래 빈칸·꼬리 한 줄. 같은 '구성 ·' 감점으로 합친다
+    if (width >= 800) lay.fails.push(...(await composeChecks(p, { sharp }).catch(() => ({ fails: [] }))).fails);
     const m = await measure(p, ref);
     const shot = await p.screenshot({ fullPage: true, type: "png", clip: { x: 0, y: 0, width, height: Math.min(m.height, 16000) } });
     // D1·D25: 그림 위 글자는 캡처 픽셀로 대비를 잰다 / D5·D6: 기관명·화면 종류 이름 (behavior 가 메뉴를 열기 전에)
@@ -254,18 +276,28 @@ async function doCheck({ html, ref, refImage, launch, sharp, width = 1920, peers
         const wide = []; let tiny = 0;
         // 가로 스크롤·잘림 칸 안쪽 요소는 문서를 넓히지 않는다 — 원인 후보에서 뺀다(2026-10-05 R3·R6: overflow-x:auto 안의 옆 메뉴 칩을 원인으로 지목, 실제 원인은 표 최소 폭)
         const clipped = (e) => { for (let q = e.parentElement; q && q !== document.body; q = q.parentElement) { const ox = getComputedStyle(q).overflowX; if (ox !== "visible") return true; } return false; };
+        // 기준은 화면 폭(390) — 400 을 넘는 것만 봐서 391~400px 넘침의 원인을 못 짚었다(2026-10-15 수리 배치). 따라 넓어진 자식이 아니라 처음 넘친 요소를 짚는다
+        const cand = [];
         for (const e of document.querySelectorAll("body *")) {
           const b = e.getBoundingClientRect(); if (b.width < 2 || b.height < 2) continue;
-          if (b.right > 400 && b.left >= 0 && b.left < 390 && wide.length < 4 && getComputedStyle(e).position !== "fixed" && !clipped(e)) { const nm = (x) => x ? x.tagName.toLowerCase() + ((typeof x.className === "string" && x.className.trim()) ? "." + x.className.trim().split(/\s+/)[0] : "") : ""; const n = `${nm(e.parentElement)} > ${nm(e)} (y ${Math.round(b.top + scrollY)}, 오른쪽 끝 ${Math.round(b.right)}px)`; if (!wide.includes(n)) wide.push(n.slice(0, 80)); }
+          if (b.right > 391 && b.left >= 0 && b.left < 390 && getComputedStyle(e).position !== "fixed" && !clipped(e)) cand.push([e, b]);
           if (e.children.length === 0 && (e.textContent || "").trim().length > 3 && parseFloat(getComputedStyle(e).fontSize) < 12.5) tiny++;
         }
+        { const nm = (x) => x ? x.tagName.toLowerCase() + ((typeof x.className === "string" && x.className.trim()) ? "." + x.className.trim().split(/\s+/)[0] : "") : "";
+          // 원인 = 부모는 화면 안인데 자기가 처음 화면 밖으로 나간 요소(부모가 넓어서 따라 넓어진 자식은 원인이 아니다)
+          const inCand = new Set(cand.map(([e]) => e)); const cause = cand.filter(([e]) => !inCand.has(e.parentElement));
+          for (const [e, b] of (cause.length ? cause : cand)) { if (wide.length >= 4) break; const n = `${nm(e.parentElement)} > ${nm(e)} (y ${Math.round(b.top + scrollY)}, 오른쪽 끝 ${Math.round(b.right)}px)`; if (!wide.includes(n)) wide.push(n.slice(0, 80)); } }
         // D8·D18 모바일 잘림(잘리는 칸 안 글이 칸 밖으로)·첫 화면을 머리가 다 먹음
         let cut = 0; const cutw = [];
         for (const e of document.querySelectorAll("body *")) {
           if (![...e.childNodes].some((n) => n.nodeType === 3 && n.textContent.trim().length > 1)) continue;
-          const b = e.getBoundingClientRect(); if (b.width < 2 || b.height < 2) continue; const es = getComputedStyle(e); if (es.visibility !== "visible" || +es.opacity < 0.1 || e.closest("[hidden],[aria-hidden=true]")) continue;
+          const b0 = e.getBoundingClientRect(); if (b0.width < 2 || b0.height < 2) continue; const es = getComputedStyle(e); if (es.visibility !== "visible" || +es.opacity < 0.1 || e.closest("[hidden],[aria-hidden=true]")) continue;
+          // 가로 스크롤 영역(overflow-x:auto·scroll) 안 글은 밀어서 보는 것이라 잘림이 아니다 — 그 위로는 스크롤 영역 상자 자체가 잘리는지만 본다
+          // (전에는 auto 조상을 건너뛰고 글을 바깥 hidden 칸과 비교해, 스크롤로 넘어간 글을 '잘림'으로 셌다 — 2026-10-15 수리 배치)
+          let b = b0;
           for (let q = e.parentElement; q && q !== document.body; q = q.parentElement) {
-            const st = getComputedStyle(q); if (st.overflowX !== "hidden" && st.overflowX !== "clip") continue;
+            const st = getComputedStyle(q); if (st.overflowX === "auto" || st.overflowX === "scroll") { b = q.getBoundingClientRect(); continue; }
+            if (st.overflowX !== "hidden" && st.overflowX !== "clip") continue;
             const qb = q.getBoundingClientRect();
             // 칸 밖에 통째로 있는 것(옆으로 넘긴 캐러셀 장)은 잘림이 아니다 — 클래스가 carousel 이 아닌 칸(.mm-viewport)에서 오탐(배치5)
             if (b.left >= qb.right - 1 || b.right <= qb.left + 1) break;
@@ -349,17 +381,17 @@ async function doCheck({ html, ref, refImage, launch, sharp, width = 1920, peers
           if (b > end) end = b;
         }
         // 서브 비주얼: 위쪽에 폭 가득한 색 면·사진 띠
-        let subvisual = false;
+        let subvisual = false, svBox = null;
         for (const e of document.querySelectorAll("body *")) {
           const b = e.getBoundingClientRect(); const t = b.top + sy;
           if (b.width < vw * 0.95 || t < -2 || t > 420 || b.height < 90 || b.height > 600 || /^(HEADER|NAV|BODY|MAIN)$/.test(e.tagName) || e.closest("header")) continue;
           const s = getComputedStyle(e); const c = s.backgroundColor.match(/[\d.]+/g) || [];
           const colored = c.length >= 3 && (c[3] === undefined || +c[3] > 0.2) && !(+c[0] > 250 && +c[1] > 250 && +c[2] > 250);
-          if (colored || s.backgroundImage !== "none" || e.querySelector(":scope > img")) { subvisual = true; break; }
+          if (colored || s.backgroundImage !== "none" || e.querySelector(":scope > img")) { subvisual = true; svBox = { y: Math.round(t), h: Math.round(b.height) }; break; }
         }
-        return { blanks: blanks.slice(0, 5), subvisual };
+        return { blanks: blanks.slice(0, 5), subvisual, svBox };
       }, !!ref.sub);
-      pc.blanks = r.blanks; pc.subvisual = r.subvisual;
+      pc.blanks = r.blanks; pc.subvisual = r.subvisual; pc.svBox = r.svBox;
       // 배경 위 칸이 묻히나 — 사진·무늬·색 띠 위에 나란히 놓인 칸(3개+)이 불투명한 면 없이 떠 있는 경우(절차 7-5)
       pc.buried = await p.evaluate(() => {
         const vw = document.documentElement.clientWidth, sy = window.scrollY, out = [];
@@ -415,7 +447,16 @@ async function doCheck({ html, ref, refImage, launch, sharp, width = 1920, peers
         if (el) {
           const trig = await el.evaluateHandle((e) => e.hasAttribute("data-hb-mega") ? e.closest('[data-hb="menu"]').querySelector("[data-hb-menu] a, [data-hb-menu] button") : e.parentElement.querySelector(":scope > a, :scope > button"));
           await trig.asElement().hover({ timeout: 1500 }); await p.waitForTimeout(450);
-          pc.menu_w = await el.evaluate((e) => { const s = getComputedStyle(e); const b = e.getBoundingClientRect(); if (s.display === "none" || s.visibility === "hidden" || b.height < 10) return null; let w = b.width; let q = e.parentElement; for (let i = 0; i < 4 && q; i++, q = q.parentElement) { const qs = getComputedStyle(q); if (qs.position === "absolute" || qs.position === "fixed") w = Math.max(w, q.getBoundingClientRect().width); } return Math.round(w / document.documentElement.clientWidth * 100); });
+          // 판 폭 = 판·위치 잡은 조상·가상 요소 바탕(::before·::after)·칠한 칸들의 합집합 폭 — 바탕을 ::after 로 화면 폭 가득 깔거나
+          // 칸별로 칠한 판을 '화면 폭 54% 작은 상자'로 잡던 오탐(2026-10-15 수리 배치). 숨긴 가상 요소는 뺀다
+          pc.menu_w = await el.evaluate((e) => { const s = getComputedStyle(e); const b = e.getBoundingClientRect(); if (s.display === "none" || s.visibility === "hidden" || b.height < 10) return null;
+            const clear = (c) => !c || c === "transparent" || c === "rgba(0, 0, 0, 0)";
+            let L = b.left, R = b.right; const add = (l, r) => { L = Math.min(L, l); R = Math.max(R, r); };
+            const pseudoW = (n) => { for (const ps of ["::before", "::after"]) { const p = getComputedStyle(n, ps); if (!p.content || p.content === "none" || p.content === "normal" || p.display === "none" || p.visibility === "hidden" || (p.position !== "absolute" && p.position !== "fixed")) continue; if (clear(p.backgroundColor) && p.backgroundImage === "none") continue; const w = parseFloat(p.width); if (!(w > 0) || !(parseFloat(p.height) >= 40)) continue; /* 머리 아래 1px 선 같은 꾸밈은 판 바탕이 아니다 */ const nb = n.getBoundingClientRect(); const cx = nb.left + nb.width / 2; add(cx - w / 2, cx + w / 2); } };
+            // 머리 띠 자체의 가상 요소 바탕은 판이 아니다 — 판 자신과 판을 감싼 위치 잡은(absolute·fixed) 조상만
+            let q = e; for (let i = 0; i < 5 && q; i++, q = q.parentElement) { const qs = getComputedStyle(q); const own = i === 0 || qs.position === "absolute" || qs.position === "fixed"; if (i > 0 && own) { const qb = q.getBoundingClientRect(); add(qb.left, qb.right); } if (own && !q.matches("header, [data-hb=menu]")) pseudoW(q); }
+            for (const k of e.querySelectorAll("div, ul, section, li")) { const ks = getComputedStyle(k); if (clear(ks.backgroundColor) && ks.backgroundImage === "none") continue; const kb = k.getBoundingClientRect(); if (kb.height >= 10 && kb.width >= 40) add(kb.left, kb.right); }
+            return Math.round(Math.min(R - L, document.documentElement.clientWidth) / document.documentElement.clientWidth * 100); });
           await p.mouse.move(2, 900); await p.waitForTimeout(200);
         }
       } catch { /* 메뉴 측정 실패는 넘어간다 */ }
@@ -435,13 +476,31 @@ async function doCheck({ html, ref, refImage, launch, sharp, width = 1920, peers
     // 높이: 메인은 전체, 서브는 본문 구간
     // 첫 화면 규칙(머리+히어로 ≤ 900)과 레퍼런스 높이 맞추기가 부딪혔다 — 레퍼런스 히어로가 900 을 넘는 만큼은 줄이는 게 맞으니
     // 그만큼을 레퍼런스 높이에서 빼고 잰다(2026-10-15 일괄 수정: 히어로를 900 안에 넣자 높이 -4~6% 감점·치명)
-    const heroCut = (() => { if (ref.sub || !Array.isArray(ref.rows) || (lay.r.hero ?? []).length) return 0; const r0 = ref.rows.find((r) => r.h >= 300 && r.y < 320 && !(r.cells || []).some((c) => ["header", "masthead", "gnb"].includes(c.type))); return r0 ? Math.max(0, Math.round(r0.y + r0.h - 900)) : 0; })();
-    const refH = ref.sub ? ref.sub.body_h : ref.height - heroCut;
     // 레퍼런스 줄에 바닥(footer)이 없으면 레퍼런스 높이는 바닥을 뺀 값이다 → 시안도 바닥 윗변까지만 잰다
     // (2026-10-05 R3: 정상 바닥 317px 를 두면 +31% 치명, 바닥을 64px 로 줄여야 통과했다 — 판정이 빈약한 바닥을 강요했다)
     const refNoFoot = !ref.sub && Array.isArray(ref.rows) && ref.rows.length > 0 && !ref.rows.some((r) => (r.cells || []).some((c) => c.type === "footer"));
-    const mockH = ref.sub ? m.body.to - m.body.from : refNoFoot ? Math.round(m.body.to) : m.height;
+    // kit 이 고정값을 주는 구간(바닥글·히어로·서브 비주얼)은 높이 차 계산에서 뺀다 — 다른 규칙(첫 화면 900·바닥글 여백·줄 사이)이 줄이라고 한 구간을
+    // 높이 −6% 치명이 다시 막던 충돌(MC-08, 2026-10-15 수리 배치: 바닥글·히어로를 줄이면 −6% 치명, 보강하면 서브 +15% 상한). 그 구간 차는 notes 로만 알린다
+    const seg = { foot: null, hero: null, sv: null };
+    const rowsA = Array.isArray(ref.rows) ? ref.rows : [];
+    let refH, mockH;
+    if (ref.sub) {
+      refH = ref.sub.body_h; mockH = m.body.to - m.body.from;
+      const sv = pc.svBox; const a0 = sv ? Math.max(sv.y, m.body.from) : 0, b0 = sv ? Math.min(sv.y + sv.h, m.body.to) : 0;
+      if (sv && b0 - a0 > 40) { const refSv = rowsA.filter((r) => (r.cells || []).some((c) => c.type === "sub_visual") && r.y >= ref.sub.body_y_from - 4 && r.y + r.h <= ref.sub.body_y_to + 4).reduce((s, r) => s + r.h, 0);
+        seg.sv = { ref: refSv, mock: Math.round(b0 - a0) }; refH -= refSv; mockH -= seg.sv.mock; }
+    } else {
+      const footRow = rowsA.find((r) => (r.cells || []).some((c) => c.type === "footer"));
+      refH = footRow ? footRow.y : (ref.height ?? 0); mockH = footRow || refNoFoot ? Math.round(m.body.to) : m.height;
+      if (footRow) seg.foot = { ref: Math.round((ref.height ?? 0) - footRow.y), mock: Math.round(m.height - m.body.to) };
+      const r0 = rowsA.find((r) => r.h >= 300 && r.y < 320 && !(r.cells || []).some((c) => ["header", "masthead", "gnb"].includes(c.type)));
+      const hbx = lay.r.heroBox;
+      if (r0 && hbx) { seg.hero = { ref: r0.h, mock: hbx.h }; refH -= r0.h; mockH -= hbx.h; }
+      else if (r0 && !(lay.r.hero ?? []).length) refH -= Math.max(0, Math.round(r0.y + r0.h - 900)); // 시안 히어로를 못 찾으면 예전대로 900 넘는 만큼만 뺀다
+    }
     const diffPct = refH > 0 ? Math.round(((mockH - refH) / refH) * 1000) / 10 : 0;
+    const segNotes = [];
+    for (const [k, lab] of [["foot", "바닥글"], ["hero", "히어로"], ["sv", "서브 비주얼"]]) { const s = seg[k]; if (s && Math.abs(s.mock - s.ref) > Math.max(40, s.ref * 0.15)) segNotes.push(`높이 참고 · ${lab} 구간이 레퍼런스 ${s.ref}px · 시안 ${s.mock}px — kit 이 정하는 구간이라 전체 높이 차에서 뺐다(감점·치명 아님). 첫 화면·바닥글 규칙을 따른다.`); }
 
     let sim = null; let compare = null;
     if (refImage) {
@@ -449,7 +508,8 @@ async function doCheck({ html, ref, refImage, launch, sharp, width = 1920, peers
       const kRef = (meta.width ?? ref.width) / ref.width;
       const refBox = ref.sub ? { from: ref.sub.body_y_from, to: ref.sub.body_y_to, k: kRef } : { from: 0, to: Math.min(ref.height, (meta.height ?? 0) / kRef), k: kRef };
       const mockBox = ref.sub ? { from: m.body.from, to: m.body.to, k: 1 } : { from: 0, to: Math.min(refNoFoot ? m.body.to : m.height, 16000), k: 1 };
-      sim = await similarity(sharp, refImage, refBox, shot, mockBox);
+      const schoolOrg = /학교|초등|중학|고등|유치원|어린이|복지|도서관|아동|청소년/.test(want || (html.match(/<title[^>]*>([^<]*)/i) || [])[1] || ""); // layout.mjs darkBand 와 같은 대상
+      sim = await similarity(sharp, refImage, refBox, shot, mockBox, { skipDark: schoolOrg });
       compare = await sideBySide(sharp, refImage, shot);
     }
 
@@ -497,7 +557,7 @@ async function doCheck({ html, ref, refImage, launch, sharp, width = 1920, peers
     if (!hasHb && !ownOk) { score -= 10; fixes.push("동작 규약(data-hb)이 없다 — get_behavior_kit 의 script 를 넣고 캐러셀·탭·메뉴·레이어·검색에 data-hb 속성을 붙인다."); }
     if (sim && sim.sim < 70) { score -= Math.min(15, Math.round((70 - sim.sim) / 2)); }
     // 밝기 구간은 감점이 있을 때(유사도 70 미만)만 고칠 목록에 — 그 밖엔 참고(notes). 참고 이미지가 없는 섞기 조각·서브 비주얼 차이로 고칠 방법이 없는 경고가 남던 것(2026-10-03 시험)
-    const notes = [];
+    const notes = [...segNotes];
     // 서브는 sub_shell(서브 비주얼 띠·왼쪽 흰 메뉴)을 쓰라고 지시하므로 레퍼런스와 밝기 구성이 다른 게 정상이다 — 감점이 없으면 메모도 내지 않는다(2026-10-05 R3·R4·R5·R6: 100점에도 계속 떠 혼란)
     if (sim && !(ref.sub && sim.sim >= 70)) for (const [a, b] of sim.bands.slice(0, 4)) (sim.sim < 70 ? fixes : notes).push(`밝기 구성이 크게 다른 구간: ${ref.sub ? "본문" : "화면"} ${Math.round(a * 100)}~${Math.round(b * 100)}% 지점 — 어두운 띠·사진 면·흰 면의 위치가 레퍼런스와 다르다(나란히 이미지 확인).`);
     score = Math.max(0, Math.min(100, score));
@@ -512,7 +572,7 @@ async function doCheck({ html, ref, refImage, launch, sharp, width = 1920, peers
         pass, score, hard_fails: hard,
         summary: pass ? "통과 — publish_mockup(token) 으로 게시해 주소를 사용자에게 준다." : `미통과(${score}점) — fixes 를 위에서부터 고치고 check_mockup(ref_id, token, edits) 로 고친 부분만 보내 다시 판정한다. 85점 이상·치명 항목 0 이 통과다.`,
         sources: ref.sources ?? 1,
-        height: { reference: refH, mockup: mockH, diff_pct: diffPct, scope: ref.sub ? "본문 구간(머리·바닥 제외)" : refNoFoot ? "전체(바닥 제외 — 레퍼런스에 바닥 줄 없음)" : "전체" },
+        height: { reference: refH, mockup: mockH, diff_pct: diffPct, scope: ref.sub ? `본문 구간(머리·바닥${seg.sv ? "·서브 비주얼" : ""} 제외)` : `바닥글 위까지${seg.hero ? "(히어로 제외)" : ""}`, kit_segments: seg },
         rows: m.rows, frame: m.frame, mobile: mob, pc, design, visual, similarity: sim ? sim.sim : null,
         behavior: beh.stats, images: { total: m.images, broken: m.broken, foreign: m.foreign },
         fixes,

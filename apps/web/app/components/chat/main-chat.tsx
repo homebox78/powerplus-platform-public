@@ -5,7 +5,7 @@
 import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowUp, BookOpen, Check, CircleHelp, Code2, Copy as CopyIcon, FileText, FileUp, Image as ImageIcon, LayoutTemplate, Lock, MessagesSquare, Minus, Paperclip, Plug, Plus, Presentation, Search, Sparkles, Trash2, X } from "lucide-react";
-import { Link, useNavigate } from "react-router";
+import { Link, useLocation, useNavigate } from "react-router";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -82,6 +82,7 @@ export function MainChat({ variant = "full", onClose }: { variant?: "full" | "do
   const dock = variant === "dock";
   const { me } = useMe();
   const nav = useNavigate();
+  const loc = useLocation();
   const qc = useQueryClient();
   const [pid, setPid] = useState<string | null>(() => (typeof window === "undefined" ? null : store.get()));
   const [text, setText] = useState(() => { try { const d = sessionStorage.getItem(DRAFT); if (d) sessionStorage.removeItem(DRAFT); return d ?? ""; } catch { return ""; } });
@@ -138,13 +139,14 @@ export function MainChat({ variant = "full", onClose }: { variant?: "full" | "do
     setBusy(true); setNotice(null); setText("");
     try {
       if (!me) {
-        // 로그인 전 — 답만(저장 안 함). 제안서 만들기는 로그인 뒤 같은 말로 이어 간다.
-        const r = await postJson<{ reply: Reply }>("/chat/ask", { text: t, mode, history: anonHistory(anon) });
-        const next = [...anon, { q: t, a: r.reply }];
+        // 로그인 전 — 답하지 않고 회원가입으로 이끈다(2026-10-15 사용자). 적은 말은 남겨 두었다가 로그인 뒤 입력창에 다시 채운다.
+        try { sessionStorage.setItem(DRAFT, t); } catch { /* 없음 */ }
+        const back = encodeURIComponent(loc.pathname + loc.search);
+        const a: Reply = { kind: "reply", module: "help", body: "powerPlus AI 는 로그인 후 사용할 수 있어요.\n무료로 가입하면 적어 두신 말 그대로 이어서 시작합니다.", items: [], item_type: null, links: [[`/signup?next=${back}`, "무료로 회원가입"], [`/login?next=${back}`, "로그인"]], login: true };
+        const next = [...anon, { q: t, a }];
         setAnon(next); anonStore.set(next);
-        if (r.reply.login) { try { sessionStorage.setItem(DRAFT, t); } catch { /* 없음 */ } }
       } else if (!p) {
-        const r = await postJson<{ project: Project }>("/chat/projects", { text: t, mode, history: anonHistory(anon) });
+        const r = await postJson<{ project: Project }>("/chat/projects", { text: t, mode, history: anonHistory(anon.filter((x) => !x.a.login)) });
         put(r.project); setPid(r.project.id); store.set(r.project.id); setAnon([]); anonStore.set([]);
       } else {
         put(await postJson<Project>(`/chat/projects/${pid}/messages`, { text: t, mode }));
@@ -330,9 +332,6 @@ export function MainChat({ variant = "full", onClose }: { variant?: "full" | "do
               </button>
             ))}
           </div>
-        )}
-        {!me && anon.some((x) => x.a.login) && (
-          <div className="mt-3"><Button asChild size="sm" className="border-point bg-point text-white hover:border-point hover:bg-point/90"><Link to="/login?next=/">로그인하고 이어서 하기</Link></Button></div>
         )}
         <input ref={fileRef} type="file" aria-label="자료 파일 첨부" accept={ACCEPT} multiple className="hidden" onChange={(e) => { if (e.target.files?.length) void upload(e.target.files); e.target.value = ""; }} />
       </form>

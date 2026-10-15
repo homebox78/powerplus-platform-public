@@ -9,7 +9,7 @@
 #   5. 배포 범위에 커밋 안 한 변경 — deploy 는 작업 트리를 싣는다. 다른 세션의 반쯤 된 코드가 같이 올라감
 #      (2026-10-08 core.php 잘림). 정말 올려야 하면 PP_ALLOW_DIRTY=1
 #   6. 역슬래시가 빠진 정규식(packages/mcp) — R38
-# 알려 주기만 하는 것: 마지막 커밋이 다른 배포 범위를 건드렸는데 그 배포를 잊기 쉬운 경우
+# 알려 주기만 하는 것: 마지막 커밋이 다른 배포 범위를 건드렸는데 그 배포를 잊기 쉬운 경우, 크론 주석만 있고 deploy.sh 등록이 없는 api/bin 스크립트(R47)
 set -uo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"; cd "$ROOT"
 SCOPE="${1:-web}"
@@ -58,6 +58,13 @@ fi
 if [ "$SCOPE" = web ] || [ "$SCOPE" = mcp ]; then
   BADRE=$(grep -rnF -e 'rgba(0, 0, 0, 0)|' -e '[d.]+' -e '[d.,' -e '(.*,s*0)' -e '/^s*' packages/mcp/src --include='*.mjs' --include='*.ts' 2>/dev/null || true)
   [ -n "$BADRE" ] && { echo "$BADRE" | head -5; bad "역슬래시가 빠진 정규식 — 정규식은 Edit 도구로 고친다(R02·R38)"; }
+fi
+
+# 알림 — 머리 주석에 크론이 적힌 api/bin 스크립트가 deploy.sh 에서 등록되지 않음(R47: qa-feed 가 주석에만 있어 한 번도 안 돌았다)
+if [ "$SCOPE" = web ]; then
+  for f in $(grep -lis "cron" api/bin/*.php 2>/dev/null); do
+    b=$(basename "$f"); grep -q "$b" scripts/deploy.sh || echo "ℹ️  $b 머리 주석에 크론이 있는데 deploy.sh 가 등록하지 않는다 — 서버 crontab 에 있는지 확인(R47)"
+  done
 fi
 
 # 알림 — 다른 배포가 필요한지

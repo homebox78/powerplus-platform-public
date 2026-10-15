@@ -820,7 +820,10 @@ function buildServer(key: string | null): McpServer {
         : `미통과(${result.score}점) — fixes 를 위에서부터 고친다. HTML 전체를 다시 보내지 말고 mock_check_mockup(token="${token}", edits=[{find, replace}]) 로 고친 부분만 보낸다(ref_id 는 다시 안 줘도 된다). 85점 이상·치명 0 이 통과. 통과할 때까지 반복한다 — 미통과 시안은 사용자 목록·갤러리에 남지 않고 하루 뒤 지워지므로, 미통과인 채로 작업을 끝내거나 결과로 내놓지 않는다.`;
       // 디자이너 선호 조언(2026-10-03) — 시안에 든 요소에 맞는 designus 투표 규칙. 점수에는 넣지 않는다(조언)
       const preference_tips = Array.isArray(d.json.pref_tips) && d.json.pref_tips.length ? { how: "디자이너 A/B 투표에서 뚜렷하게 갈린 결과다. 시안의 같은 요소가 instead_of 쪽이면 rule 쪽으로 바꾸는 것을 권한다(감점 없음).", tips: d.json.pref_tips } : undefined;
-      const content: Array<TextBlock | ImageBlock> = [{ type: "text", text: JSON.stringify({ token, ref_id: refId, reference: ref.site_slug, ...result, summary: undefined, preference_tips, next }) }];
+      // 개선 체크리스트 되먹임(2026-10-15) — 다른 시안들에서 반복된 결함. fixes 와 별개로, 지금 시안에 같은 것이 없는지 보게 한다(점수에는 넣지 않는다)
+      const lessons = Array.isArray(rec?.json?.lessons) ? (rec.json.lessons as Array<{ area?: string; text?: string; hits?: number }>) : [];
+      const recurring = lessons.length ? { how: "다른 시안들에서 여러 번 걸린 결함이다. 이 시안에도 같은 것이 없는지 확인하고, 있으면 함께 고친다(감점 없음).", items: lessons.map((l) => `[${l.area ?? ""}] ${l.text ?? ""}`) } : undefined;
+      const content: Array<TextBlock | ImageBlock> = [{ type: "text", text: JSON.stringify({ token, ref_id: refId, reference: ref.site_slug, ...result, summary: undefined, preference_tips, recurring, next }) }];
       if (usedJudge && compare?.slices?.length) content.push({ type: "text", text: "레퍼런스에 공공누리 제한(2~4유형) 구간이 있어 판정은 원본으로 대조했지만, 레퍼런스|시안 나란히 이미지는 제공하지 않습니다. fixes 를 따라 고치세요." });
       else if (pro && compare?.slices?.length) compare.slices.slice(0, 6).forEach((s, i) => content.push({ type: "text", text: `[나란히 ${i + 1}] 왼쪽 레퍼런스 · 오른쪽 시안 (y ${s.from}~${s.to})` }, { type: "image", data: s.jpeg.toString("base64"), mimeType: "image/jpeg" }));
       return { content };

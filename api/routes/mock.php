@@ -366,7 +366,14 @@ return static function (Router $r): void {
         } catch (\Throwable $e) {
             error_log('[pp-checklist] ' . $e->getMessage());
         }
-        Response::json(['token' => $token, 'score' => $score, 'passed' => (bool) $pass, 'kept' => $pass === 1 && $score > MOCK_GALLERY_CUT]);
+        // 되먹임 — 다른 시안들에서 반복된 결함(powerMCP 가 판정 결과에 recurring 으로 싣는다)
+        try {
+            $lessons = \Pp\Mock\Checklist::lessons();
+        } catch (\Throwable $e) {
+            $lessons = [];
+            error_log('[pp-checklist] ' . $e->getMessage());
+        }
+        Response::json(['token' => $token, 'score' => $score, 'passed' => (bool) $pass, 'kept' => $pass === 1 && $score > MOCK_GALLERY_CUT, 'lessons' => $lessons]);
     }, ['auth' => true]);
 
     $r->get('/mock/mockups', static function (array $p, Actor $a) use ($mockupPub): void {

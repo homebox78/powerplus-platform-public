@@ -1574,6 +1574,15 @@ class Build:
             tf._txBody.append(e)
         if self.style in ("tab", "side"):   # 왼쪽 정렬 스타일 — 장 이름과 같은 줄에서 시작
             b.left = Cm(2.0 if self.style == "tab" else 5.2)
+        # 견본 상자는 줄바꿈 없음(wrap=none)·폭 6.5cm 라, 글줄이 더 길면 LibreOffice 는 상자를 양옆으로 넓혀 글이 왼쪽 레일 위로 밀렸다
+        # (사용자 2026-10-15 '글자 위치가 이상함' — 사이드 레일 간지 목록 번호가 레일에 걸침). PowerPoint 는 오른쪽으로만 넓힌다.
+        # → 줄바꿈 켜고 폭을 오른쪽 여백(1.2cm)까지 — 왼쪽 끝이 두 렌더러에서 같다
+        b.text_frame._txBody.bodyPr.set("wrap", "square")
+        if self.style not in ("tab", "side"):   # 가운데 정렬 스타일 — 가장 긴 줄을 재서 목록 묶음 전체를 쪽 가운데에(LibreOffice 가 하던 모양을 PowerPoint 에서도)
+            sz = next((int(r.get("sz")) / 100 for r in b._element.iter(f"{{{A}}}rPr") if r.get("sz")), 16.0)
+            lw = max([text_cm(f"{k}. {sec['title']}", sz) for k, sec in enumerate(c.get("sections") or [], 1)] or [6.0])
+            b.left = Cm(max(1.2, (PAGE_W - lw) / 2 - 0.25))
+        b.width = Cm(PAGE_W) - b.left - Cm(1.2)
         if self.style == "split":   # 위쪽 색 블록 위 — 흰 글씨
             for r in b._element.iter(f"{{{A}}}rPr"):
                 for c_ in r.findall(f"{{{A}}}solidFill") + r.findall(f"{{{A}}}gradFill"):

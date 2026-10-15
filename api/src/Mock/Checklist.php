@@ -94,6 +94,23 @@ final class Checklist
         return $out;
     }
 
+    /**
+     * 판정 응답에 싣는 "지난 시안들에서 반복된 결함" — 쌓기만 하고 되먹임이 없던 고리를 닫는다(2026-10-15 점검, 출처: Deck\Checklist::lessons).
+     * 조건도 장표와 같다: 열림·고치는 중 + (2번 이상 걸림 또는 다시 걸림). 수집·MCP 분야는 시안 작성자가 고칠 수 없어 뺀다. 응답 크기(MC-23) 때문에 8줄·한 줄 120자.
+     * @return list<array{area:string,text:string,hits:int}>
+     */
+    public static function lessons(int $limit = 8): array
+    {
+        $out = [];
+        foreach (Db::rows("SELECT area, title, fix_note, hits FROM mock_checklist
+                           WHERE status IN ('open','fixing') AND area NOT IN ('data','mcp') AND (hits >= 2 OR regressed = 1)
+                           ORDER BY regressed DESC, hits DESC, last_seen DESC LIMIT " . max(1, min(20, $limit))) as $r) {
+            $rule = trim((string) ($r['fix_note'] ?? ''));
+            $out[] = ['area' => self::AREAS[$r['area']] ?? (string) $r['area'], 'hits' => (int) $r['hits'], 'text' => mb_substr($rule !== '' ? $rule : '피할 것: ' . $r['title'], 0, 120)];
+        }
+        return $out;
+    }
+
     /** 시안 판정 결과를 쌓는다 — 같은 머리말은 한 줄 */
     public static function fromJudge(array $result, string $token, ?string $ref, int $score): void
     {

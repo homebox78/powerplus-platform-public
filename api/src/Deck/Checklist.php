@@ -238,6 +238,7 @@ final class Checklist
     /**
      * 되먹임 — 다음 작업 엔진 지시에 넣을 규칙. 열림·고치는 중 + (2번 이상 또는 다시 걸림), 엔진·실패 분야 제외.
      * 관리자가 적은 고친 방법(fix_note)이 있으면 그 문장을, 없으면 결함 제목을 "피할 것"으로.
+     * 사용자 의견 줄(user:글자 크기·서체 등)은 제목이 분류명뿐이라 fix_note 가 있을 때만 싣는다 — 뜻 없는 "피할 것: 사용자 의견 · …" 방지(2026-10-15 점검).
      * @return list<array{id:int,area:string,text:string,hits:int}>
      */
     public static function lessons(int $limit = 12): array
@@ -245,6 +246,7 @@ final class Checklist
         $out = [];
         foreach (Db::rows("SELECT id, area, title, fix_note, hits, regressed FROM deck_checklist
                            WHERE status IN ('open','fixing') AND area <> 'engine' AND (hits >= 2 OR regressed = 1)
+                             AND (origin <> 'user' OR COALESCE(fix_note, '') <> '')
                            ORDER BY regressed DESC, hits DESC, last_seen DESC LIMIT " . max(1, min(30, $limit))) as $r) {
             $rule = trim((string) ($r['fix_note'] ?? ''));
             $out[] = [

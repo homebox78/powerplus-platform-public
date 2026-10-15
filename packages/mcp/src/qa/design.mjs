@@ -32,7 +32,11 @@ export async function measureDesign(p, isSub) {
     }
 
     // ① 한 묶음 안 간격: 나란한 칸 사이(가로)와 그 묶음의 위아래 칸 사이(세로)가 크게 다르면 한 묶음으로 안 보인다
-    const cardLike = (e) => { const s = getComputedStyle(e); const c = rgba(s.backgroundColor); return (c && c[3] > 0.5) || s.boxShadow !== "none" || (parseFloat(s.borderTopWidth) > 0 && parseFloat(s.borderLeftWidth) > 0) || s.backgroundImage !== "none" || !!e.querySelector(":scope > img, :scope > a > img, :scope > figure"); };
+    // 입력칸·검색 칸·폼 컨트롤 상자(낮은 상자 + 주 내용이 input·select·textarea)는 카드가 아니다 — 점선 테두리 62px 검색 칸을 카드로 세어 세로 칸 간격 60 으로 잡던 오탐(O-51, 시안 97)
+    const field = "input:not([type=hidden]):not([type=checkbox]):not([type=radio]), select, textarea";
+    const ctrlBox = (e) => { if (e.matches(field + ", button")) return true; if (e.getBoundingClientRect().height > 100 || !e.querySelector(field)) return false;
+      let t = (e.innerText || "").replace(/\s+/g, ""); for (const c of e.querySelectorAll("button, label")) t = t.replace((c.innerText || "").replace(/\s+/g, ""), ""); return t.length <= 30; };
+    const cardLike = (e) => { if (ctrlBox(e)) return false; const s = getComputedStyle(e); const c = rgba(s.backgroundColor); return (c && c[3] > 0.5) || s.boxShadow !== "none" || (parseFloat(s.borderTopWidth) > 0 && parseFloat(s.borderLeftWidth) > 0) || s.backgroundImage !== "none" || !!e.querySelector(":scope > img, :scope > a > img, :scope > figure"); };
     const med = (a) => { const b = [...a].sort((x, y) => x - y); return b[Math.floor(b.length / 2)]; };
     const stackGap = (e) => {
       for (const host of [e, ...e.children]) {
@@ -49,7 +53,7 @@ export async function measureDesign(p, isSub) {
       if (groups.length >= 4) break;
       const b = e.getBoundingClientRect(); if (b.width < W * 0.4 || b.top + sy >= fTop || e.closest("header, footer, nav")) continue;
       if (groups.some((g) => g.el.contains(e))) continue;
-      const kids = [...e.children].filter(vis).map((k) => ({ k, b: k.getBoundingClientRect() })).filter((o) => o.b.width >= 150 && o.b.height >= 80);
+      const kids = [...e.children].filter(vis).map((k) => ({ k, b: k.getBoundingClientRect() })).filter((o) => o.b.width >= 150 && o.b.height >= 80 && !ctrlBox(o.k));
       if (kids.length < 2) continue;
       if (kids.some((o) => o.k.matches("aside, nav, [class*=lnb], [class*=snb], [class*=side]"))) continue; // 옆 메뉴와 본문 사이는 묶음 간격이 아니다
       const lines = [];

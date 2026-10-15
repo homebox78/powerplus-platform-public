@@ -7,7 +7,7 @@ import { cn, Modal, Ms } from "./ui";
 export type DesignType = { id: string; name: string; desc: string; fits: string; samples?: number };
 export const DESIGN_TYPES: DesignType[] = (data as { styles: DesignType[] }).styles.map((s) => ({ ...s, samples: s.samples ?? 4 }));
 export const typeName = (id?: string | null) => DESIGN_TYPES.find((t) => t.id === (id || "a"))?.name ?? "공공 제안 클레이";
-export const THUMB_V = 19;   // 샘플 그림을 바꾸면 올린다(브라우저 캐시)
+export const THUMB_V = 20;   // 샘플 그림을 바꾸면 올린다(브라우저 캐시)
 export const thumb = (id: string, n: number) => `${import.meta.env.BASE_URL}styles/${id}/${n}.jpg?v=${THUMB_V}`;
 const hide = (e: { target: EventTarget }) => { (e.target as HTMLImageElement).style.visibility = "hidden"; };
 

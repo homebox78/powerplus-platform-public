@@ -107,7 +107,8 @@ function measure({ primary }) {
 
   // ⑥ 꼬리 한 줄 — 두 줄 이상 문장의 마지막 줄이 4글자 이하(PREFERENCES "꼬리 한 줄 금지")
   // 16자 이상 글은 마지막 줄이 한 낱말(8자 이하)이면, 16자 미만 짧은 글(카드 제목 "학교 시설 점검 결과 / 공개")은 두 줄 + 마지막 줄 3자 이하 한 낱말일 때만(O-52)
-  const tailIn = (scope, note) => { for (const el of scope.querySelectorAll("p, li, dd, span, a, h2, h3, h4")) { if (!vis(el) || el.closest("header, footer") || el.children.length) continue;
+  // O-54: 카드 제목을 strong·b 로 쓰는 시안이 많아 강조 태그·표 칸도 본다(71 "…문 열 / 어" 를 못 잡던 것)
+  const tailIn = (scope, note) => { for (const el of scope.querySelectorAll("p, li, dd, dt, span, a, h2, h3, h4, h5, strong, b, em, td")) { if (!vis(el) || el.closest("header, footer") || el.children.length) continue;
     const node = el.firstChild; if (!node || node.nodeType !== 3) continue; const t = node.nodeValue; const short = t.trim().length < 16; if (short && (t.trim().length < 4 || !/\s/.test(t.trim()))) continue;
     // line-clamp·overflow 로 잘려 안 보이는 줄은 줄로 세지 않는다(693 제목 3번째 줄을 꼬리로 잡던 것) — 보이는 아래 끝 = 자기·잘라 내는 조상 중 가장 위
     let visB = el.getBoundingClientRect().bottom; for (let a = el; a && a !== document.body; a = a.parentElement) { const st = getComputedStyle(a); if (/hidden|clip/.test(st.overflowY + st.overflow)) visB = Math.min(visB, a.getBoundingClientRect().bottom); }

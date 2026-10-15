@@ -490,16 +490,42 @@ def compose(kind, bg_png, texts, st, accent, title_font=None, body_font=None, lo
                         nm = nm[:-1]
                     _draw(d, x + (colw - _width(nm, f_nm, rs * -0.017)) / 2, y + rs * 1.5, nm, f_nm, title_c, rs * -0.017)
                     x += colw
-            else:
-                for no, name in rows:
-                    d.text((X, y), f"{int(no):02d}", font=f_no, fill=key_c)
-                    nx = X + f_no.getlength("00") + rs * 0.8
-                    nm = name
-                    while _width(nm, f_nm, rs * -0.017) > textw - (nx - X) and len(nm) > 4:
-                        nm = nm[:-1]
-                    _draw(d, nx, y + (rs * 1.05 - rs) * 0.5, nm, f_nm, title_c, rs * -0.017)
-                    y += rs * 2.4
-                y -= rs * 1.25   # 마지막 줄 아래 간격은 빼고 잰다(카드 아래 여백)
+            else:   # 번호 01~ · 굵은 장 이름(자르지 않는다 — 줄이고, 그래도 넘치면 두 줄) · 그 아래 절 이름 작은 회색(학습-표지목차간지: 4~5장 보통, 6장 넘으면 두 열)
+                cols = 2 if n > 6 else 1
+                per = (n + cols - 1) // cols
+                colw = textw / cols
+                sub_c2 = _hex("6B7280") if not dark else _hex("C7D2E6")
+                has_sub = any(len(r) > 2 and r[2] for r in rows)
+                unit = 1.25 + (0.62 if has_sub else 0) + 0.75   # 줄 높이(rs 배수): 이름 + 절 + 사이
+                rs = min(H * 0.046, (H * 0.86 - y) / max(1, per) / unit)
+                f_no = _font(tpath, rs * 1.05)
+                y0 = y
+                for i, r in enumerate(rows):
+                    no, name = r[0], r[1]
+                    subs = [str(t).replace("**", "") for t in (r[2] if len(r) > 2 else []) if str(t).strip()]
+                    cx = X + (i // per) * colw
+                    yy = y0 + (i % per) * rs * unit
+                    d.text((cx, yy), f"{int(no):02d}", font=f_no, fill=key_c)
+                    nx = cx + f_no.getlength("00") + rs * 0.7
+                    room = colw - (nx - cx) - W * 0.01
+                    ns = rs
+                    while ns > rs * 0.72 and _width(name, _font(tpath, ns), ns * -0.017) > room:
+                        ns -= rs * 0.02
+                    f_nm2 = _font(tpath, ns)
+                    nl = [name] if _width(name, f_nm2, ns * -0.017) <= room else _wrap_even(name, f_nm2, ns * -0.017, room)[:2]
+                    for k, ln in enumerate(nl):
+                        _draw(d, nx, yy + (rs * 1.05 - ns) * 0.5 + k * ns * 1.1, ln, f_nm2, title_c, ns * -0.017)
+                    if subs:
+                        sy = yy + rs * 1.25 + (len(nl) - 1) * ns * 1.1
+                        ss = rs * 0.5
+                        f_sub = _font(semi, ss)
+                        shown = list(subs)
+                        txt = " · ".join(shown)
+                        while len(shown) > 1 and f_sub.getlength(txt) > room:   # 말줄임 없이 — 들어가는 만큼, 남으면 '외 N'
+                            shown.pop()
+                            txt = " · ".join(shown) + f" 외 {len(subs) - len(shown)}"
+                        d.text((nx, sy), txt, font=f_sub, fill=sub_c2)
+                y = y0 + per * rs * unit - rs * 0.75   # 마지막 줄 아래 간격은 빼고 잰다(카드 아래 여백)
 
         else:   # div
             no = texts.get("no", 1)

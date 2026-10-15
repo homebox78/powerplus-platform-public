@@ -52,6 +52,15 @@ if [ -n "$DIRTY" ]; then
   fi
 fi
 
+# 5-1. 원격 main 보다 뒤처진 사본에서 배포 금지(R47) — 분리된 작업 트리(pp-wt-*)가 옛 HEAD 로 엔진을 올려
+#      13초 앞서 올린 main 의 새 커밋(목차 개편)을 서버에서 덮었다(2026-10-15). 배포 범위 경로만 비교한다
+if git fetch -q origin main 2>/dev/null; then
+  BEHIND=$(git log --oneline HEAD..origin/main -- "${PATHS[@]}" 2>/dev/null | head -5)
+  if [ -n "$BEHIND" ] && [ "${PP_ALLOW_BEHIND:-0}" != 1 ]; then
+    echo "$BEHIND"; bad "이 사본은 origin/main 보다 배포 범위($SCOPE) 커밋이 뒤처졌다 — 올리면 서버의 새 코드를 덮는다. main 을 받아(rebase/merge) 다시"
+  fi
+fi
+
 # 6. 역슬래시가 빠진 정규식(R38) — sed·heredoc·node 문자열로 JS 를 고치다 \d·\(·\s 가 사라져 검사가 아예 안 돌았다
 #    (2026-10-15 판정기 layout.mjs·check.mjs 3곳: 어두운 배경·투명 입력칸·덮임 — 통과만 시키고 아무것도 못 잡음)
 # 판정기는 deploy-mcp.sh 로 올라가므로 mcp 범위에서도 돈다(2026-10-15: web 에만 걸려 MCP 배포 때는 안 돌던 것)

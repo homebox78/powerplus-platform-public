@@ -2973,7 +2973,7 @@ def make_front_mockup(job, f, plan, accent, feedback=""):
     elif k == "toc":
         rows = "\n".join(f'{c["no"]}. {c["name"]}' for c in f["chapters"])
         draw = {"label": front_word(getattr(job, "lang", "ko"), "toc", "목차"), "tag": plan.get("title") or "",
-                "rows": [(c["no"], re.sub(r"^[ⅠⅡⅢⅣⅤⅥⅦⅧⅨⅩIVX0-9]+[.．]\s*", "", str(c["name"])) or c["name"]) for c in f["chapters"]]}
+                "rows": [(c["no"], re.sub(r"^[ⅠⅡⅢⅣⅤⅥⅦⅧⅨⅩIVX0-9]+[.．]\s*", "", str(c["name"])) or c["name"], [str(t) for t in (c.get("items") or [])][:6]) for c in f["chapters"]]}   # 절 이름도 — 장 이름 아래 작은 회색 줄
         if len(f["chapters"]) == 1:
             rows = "\n".join(f"{i + 1}. {t}" for i, t in enumerate(f["chapters"][0]["items"][:14]))
             draw["rows"] = [(i + 1, str(t).replace("**", "")) for i, t in enumerate(f["chapters"][0]["items"][:14])]

@@ -10,7 +10,7 @@ export const VERTICAL_STYLES: VerticalStyle[] = [
   { id: "band", name: "클래식 밴드", desc: "꽉 찬 머리 띠 + 흰 글씨 · 간지는 가운데 태그" },
   { id: "tab", name: "인덱스 탭", desc: "왼쪽 탭 머리 + 밑선 · 간지는 왼쪽 정렬" },
   { id: "side", name: "사이드 레일", desc: "왼쪽 세로 레일에 장 번호·이름 · 간지는 굵은 레일" },
-  { id: "split", name: "다크 키비주얼", desc: "표지·간지에 파워에셋 다크 3D 전면 배경 + 흰 글씨 · 본문은 2단 머리" },
+  { id: "split", name: "다크 키비주얼", desc: "표지는 파워에셋 다크 3D 전면 배경 · 간지·본문은 흰 바탕에 같은 분위기의 띠" },
   { id: "pill", name: "플로팅 필", desc: "여백 둔 둥근 머리 띠 · 간지는 둥근 태그" },
   { id: "line", name: "미니멀 라인", desc: "위쪽 굵은 줄 + 진한 글씨 · 간지는 큰 장 번호" },
 ];
@@ -26,7 +26,7 @@ export const VERTICAL_TONES: VerticalTone[] = [
 ];
 export const verticalStyleName = (id?: string | null) => VERTICAL_STYLES.find((t) => t.id === (id || "band"))?.name ?? "클래식 밴드";
 export const verticalToneName = (id?: string | null) => VERTICAL_TONES.find((t) => t.id === (id || "navy"))?.name ?? "네이비";
-const THUMB_V = 6;   // 6: 스플릿 → 다크 키비주얼 표지·간지(2026-10-15)
+const THUMB_V = 8;   // 8: 다크 키비주얼 간지 띠 — 그라데이션 대신 곡선 마감(2026-10-15)
 const PAGES = ["표지", "목차", "간지", "본문"];
 const thumb = (id: string, n: number) => `${import.meta.env.BASE_URL}vstyles/${id}/${n}.jpg?v=${THUMB_V}`;
 

@@ -823,6 +823,60 @@ def full_bg(blob=None):
     return b.getvalue()
 
 
+def _glow_strip(blob, w_px, h_px, cy=0.62, veil=0.3):
+    """다크 키비주얼에서 빛나는 물체가 있는 가로 띠를 잘라 온다(cy = 원본 높이에서 띠 가운데). 흰 글씨가 읽히게 veil 만큼 짙은 막"""
+    if blob is None:
+        im = Image.new("RGB", (2, 1))
+        im.putdata([(10, 26, 58), (24, 60, 130)])
+        return im.resize((w_px, h_px), Image.BILINEAR)
+    src = Image.open(io.BytesIO(blob)).convert("RGB")
+    ch = min(src.height, int(src.width * h_px / w_px))
+    y0 = max(0, min(src.height - ch, int(src.height * cy - ch / 2)))
+    im = src.crop((0, y0, src.width, y0 + ch)).resize((w_px, h_px), Image.LANCZOS)
+    return Image.blend(im, Image.new("RGB", im.size, (6, 12, 32)), veil) if veil else im
+
+
+def band_bg(blob, accent="2F5BD3", h_cm=5.2):
+    """다크 키비주얼 띠 간지 배경 — 흰 쪽 위쪽 h_cm(머리 사업명·장 태그 자리)만 표지 분위기(빛나는 물체 가로 띠).
+    아래 끝은 또렷하게 자른 곡선(왼쪽 h_cm → 오른쪽 + 0.9cm 로 휘어 내려감)과 그 아래 톤 색 가는 곡선으로 마무리한다
+    (사용자 2026-10-15 "흐지부지 그라데이션으로 끝나는 건 싫다, 마감은 딱 잘려야 하고 곡선 같은 디자인으로 마무리").
+    3배로 그려 줄여 곡선 경계를 매끈하게(계단 없음)"""
+    from PIL import ImageDraw
+    S = 3
+    bh, amp = PH * h_cm / PAGE_H, PH * 0.9 / PAGE_H
+    th, gap = PH * 0.07 / PAGE_H, PH * 0.22 / PAGE_H
+    H = int(bh + amp + gap + th * 2 + 4)
+    strip = _glow_strip(blob, PW, H, 0.6, 0.35)
+    edge = lambda x, off=0.0: (bh + amp * (0.5 - 0.5 * math.cos(math.pi * x / PW)) + off) * S   # 왼쪽 bh → 오른쪽 bh+amp
+    xs = [PW * k / 120 for k in range(121)]
+    mask = Image.new("L", (PW * S, H * S), 0)
+    ImageDraw.Draw(mask).polygon([(0, 0), (PW * S, 0)] + [(x * S, edge(x)) for x in reversed(xs)], fill=255)
+    mask = mask.resize((PW, H), Image.LANCZOS)
+    page = Image.new("RGB", (PW, PH), (255, 255, 255))
+    page.paste(strip, (0, 0), mask)
+    line = Image.new("L", (PW * S, H * S), 0)
+    ImageDraw.Draw(line).line([(x * S, edge(x, gap)) for x in xs], fill=255, width=max(1, int(th * S)))
+    rgb = tuple(int(accent[i:i + 2], 16) for i in (0, 2, 4))
+    page.paste(Image.new("RGB", (PW, H), rgb), (0, 0), line.resize((PW, H), Image.LANCZOS))
+    b = io.BytesIO()
+    page.save(b, "JPEG", quality=90)
+    return b.getvalue()
+
+
+def fill_image(owner, el, im):
+    """도형(el)의 채움을 그림으로 — 마스터·쪽 어디든(owner 의 그림 부품으로 넣는다)"""
+    b = io.BytesIO()
+    im.save(b, "JPEG", quality=88)
+    _, rid = owner.part.get_or_add_image_part(io.BytesIO(b.getvalue()))
+    sp = el.find("p:spPr", NS)
+    for f in list(sp):
+        if f.tag.split("}")[1] in ("solidFill", "gradFill", "noFill", "blipFill", "pattFill"):
+            sp.remove(f)
+    geom = sp.find("a:prstGeom", NS)
+    blip = parse_xml(f'<a:blipFill xmlns:a="{A}" xmlns:r="{R}" rotWithShape="1"><a:blip r:embed="{rid}"/><a:stretch><a:fillRect/></a:stretch></a:blipFill>')
+    geom.addnext(blip) if geom is not None else sp.append(blip)
+
+
 def backgrounds(job, o, kind="photo"):
     """표지·목차·간지(장마다) 배경. 같은 그림을 두 번 쓰지 않는다. kind = 톤에 맞는 세로 배경 세트(photo|3d)"""
     used, out, log = set(), {}, []
@@ -861,7 +915,7 @@ STYLES = {
     "band":  {"label": "클래식 밴드", "desc": "꽉 찬 머리 띠 + 흰 글씨, 간지는 가운데 태그"},
     "tab":   {"label": "인덱스 탭", "desc": "왼쪽 탭 머리 + 밑선, 간지는 왼쪽 정렬"},
     "side":  {"label": "사이드 레일", "desc": "왼쪽 세로 레일에 장 번호·장 이름, 간지는 굵은 레일 + 큰 번호"},
-    "split": {"label": "다크 키비주얼", "desc": "진한 블록(장) + 연한 블록(사업명) 2단 머리, 표지·간지는 파워에셋 다크 3D 전면 배경 + 흰 글씨"},
+    "split": {"label": "다크 키비주얼", "desc": "표지는 파워에셋 다크 3D 전면 배경 + 흰 글씨, 간지는 흰 바탕 + 위쪽 다크 띠, 본문 머리 짙은 칸에 같은 빛 띠"},
     "pill":  {"label": "플로팅 필", "desc": "여백 둔 둥근 머리 띠, 간지는 둥근 태그"},
     "line":  {"label": "미니멀 라인", "desc": "위쪽 굵은 줄 + 진한 글씨, 간지는 큰 장 번호 + 가는 선"},
 }
@@ -1089,10 +1143,8 @@ def apply_theme(prs, st, tn, masters):
                     p_.alignment = 2
                     for r in p_.runs:
                         r.font.size = Pt(72)
-            if is_tag:
+            if is_tag:   # 다크 키비주얼(split)은 장 태그가 위쪽 띠 안 — 흰 글씨. 장 제목은 띠 아래 흰 바탕이라 먹색 그대로
                 _recolor_el(sh._element, tn["point"] if st == "line" else "FFFFFF")
-            elif st == "split":
-                _recolor_el(sh._element, "FFFFFF")
     # ── 목차 머리
     for nm in ("그룹 2", "자유형 34"):
         for x in named(m_toc.shapes, nm):
@@ -1427,6 +1479,10 @@ class Build:
         self.m_div = master_of(self.prs, "vertical-divider")
         self.m_cover = master_of(self.prs, "vertical-cover")
         apply_theme(self.prs, self.style, self.th, (self.m_body, self.m_toc, self.m_div, self.m_cover))
+        if self.style in DARK_STYLES:   # 본문 머리 짙은 칸 = 표지 다크 키비주얼의 빛나는 띠(표지 분위기만 살짝 — 목차 머리는 그대로)
+            for x in named(self.m_body.shapes, "머리 띠"):
+                w_, h_ = x.width / 360000, x.height / 360000
+                fill_image(self.m_body, x._element, _glow_strip(self.bgs.get("cover"), int(w_ * 60), int(h_ * 60), 0.62, 0.25))
         self.normalize_body()
         self.pageno = {}     # (장 번호) → 쪽 수
         self.trimmed = []    # 넘쳐서 덜어 낸 행(작업 기록에 남긴다)
@@ -1630,15 +1686,11 @@ class Build:
             lw = max([text_cm(f"{k}. {sec['title']}", sz) for k, sec in enumerate(c.get("sections") or [], 1)] or [6.0])
             b.left = Cm(max(1.2, (PAGE_W - lw) / 2 - 0.25))
         b.width = Cm(PAGE_W) - b.left - Cm(1.2)
-        if self.style == "split":   # 위쪽 색 블록 위 — 흰 글씨
-            for r in b._element.iter(f"{{{A}}}rPr"):
-                for c_ in r.findall(f"{{{A}}}solidFill") + r.findall(f"{{{A}}}gradFill"):
-                    r.remove(c_)
-                r.insert(0, parse_xml(f'<a:solidFill xmlns:a="{A}"><a:srgbClr val="FFFFFF"/></a:solidFill>'))
+        # 다크 키비주얼 간지는 흰 바탕 + 위쪽 띠(band_bg) — 목록은 띠 아래라 먹색 그대로(2026-10-15, 예전엔 위쪽 색 블록이라 흰 글씨)
         if self.bgs.get(f"div{i}"):
-            set_bg(s, full_bg(self.bgs[f"div{i}"]) if self.style in DARK_STYLES else compose(self.bgs[f"div{i}"], 1.0, 0.5, 0.72, 0.8, 0.6))
-        elif self.style in DARK_STYLES:   # 배경을 못 구했으면 짙은 남색 바탕이라도 — 흰 글씨가 흰 바탕에 묻히지 않게(도형으로 덮으면 레이아웃의 장 제목이 가려진다)
-            set_bg(s, full_bg())
+            set_bg(s, band_bg(self.bgs[f"div{i}"], self.th["point"]) if self.style in DARK_STYLES else compose(self.bgs[f"div{i}"], 1.0, 0.5, 0.72, 0.8, 0.6))
+        elif self.style in DARK_STYLES:   # 배경을 못 구했으면 짙은 남색 띠라도 — 띠 위 흰 장 제목이 흰 바탕에 묻히지 않게(도형으로 덮으면 레이아웃의 장 제목이 가려진다)
+            set_bg(s, band_bg(None, self.th["point"]))
         return s
 
     # 본문 — 견본 장표를 복제해 글을 채우고, 블록은 아래로 쌓는다

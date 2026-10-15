@@ -321,7 +321,7 @@
         "key": "#1F4FE0",
         "key_dark": "#93C5FD",
         "layout": {
-          "toc": "center",
+          "toc": "left",
           "div": "left"
         },
         "badge": "pill"

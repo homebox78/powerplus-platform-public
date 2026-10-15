@@ -26,6 +26,7 @@ export default [
     route("admin/ai", "./routes/admin-ai.tsx"),
     route("admin/users", "./routes/admin-users.tsx"),
     route("admin/point-rules", "./routes/admin-point-rules.tsx"),
+    route("admin/billing", "./routes/admin-billing.tsx"),
     route("admin/mail", "./routes/admin-mail.tsx"),
     route("admin/contacts", "./routes/admin-contacts.tsx"),
     route("admin/removals", "./routes/admin-removals.tsx"),

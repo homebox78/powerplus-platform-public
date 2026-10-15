@@ -45,9 +45,9 @@
         }
       },
       "front_engine": {
-        "cover": "main",
-        "toc": "main",
-        "div": "main"
+        "cover": "gpt",
+        "toc": "gpt",
+        "div": "gpt"
       },
       "front_set": "flat"
     },
@@ -117,7 +117,8 @@
           "toc": "left",
           "div": "left"
         }
-      }
+      },
+      "front_accent": false
     },
     {
       "id": "c",
@@ -228,9 +229,9 @@
         }
       },
       "front_engine": {
-        "cover": "nb2",
-        "toc": "nb2",
-        "div": "nb2"
+        "cover": "both",
+        "toc": "both",
+        "div": "both"
       },
       "front_set": "photo",
       "body_point": "본문 그림은 표지와 같은 스튜디오 실사 — 옅은 페리윙클 빛, 흰 책상 위 사업 모형·기기와 젖빛 유리 UI 카드. 카드도 젖빛 유리처럼 옅게. 그림은 보조(본문의 35% 이하), 카드·숫자·결론 띠가 주인공. 레이아웃·글은 A 와 같게.",
@@ -317,7 +318,8 @@
           "toc": "center",
           "div": "center"
         }
-      }
+      },
+      "front_accent": false
     },
     {
       "id": "f",
@@ -364,9 +366,9 @@
         }
       },
       "front_engine": {
-        "cover": "main",
-        "toc": "main",
-        "div": "main"
+        "cover": "gpt",
+        "toc": "gpt",
+        "div": "gpt"
       },
       "front_set": "navy",
       "body_point": "본문 그림·인물·아이콘을 표지·간지·목차와 같은 **가는 선의 플랫 벡터 일러스트**로(얇은 외곽선, 제한된 색 2~3가지 — 강조색·남색·옅은 하늘). 3D 클레이·사진을 쓰지 않는다. 결론 띠와 강조 카드 한 곳은 짙은 단색(강조색).",

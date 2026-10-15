@@ -261,6 +261,29 @@ def test_spec_text_fills():
         D.spec_text(t, "#E8336D")
 
 
+def test_front_text_clears_picture():
+    """앞장 글 밑에 그림이 있으면 그림을 줄여 밀어내고(양성), 글 자리가 비어 있으면 손대지 않는다(음성) — 10-15 E 표지 사업명이 미니어처와 겹침"""
+    import frontdraw as F
+    from PIL import Image, ImageDraw
+    W, H = F.W, F.H
+    text = Image.new("L", (W, H), 0)
+    ImageDraw.Draw(text).rectangle([170, 600, 1200, 800], fill=255)   # 왼쪽 사업명 자리
+    busy = Image.new("RGB", (W, H), (243, 245, 250))
+    d = ImageDraw.Draw(busy)
+    for i in range(12):   # 글 자리 오른쪽 끝까지 들어온 파랑 블록들
+        x = 900 + i * 110
+        d.rectangle([x, 620 + (i % 3) * 60, x + 70, 690 + (i % 3) * 60], fill=(31, 79, 224))
+    moved = F._clear_text(busy, text, "left")
+    assert moved is not None, "글 밑 그림을 못 잡았다"
+    m = F._busy(moved).load()
+    assert not any(m[x, y] for x in range(170 // 8, 1200 // 8) for y in range(600 // 8, 800 // 8)), "밀어낸 뒤에도 글 밑에 그림이 남았다"
+    clean = Image.new("RGB", (W, H), (243, 245, 250))
+    ImageDraw.Draw(clean).rectangle([1500, 500, 2200, 1300], fill=(31, 79, 224))
+    assert F._clear_text(clean, text, "left") is None, "빈 글 자리인데 그림을 움직였다"
+    edge = Image.new("RGB", (W, H), (200, 210, 230))   # 테두리만 있는 그림 — 테두리 윤곽을 그림으로 잡지 않는다
+    assert F._clear_text(edge, text, "left") is None, "그림 테두리를 그림으로 잡았다"
+
+
 def test_registry_consistent():
     """known_errors.json 의 모든 test 가 이 파일에 있고, slug 가 겹치지 않는다"""
     items = json.load(open(os.path.join(ENGINE, "known_errors.json"), encoding="utf-8"))["items"]

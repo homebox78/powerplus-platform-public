@@ -463,7 +463,7 @@ final class Jobs
                 $fe = is_array($plan['front_edit'] ?? null) ? $plan['front_edit'] : [];
                 foreach ($b['front_edit'] as $fid => $v) {
                     if (!preg_match('/^(cover|toc|end|qna|div\d{0,2})$/', (string) $fid) || !is_array($v)) continue;
-                    foreach (['title' => 200, 'project' => 200, 'tail' => 60, 'date' => 40, 'name' => 120, 'desc' => 120] as $k => $max) {
+                    foreach (['title' => 200, 'project' => 200, 'tail' => 60, 'date' => 40, 'name' => 120, 'desc' => 120, 'slogan' => 60] as $k => $max) {   // slogan = 표지 사업명 위 키메시지(2026-10-15)
                         if (!array_key_exists($k, $v)) continue;
                         $fe[$fid][$k] = mb_substr(trim((string) $v[$k]), 0, $max);
                     }

@@ -494,7 +494,7 @@ def ref_image_b64(ref, max_w=1280):
 PLAN_SYSTEM = """너는 공공 SI 제안서의 장표 기획자다. 사용자가 준 내용을 장표 단위로 나누고, 장마다 **무엇을 전달할지**를 먼저 정한 뒤 어떤 장면·구성으로 그릴지 정한다.
 반드시 아래 JSON 하나만 출력한다(설명·코드펜스 없이).
 
-{"title": "장표 묶음 제목", "core": "이 제안 전체를 한 문장으로 — 발주기관이 왜 우리에게 맡겨야 하는지(모든 장의 message 가 이 문장으로 이어진다)", "slides": [
+{"title": "장표 묶음 제목", "slogan": "표지 사업명 바로 위에 작게 찍는 키메시지 한 줄 — 공백 포함 12~22자, 사업이 지향하는 모습을 '…을 위한'·'…으로' 꼴로(예: '스마트한 도시, 더 안전한 내일을 위한'). 사업명 낱말을 되풀이하지 않는다", "core": "이 제안 전체를 한 문장으로 — 발주기관이 왜 우리에게 맡겨야 하는지(모든 장의 message 가 이 문장으로 이어진다)", "slides": [
   {"n": 1, "section": "장 이름 · 절 이름 (예: 사업 이해 · 추진 배경) — 장(章) 이름은 덱 전체에 4~6개만, 같은 장의 장표는 이어 붙인다", "title": "장 제목(헤드라인, 한 문장 — 한 줄에 들어가게 공백 포함 31자 안팎)", "keyword": "title 안에서 강조색으로 칠할 핵심어 1~2개 — title 에 글자 그대로 있는 말, 여럿이면 쉼표로. 예: '의약품 AI'", "type": "내용 유형(카탈로그 표의 이름)",
    "message": "이 장이 심사위원에게 전달할 한 문장 — 예: '정보가 기관마다 흩어져 있어 이용자는 어디서 무엇을 봐야 할지 모른다'",
    "mood": "문제 제기 | 배경·현황 | 해결·제안 | 절차·방법 | 성과·증명 | 조직·인력 | 마무리 중 하나",
@@ -914,7 +914,7 @@ def parse_plan_md(md):
 OUTLINE_SYSTEM = """너는 공공 SI 제안서의 총괄 기획자다. 장표가 많은 덱의 **개요**만 먼저 짠다 — 장(章) 구성, 장마다 장표 수와 각 장표가 말할 것.
 반드시 아래 JSON 하나만 출력한다(설명·코드펜스 없이).
 
-{"title": "덱 제목", "core": "이 제안 전체를 한 문장으로", "chapters": [
+{"title": "덱 제목", "slogan": "표지 사업명 바로 위에 작게 찍는 키메시지 한 줄 — 공백 포함 12~22자, 사업이 지향하는 모습을 '…을 위한'·'…으로' 꼴로(예: '스마트한 도시, 더 안전한 내일을 위한'). 사업명 낱말을 되풀이하지 않는다", "core": "이 제안 전체를 한 문장으로", "chapters": [
   {"no": 1, "name": "장 이름(짧게, 예: 사업 이해)", "eval": "이 장이 답하는 평가 항목과 배점(자료에 있으면)", "goal": "이 장이 심사위원에게 남길 한 문장(기획 메모 — 화면에 안 나감)", "promise": "간지에 찍히는 약속 한 줄(아래 간지 규칙)",
    "slides": [{"title": "헤드라인 초안 — 주장 한 문장", "message": "전달할 것 한 문장", "mood": "문제 제기 | 배경·현황 | 해결·제안 | 절차·방법 | 성과·증명 | 조직·인력 | 마무리",
                "density": "보통 | 촘촘", "sources": "자료에서 이 장에 쓸 근거 키워드 3~6개(항목명·수치·시스템 이름, 쉼표로)"}]}
@@ -1114,7 +1114,7 @@ def plan_in_stages(job, system, base_user, slide_count, raw):
             job.event(f"얇은 장 다시 쓰기 실패 — 앞 기획을 그대로 씁니다: {str(e)[:100]}", "warn")
     # 장(章)마다 핵심 한 줄 — 간지의 설명 문구가 된다(장표 제목을 늘어놓지 않는다)
     chapters = [{"name": str(c.get("name") or "본문").strip(), "goal": str(c.get("goal") or "").strip(), "promise": str(c.get("promise") or "").strip()} for c in chs]
-    return {"title": outline.get("title") or "", "core": outline.get("core") or "", "chapters": chapters, "slides": slides}
+    return {"title": outline.get("title") or "", "slogan": str(outline.get("slogan") or "").strip(), "core": outline.get("core") or "", "chapters": chapters, "slides": slides}
 
 
 PURPOSE = {
@@ -2825,6 +2825,8 @@ DIV_LIGHT = ("\nLIGHT TONE (this overrides any dark, cobalt or navy full-page ba
 def front_treatment(job, k, accent):
     """이 덱 앞장의 배경 장식 한 줄(영문). 간지는 더 조용하게"""
     import zlib
+    if (getattr(job, "style", None) or {}).get("front_accent") is False:   # 배경 처리가 프롬프트에 이미 있는 타입(B·E) — 강조색 고리·물결을 얹으면 그 규칙과 부딪힌다(2026-10-15 분홍 고리)
+        return ""
     t = FRONT_TREATMENTS[zlib.crc32(str(getattr(job, "id", "")).encode()) % len(FRONT_TREATMENTS)].replace("{accent}", accent or "#FF2A6D")
     if k == "div":
         return ("BACKGROUND ACCENT (same deck decoration as the cover, but quieter): " + t
@@ -2853,7 +2855,7 @@ def front_specs(plan, opts, title, project):
     if f.get("cover"):
         out.append({"id": "cover", "kind": "cover", "label": "표지", "title": title, "project": project,
                     "tail": str((opts or {}).get("event") or "").strip() or (front_word(lc, "submit", "제안서") if str((opts or {}).get("purpose") or "present") == "submit" else front_word(lc, "present", "제안설명회")),
-                    "date": str((opts or {}).get("date") or "").strip()})
+                    "date": str((opts or {}).get("date") or "").strip(), "slogan": str(plan.get("slogan") or "").strip()})
     if f.get("toc") and slides:
         out.append({"id": "toc", "kind": "toc", "label": "목차",
                     "chapters": [{"no": i + 1, "name": c["name"] or front_word(lc, "body", "본문"), "items": [t for _, t in c["items"]]} for i, c in enumerate(chs)]})
@@ -2868,7 +2870,7 @@ def front_specs(plan, opts, title, project):
     fe = plan.get("front_edit") if isinstance(plan.get("front_edit"), dict) else {}
     for x in out:
         for k, v in (fe.get(x["id"]) or {}).items():
-            if k in ("title", "project", "tail", "date", "name", "desc") and str(v).strip():
+            if k in ("title", "project", "tail", "date", "name", "desc", "slogan") and str(v).strip():
                 x[k] = str(v).strip()
         if x["kind"] == "toc":
             for c in x["chapters"]:
@@ -2896,6 +2898,25 @@ def front_refs(kind, st=None, tset=None):
     return [b for b in (file_b64(p) for p in fs[:3]) if b]
 
 
+def cover_slogan(job, plan, project=""):
+    """표지 사업명 위 작은 키메시지 — 기획에 없으면(옛 작업·MD 기획) 글 모델로 한 번 짓고 기획에 남긴다. 실패하면 빈 글"""
+    s = str(plan.get("slogan") or "").strip()
+    if s:
+        return s
+    try:
+        o = _plan_call(job, '너는 공공 SI 제안서 표지 카피라이터다. JSON 하나만 출력한다: {"slogan": "…"}',
+                       f"사업명: {project or plan.get('title') or ''}\n제안 핵심: {plan.get('core') or ''}\n\n"
+                       "표지 사업명 바로 위에 작게 찍을 키메시지 한 줄을 지어라 — 공백 포함 12~22자, 사업이 지향하는 모습을 '…을 위한'·'…으로' 꼴로"
+                       "(예: '스마트한 도시, 더 안전한 내일을 위한'). 사업명 낱말을 되풀이하지 않고, 자료에 없는 수치를 넣지 않는다.", 300, "표지 키메시지", timeout=120)
+        s = re.sub(r"\s+", " ", str((o or {}).get("slogan") or "")).strip().strip('"「」')[:30]
+    except Exception as e:
+        job.event(f"표지 키메시지를 짓지 못해 빼고 만듭니다: {str(e)[:100]}", "warn")
+        s = ""
+    if s:
+        plan["slogan"] = s
+    return s
+
+
 def make_front_mockup(job, f, plan, accent, feedback=""):
     import datetime
     if f["kind"] in ("end", "qna"):   # 엔딩·질의응답 — 간지와 같은 한 벌의 모습(배경·그림·글 배치), PART 번호 없이 큰 글 + 한 줄
@@ -2908,10 +2929,12 @@ def make_front_mockup(job, f, plan, accent, feedback=""):
     draw = {}   # 엔진이 서체로 얹을 글(나노바나나 앞장)
     if k == "cover":
         big = f.get("project") or f.get("title") or plan.get("title") or ""   # 표지 큰 글 = 사업명(작업 이름은 파일 이름인 경우가 많다). 사람이 넣은 줄바꿈은 그대로
-        draw = {"title": big, "small": "",
+        slogan = f.get("slogan") or cover_slogan(job, plan, big)   # 사업명 바로 위 작은 키메시지 — A~F 모든 타입(2026-10-15 사용자)
+        draw = {"title": big, "small": slogan,
                 "tail": f.get("tail") or "제안설명회", "date": f.get("date") or datetime.date.today().strftime("%Y. %m.")}
-        detail = (f'Proposal title (largest text, at most 2 lines, line break exactly where shown): "{big}"\n'
-                  + 'No slogan line and no stage mark such as "(1차)" unless it is given above — never invent one.\n'
+        detail = ((f'Small key message line right above the title (one line, about 40% of the title size, regular weight, dark color): "{slogan}"\n' if slogan else "")
+                  + f'Proposal title (largest text, at most 2 lines, line break exactly where shown): "{big}"\n'
+                  + 'No other slogan line and no stage mark such as "(1차)" unless it is given above — never invent one.\n'
                   + f'Small tail label right under the title (accent color): "{f.get("tail") or "제안설명회"}"\n'
                   + f'Date (very small, under the tail label): "{f.get("date") or datetime.date.today().strftime("%Y. %m.")}"\n'
                   "Do not draw any logo.")
@@ -2972,7 +2995,7 @@ def make_front_mockup(job, f, plan, accent, feedback=""):
     tset = None if st.get("front_free") else front_set(job, plan)   # front_free — 템플릿 한 벌의 그림·설명을 쓰지 않는 타입(B)
     if tset and tset.get(k + "_what"):   # 한 벌의 그 장 모습 — 표지·목차·간지가 같은 덱으로 보이게
         rules += f"\n- 이 덱의 한 벌 '{tset.get('name', '')}': {tset[k + '_what']}. (그림은 표지·다른 장의 것을 다시 쓰지 않고, 같은 화풍으로 이 장의 주제에 맞게 새로 만든다.) 첫 참고 그림(들)이 바로 이 모습이다 — 구성·배경·색·글 자리·그림 장치를 거의 그대로 따른다(이 벌의 모습이 기준이다). 그림 화풍: {tset.get('art', '')}. 본문의 3D 클레이 캐릭터는 쓰지 않는다."
-    if str(((st.get("front_engine") or {}).get(k)) or "main") in ("nb2", "both"):   # 나노바나나 — 로고라는 말을 쓰면 '클인로고'·빈 상자를 그린다
+    if str(((st.get("front_engine") or {}).get(k)) or "main") in ("nb2", "both", "gpt"):   # 배경만 그리는 엔진 — 로고라는 말을 쓰면 '클인로고'·빈 상자를 그린다
         rules = "\n".join(l for l in (("" if l.strip().startswith("- 로고") else re.sub(r"[,·]\s*[^,·\n]*로고[^,·.)\n]*", "", l)) for l in rules.splitlines())
                           if l and "로고" not in l and "logo" not in l.lower())   # 로고 줄은 빼고, 다른 줄 속 '로고 …' 구절만 지운다
         detail = re.sub(r"\nLOGO AREAS:.*?(?=\nPICTURE RULES:)",
@@ -2984,7 +3007,7 @@ def make_front_mockup(job, f, plan, accent, feedback=""):
     learned = read(os.path.join(ref_dir(), "guide", "학습-표지목차간지.md"), 10000) if is_a else ""   # 템플릿에서 배운 앞장 문법 — 코발트·클레이 기준이라 타입 A 에만
     if learned:
         prompt += "\nStyle rules learned from the company's real decks (Korean — follow them so this page matches the body slides; where they differ from the RULES FOR THIS PAGE above, the rules above win):\n" + learned + "\n"
-    if k != "cover" and str(((st.get("front_engine") or {}).get(k)) or "main") in ("nb2", "both"):   # 타입 front 문구는 표지 장면을 그린다 — 목차·간지는 이 장의 규칙 장면만
+    if k != "cover" and str(((st.get("front_engine") or {}).get(k)) or "main") in ("nb2", "both", "gpt"):   # 타입 front 문구는 표지 장면을 그린다 — 목차·간지는 이 장의 규칙 장면만
         prompt += ("\nPICTURE OF THIS PAGE: the deck style text above describes the COVER's scene; take only its colors, light and rendering from it. "
                    "The picture on this page is exactly what the RULES FOR THIS PAGE say under '그림' — a different subject, different objects and a different composition.\n")
     if not (tset and tset.get(k + "_what")):   # 한 벌이 배경을 정하지 않는 타입 — 배운 표지 배경 장식 하나
@@ -3008,9 +3031,9 @@ def make_front_mockup(job, f, plan, accent, feedback=""):
     # 타입마다 정한 모델(front_engine): main = 기본 시안 모델 / nb2 = 나노바나나 2 로 통째 / both = 배경 그림은 나노바나나 2, 글은 기본 모델
     mode = str(((st.get("front_engine") or {}).get(k)) or "main")
     nb2 = str(W["CFG"].get("nb2_model") or styles.nb2_model())
-    if mode in ("nb2", "both"):   # 그림은 나노바나나 2(글자 없이), 글은 엔진이 실제 서체로 — 나노바나나는 한글을 깨뜨린다
+    if mode in ("nb2", "both", "gpt"):   # 그림만 그림 모델로(글자 없이), 글은 엔진이 실제 서체로 — 그림 모델은 한글을 깨뜨린다. gpt = 배경도 기본 시안 모델(A·F, 2026-10-15)
         try:
-            job.event(f"{f.get('label', k)} — 그림은 나노바나나 2, 글은 엔진이 서체로 얹습니다.")
+            job.event(f"{f.get('label', k)} — 그림은 " + ("기본 시안 모델" if mode == "gpt" else "나노바나나 2") + ", 글은 엔진이 서체로 얹습니다.")
             panel = ((st.get("front_draw") or {}).get("panel") or {}).get(k)
             bgp = ("BACKGROUND PICTURE ONLY for the " + {"cover": "cover page", "toc": "table-of-contents page", "div": "chapter divider page"}[k]
                    + " of a Korean public-sector proposal deck. Landscape, full-bleed, edge to edge. ABSOLUTELY NO text, letters, numbers, logos, brand names, watermarks, signs or UI labels anywhere "
@@ -3024,8 +3047,8 @@ def make_front_mockup(job, f, plan, accent, feedback=""):
                        "right": "\nComposition: keep the RIGHT 48% of the picture calm, even and low in detail (large text is laid there later); put the subject in the LEFT half. Keep the top-left and bottom-left corners plain.\n",
                        "center": "\nComposition: keep the TOP HALF of the picture calm, even and low in detail (large centered text is laid there later); put the subject in the LOWER HALF, centered. Keep the corners plain.\n"}[__import__("frontdraw").layout_of(st, k)])
                    + "Every object sits fully inside the frame with a comfortable margin — nothing is cut off at the edges.\n")
-            if k == "cover":
-                bgp += str(st.get("front") or "").replace("{accent}", accent or "#FF2A6D")
+            if k == "cover":   # 글꼴 설명(Typography …)은 넘기지 않는다 — 넘기면 그림 모델이 제목을 그려 넣는다
+                bgp += str(st.get("front") or "").split("Typography")[0].replace("{accent}", accent or "#FF2A6D")
             else:   # 목차·간지 — 표지와 같은 화풍·색, 그러나 다른 장면(표지 설명을 그대로 넘기면 같은 그림이 나온다)
                 bgp += (f"Picture style of this deck (keep the same style, lighting and color mood): {(tset or {}).get('art', '')} "
                         + str(st.get("front") or "").split("Typography")[0].replace("{accent}", accent or "#FF2A6D") + "\n"
@@ -3049,7 +3072,7 @@ def make_front_mockup(job, f, plan, accent, feedback=""):
                 import shutil
                 shutil.copyfile(cover_bg, bp)
             else:
-                bg = gen_image(job, bgp, [], "3:2", None, model=nb2, plain=True)   # 참고 그림을 넘기지 않는다 — 넘기면 그 그림의 피사체를 그대로 베낀다
+                bg = gen_image(job, bgp, [], "3:2", None, model=(None if mode == "gpt" else nb2), plain=True)   # 참고 그림을 넘기지 않는다 — 넘기면 그 그림의 피사체를 그대로 베낀다
                 with open(bp, "wb") as fp:
                     fp.write(bg)
             import frontdraw

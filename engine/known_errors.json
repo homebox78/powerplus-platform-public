@@ -168,6 +168,18 @@
       "test": "test_divider_memo_tone",
       "since": "2026-10-13",
       "commit": "033d293"
+    },
+    {
+      "slug": "front-title-over-picture",
+      "area": "engine",
+      "title": "표지 사업명이 그림(아이소메트릭 미니어처) 위에 겹쳐 찍힘",
+      "symptom": "E 타입 표지에서 사업명 둘째 줄 끝이 미니어처 위에 놓여 글과 그림이 겹친다",
+      "cause": "글 자리 비우기를 그림 모델 지시('왼쪽 45% 비워라')에만 기댔다 — 나노바나나가 어기면 엔진이 그대로 글을 얹었다. 엔진 쪽 확인이 없었다",
+      "rule": "앞장 글을 얹기 전에 글이 실제로 놓이는 칸마다 그림 유무(윤곽·채도, 테두리 제외)를 재고, 걸리면 그림을 아래·반대쪽 기준으로 줄여(최소 60%) 글 끝 너머로 민다. 빈 자리는 그림의 차분한 바탕색으로 채운다",
+      "gate": "frontdraw._busy, frontdraw._clear_text, compose 의 probe",
+      "test": "test_front_text_clears_picture",
+      "since": "2026-10-15",
+      "commit": "6a44ede"
     }
   ]
 }

@@ -1895,36 +1895,42 @@ class Build:
             s = self.prs.slides.add_slide(layout_for(self.m_toc, i))
             for ph in list(s.placeholders):
                 ph._element.getparent().remove(ph._element)
-            ib = copy.deepcopy(it_box._element)
-            pb = copy.deepcopy(pg_box._element)
-            s.shapes._spTree.append(ib)
-            s.shapes._spTree.append(pb)
-            ibody, pbody = ib.find(".//p:txBody", NS), pb.find(".//p:txBody", NS)
-            for x in ibody.findall("a:p", NS) + pbody.findall("a:p", NS):
-                x.getparent().remove(x)
+            # 줄마다 상자 하나씩 — 장 이름·쪽번호·점선이 같은 줄 가운데(y)에 선다. 상자 두 개에 문단을 흘려 넣으면
+            # 렌더러·서체마다 첫 줄 기준선이 달라 쪽번호·점선이 글과 어긋났다(10-15 사용자 '텍스트랑 우측 페이지랑 수평이 안 맞고 라인도')
+            def put(tmpl_box, p_el, row):
+                e = copy.deepcopy(tmpl_box._element)
+                body = e.find(".//p:txBody", NS)
+                for x in body.findall("a:p", NS):
+                    body.remove(x)
+                _one_line(p_el)
+                body.append(p_el)
+                bp = body.find("a:bodyPr", NS)
+                bp.set("anchor", "ctr"); bp.set("tIns", "0"); bp.set("bIns", "0")
+                for k in list(bp):
+                    if k.tag.endswith("Autofit") or k.tag.endswith("AutoFit"):
+                        bp.remove(k)
+                bp.append(bp.makeelement(f"{{{A}}}noAutofit", {}))
+                e.find(".//a:off", NS).set("y", str(int(Cm(TOC_Y0 + row * TOC_PITCH - TOC_PITCH / 2))))
+                e.find(".//a:ext", NS).set("cy", str(int(Cm(TOC_PITCH))))
+                s.shapes._spTree.append(e)
             row = 0
             for gi, (l1, l2s) in enumerate(groups):
                 if gi:
-                    ibody.append(_blank(P_L2))
-                    pbody.append(_blank(P_PG))
                     row += 1
-                ibody.append(_para(P_L1, [l1[0], l1[1]]))
-                pbody.append(_blank(P_PG))
+                put(it_box, _para(P_L1, [l1[0], l1[1]]), row)
                 row += 1
                 for t2, pno in l2s:
-                    ibody.append(_para(P_L2, ["    ", t2]))
-                    pbody.append(_para(P_PG, [pno]) if pno else _blank(P_PG))
+                    put(it_box, _para(P_L2, ["    ", t2]), row)
                     if pno:
+                        put(pg_box, _para(P_PG, [pno]), row)
                         x1 = vis_left(it_box) + 0.2 + text_cm("    " + t2, 14) + 0.45   # 점선은 글 끝에서(목록 상자 위치를 따라간다) — 서버 캡처(LibreOffice)는 '·' 둘레가 넓어 글이 길게 그려져 0.25 로는 붙었다
                         e = copy.deepcopy(line)
                         e.find(".//a:off", NS).set("x", str(int(Cm(x1))))
-                        e.find(".//a:off", NS).set("y", str(int(Cm(5.72 + row * TOC_PITCH))))
+                        e.find(".//a:off", NS).set("y", str(int(Cm(TOC_Y0 + row * TOC_PITCH))))   # 줄 상자 가운데와 같은 y
                         e.find(".//a:ext", NS).set("cx", str(int(Cm(max(0.3, 15.25 - x1)))))
                         e.find(".//a:ext", NS).set("cy", "0")
                         s.shapes._spTree.append(e)
                     row += 1
-            for p_ in ibody.findall("a:p", NS) + pbody.findall("a:p", NS):
-                fix_line_pitch(p_, TOC_PITCH)
             made.append(s)
         return made
 
@@ -2022,20 +2028,21 @@ def _para(tmpl, parts):
 
 
 TOC_PITCH = 0.893   # 목차 한 줄 높이(cm) — 점선도 이 간격으로 놓는다
+TOC_Y0 = 5.72       # 첫 줄 가운데 y(cm) — 견본 목록 상자(top 5.16 + 안쪽 여백 0.127)의 첫 줄 가운데. 줄 상자·쪽번호·점선이 모두 이 y 를 쓴다
 
 
-def fix_line_pitch(p, cm):
-    """문단 줄 간격을 고정 pt 로 — 글자 크기(본문 서체 보정 ×1.11)·렌더러(PowerPoint·LibreOffice)와 무관하게 줄 높이가 같게.
-    목차가 '한 줄(100%)' 간격이라 글자가 커지면 줄이 밀려, 고정 간격(0.893cm)으로 놓은 점선과 아래로 갈수록 어긋났다(사용자 2026-10-14)"""
+def _one_line(p):
+    """줄 상자 안 문단 — 줄 간격 100%·앞뒤 간격 0(상자 가운데 정렬이 렌더러와 무관하게 맞게)"""
     pPr = p.find("a:pPr", NS)
     if pPr is None:
         pPr = p.makeelement(f"{{{A}}}pPr", {})
         p.insert(0, pPr)
-    for old in pPr.findall("a:lnSpc", NS):
+    for old in pPr.findall("a:lnSpc", NS) + pPr.findall("a:spcBef", NS) + pPr.findall("a:spcAft", NS):
         pPr.remove(old)
     ln = pPr.makeelement(f"{{{A}}}lnSpc", {})
-    ln.append(ln.makeelement(f"{{{A}}}spcPts", {"val": str(round(cm / 0.03528 * 100))}))
+    ln.append(ln.makeelement(f"{{{A}}}spcPct", {"val": "100000"}))
     pPr.insert(0, ln)
+
 
 
 def _blank(tmpl):

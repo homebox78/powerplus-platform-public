@@ -8,6 +8,8 @@ import fontset
 
 W, H = 2400, 1600
 X0 = 168   # 표지·목차·간지 좌우 가이드 = 본문 틀 여백(56px)의 3배, 여섯 타입 공통(10-15 사용자 "컨텐츠보다 3배 정도, 모든 테마 통일")
+# 표지 글자색(10-16 사용자): 사업명 = 검정, 키메시지 = 타입 제목색(그동안 사업명에 쓰던 색), 제안설명회 뱃지 = 튀지 않는 파랑(분홍 강조색 X)
+COVER_TITLE, BADGE, BADGE_DARK = "1A1A1A", "3563C9", "5B86E5"
 
 
 def _hex(c, a=255):
@@ -447,11 +449,13 @@ def compose(kind, bg_png, texts, st, accent, title_font=None, body_font=None, lo
             block = hs + lh * len(lines) + H * 0.055 + H * 0.06 + H * 0.03 + H * 0.04
             y = top + (bottom - top - block) / 2
             y_top = y
+            name_c = title_c if dark else _hex(COVER_TITLE)   # 어두운 바탕은 흰 글 그대로
+            badge_c = _hex(BADGE_DARK if dark else BADGE)   # 표지 뱃지만 — 본문 강조색(accent)은 그대로
             if small:
                 d.text((X, y), small, font=f_s, fill=title_c)
                 y += hs
             for ln in lines:
-                _draw(d, X, y, ln, f_t, title_c, tr)
+                _draw(d, X, y, ln, f_t, name_c, tr)
                 y += lh
             y += H * 0.055 - (lh - size)   # 사업명 끝에서 1cm 아래
             tail = texts.get("tail") or "제안설명회"
@@ -464,13 +468,13 @@ def compose(kind, bg_png, texts, st, accent, title_font=None, body_font=None, lo
             bstyle = fd.get("badge", "pill")   # 타입마다 다르게(10-15 사용자 "다 똑같이 하지 말고") — pill 알약 · tab 각진 탭 · outline 테두리 · text 뱃지 없이 글자만
             if bstyle == "text":   # 뱃지 없이 — 강조색 굵은 글자 + 앞에 짧은 세로 막대
                 bar = max(4, int(ink_h * 0.16))
-                d.rectangle([X, y + pv * 0.5, X + bar, y + bh - pv * 0.5], fill=acc)
+                d.rectangle([X, y + pv * 0.5, X + bar, y + bh - pv * 0.5], fill=badge_c)
                 d.text((X + bar + ink_h * 0.55 - ib[0], y + pv - ib[1]), tail, font=f_tail, fill=title_c)   # 글자는 제목 색(어두운 바탕이면 흰색), 막대만 강조색
             elif bstyle == "outline":
-                d.rounded_rectangle([X, y, X + ink_w + ph * 2, y + bh], radius=bh / 2, outline=acc, width=max(3, int(ink_h * 0.09)))
-                d.text((X + ph - ib[0], y + pv - ib[1]), tail, font=f_tail, fill=acc)
+                d.rounded_rectangle([X, y, X + ink_w + ph * 2, y + bh], radius=bh / 2, outline=badge_c, width=max(3, int(ink_h * 0.09)))
+                d.text((X + ph - ib[0], y + pv - ib[1]), tail, font=f_tail, fill=badge_c)
             else:
-                d.rounded_rectangle([X, y, X + ink_w + ph * 2, y + bh], radius=(bh / 2 if bstyle == "pill" else max(4, int(bh * 0.12))), fill=acc)
+                d.rounded_rectangle([X, y, X + ink_w + ph * 2, y + bh], radius=(bh / 2 if bstyle == "pill" else max(4, int(bh * 0.12))), fill=badge_c)
                 d.text((X + ph - ib[0], y + pv - ib[1]), tail, font=f_tail, fill=(255, 255, 255, 255))
             y += bh + H * 0.03
             d.text((X, y), texts.get("date", ""), font=f_date, fill=sub_c)

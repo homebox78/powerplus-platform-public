@@ -14,7 +14,7 @@ import fontset
 sys.stdout.reconfigure(encoding="utf-8")
 IN = 914400
 A = "{http://schemas.openxmlformats.org/drawingml/2006/main}"
-HEAD, FOOT, PAD, LOGO_H = 0.70, 0.45, 0.25, 0.24
+HEAD, FOOT, PAD, LOGO_H = 0.70, 0.45, 0.25, 0.19   # 바닥 로고는 작게(10-16 사용자) — 0.24 에서 줄임
 
 
 def rgb(h):

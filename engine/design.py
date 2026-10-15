@@ -667,7 +667,7 @@ def compose_frame(job, body_png_path, s, project=""):
     # 바닥 — 얇은 선, 왼쪽 발주기관 로고, 가운데 쪽번호, 오른쪽 제안사 로고
     y0 = F["h"] - F["foot"]
     d.line([(F["pad"], y0), (F["w"] - F["pad"], y0)], fill=hx(fr.get("foot_line", "E5E7EB")), width=2)
-    lh = 52
+    lh = 42   # 바닥 로고는 작게(10-16 사용자 "크기는 너무 크지 않게") — 52 에서 줄임
     for which, right in (("client", False), ("vendor", True)):
         lg = brand_logo(job, which)
         if lg is None:
@@ -2846,9 +2846,9 @@ def front_logo_zones(st, kind="cover"):
     sid = str((st or {}).get("front_set") or "")
     tset = next((x for x in (front_templates().get("sets") or []) if x.get("id") == sid), None) or {}
     lg = list((tset.get("logos") or {}).get(kind) or (["tl", "bl"] if kind == "cover" else ["bl", "br"]))
-    if kind == "cover":   # 표지는 타입과 상관없이 발주기관 왼쪽 위 · 주관사 왼쪽 아래(사용자 10-15) — 한 벌 설정이 거꾸로(헥사곤)거나 오른쪽 아래(네이비)면 그림 자리와 부딪혔다
-        return "tl", "bl"
-    return lg[0], lg[1]
+    # 표지·목차·간지 모두 타입과 상관없이 발주기관 왼쪽 위 · 제안사 왼쪽 아래(사용자 10-15 표지, 10-16 목차·간지까지)
+    # — 한 벌 설정(lg)은 남겨 두되 쓰지 않는다. 타입마다 자리가 달라 로고가 빠지거나 그림과 부딪혔다
+    return "tl", "bl"
 
 
 def front_specs(plan, opts, title, project):

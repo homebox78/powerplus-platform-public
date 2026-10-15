@@ -556,7 +556,7 @@ IMAGE_TEMPLATE = """Body content area of a professional Korean public-sector SI 
 
 IMPORTANT — draw ONLY the body. Do NOT draw any top title band, header bar, breadcrumb, footer line, logos, page number or slide border: those are added afterwards at fixed positions. The reference image(s) may contain a header and footer — ignore those parts. There is NO headline in this image: keep the top 11% as empty plain background, then the content blocks start, on {style_bg} that reaches all four edges.
 
-DECK TONE — this body slide belongs to the same deck as its cover, contents and divider pages: {deck_tone}. No night scenes, no dark rooms, no heavy saturated photos; callouts and speech bubbles (only when the content gives their exact words) use the accent color {accent} (never another pink or red).
+DECK TONE — this body slide belongs to the same deck as its cover, contents and divider pages: {deck_tone}. No night scenes, no dark rooms, no heavy saturated photos; callouts and speech bubbles (only when the content gives their exact words) use the deck's light header blue, not the accent. The accent color {accent} appears only on the single most important number or 1–2 key words of the slide (never another pink or red anywhere).
 
 {spec}
 
@@ -2431,7 +2431,7 @@ def make_mockup(job, s, feedback="", accent="#FF2A6D", anchor=None):
     if st.get("scene"):   # 타입 A 가 아닌 디자인 타입 — 기획의 장면(인물 연기)을 그 타입의 표현으로 바꿔 그린다
         prompt += ("\nDESIGN TYPE OVERRIDES THE SCENE (highest priority after the text content): " + str(st["scene"]).replace("{accent}", accent or "#FF2A6D")
                    + " The wireframe's PERSON / ILLUSTRATION placeholders mean 'key visual of this design type here', not a cartoon character."
-                   + f" COLOR: the only emphasis color is the accent {accent or '#FF2A6D'} — if the Scene / Layout / Visual text names another vivid color (cobalt, blue …) for blocks, bands, numbers or highlighted words, use the accent instead.\n")
+                   + f" COLOR: blocks, bands, title rules, chips and numbers use the design system blues; the accent {accent or '#FF2A6D'} is used sparingly — only on the single most important number or 1–2 key words.\n")   # 10-15 사용자 '포인트 색상은 조금만'
     if st.get("body_point_en"):   # 본문은 A 공통 — 컨셉 포인트 하나만 가볍게
         prompt += "\nCONCEPT POINT (a light touch only — everything else stays as described above): " + str(st["body_point_en"]) + "\n"
     if feedback:

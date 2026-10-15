@@ -3,7 +3,7 @@
 // 레이아웃 라우트 하나가 가드·메뉴, 본문은 <Outlet />. 화면이 없는 메뉴는 넣지 않는다. 노출은 역할 기준 — 서버도 같은 역할로 막는다.
 // 다른 작업자가 메뉴를 더할 땐 GROUPS 의 자기 줄만 추가한다(children 으로 하위 메뉴 가능).
 import { BrandName } from "@/components/hb/brand-name";
-import { BookOpenText, Scale, SwatchBook, ChevronDown, ChevronRight, Coins, Contrast, CreditCard, ExternalLink, History, Images, Inbox, LayoutTemplate, ListChecks, LogOut, Mail, MessagesSquare, Moon, Presentation, ShieldCheck, Sparkles, Sun, Trash2, Users } from "lucide-react";
+import { BookOpenText, Scale, SwatchBook, ChevronDown, ChevronRight, Coins, Contrast, CreditCard, Globe, Plug, ExternalLink, History, Images, Inbox, LayoutTemplate, ListChecks, LogOut, Mail, MessagesSquare, Moon, Presentation, ShieldCheck, Sparkles, Sun, Trash2, Users } from "lucide-react";
 import { useTheme } from "next-themes";
 import { useEffect } from "react";
 import { Link, NavLink, Outlet, useLocation, useNavigate } from "react-router";
@@ -22,7 +22,8 @@ interface Item { to: string; label: string; icon: typeof Users; end?: boolean; r
 const GROUPS: Array<{ label: string; items: Item[] }> = [
   // 대시보드는 메뉴에 두지 않고 사이드바 로고를 누르면 간다(사용자 2026-10-10)
   // 사이트 전체 품질(모듈 하나에 속하지 않는 공통·접근성·SEO·보안 등) 개선 체크리스트(2026-10-10)
-  { label: "사이트 품질", items: [{ to: "/admin/site/checklist", label: "개선 체크리스트", icon: ListChecks, role: "curator" }] },
+  // 품질 검수 = 솔루션별 개선 체크리스트를 한 절차로(통합 검수) + 어느 솔루션에도 속하지 않는 사이트 공통(사용자 2026-10-15)
+  { label: "품질 검수", items: [{ to: "/admin/qa", label: "통합 검수", icon: ListChecks, role: "curator", end: true }, { to: "/admin/site/checklist", label: "사이트 공통 체크리스트", icon: Globe, role: "curator" }] },
   { label: "사용자", items: [{ to: "/admin/users", label: "사용자·역할", icon: Users, role: "admin" }, { to: "/admin/point-rules", label: "포인트 규칙", icon: Coins, role: "admin" }, { to: "/admin/billing", label: "구독·결제", icon: CreditCard, role: "admin" }, { to: "/admin/mail", label: "메일 서식", icon: Mail, role: "admin" }] },
   // AI 설정 = 모든 서비스의 AI(키·모델·Jev) 한 곳 — powerDeck 전용처럼 보이지 않게 독립 메뉴(사용자 지시 2026-10-07)
   { label: "설정", items: [{ to: "/admin/ai", label: "AI 설정", icon: Sparkles, role: "admin" }] },
@@ -32,6 +33,7 @@ const GROUPS: Array<{ label: string; items: Item[] }> = [
       { to: "/admin/assets", label: "에셋", role: "curator" },
       { to: "/admin/requests", label: "자료 요청", role: "support" },
       { to: "/admin/search", label: "검색 품질", role: "curator" },
+      { to: "/admin/qa/assets", label: "개선 체크리스트", role: "curator" },
     ] },
     { to: "/admin/deck", label: "powerDeck", icon: Presentation, role: "curator", children: [
       { to: "/admin/deck", label: "장표 작업", role: "admin", end: true },
@@ -44,7 +46,14 @@ const GROUPS: Array<{ label: string; items: Item[] }> = [
       { to: "/admin/mock/checklist", label: "개선 체크리스트", role: "curator" },
     ] },
     // powerGuide 는 코드가 정본이라 편집 없이 현황(자료 상태·구성·MCP 이용)만(사용자 2026-10-14)
-    { to: "/admin/guide", label: "powerGuide", icon: SwatchBook, role: "curator" },
+    { to: "/admin/guide", label: "powerGuide", icon: SwatchBook, role: "curator", children: [
+      { to: "/admin/guide", label: "현황", role: "curator" },
+      { to: "/admin/qa/guide", label: "개선 체크리스트", role: "curator" },
+    ] },
+    // powerMCP 는 관리 화면 없이 개선 체크리스트만(키·호출은 사용자 화면) — 솔루션마다 체크리스트(사용자 2026-10-15)
+    { to: "/admin/qa/mcp", label: "powerMCP", icon: Plug, role: "curator", children: [
+      { to: "/admin/qa/mcp", label: "개선 체크리스트", role: "curator" },
+    ] },
   ] },
   { label: "콘텐츠", items: [
     { to: "/admin/community", label: "커뮤니티", icon: MessagesSquare, role: "admin" },
@@ -186,19 +195,12 @@ export default function AdminLayout() {
   );
 }
 
-/** 머리 줄 오른쪽 '이동' 메뉴 — 관리자 ↔ 사이트(새 창) */
+/** 머리 줄 오른쪽 '사용자모드' 버튼 — 사이트를 새 창으로(드롭다운 없앰, 사용자 2026-10-15) */
 function SiteSwitcher() {
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="sm" className="h-9 gap-1.5 px-2.5" aria-label="이동"><ExternalLink className="size-4" aria-hidden /><span className="max-sm:hidden">이동</span><ChevronDown className="size-3.5 text-ink-4" aria-hidden /></Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent className="min-w-48 rounded-lg" align="end" side="bottom" sideOffset={6}>
-        <DropdownMenuLabel className="text-xs text-ink-4">이동</DropdownMenuLabel>
-        <DropdownMenuItem asChild><Link to="/admin"><ShieldCheck aria-hidden />관리자</Link></DropdownMenuItem>
-        <DropdownMenuItem asChild><a href="/" target="_blank" rel="noreferrer"><ExternalLink aria-hidden />사이트(새 창)</a></DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
+    <Button variant="ghost" size="sm" className="h-9 gap-1.5 px-2.5" asChild>
+      <a href="/" target="_blank" rel="noreferrer" aria-label="사용자모드(새 창)"><span className="max-sm:hidden">사용자모드</span><ExternalLink className="size-4" aria-hidden /></a>
+    </Button>
   );
 }
 

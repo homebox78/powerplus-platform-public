@@ -23,7 +23,9 @@ export async function measureVisual(p) {
       const r = el.getBoundingClientRect(); const box = { t: r.top + scrollY, b: r.bottom + scrollY, l: r.left, r: r.right, el };
       const leafText = [...el.childNodes].some((n) => n.nodeType === 3 && n.textContent.trim());
       const media = /^(IMG|SVG|VIDEO|IFRAME|CANVAS|PICTURE)$/i.test(el.tagName);
-      const bgc = s.backgroundColor; const hasBg = (bgc !== "rgba(0, 0, 0, 0)" && bgc !== "transparent" && bgc !== bodyBg) || s.backgroundImage !== "none";
+      // 면은 '바로 뒤 색'과 다를 때 — 페이지 바탕(흰색)과만 비교해 연한 색 띠 위 흰 카드를 면으로 안 치던 오탐(일괄 수정 배치1·3: #E3EBFA 띠 위 흰 카드가 '그림/면 0%')
+      const behind = (() => { for (let a = el.parentElement; a; a = a.parentElement) { const c = getComputedStyle(a).backgroundColor; if (c !== "rgba(0, 0, 0, 0)" && c !== "transparent") return c; } return bodyBg; })();
+      const bgc = s.backgroundColor; const hasBg = (bgc !== "rgba(0, 0, 0, 0)" && bgc !== "transparent" && bgc !== behind) || s.backgroundImage !== "none";
       const hasBorder = parseFloat(s.borderTopWidth) + parseFloat(s.borderBottomWidth) + parseFloat(s.borderLeftWidth) > 0 && s.borderTopStyle !== "none";
       if (leafText || media || hasBg || hasBorder) ink.push({ ...box, kind: leafText ? "t" : media ? "m" : hasBg ? "bg" : "line" });
     }

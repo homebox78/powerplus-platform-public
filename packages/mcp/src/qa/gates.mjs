@@ -113,11 +113,14 @@ export async function gates(p) {
     const lum = ([r, g, b]) => { const f = (v) => { v /= 255; return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; }; return 0.2126 * f(r) + 0.7152 * f(g) + 0.0722 * f(b); };
     const overImg = (el, n) => { const r = el.getBoundingClientRect(), cx = r.left + r.width / 2, cy = r.top + r.height / 2; return [...n.querySelectorAll(":scope > img, :scope > * > img")].some((im) => { const b = im.getBoundingClientRect(); return cx >= b.left && cx <= b.right && cy >= b.top && cy <= b.bottom; }); };
     // ::before 로 깐 짙은 띠(position:absolute)도 글자 뒤 면이다 — 흰 글자를 "안 보이는 글자"로 잡던 오탐(2026-10-15 시험 s07)
-    const pseudoBg = (n) => { for (const ps of ["::before", "::after"]) { const p = getComputedStyle(n, ps); if (!p.content || p.content === "none" || p.position !== "absolute") continue; if (p.backgroundImage !== "none") return "img"; const c = rgb(p.backgroundColor); if (c.length >= 3 && (c[3] ?? 1) > 0.5) return c; } return null; };
+    // 판만 바탕으로 — 탭 위 3px 막대·목록 앞 5px 점 같은 작은 꾸밈을 글자 뒤 면으로 보던 오탐(일괄 수정 배치8). 가상요소 크기가 상자의 절반 이상일 때만
+    const pseudoBg = (n) => { const nb = n.getBoundingClientRect(); for (const ps of ["::before", "::after"]) { const p = getComputedStyle(n, ps); if (!p.content || p.content === "none" || p.position !== "absolute") continue; const pw = parseFloat(p.width), ph = parseFloat(p.height); if ((pw && pw < nb.width * 0.5) || (ph && ph < nb.height * 0.5)) continue; if (p.backgroundImage !== "none") return "img"; const c = rgb(p.backgroundColor); if (c.length >= 3 && (c[3] ?? 1) > 0.5) return c; } return null; };
     const bgOf = (el) => { for (let n = el; n; n = n.parentElement) { const s = getComputedStyle(n); if (s.backgroundImage !== "none" || overImg(el, n)) return null; const pb = pseudoBg(n); if (pb === "img") return null; if (pb) return pb; const c = rgb(s.backgroundColor); if (c.length >= 3 && (c[3] ?? 1) > 0.5) return c; } return [255, 255, 255]; };
     out.invisible = [];
     for (const el of document.querySelectorAll("main a, main span, main strong, main p, main li, main h2, main h3, main button")) {
       if (!vis(el) || [...el.childNodes].every((n) => n.nodeType !== 3 || !n.textContent.trim())) continue;
+      // 닫힌 전체메뉴·레이어 안 글(투명·hidden·aria-hidden 조상)은 안 보이는 게 정상 — '새솔군청' 오탐(배치6)
+      { let off = false; for (let a = el; a && a !== document.body; a = a.parentElement) { const cs = getComputedStyle(a); if (+cs.opacity < 0.1 || cs.visibility === "hidden" || a.hasAttribute("hidden") || a.getAttribute("aria-hidden") === "true") { off = true; break; } } if (off) continue; }
       const bg = bgOf(el); if (!bg) continue; // 사진 위 글자는 제외
       const a = lum(rgb(getComputedStyle(el).color)), b = lum(bg);
       if ((Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05) < 1.6) out.invisible.push(txt(el).slice(0, 20));
@@ -150,7 +153,7 @@ export async function gates(p) {
         const rg = document.createRange(); rg.selectNodeContents(n); const b = rg.getBoundingClientRect(); if (!b.width || !b.height) continue;
         if (b.left >= 4 && b.right <= W - 4) continue;
         if (b.right <= 0 || b.left >= W) continue; // 화면 밖(넘김 슬라이드)
-        let clipped = false; for (let a = el.parentElement; a && a !== document.body; a = a.parentElement) { const cs = getComputedStyle(a); if (cs.overflowX !== "visible") { const ab = a.getBoundingClientRect(); if (ab.width >= W - 2 && (b.left < ab.left || b.right > ab.right)) { clipped = true; break; } } }
+        let clipped = false; for (let a = el.parentElement; a && a !== document.body; a = a.parentElement) { const cs = getComputedStyle(a); if (cs.overflowX !== "visible") { const ab = a.getBoundingClientRect(); if (b.left < ab.left - 1 || b.right > ab.right + 1) { clipped = true; break; } } } /* 본문 폭 캐러셀 칸이 자르는 다음 장 글도 화면에 안 보인다(배치5 오탐) */
         if (clipped) continue;
         out.edgeText.push(`${t.slice(0, 16)} (x ${Math.round(b.left)}~${Math.round(b.right)})`);
       } }

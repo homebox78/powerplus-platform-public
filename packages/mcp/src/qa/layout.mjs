@@ -11,7 +11,8 @@ export async function layoutChecks(p, o = {}) {
     const nm = (el) => el.tagName.toLowerCase() + (typeof el.className === "string" && el.className.trim() ? "." + el.className.trim().split(/\s+/)[0] : "");
     const Y = (q) => Math.round(q.top + scrollY);
     const transparent = (c) => !c || /rgba\(0, 0, 0, 0\)|transparent/.test(c);
-    const painted = (el) => { const s = getComputedStyle(el); return !transparent(s.backgroundColor) || s.backgroundImage !== "none" || parseFloat(s.borderTopWidth) > 0 || s.boxShadow !== "none"; };
+    // 위·아래 어느 테두리든 칠한 것으로 — 행 선이 border-bottom 인 게시판 표가 '넓은 목록 성김'으로 걸리던 것(일괄 수정 배치3)
+    const painted = (el) => { const s = getComputedStyle(el); return !transparent(s.backgroundColor) || s.backgroundImage !== "none" || parseFloat(s.borderTopWidth) > 0 || parseFloat(s.borderBottomWidth) > 0 || s.boxShadow !== "none"; };
     const bgOf = (el) => { for (let n = el; n; n = n.parentElement) { const c = getComputedStyle(n).backgroundColor; if (!transparent(c)) return c; } return "rgb(255, 255, 255)"; };
     const key = (src) => { const q = String(src || "").split("?")[0].split("/").filter(Boolean); const n = q.pop() || ""; return /^(original|web|thumb|card)$/.test(n) ? q.pop() || "" : n; };
     const out = { balance: [], cardEmpty: [], sparse: [], straddle: [], iconOff: [], crop: [], bgPartial: [], hero: [], footTail: [], dupList: [], popupZone: [] };
@@ -43,11 +44,15 @@ export async function layoutChecks(p, o = {}) {
         const f = fill(p, q); if (f < 0.3) out.sparse.push(`칸 ${nm(k)} y${Y(pr)} ${Math.round(k0.width)}×${Math.round(pr.height)} 내용 ${Math.round(f * 100)}%`); }
     }
     // ① 칠한 카드(360×260 이상)인데 거의 비어 있음(내용 12% 미만 — 글 몇 줄 카드는 정상이라 더 높이지 않는다: s09 글 카드 15% 오탐)
-    for (const box of all) { if (!vis(box) || box.closest("header, footer") || /^(TABLE|TBODY|THEAD|UL|OL|IFRAME)$/.test(box.tagName) || getComputedStyle(box).backgroundImage !== "none" || !painted(box)) continue; const q = box.getBoundingClientRect(); if (q.width < 360 || q.height < 260 || q.width > W * 0.9) continue;
+    for (const box of all) { if (!vis(box) || box.closest("header, footer") || /^(TABLE|TBODY|THEAD|UL|OL|IFRAME|IMG|PICTURE|VIDEO)$/.test(box.tagName) || getComputedStyle(box).backgroundImage !== "none" || !painted(box)) continue; const q = box.getBoundingClientRect(); if (q.width < 360 || q.height < 260 || q.width > W * 0.9) continue;
+      if (box.querySelectorAll("a[href]").length >= 4) continue; // 링크 목록 카드(사이트맵 분야)는 짧은 링크 글이라 면적이 작아도 비지 않았다(배치9 오탐)
       const f = fill(box); if (f < 0.12) out.cardEmpty.push(`${nm(box)} y${Y(q)} ${Math.round(q.width)}×${Math.round(q.height)} 내용 ${Math.round(f * 100)}%`); }
     out.cardEmpty = out.cardEmpty.slice(0, 6); out.sparse = [...new Set(out.sparse)].slice(0, 6);
     // ⑥ 넓은 목록: 본문 폭 가득한 게시판 목록인데 글이 왼쪽에 몰려 가운데가 빔(지적: 알림사항 5줄이 1400px 를 다 씀)
-    for (const ul of document.querySelectorAll("ul, ol, tbody")) { if (!vis(ul) || ul.closest("header, footer, nav")) continue; const q = ul.getBoundingClientRect(); if (q.width < W * 0.6 || ul.children.length < 4) continue;
+    // 옆으로 옮겨진 캐러셀 트랙(transform)은 게시판 목록이 아니다(배치5 오탐 — 걸렸다 안 걸렸다)
+    const moved = (el) => { for (let a = el; a && a !== document.body; a = a.parentElement) { const t = getComputedStyle(a).transform; if (t && t !== "none" && !/^matrix\(1, 0, 0, 1, 0, 0\)$/.test(t)) return true; } return false; };
+    for (const ul of document.querySelectorAll("ul, ol, tbody")) { if (!vis(ul) || ul.closest("header, footer, nav") || moved(ul)) continue; const q = ul.getBoundingClientRect(); if (q.width < W * 0.6 || ul.children.length < 4) continue;
+      { const avg = [...ul.children].reduce((s, li) => s + (li.innerText || "").trim().length, 0) / ul.children.length; if (avg < 10) continue; } // 단계 표시(1→4)·짧은 칩 줄은 게시판 목록이 아니다(배치10 오탐)
       const f = fill(ul); if (f < 0.22) out.sparse.push(`넓은 목록 ${nm(ul)} y${Y(q)} ${Math.round(q.width)}px ${ul.children.length}줄 내용 ${Math.round(f * 100)}% — 2단·사진 카드와 섞기 또는 폭 줄이기`); }
     // ⑤ 제목·더보기가 칠한 상자의 위·아래 테두리에 걸침(반은 안·반은 밖). box-shadow 0 0 0 Npx 로 넓힌 면은 그 바깥선이 테두리
     const boxes = all.filter((e) => vis(e) && painted(e) && bgOf(e) !== bgOf(e.parentElement || document.body) && e.getBoundingClientRect().width >= 200 && e.getBoundingClientRect().height >= 80);
@@ -67,7 +72,7 @@ export async function layoutChecks(p, o = {}) {
     // ⑦ 이미지 비율: cover 로 37% 넘게 잘림·fill 로 늘어남·글자 든 그림(배너·팝업·포스터)이 4% 넘게 잘림
     for (const im of document.images) { if (!vis(im) || !im.naturalWidth) continue; const q = im.getBoundingClientRect(); if (q.width < 120 || q.height < 80) continue; const s = getComputedStyle(im);
       const nr = im.naturalWidth / im.naturalHeight, br = q.width / q.height, k = Math.max(nr / br, br / nr); const kk = key(im.currentSrc || im.src);
-      let clip = false; for (let a = im.parentElement; a && a !== document.body; a = a.parentElement) { if (getComputedStyle(a).overflow !== "visible") { const ab = a.getBoundingClientRect(); if (ab.bottom < q.bottom - 3 || ab.top > q.top + 3 || ab.right < q.right - 3) { clip = true; break; } } }
+      let clip = false; for (let a = im.parentElement; a && a !== document.body; a = a.parentElement) { if (getComputedStyle(a).overflow !== "visible") { const ab = a.getBoundingClientRect(); if (q.right > ab.left && q.left < ab.right && (ab.bottom < q.bottom - 3 || ab.top > q.top + 3)) { clip = true; break; } } } /* 위아래 잘림만 — 캐러셀 화면 밖 장은 잘림이 아니다(배치3) */
       if (tk.has(kk) && ((s.objectFit === "cover" && k > 1.04) || clip)) out.crop.push(`글자 든 그림 잘림 ${kk} — 자리 ${br.toFixed(2)} vs 그림 ${nr.toFixed(2)}${clip ? "·부모가 자름" : ""}`);
       else if (s.objectFit === "fill" && k > 1.06) out.crop.push(`늘어남 ${kk} ${k.toFixed(2)}배`);
       else if (s.objectFit === "cover" && k > 1.6) out.crop.push(`많이 잘림 ${kk} 자리 ${br.toFixed(2)} vs 그림 ${nr.toFixed(2)}(${Math.round((1 - 1 / k) * 100)}%)`); }
@@ -81,7 +86,8 @@ export async function layoutChecks(p, o = {}) {
       const f = own / n; if (f > 0.03 && f < 0.5) out.bgPartial.push(`${nm(el)} y${Y(q)} ${Math.round(q.width)}×${Math.round(q.height)} 보이는 곳 ${Math.round(f * 100)}%`); }
     out.bgPartial = out.bgPartial.slice(0, 4);
     // ⑨ 첫 화면: 머리 + 히어로(+ 바로 아래 바로가기 줄)가 첫 화면(VH) 안에 다 들어온다
-    const hdr = [...document.querySelectorAll("header")].find(vis); const hb = hdr ? hdr.getBoundingClientRect().bottom + scrollY : 0;
+    // 머리가 히어로 위에 겹쳐 뜨면(absolute·fixed) 히어로는 0 에서 시작한다 — 그때는 0 기준으로 찾는다(배치3 미탐: 바닥 990 인데 안 걸림)
+    const hdr = [...document.querySelectorAll("header")].find(vis); const hdrOver = hdr && /absolute|fixed/.test(getComputedStyle(hdr).position); const hb = hdr && !hdrOver ? hdr.getBoundingClientRect().bottom + scrollY : 0;
     const hero = all.find((e) => { if (!vis(e) || e.closest("header") || e.matches("main, body > div")) return false; const q = e.getBoundingClientRect(); return q.top + scrollY >= hb - 4 && q.top + scrollY < hb + 60 && q.width >= W * 0.6 && q.height >= 300 && q.height <= 1600; });
     if (hero) { const q = hero.getBoundingClientRect(); let bottom = q.bottom + scrollY; const ctr = [...hero.querySelectorAll("button, [role=tab]")].filter(vis).map((x) => x.getBoundingClientRect().bottom + scrollY); bottom = Math.max(bottom, ...ctr);
       let nx = hero.nextElementSibling; while (nx && !vis(nx)) nx = nx.nextElementSibling;
@@ -94,12 +100,12 @@ export async function layoutChecks(p, o = {}) {
     // ③ 같은 메인에 게시판 목록 두 번: 글 제목만 4줄 이상인 목록이 서로 다른 구역에 둘 이상(탭으로 묶을 것)
     const lists = []; if (!isSub) {
     for (const ul of document.querySelectorAll("ul, ol")) { if (!vis(ul) || ul.closest("header, footer, nav, [data-hb=menu]")) continue; const it = [...ul.children].filter(vis); if (it.length < 4) continue;
-      const lines = it.filter((li) => !li.querySelector("img") && (li.innerText || "").trim().length >= 8 && li.getBoundingClientRect().height < 110).length; if (lines < 4) continue;
+      const lines = it.filter((li) => !li.querySelector("img, svg") && !/^\s*[\d.,]+/.test(li.innerText || "") && (li.innerText || "").trim().length >= 12 && li.getBoundingClientRect().height < 110).length; if (lines < 4) continue;
       const sec = ul.closest("section, article, [class*=sec], [class*=row]") || ul.parentElement; if (lists.some((l) => l.sec === sec || l.sec.contains(ul) || sec.contains(l.ul))) continue; lists.push({ ul, sec, y: Y(ul.getBoundingClientRect()) }); }
     } if (lists.length >= 2) out.dupList.push(`글 제목 목록 ${lists.length}곳(y ${lists.map((l) => l.y).join("·")}) — 같은 형식 게시판은 한 구역의 탭으로 묶는다`);
     // 팝업존은 한 장씩 굴러가는 캐러셀(이전·다음·정지)이어야 한다 — 사진 갤러리 3칸을 팝업존이라 부르지 않는다
     for (const h of document.querySelectorAll("h2, h3, strong")) { if (!vis(h) || !/팝업\s?존|popup\s?zone/i.test(h.textContent || "")) continue;
-      const sec = h.closest("section, article, [class*=popup], [class*=pop]") || h.parentElement; const car = sec.querySelector("[data-hb=carousel], [data-hb-next], [data-hb-prev]");
+      const sec = h.closest("section, article, [class*=popup], [class*=pop]") || h.parentElement; const car = sec.querySelector("[data-hb=carousel], [data-hb-next], [data-hb-prev], [data-carousel], [aria-roledescription=carousel]") || [...sec.querySelectorAll("button, a")].find((b) => /이전|다음|prev|next/i.test((b.getAttribute("aria-label") || "") + " " + (typeof b.className === "string" ? b.className : ""))); /* 자체 캐러셀(넘김 단추 있음)도 인정 — data-hb 만 보던 오탐(배치7·8) */
       const imgs = [...sec.querySelectorAll("img")].filter(vis).filter((im) => im.getBoundingClientRect().width >= 120);
       if (!car) out.popupZone.push(`'${(h.textContent || "").trim().slice(0, 10)}' y${Y(h.getBoundingClientRect())} — 넘김 단추 없는 사진 ${imgs.length}칸(팝업존은 data-hb="carousel" 로 한 장씩 굴러가는 배너)`); }
     // 글자 강약: 날짜·분류·설명 같은 부가 글이 제목과 같은 색·굵기면 강약이 없다(지적: 다 검정·다 굵게)
@@ -113,7 +119,7 @@ export async function layoutChecks(p, o = {}) {
           if (dl < 0.04 && +b.fontWeight >= +a.fontWeight - 100 && !/^rgb\(255, 255, 255\)$/.test(b.color)) { same++; if (ex.length < 3) ex.push(`'${(big.textContent || "").trim().slice(0, 10)}' / '${(m.textContent || "").trim().slice(0, 10)}'`); } } }
       if (n >= 6 && same / n > 0.5) out.typeFlat = [`부가 글 ${same}/${n}개가 제목과 같은 색·굵기(${ex.join(", ")}) — 제목은 굵게·짙게, 날짜·설명은 보통 굵기·회색(--hb-sub)`]; else out.typeFlat = []; }
     // 꾸밈 아이콘: 둥근 바탕 위 아이콘 색이 바탕과 구분이 안 됨(대비 3 미만)
-    { const rgb = (c) => (c.match(/[\d.]+/g) || []).map(Number); const L = (v) => { const f = (x) => { x /= 255; return x <= 0.03928 ? x / 12.92 : ((x + 0.055) / 1.055) ** 2.4; }; return 0.2126 * f(v[0]) + 0.7152 * f(v[1]) + 0.0722 * f(v[2]); };
+    { const rgb = (c) => { const v = (c.match(/[\d.]+/g) || []).map(Number); return c.startsWith("color(") ? [v[0] * 255, v[1] * 255, v[2] * 255, v[3] ?? 1] : v; }; /* color-mix 결과 color(srgb 0~1) — 0~255 로 읽어 검정으로 계산하던 것 */ const L = (v) => { const f = (x) => { x /= 255; return x <= 0.03928 ? x / 12.92 : ((x + 0.055) / 1.055) ** 2.4; }; return 0.2126 * f(v[0]) + 0.7152 * f(v[1]) + 0.0722 * f(v[2]); };
       out.iconLow = [];
       for (const sv of document.querySelectorAll("svg")) { if (!vis(sv) || out.iconLow.length >= 6) continue; const host = sv.parentElement; if (!host) continue; const hb0 = host.getBoundingClientRect(); const hs = getComputedStyle(host);
         if (hb0.width > 120 || hb0.height > 120 || Math.abs(hb0.width - hb0.height) > 6 || transparent(hs.backgroundColor)) continue;
@@ -124,8 +130,10 @@ export async function layoutChecks(p, o = {}) {
     // 주제에 안 맞는 어두운 띠: 학교·복지관·도서관·어린이 기관에 거의 검은 폭 가득 구역(지적: 고등학교에 블랙 배경)
     out.darkBand = [];
     if (/학교|초등|중학|고등|유치원|어린이|복지|도서관|아동|청소년/.test(org || document.title)) {
-      for (const e of all) { if (!vis(e) || e.closest("header, footer")) continue; const q = e.getBoundingClientRect(); if (q.width < W * 0.85 || q.height < 300) continue; const c = getComputedStyle(e).backgroundColor; if (transparent(c)) continue;
-        const v = (c.match(/[d.]+/g) || []).map(Number); const lum = (0.2126 * v[0] + 0.7152 * v[1] + 0.0722 * v[2]) / 255; if (lum < 0.22 && (v[3] ?? 1) > 0.8) { out.darkBand.push(`${nm(e)} y${Y(q)} 바탕 ${c}`); if (out.darkBand.length >= 3) break; } } }
+      for (const e of all) { if (!vis(e) || e.closest("header, footer")) continue; const q = e.getBoundingClientRect(); if (q.width < W * 0.85 || q.height < 300) continue; const c = getComputedStyle(e).backgroundColor; if (transparent(c) || getComputedStyle(e).backgroundImage !== "none") continue;
+        // 사진(img)이 거의 다 덮은 띠는 바탕색이 안 보인다(배치4 오탐: 히어로 .uv-hero 바탕 #1F2328)
+        if ([...e.querySelectorAll("img, video")].some((im) => { const z = im.getBoundingClientRect(); return z.width * z.height >= q.width * q.height * 0.8; })) continue;
+        const v = (c.match(/[\d.]+/g) || []).map(Number); const lum = (0.2126 * v[0] + 0.7152 * v[1] + 0.0722 * v[2]) / 255; if (lum < 0.22 && (v[3] ?? 1) > 0.8) { out.darkBand.push(`${nm(e)} y${Y(q)} 바탕 ${c}`); if (out.darkBand.length >= 3) break; } } }
     // 폭별 글자 크기 비교용(PC 값)
     const fsOf = (sel) => { const v = [...document.querySelectorAll(sel)].filter((e) => vis(e) && !e.closest("header, footer")).map((e) => parseFloat(getComputedStyle(e).fontSize)); v.sort((a, b) => b - a); return v.length ? v[0] : 0; };
     out.font = { h1: fsOf("main h1, h1"), h2: fsOf("main h2, section h2"), h3: fsOf("main h3"), p: fsOf("main p") };
@@ -172,7 +180,10 @@ export async function deviceChecks(p, w, pcFont = null, textKeys = []) {
     // 같은 줄(위끝 6px 안)·같은 묶음의 한 줄 입력·선택·단추 높이가 다름 / 위아래로 쌓인 선택 상자와 입력칸 폭이 다름
     const ctl = (e) => e.matches("input:not([type=radio]):not([type=checkbox]):not([type=hidden]), select, button, [aria-haspopup], a[class*=btn]") && vis(e) && e.getBoundingClientRect().height < 80;
     for (const g of document.querySelectorAll("form, [role=search], [class*=search], [class*=filter], [class*=form]")) { if (!vis(g) || g.closest("header [data-hb=menu]")) continue;
-      const cs = [...g.querySelectorAll("*")].filter(ctl); if (cs.length < 2) continue;
+      // 검색 틀(칠한 상자) 안에 들어간 단추는 틀과 짝이 아니라 틀의 일부다 — 둥근 검색 틀 56 안 원형 단추 44 를 짝 안 맞음으로 잡던 오탐(배치2)
+      const frameOf = (c) => { for (let a = c.parentElement; a && a !== g.parentElement; a = a.parentElement) { const s = getComputedStyle(a); if ((!/rgba\(0, 0, 0, 0\)|transparent/.test(s.backgroundColor) || parseFloat(s.borderTopWidth) > 0) && a.getBoundingClientRect().height < 90) return a; } return null; };
+      const inside = (c) => { const q = c.getBoundingClientRect(); return [...g.querySelectorAll("input, select")].some((o) => { if (o === c) return false; const f = frameOf(o); if (!f || !f.contains(c)) return false; const r = f.getBoundingClientRect(); return q.left >= r.left && q.right <= r.right + 1 && q.top >= r.top - 1 && q.bottom <= r.bottom + 1; }); };
+      const cs = [...g.querySelectorAll("*")].filter(ctl).filter((c) => !inside(c)); if (cs.length < 2) continue;
       const rows = []; for (const c of cs) { const q = c.getBoundingClientRect(); const row = rows.find((r) => Math.abs(r.top - q.top) <= 6); if (row) row.items.push([c, q]); else rows.push({ top: q.top, items: [[c, q]] }); }
       for (const row of rows) { if (row.items.length < 2) continue; const hs = row.items.map(([, q]) => Math.round(q.height)); if (Math.max(...hs) - Math.min(...hs) > 2) out.pair.push(`${nm(g)} 한 줄 높이 ${hs.join("/")}px`); }
       const sel = cs.filter((c) => c.matches("select, [aria-haspopup]")), inp = cs.filter((c) => c.matches("input"));
@@ -181,11 +192,11 @@ export async function deviceChecks(p, w, pcFont = null, textKeys = []) {
     // 입력칸: 높이 44px 미만·글자 16px 미만(아이폰 확대)
     for (const e of document.querySelectorAll("input:not([type=radio]):not([type=checkbox]):not([type=hidden]), textarea, select")) { if (!vis(e) || e.closest("header")) continue; const q = e.getBoundingClientRect(); const fs = parseFloat(getComputedStyle(e).fontSize);
       // 투명한 입력칸을 칠한 상자(검색창 틀)가 감싸면 그 상자 높이가 누르는 크기다
-      const box = (() => { if (!/rgba(0, 0, 0, 0)|transparent/.test(getComputedStyle(e).backgroundColor)) return q; for (let a = e.parentElement; a && a !== document.body; a = a.parentElement) { const s = getComputedStyle(a); if (!/rgba(0, 0, 0, 0)|transparent/.test(s.backgroundColor) || parseFloat(s.borderTopWidth) > 0) return a.getBoundingClientRect(); } return q; })();
+      const box = (() => { if (!/rgba\(0, 0, 0, 0\)|transparent/.test(getComputedStyle(e).backgroundColor)) return q; for (let a = e.parentElement; a && a !== document.body; a = a.parentElement) { const s = getComputedStyle(a); if (!/rgba\(0, 0, 0, 0\)|transparent/.test(s.backgroundColor) || parseFloat(s.borderTopWidth) > 0) return a.getBoundingClientRect(); } return q; })();
       if ((e.tagName === "TEXTAREA" ? box.height < 88 : box.height < 44) || fs < 16) out.input.push(`${e.getAttribute("placeholder")?.slice(0, 12) || nm(e)} 높이 ${Math.round(box.height)}·글자 ${fs}px`); }
     out.input = [...new Set(out.input)].slice(0, 5);
     // 탭·칩 줄이 화면 밖으로 잘림(줄바꿈도 선택 단추도 없이 마지막 칸이 반쯤 보임)
-    for (const tl of document.querySelectorAll("[role=tablist], [data-hb=tabs] > ul, [class*=tab] > ul, [class*=chip]")) { if (!vis(tl)) continue; const items = [...tl.children].filter(vis); if (items.length < 3) continue;
+    for (const tl of document.querySelectorAll("[role=tablist], [data-hb=tabs] > ul, [class*=chip]")) { if (!vis(tl)) continue; const items = [...tl.children].filter(vis); if (items.length < 3) continue;
       const q = tl.getBoundingClientRect(); const lim = Math.min(q.right, w); const cut = items.filter((it) => { const z = it.getBoundingClientRect(); return z.left < lim - 4 && z.right > lim + 2; });
       if (cut.length) out.tabsCut.push(`${nm(tl)} ${items.length}칸 중 '${(cut[0].textContent || "").trim().slice(0, 8)}' 이 잘림 — 줄바꿈하거나 '현재 값 ▾' 단추 + 모달`); }
     // 짧은 이름(6자 이하)이 두 줄로 꺾임 — '이전/글'·'다음/글'(지적 s03 서브 모바일)
@@ -202,7 +213,7 @@ export async function deviceChecks(p, w, pcFont = null, textKeys = []) {
     // 누르는 크기: 단추·링크 단추 40px 미만(본문 글 속 링크 제외)
     // 폭별 글자 크기: 제목(h1·h2·h3)은 PC 보다 작아야 한다(태블릿 ≤ 92%, 모바일 ≤ 85%), 본문은 PC 이하(지적: 모바일 글자가 PC 그대로)
     out.font = [];
-    if (pcFont) { const vis2 = (e) => { const s = getComputedStyle(e); return s.display !== "none" && e.getBoundingClientRect().width > 0; }; const fsOf = (sel) => { const v = [...document.querySelectorAll(sel)].filter((e) => vis2(e) && !e.closest("header, footer")).map((e) => parseFloat(getComputedStyle(e).fontSize)); v.sort((a, b) => b - a); return v.length ? v[0] : 0; };
+    if (pcFont) { const vis2 = (e) => { const s = getComputedStyle(e); const q = e.getBoundingClientRect(); return s.display !== "none" && s.visibility !== "hidden" && s.clip === "auto" && q.width > 2 && q.height > 2; }; /* 숨김 제목(.sr) 제외 — 배치6 */ const fsOf = (sel) => { const v = [...document.querySelectorAll(sel)].filter((e) => vis2(e) && !e.closest("header, footer")).map((e) => parseFloat(getComputedStyle(e).fontSize)); v.sort((a, b) => b - a); return v.length ? v[0] : 0; };
       const k = w <= 480 ? 0.85 : 0.92;
       for (const [t, sel] of [["h1", "main h1, h1"], ["h2", "main h2, section h2"], ["h3", "main h3"]]) { const pc = pcFont[t], now = fsOf(sel); if (pc >= 20 && now > pc * k + 0.5) out.font.push(`${t} PC ${pc}px → ${now}px(${Math.round(k * 100)}% 이하로)`); }
       const pp = pcFont.p, np = fsOf("main p"); if (pp && np > pp + 0.5) out.font.push(`본문 PC ${pp}px → ${np}px(PC 이하로)`); }

@@ -173,7 +173,11 @@ export async function behavior(p, { force = false, errors = [] } = {}) {
         // 판 바탕(불투명 배경을 칠한 자기 또는 조상) 밖으로 나온 링크 — 판에 고정 높이가 걸려 아랫줄 링크가 히어로 위에 비쳐 보였다
         // (2026-10-15 사용자 지적: 머리 줄 .hb-wrap{height:114px} 가 펼침판 안 .hb-wrap 에도 걸려 판 191px·링크 438px)
         const opaque = (el) => { const c = getComputedStyle(el).backgroundColor; return c && !/rgba\(0, 0, 0, 0\)|transparent/.test(c) && !/rgba\(.*,\s*0(\.[0-4]\d*)?\)$/.test(c); };
-        let bgEl = s; while (bgEl && bgEl !== document.body && !opaque(bgEl)) bgEl = bgEl.parentElement;
+        // 바탕은 판 자신·안쪽 감싸개(.mega .in)에 칠하기도 한다 — 안쪽부터 링크 절반 이상을 품은 칠한 상자를 찾고, 없을 때만 조상(옆 메뉴 바탕을 잡던 오탐, 일괄 수정 배치2)
+        const allL = [...s.querySelectorAll("a[href]")].filter((a) => a.getBoundingClientRect().width > 0);
+        const holds = (el) => { const r = el.getBoundingClientRect(); return allL.filter((a) => { const q = a.getBoundingClientRect(); return q.left >= r.left - 1 && q.right <= r.right + 1 && q.top >= r.top - 1 && q.bottom <= r.bottom + 1; }).length; };
+        let bgEl = [s, ...s.querySelectorAll("div, ul, section, nav")].find((e) => opaque(e) && holds(e) >= Math.ceil(allL.length / 2)) || null;
+        if (!bgEl) { bgEl = s; while (bgEl && bgEl !== document.body && !opaque(bgEl)) bgEl = bgEl.parentElement; }
         let out = 0; const outN = [];
         if (bgEl && bgEl !== document.body) { const pr = bgEl.getBoundingClientRect();
           for (const a of s.querySelectorAll("a[href]")) { const r = a.getBoundingClientRect(); if (!r.width || !r.height) continue; if (r.bottom > pr.bottom + 1 || r.right > pr.right + 1 || r.top < pr.top - 1) { out++; if (outN.length < 3) outN.push(a.textContent.trim().slice(0, 10)); } } }

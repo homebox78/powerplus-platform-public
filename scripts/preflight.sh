@@ -8,6 +8,7 @@
 #   4. 그림·글꼴이 텍스트 줄바꿈 규칙에 걸림 — engine/** eol=lf 가 jpg 41장을 깨뜨림 (2026-10-12)
 #   5. 배포 범위에 커밋 안 한 변경 — deploy 는 작업 트리를 싣는다. 다른 세션의 반쯤 된 코드가 같이 올라감
 #      (2026-10-08 core.php 잘림). 정말 올려야 하면 PP_ALLOW_DIRTY=1
+#   6. 역슬래시가 빠진 정규식(packages/mcp) — R38
 # 알려 주기만 하는 것: 마지막 커밋이 다른 배포 범위를 건드렸는데 그 배포를 잊기 쉬운 경우
 set -uo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"; cd "$ROOT"
@@ -47,6 +48,13 @@ if [ -n "$DIRTY" ]; then
   else
     echo "$DIRTY"; bad "배포 범위($SCOPE)에 커밋 안 한 변경이 있다 — 내 것이면 커밋, 다른 세션 것이면 그 세션이 끝난 뒤. 정말 올리려면 PP_ALLOW_DIRTY=1"
   fi
+fi
+
+# 6. 역슬래시가 빠진 정규식(R38) — sed·heredoc·node 문자열로 JS 를 고치다 \d·\(·\s 가 사라져 검사가 아예 안 돌았다
+#    (2026-10-15 판정기 layout.mjs·check.mjs 3곳: 어두운 배경·투명 입력칸·덮임 — 통과만 시키고 아무것도 못 잡음)
+if [ "$SCOPE" = web ]; then
+  BADRE=$(grep -rnF -e 'rgba(0, 0, 0, 0)|' -e '[d.]+' -e '[d.,' -e '(.*,s*0)' -e '/^s*' packages/mcp/src --include='*.mjs' --include='*.ts' 2>/dev/null || true)
+  [ -n "$BADRE" ] && { echo "$BADRE" | head -5; bad "역슬래시가 빠진 정규식 — 정규식은 Edit 도구로 고친다(R02·R38)"; }
 fi
 
 # 알림 — 다른 배포가 필요한지

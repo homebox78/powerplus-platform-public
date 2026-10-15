@@ -133,7 +133,7 @@ async function measure(p, ref) {
       // 표 칸은 rowspan 으로 줄(tr) 밖까지 늘어나는 게 정상 — 덮임이 아니다(2026-10-15 시험 s07 조직도 표 159px 오탐)
       if (/^(TD|TH|TR|TBODY|THEAD)$/.test(b.el.tagName)) continue;
       const cs = getComputedStyle(b.el); if (!["static", "relative"].includes(cs.position)) continue;
-      const bgc = cs.backgroundColor; if (!bgc || /rgba(.*,s*0)$|transparent/.test(bgc)) continue;
+      const bgc = cs.backgroundColor; if (!bgc || /rgba\(.*,\s*0\)$|transparent/.test(bgc)) continue;
       const pr = b.el.parentElement; if (!pr || pr === document.body) continue;
       const pb = pr.getBoundingClientRect(); const ps = getComputedStyle(pr);
       if (ps.overflowY !== "visible" || pb.height < 20) continue;
@@ -265,7 +265,9 @@ async function doCheck({ html, ref, refImage, launch, sharp, width = 1920, peers
           for (let q = e.parentElement; q && q !== document.body; q = q.parentElement) {
             const st = getComputedStyle(q); if (st.overflowX !== "hidden" && st.overflowX !== "clip") continue;
             const qb = q.getBoundingClientRect();
-            if (qb.width > 40 && (b.right > qb.right + 4 || b.left < qb.left - 4) && !/carousel|slide|swiper|track|marquee|ticker/i.test(String(q.className)) && !q.closest("[data-hb=carousel],[data-hb-track]")) { cut++; if (cutw.length < 3) cutw.push((e.textContent || "").trim().slice(0, 14)); }
+            // 칸 밖에 통째로 있는 것(옆으로 넘긴 캐러셀 장)은 잘림이 아니다 — 클래스가 carousel 이 아닌 칸(.mm-viewport)에서 오탐(배치5)
+            if (b.left >= qb.right - 1 || b.right <= qb.left + 1) break;
+            if (qb.width > 40 && (b.right > qb.right + 4 || b.left < qb.left - 4) && !/carousel|slide|swiper|track|marquee|ticker|viewport/i.test(String(q.className)) && !q.closest("[data-hb=carousel],[data-hb-track]")) { cut++; if (cutw.length < 3) cutw.push((e.textContent || "").trim().slice(0, 14)); }
             break;
           }
         }
@@ -294,7 +296,8 @@ async function doCheck({ html, ref, refImage, launch, sharp, width = 1920, peers
         }
         if (worst > 2) pc.over.push({ w, over: worst });
       }
-      if (/\b100vw\b/.test(html)) pc.vw = true;
+      // calc(100vw - 32px) 같은 안전한 max-width 는 빼고, 폭(width·min-width)을 100vw 로 준 것만(일괄 수정 배치3 오탐)
+      if (/(?:^|[;{\s])(?:min-)?width\s*:\s*100vw/.test(html)) pc.vw = true;
       await p.setViewportSize({ width, height: 1080 }); await p.waitForTimeout(250);
       // 섹션 제목이 내용과 떨어져 있나 — 제목만 따로 모은 띠(2026-10-02 사용자 지적: 제목 줄이 색 띠에 따로, 내용은 75px 아래)
       pc.titles = await p.evaluate(() => {
@@ -426,7 +429,10 @@ async function doCheck({ html, ref, refImage, launch, sharp, width = 1920, peers
     const visual = width >= 1200 ? await measureVisual(p) : null;
 
     // 높이: 메인은 전체, 서브는 본문 구간
-    const refH = ref.sub ? ref.sub.body_h : ref.height;
+    // 첫 화면 규칙(머리+히어로 ≤ 900)과 레퍼런스 높이 맞추기가 부딪혔다 — 레퍼런스 히어로가 900 을 넘는 만큼은 줄이는 게 맞으니
+    // 그만큼을 레퍼런스 높이에서 빼고 잰다(2026-10-15 일괄 수정: 히어로를 900 안에 넣자 높이 -4~6% 감점·치명)
+    const heroCut = (() => { if (ref.sub || !Array.isArray(ref.rows) || (lay.r.hero ?? []).length) return 0; const r0 = ref.rows.find((r) => r.h >= 300 && r.y < 320 && !(r.cells || []).some((c) => ["header", "masthead", "gnb"].includes(c.type))); return r0 ? Math.max(0, Math.round(r0.y + r0.h - 900)) : 0; })();
+    const refH = ref.sub ? ref.sub.body_h : ref.height - heroCut;
     // 레퍼런스 줄에 바닥(footer)이 없으면 레퍼런스 높이는 바닥을 뺀 값이다 → 시안도 바닥 윗변까지만 잰다
     // (2026-10-05 R3: 정상 바닥 317px 를 두면 +31% 치명, 바닥을 64px 로 줄여야 통과했다 — 판정이 빈약한 바닥을 강요했다)
     const refNoFoot = !ref.sub && Array.isArray(ref.rows) && ref.rows.length > 0 && !ref.rows.some((r) => (r.cells || []).some((c) => c.type === "footer"));

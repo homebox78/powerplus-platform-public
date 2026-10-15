@@ -29,6 +29,7 @@ export const verticalToneName = (id?: string | null) => VERTICAL_TONES.find((t) 
 const THUMB_V = 8;   // 8: 다크 키비주얼 간지 띠 — 그라데이션 대신 곡선 마감(2026-10-15)
 const PAGES = ["표지", "목차", "간지", "본문"];
 const thumb = (id: string, n: number) => `${import.meta.env.BASE_URL}vstyles/${id}/${n}.jpg?v=${THUMB_V}`;
+export const verticalThumb = thumb;   // 작업 설정 요약(ui.tsx JobSettings)도 같은 그림
 
 /** 제출용 2단계 — 스타일 6가지. 카드마다 표지·목차·간지·본문 4장 */
 export function VerticalStylePicker({ value, onChange, disabled }: { value: string; onChange: (id: string) => void; disabled?: boolean }) {

@@ -2,6 +2,7 @@
 import { pdGo } from "./nav";
 import { WideToggle } from "@/components/hb/work-space";
 import { thumb } from "./DesignTypes";
+import { VERTICAL_STYLES, verticalThumb, verticalToneName } from "./VerticalThemes";
 import { Fragment, useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import type { Job } from "./api";
@@ -228,13 +229,18 @@ export function JobSettings({ job, onEdit }: { job: Job; onEdit?: () => void }) 
   }, [open]);
   const o = job.opts, design = job.kind === "design";
   const style = STYLES.find((s) => s.id === (o?.style || "a"));
+  const vstyle = VERTICAL_STYLES.find((s) => s.id === (o?.vstyle || "band"));
   const font = (list: { id: string; name: string }[], id?: string) => list.find((f) => f.id === id)?.name ?? list[0]?.name ?? "";
   const front = o?.front ? ([["cover", "표지"], ["toc", "목차"], ["divider", "간지"]] as const).filter(([k]) => o.front![k]).map(([, l]) => l) : [];
   const rows: [string, ReactNode][] = [
     ["방식", design ? "내용으로 장표 만들기" : "초안 PPT 다듬기"],
     ...(design ? [
       ["용도", o?.purpose === "submit" ? "제출용 — 평가위원이 읽고 점수를 매긴다" : "발표용 — 짧은 시간에 '왜 우리인가'"],
-      ["디자인", <span className="flex items-center gap-2.5 min-w-0">
+      // 제출용은 세로 제안서 스타일·톤(opts.vstyle·vtone) — 발표장표 타입(opts.style)을 보이면 안 된다(10-15 사용자 '세로인데 발표장표 테마로 나옴')
+      ["디자인", o?.purpose === "submit" ? <span className="flex items-center gap-2.5 min-w-0">
+        <img src={verticalThumb(vstyle?.id ?? "band", 1)} alt="" className="w-[48px] aspect-[1/1.414] object-cover object-top rounded-md border border-line flex-none" />
+        <span className="min-w-0"><span className="block font-semibold">세로 제안서 · {vstyle?.name} · {verticalToneName(o?.vtone)}</span><span className="block text-[12.5px] text-dim leading-[1.45]">{vstyle?.desc}</span></span>
+      </span> : <span className="flex items-center gap-2.5 min-w-0">
         <img src={thumb(style?.id ?? "a", 1)} alt="" className="w-[72px] aspect-[3/2] object-cover object-top rounded-md border border-line flex-none" />
         <span className="min-w-0"><span className="block font-semibold">타입 {(style?.id ?? "a").toUpperCase()} · {style?.name}</span><span className="block text-[12.5px] text-dim leading-[1.45]">{style?.desc}</span></span>
       </span>],

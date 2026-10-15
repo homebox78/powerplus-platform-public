@@ -72,7 +72,10 @@ function measure({ primary }) {
     if (!rs.every((q, i) => i === 0 || q.left >= rs[i - 1].right - 4)) continue;
     // ③ 카드마다 큰 사진이 있는데 사진이 시작하는 높이가 다름
     const pics = kids.map((k) => [...k.querySelectorAll("img")].filter((i) => vis(i) && i.getBoundingClientRect().width >= k.getBoundingClientRect().width * 0.6)[0]);
-    if (pics.every(Boolean)) { const tops = pics.map((i) => Math.round(i.getBoundingClientRect().top - rs[0].top)); const d = Math.max(...tops) - Math.min(...tops);
+    // 사진이 칸을 덮는(전면, 75% 넘게) 카드는 '사진 시작 높이'를 견줄 대상이 아니다 — 전면 카드끼리·글+사진 카드끼리만(609 넘김 배너 오탐)
+    const cover = (i, k) => { const a = i.getBoundingClientRect(), q = k.getBoundingClientRect(); return (a.width * a.height) / (q.width * q.height) > 0.75; };
+    const sel = pics.map((i, n) => (i && !cover(i, kids[n]) ? i : null)).filter(Boolean);
+    if (pics.every(Boolean) && sel.length >= 2) { const tops = sel.map((i) => Math.round(i.getBoundingClientRect().top - rs[0].top)); const d = Math.max(...tops) - Math.min(...tops);
       if (d > 20) out.imgTop.push(`${nm(par)} y${Y(rs[0])} 카드 ${kids.length}장 사진 시작 높이 차 ${d}px(${tops.join("/")}) — 카드마다 날짜·요약 줄 수를 맞춘다`); }
     // ④ 카드 모양 서명: 사진 자리(없음·위·아래·전면) × 바탕(밝음·어두움·사진) × 글 양
     const sig = kids.map((k, i) => { const q = rs[i]; const p = pics[i] || [...k.querySelectorAll("img")].filter(vis).sort((a, b) => b.getBoundingClientRect().width * b.getBoundingClientRect().height - a.getBoundingClientRect().width * a.getBoundingClientRect().height)[0];
@@ -96,8 +99,10 @@ function measure({ primary }) {
   // ⑥ 꼬리 한 줄 — 두 줄 이상 문장의 마지막 줄이 4글자 이하(PREFERENCES "꼬리 한 줄 금지")
   for (const el of document.querySelectorAll("p, li, dd, span, a, h2, h3, h4")) { if (!vis(el) || el.closest("header, footer") || el.children.length) continue;
     const node = el.firstChild; if (!node || node.nodeType !== 3) continue; const t = node.nodeValue; if (t.trim().length < 16) continue;
-    const tops = []; for (let i = 0; i < t.length; i++) { if (!t[i].trim()) continue; const r2 = document.createRange(); r2.setStart(node, i); r2.setEnd(node, i + 1); const rr = r2.getClientRects()[0]; if (rr) tops.push(Math.round(rr.top)); }
-    const lines = [...new Set(tops)]; if (lines.length < 2) continue; const last = Math.max(...lines);
+    // line-clamp·overflow 로 잘려 안 보이는 줄은 줄로 세지 않는다(693 제목 3번째 줄을 꼬리로 잡던 것) — 보이는 아래 끝 = 자기·잘라 내는 조상 중 가장 위
+    let visB = el.getBoundingClientRect().bottom; for (let a = el; a && a !== document.body; a = a.parentElement) { const st = getComputedStyle(a); if (/hidden|clip/.test(st.overflowY + st.overflow)) visB = Math.min(visB, a.getBoundingClientRect().bottom); }
+    const tops = []; for (let i = 0; i < t.length; i++) { if (!t[i].trim()) continue; const r2 = document.createRange(); r2.setStart(node, i); r2.setEnd(node, i + 1); const rr = r2.getClientRects()[0]; tops.push(rr && rr.bottom <= visB + 1 ? Math.round(rr.top) : null); }
+    const lines = [...new Set(tops.filter((v) => v !== null))]; if (lines.length < 2) continue; const last = Math.max(...lines);
     // 마지막 줄 글자 — 공백 없는 한 낱말(8자 이하)만 떨어졌으면 꼬리("…자격을 / 확인하세요.")
     let lastTxt = ""; for (let i = 0, k = 0; i < t.length; i++) { if (!t[i].trim()) { if (k && tops[k - 1] === last) lastTxt += " "; continue; } if (tops[k] === last) lastTxt += t[i]; k++; }
     lastTxt = lastTxt.trim();

@@ -3,7 +3,7 @@
 // 레이아웃 라우트 하나가 가드·메뉴, 본문은 <Outlet />. 화면이 없는 메뉴는 넣지 않는다. 노출은 역할 기준 — 서버도 같은 역할로 막는다.
 // 다른 작업자가 메뉴를 더할 땐 GROUPS 의 자기 줄만 추가한다(children 으로 하위 메뉴 가능).
 import { BrandName } from "@/components/hb/brand-name";
-import { BookOpenText, Scale, SwatchBook, ChevronDown, ChevronRight, Coins, Contrast, ExternalLink, History, Images, Inbox, LayoutTemplate, ListChecks, LogOut, Mail, MessagesSquare, Moon, Presentation, ShieldCheck, Sparkles, Sun, Trash2, Users } from "lucide-react";
+import { BookOpenText, Scale, SwatchBook, ChevronDown, ChevronRight, Coins, Contrast, CreditCard, ExternalLink, History, Images, Inbox, LayoutTemplate, ListChecks, LogOut, Mail, MessagesSquare, Moon, Presentation, ShieldCheck, Sparkles, Sun, Trash2, Users } from "lucide-react";
 import { useTheme } from "next-themes";
 import { useEffect } from "react";
 import { Link, NavLink, Outlet, useLocation, useNavigate } from "react-router";
@@ -23,7 +23,7 @@ const GROUPS: Array<{ label: string; items: Item[] }> = [
   // 대시보드는 메뉴에 두지 않고 사이드바 로고를 누르면 간다(사용자 2026-10-10)
   // 사이트 전체 품질(모듈 하나에 속하지 않는 공통·접근성·SEO·보안 등) 개선 체크리스트(2026-10-10)
   { label: "사이트 품질", items: [{ to: "/admin/site/checklist", label: "개선 체크리스트", icon: ListChecks, role: "curator" }] },
-  { label: "사용자", items: [{ to: "/admin/users", label: "사용자·역할", icon: Users, role: "admin" }, { to: "/admin/point-rules", label: "포인트 규칙", icon: Coins, role: "admin" }, { to: "/admin/mail", label: "메일 서식", icon: Mail, role: "admin" }] },
+  { label: "사용자", items: [{ to: "/admin/users", label: "사용자·역할", icon: Users, role: "admin" }, { to: "/admin/point-rules", label: "포인트 규칙", icon: Coins, role: "admin" }, { to: "/admin/billing", label: "구독·결제", icon: CreditCard, role: "admin" }, { to: "/admin/mail", label: "메일 서식", icon: Mail, role: "admin" }] },
   // AI 설정 = 모든 서비스의 AI(키·모델·Jev) 한 곳 — powerDeck 전용처럼 보이지 않게 독립 메뉴(사용자 지시 2026-10-07)
   { label: "설정", items: [{ to: "/admin/ai", label: "AI 설정", icon: Sparkles, role: "admin" }] },
   // 같은 서비스끼리 한 묶음 — 부모를 누르면 펼치고 접힌다. 기본은 펼침(사용자 지시 2026-10-07)

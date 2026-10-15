@@ -15,7 +15,7 @@ const firefox = SRV ? pw.chromium : pw.firefox;
 const [, , tsv, out, from = "0", n = "9999"] = process.argv;
 const rows = readFileSync(tsv, "utf8").trim().split("\n").map((l) => l.split("\t")).slice(+from, +from + +n);
 // 서버는 판정과 같은 실행 인자(packages/mcp/src/index.ts 판정 launch)
-const b = await firefox.launch(SRV ? { args: ["--no-sandbox", "--disable-dev-shm-usage"] } : {});
+const b = await firefox.launch(SRV ? { args: ["--disable-dev-shm-usage"], chromiumSandbox: process.env.PP_JUDGE_NO_SANDBOX !== "1" } : {});
 let i = 0;
 for (const [token, id, page, score] of rows) {
   const p = await b.newPage({ viewport: { width: 1920, height: 1080 } });

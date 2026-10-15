@@ -3,6 +3,8 @@
 #   /var/www/platform-mcp/current 에 저장소 묶음(packages/mcp + packages/shared + apps/web/public/guide-files + pnpm-workspace.yaml + package.json + pnpm-lock.yaml)을 풀고
 #   pnpm install --prod --filter @pp/mcp... → (cd packages/mcp && pnpm exec playwright-core install chromium-headless-shell)
 #   처음 한 번: sudo node packages/mcp/node_modules/playwright-core/cli.js install-deps chromium
+#   판정 브라우저 샌드박스(O-34): sudo cp scripts/apparmor-pw-headless-shell /etc/apparmor.d/pw-headless-shell && sudo apparmor_parser -r /etc/apparmor.d/pw-headless-shell
+#     (Ubuntu 23.10+ 는 이게 없으면 판정이 "No usable sandbox" 로 죽는다 — 급하면 아래 Environment=PP_JUDGE_NO_SANDBOX=1 로 임시 우회)
 #   sudo cp scripts/powermcp.service /etc/systemd/system/ && 아래 User·LEGACY_HOMEBOX_KEY 를 서버 값으로 채운 뒤
 #   sudo systemctl daemon-reload && sudo systemctl enable --now powermcp
 #   확인: curl -s http://127.0.0.1:3110/mcp/health

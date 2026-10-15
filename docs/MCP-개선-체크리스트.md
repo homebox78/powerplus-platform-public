@@ -137,6 +137,7 @@
 | MC-91 | 시안을 고칠 때 판정식 높이(바닥글 윗변 − 히어로)를 레퍼런스 대비로 본다 — 구역 간격은 늘리지 말고 기존 평균 이하 한 값, 빈칸은 덜어서, 카드 정렬은 글을 빼서 | 10-15 일괄 수정 표본 72 +8%·512 +15% 로 탈락. 같은 날 높이 규칙이 히어로를 빼고 재게 바뀌어 원래 시안도 이미 +6~14% 였다 | scratchpad try.mjs 높이 % · meas.mjs |
 | MC-92 | 게시 시안 전체 재판정 전에 읽기 전용 조사(scripts/mock-compose-survey.mjs)로 대상부터 고른다 — 갤러리 사본이 없는 시안은 재판정에서 떨어지면 다음 날 지워진다(mock.php galleryStore). 빌릴 땐 lend-any 지도 파일을 백업 | 10-15 47장 일괄 수정: 조사 → 표본 5장 → 묶음 3개 → 미통과 재수정 → 47/47 통과·unlend, 재조사 110장 0건 | mcp-test-key.php lend-any·unlend |
 | MC-93 | 글자 줄 나눔(꼬리 한 줄)은 운영 판정과 같은 서버 Chromium·글꼴로 확인한다 — 로컬 firefox 0건이어도 서버에서 걸린다. 문장은 칸 폭 80% 안(여유 20%), 낱말 중간 끊김은 keep-all | 10-15 로컬에서 고친 58·64·697 꼬리가 서버에서 다시 걸림, 74·105 는 서버에서만 | PP_QA_SERVER=1 node scripts/mock-compose-survey.mjs(서버) |
+| MC-94 | 브라우저 보안 옵션은 실행 중인 프로세스 인자로 확인한다 — Playwright 는 chromiumSandbox:true 를 줘야 --no-sandbox 를 안 붙인다(args 에서 빼는 것만으론 안 켜짐). 서버 이관 때 AppArmor 프로필도 같이 깔고, 없으면 PP_JUDGE_NO_SANDBOX=1 | 10-15 --no-sandbox 를 args 에서만 빼고 배포 → 판정 브라우저 5개가 여전히 --no-sandbox | ps -eo args | grep chrome-headless-shell |
 
 ---
 
@@ -304,7 +305,7 @@
 | O-31 | Free 차단 API 402 / MCP 403 | 의도 확인 |
 | ~~O-32~~ | ~~남의 시안 고치기 404~~ | 0b4d1fe — 403 |
 | O-33 | 렌더 판정 크레딧 차감 | 과금 설계 후 |
-| O-34 | 판정 브라우저 `--no-sandbox` | 서버 Ubuntu 24.04 가 AppArmor 로 비특권 userns 를 막아 샌드박스 불가 확인. 해법 = 판정 브라우저 실행 파일 하나에만 userns 허용 AppArmor 프로필 → 서버 설정 변경이라 자동 모드가 막음, **사용자 승인 필요** |
+| ~~O-34~~ | ~~판정 브라우저 --no-sandbox~~ | fd76fb1·963b543 (사용자 승인) — 실행 파일 하나만 userns 허용 AppArmor 프로필(scripts/apparmor-pw-headless-shell) + chromiumSandbox:true. 운영 판정 브라우저 --no-sandbox 0개, 재판정 점수 그대로(98·89·98) |
 | O-35 | 커넥터 OAuth | 큰 작업 |
 | O-36 | deck 렌더 계열 도구 | 큰 작업 |
 | O-37 | check_code 결과 기록 표 | db-design 먼저 |

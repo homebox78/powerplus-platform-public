@@ -92,8 +92,8 @@ function legacyHeaders(plan: "pro" | "free", accept = "application/json"): Recor
   return headers;
 }
 /** 옛 홈박스 PHP 호출 — 서비스 키(Pro)를 실어 보낸다. 사용자 키는 보내지 않는다(옛 DB 엔 없다). plan 은 플랫폼 판정값. */
-async function api<T>(p: string, plan: "pro" | "free"): Promise<T> {
-  const res = await fetch(`${API}${p}`, { headers: legacyHeaders(plan) });
+async function api<T>(p: string, plan: "pro" | "free", extra?: Record<string, string>): Promise<T> {
+  const res = await fetch(`${API}${p}`, { headers: { ...legacyHeaders(plan), ...(extra ?? {}) } });
   const body = (await res.json().catch(() => null)) as T | { error?: { code: string; message: string } } | null;
   if (!res.ok) {
     const e = new Error((body as { error?: { message: string } } | null)?.error?.message ?? `레퍼런스 API HTTP ${res.status}${LEGACY_KEY ? "" : " (LEGACY_HOMEBOX_KEY 미설정)"}`) as Error & { code?: string };
@@ -326,7 +326,7 @@ const INSTRUCTIONS = [
   "4-9) mock_get_design_preferences — 디자이너 A/B 투표로 더 낫다고 고른 UI 방식(두 번째 근거). mock_get_replica_kit 응답의 preferences 와 mock_check_mockup 의 preference_tips 에도 실린다. 요소를 어떻게 그릴지(스테퍼냐 드롭다운이냐 등)는 이 규칙을 따르고, 배치는 레퍼런스를 따른다.",
   "5) guide_krds — KRDS 컴포넌트 공식 가이드 링크. 관공서는 KRDS 준수가 평가 요소다.",
   "",
-  "섹션 structure 필드: title·headings·links{n,labels}·images{n,photos,icons}·items·cols·colors{bg,fg,accent}·font·text(300자). 구성은 이 값으로 정하고 없는 값은 지어내지 말고 자리표시자로 둔다. 같은 행의 좌우 순서는 x 로 판단한다.",
+  "섹션 structure 필드: title·headings·links{n,labels}·images{n,photos,icons}·items·cols·colors{bg,fg,accent}·font·text{chars,words,kind}. 수집 원문은 주지 않는다 — 기관명·지명·인명은 ○○ 로 일반화돼 있고, 긴 문장은 \"[글 N자]\", text 는 글자 수·낱말 수·형식(제목·메뉴·링크 목록·문장·연락처·주소)만이다. ○○ 자리는 persona 의 가상 기관·인물로 채우고, 같은 길이의 가상 글을 쓴다. 구성은 이 값으로 정하고 없는 값은 지어내지 말고 자리표시자로 둔다. 같은 행의 좌우 순서는 x 로 판단한다.",
   "참고 이미지(Pro): mock_get_page_pattern·mock_get_section_pattern·mock_get_screen 응답에 실제 화면·섹션 이미지가 붙는다. 목업은 반드시 이미지를 보고 그 디자인 언어를 따른다 — 사진을 폭 가득 깔고 글자를 얹는지, 둥근 모서리·겹침(카드가 비주얼 위로 올라옴)·아이콘 퀵메뉴·색이 섞인 강조 문구·배경 면 구분 같은 처리. 회색 빈 박스와 '[자리표시자]' 글자만으로 된 와이어프레임을 내지 않는다. 실명·실제 사진·로고는 복제하지 말고, 사진 자리에는 mock_get_sample_images 의 홈박스 샘플 이미지(가상 인물·풍경, 공개 url)를 넣는다 — 메인 비주얼은 hero-city·hero-nature, 인사말은 leader, 소식 썸네일은 news-thumb·leader-field, 배너존은 banner. 넓은 사진은 text_safe.side 쪽에 글자를 얹고 scrim=true 면 어두운 그라데이션을 깐다.",
   "구성 순서는 exemplars 의 섹션 목록, 치수·색·글꼴은 mock_get_site·mock_get_design_system 값 그대로 쓴다. 응답값과 다르게 바꾸면 이유를 적는다.",
   "규칙: 응답의 n·confidence 를 반드시 읽고, n<10 이면 '표본이 적다'고 명시한다. 수치는 지어내지 말고 응답값만 쓴다. 출처(slug·url)를 함께 제시한다.",
@@ -449,6 +449,8 @@ function buildServer(key: string | null): McpServer {
   const sectionTypeDesc = `섹션 유형 id. 허용값: ${sectionTypes.join("·")}`;
   const pageTypeDesc = `페이지 유형 id. 허용값: ${pageTypes.join("·")}`;
   const deviceDesc = "pc(기본) 또는 mobile";
+  // 아이콘 스타일(O-22) — 레퍼런스 엔진 Samples::styleOf 값. 목록이 늘 수 있어 enum 대신 글자로 받고, 틀리면 엔진이 허용값을 돌려준다(BAD_ICON_STYLE)
+  const iconStyleDesc = "아이콘 스타일 — 생략하면 주색에 어울리는 스타일을 하나 골라 쓴다(기본). 고객이 정했을 때만 준다. 허용값: icon-blue(파랑 단색)·icon-glass(유리 질감 입체)·icon-gradient(그라데이션)·icon-color-3(컬러 입체)·icon-color-gradient-flat(컬러 그라데이션 평면)·icon-flat-9(평면 파스텔)·icon-iso(아이소메트릭)·icon-handdrawn-blue(손그림 파랑)·icon-si-deck-blue(SI 장표 파랑)·icon-set-line(선형)·icon-set-duotone(투톤). 틀린 값이면 오류에 지금 허용값이 온다";
   const get =<T,>(path: string) => api<T>(path, pro ? "pro" : "free"); // guard 뒤에 불러야 pro 가 채워져 있다
 
   // ================================================================ [mock] powerMock
@@ -534,7 +536,7 @@ function buildServer(key: string | null): McpServer {
   });
 
   server.registerTool("mock_search_sections", {
-    title: "섹션 검색(사이트 단위)", description: "사이트 1곳의 섹션(헤더·메인비주얼·바로가기·소식 탭 게시판·팝업존·뉴스티커·경로·페이지 타이틀·탭·LNB·게시판·만족도·푸터…) 크롭 목록. 각 항목에 structure.flags(탭·캐러셀·표·폼·페이지네이션)와 텍스트 발췌가 있어 이미지를 열지 않아도 구조를 알 수 있다. 여러 사이트를 가로지르는 패턴은 mock_get_section_pattern.",
+    title: "섹션 검색(사이트 단위)", description: "사이트 1곳의 섹션(헤더·메인비주얼·바로가기·소식 탭 게시판·팝업존·뉴스티커·경로·페이지 타이틀·탭·LNB·게시판·만족도·푸터…) 크롭 목록. 각 항목에 structure.flags(탭·캐러셀·표·폼·페이지네이션)와 글 모양(제목·링크 글은 기관명·인명을 ○○ 로 일반화, 긴 글은 길이·형식만)이 있어 이미지를 열지 않아도 구조를 알 수 있다. 여러 사이트를 가로지르는 패턴은 mock_get_section_pattern.",
     inputSchema: { slug: z.string(), section_type: listOf(z.enum(sectionTypes)).optional().describe(`${sectionTypeDesc} (여러 개면 쉼표)`), page_type: listOf(z.enum(pageTypes)).optional().describe(`그 유형 화면의 섹션만. ${pageTypeDesc}`), screen_id: z.number().int().optional(), device: z.enum(["pc", "mobile"]).optional().describe(deviceDesc), compact: z.boolean().optional().describe("true(기본) = 크롭 URL·패싯 없이 위치·구성만 — 응답이 작다"), limit: z.number().int().min(1).max(200).optional() },
   }, async (a) => {
     const g = await guard("mock_search_sections"); if (g) return g;
@@ -631,10 +633,11 @@ function buildServer(key: string | null): McpServer {
       width: z.number().int().min(960).max(1880).optional().describe("PC 본문 폭 px — 고객이 폭을 정했을 때만. 생략하면 최소 1400px(레퍼런스가 좁으면 칸 비율을 지켜 넓혀 준다)"),
       lang: z.enum(["ko", "en", "ja", "zh", "fr", "es", "de", "vi"]).optional().describe("제작 언어(허용값: ko·en·ja·zh·fr·es·de·vi) — 생략하면 한국어. 영어·일본어 등이면 응답 language.rule 대로 메뉴·본문·기관 이름까지 그 언어로 만든다"),
       zoom: z.boolean().optional().describe("true 면 참고 이미지를 본문 폭만 잘라 더 크게 준다(좌우 여백 제외). 처음엔 생략해 전체를 보고, 글자 크기·칸 안쪽이 안 읽히면 true 로 한 번 더 부른다"),
+      icon_style: z.string().max(40).optional().describe(iconStyleDesc),
     },
   }, async (a) => {
     const g = await guard("mock_get_replica_kit"); if (g) return g;
-    const r = await get<Record<string, unknown> & { reference?: { capture_url?: string | null; site_slug?: string; screen_id?: number; width?: number; height?: number } }>(`/mockups/replica?${qs({ org_type: a.org_type, org_name: a.org_name, ref: a.ref, rank: a.rank, page: a.page, primary: a.primary, width: a.width, font: a.font, lang: a.lang })}`);
+    const r = await get<Record<string, unknown> & { reference?: { capture_url?: string | null; site_slug?: string; screen_id?: number; width?: number; height?: number } }>(`/mockups/replica?${qs({ org_type: a.org_type, org_name: a.org_name, ref: a.ref, rank: a.rank, page: a.page, primary: a.primary, width: a.width, font: a.font, lang: a.lang, icon_style: a.icon_style })}`);
     const ref = r.reference ?? {};
     const cbox = (ref as { content?: { x: number; w: number } }).content;
     const zoom = a.zoom && cbox ? { x: cbox.x, w: cbox.w, vw: ref.width ?? 1920 } : undefined;
@@ -783,9 +786,19 @@ function buildServer(key: string | null): McpServer {
     if (!d.ok || !d.json?.token) return err(d.json?.error?.message ?? `시안을 보관하지 못했습니다(HTTP ${d.status}).`, d.json?.error?.code ?? "ERROR");
     if (!refId) refId = String(d.json.ref_id ?? "");
     if (!refId) return err("이 시안에는 보관된 ref_id 가 없습니다. ref_id 를 함께 보내세요(mock_get_replica_kit 응답의 reference.ref_id).", "INVALID_ARGS", undefined, { field: "ref_id" });
-    type Ref = { capture_url?: string | null; site_slug?: string; height?: number; pieces?: Array<{ capture_url?: string | null; src_y: number; src_h: number; y: number; width: number }> } & Record<string, unknown>;
+    type Piece = { capture_url?: string | null; judge_url?: string | null; src_y: number; src_h: number; y: number; width: number };
+    type Ref = { capture_url?: string | null; judge_url?: string | null; site_slug?: string; height?: number; pieces?: Piece[] } & Record<string, unknown>;
     let ref: Ref;
-    try { ref = await get(`/mockups/check-ref?ref_id=${encodeURIComponent(refId)}`); } catch (e) { return err(String((e as Error).message), (e as { code?: string }).code ?? "NOT_FOUND"); }
+    // 판정 전용 원본(O-45): 서버 비밀로 서명하면 레퍼런스 엔진이 공공누리 2~4유형 화면도 judge_url(2분 만료)을 준다.
+    // judge_url 은 아래 판정 렌더·대조에만 쓰고 사용자 응답(글·이미지 블록)·판정 기록에는 싣지 않는다.
+    const jts = String(Math.floor(Date.now() / 1000));
+    const judgeHeaders = JUDGE_SECRET ? { "X-Pp-Judge-Ts": jts, "X-Pp-Judge-Ref": createHmac("sha256", JUDGE_SECRET).update(`ref|${refId}|${jts}`).digest("hex") } : undefined;
+    try { ref = await api<Ref>(`/mockups/check-ref?ref_id=${encodeURIComponent(refId)}`, pro ? "pro" : "free", judgeHeaders); } catch (e) { return err(String((e as Error).message), (e as { code?: string }).code ?? "NOT_FOUND"); }
+    const judgeUrl = ref.capture_url ?? ref.judge_url ?? null;
+    const judgePieces = ref.pieces?.map((p) => ({ ...p, capture_url: p.capture_url ?? p.judge_url ?? null }));
+    // 판정 전용 원본을 하나라도 썼으면 레퍼런스|시안 나란히 이미지(왼쪽이 원본)도 사용자에게 주지 않는다
+    const usedJudge = (!ref.capture_url && !!ref.judge_url) || !!ref.pieces?.some((p) => !p.capture_url && !!p.judge_url);
+    ref = { ...ref, judge_url: undefined, pieces: ref.pieces?.map(({ judge_url: _j, ...p }) => p) };
     const token = String(d.json.token); const html = String(d.json.html ?? "");
     if (a.org_name) { checkOrg.set(token, a.org_name); if (checkOrg.size > 2000) checkOrg.delete(checkOrg.keys().next().value as string); }
     const want = a.org_name ?? checkOrg.get(token) ?? "";
@@ -795,8 +808,8 @@ function buildServer(key: string | null): McpServer {
       const engine = (process.env.MCP_BROWSER ?? "chromium") as "chromium" | "firefox";
       const { default: sharp } = await import("sharp");
       let refImage: Buffer | null = null;
-      if (ref.pieces?.length) refImage = await composeRef(sharp, ref.pieces, Number(ref.height ?? 0)).catch(() => null);
-      else if (ref.capture_url) { const r = await fetch(ref.capture_url.startsWith("http") ? ref.capture_url : `${ORIGIN}${ref.capture_url}`).catch(() => null); if (r?.ok) refImage = Buffer.from(await r.arrayBuffer()); }
+      if (judgePieces?.length) refImage = await composeRef(sharp, judgePieces, Number(ref.height ?? 0)).catch(() => null);
+      else if (judgeUrl) { const r = await fetch(judgeUrl.startsWith("http") ? judgeUrl : `${ORIGIN}${judgeUrl}`).catch(() => null); if (r?.ok) refImage = Buffer.from(await r.arrayBuffer()); }
       const { result, compare, thumb } = await checkMockup({ html, ref, refImage, sharp, want, textKeys: await textSampleKeys(), iconKeys: textKeyCache.icons, peers: Array.isArray(d.json.peers) ? d.json.peers : [], width: a.device === "mobile" ? 390 : 1920, launch: () => pw[engine].launch({ args: engine === "chromium" ? ["--no-sandbox", "--disable-dev-shm-usage"] : [] }) });
       const rec = await internal(`mockup-pages/${token}/check`, { score: result.score, pass: result.pass, ref_id: refId, result: { ...result, rows: undefined }, thumb: thumb ? thumb.toString("base64") : undefined, device: a.device ?? "pc", page: refId.startsWith("mix1:") ? "main" : String((ref as { page_type?: string }).page_type ?? "") }).catch(() => null);
       // 기록이 안 되면 점수·통과가 DB 에 NULL 로 남아 게시가 막힌다 — 조용히 넘기지 않고 로그에 남긴다(PP_JUDGE_SECRET 누락이 흔한 원인)
@@ -808,7 +821,8 @@ function buildServer(key: string | null): McpServer {
       // 디자이너 선호 조언(2026-10-03) — 시안에 든 요소에 맞는 designus 투표 규칙. 점수에는 넣지 않는다(조언)
       const preference_tips = Array.isArray(d.json.pref_tips) && d.json.pref_tips.length ? { how: "디자이너 A/B 투표에서 뚜렷하게 갈린 결과다. 시안의 같은 요소가 instead_of 쪽이면 rule 쪽으로 바꾸는 것을 권한다(감점 없음).", tips: d.json.pref_tips } : undefined;
       const content: Array<TextBlock | ImageBlock> = [{ type: "text", text: JSON.stringify({ token, ref_id: refId, reference: ref.site_slug, ...result, summary: undefined, preference_tips, next }) }];
-      if (pro && compare?.slices?.length) compare.slices.slice(0, 6).forEach((s, i) => content.push({ type: "text", text: `[나란히 ${i + 1}] 왼쪽 레퍼런스 · 오른쪽 시안 (y ${s.from}~${s.to})` }, { type: "image", data: s.jpeg.toString("base64"), mimeType: "image/jpeg" }));
+      if (usedJudge && compare?.slices?.length) content.push({ type: "text", text: "레퍼런스에 공공누리 제한(2~4유형) 구간이 있어 판정은 원본으로 대조했지만, 레퍼런스|시안 나란히 이미지는 제공하지 않습니다. fixes 를 따라 고치세요." });
+      else if (pro && compare?.slices?.length) compare.slices.slice(0, 6).forEach((s, i) => content.push({ type: "text", text: `[나란히 ${i + 1}] 왼쪽 레퍼런스 · 오른쪽 시안 (y ${s.from}~${s.to})` }, { type: "image", data: s.jpeg.toString("base64"), mimeType: "image/jpeg" }));
       return { content };
     } catch (e) {
       return err(`판정 렌더에 실패했습니다: ${String((e as Error).message).slice(0, 200)} (시안은 token="${token}" 으로 보관돼 있다 — 같은 token 으로 다시 부른다)`, "RENDER_FAILED");
@@ -860,10 +874,11 @@ function buildServer(key: string | null): McpServer {
       tags: listOf(z.string()).optional().describe("태그(가상 기관명 등, 쉼표 구분)"),
       limit: z.number().int().min(1).max(24).optional().describe("개수 1~24, 기본 6"),
       seed: z.number().int().optional().describe("같은 조건에서 다른 묶음을 받을 때 바꾼다"),
+      icon_style: z.string().max(40).optional().describe(iconStyleDesc),
     },
   }, async (a) => {
     const g = await guard("mock_get_sample_images"); if (g) return g;
-    const r = await get<{ count: number; library: Record<string, number>; items: SampleImage[]; usage: string }>(`/samples?${qs({ kind: a.kind, section_type: a.section_type, tags: a.tags, limit: a.limit ?? 6, seed: a.seed })}`);
+    const r = await get<{ count: number; library: Record<string, number>; items: SampleImage[]; usage: string }>(`/samples?${qs({ kind: a.kind, section_type: a.section_type, tags: a.tags, limit: a.limit ?? 6, seed: a.seed, icon_style: a.icon_style })}`);
     const items = r.items.map(absSample);
     return withImages({ ...r, items }, pro, items.slice(0, 6).map((s) => ({ url: s.thumb_url, label: s.id, caption: `${s.id} — ${s.alt}${s.text_safe ? ` (글자는 ${s.text_safe.side === "left" ? "왼쪽" : "오른쪽"}, ${s.text_safe.text_color === "light" ? "흰 글자" : "검은 글자"}${s.text_safe.scrim ? ", 어두운 그라데이션 필요" : ""})` : ""}${s.temporary ? " · 임시본" : ""}`, maxW: 480, maxH: 480 })));
   });
@@ -1037,7 +1052,7 @@ function buildServer(key: string | null): McpServer {
 
   // ================================================================ [guide] guide_tokens · [deck] deck_jobs
   server.registerTool("guide_tokens", {
-    title: "디자인 토큰 파일", description: "powerGuide 가 배포하는 디자인 토큰 산출물(CSS·SCSS·JS·TS·Java·Tailwind·Figma 등). file 없이 부르면 목록, file 을 주면 그 파일 내용(텍스트, 최대 200KB).",
+    title: "디자인 토큰 파일", description: "powerGuide 가 배포하는 디자인 토큰 산출물(CSS·SCSS·JS·TS·Java·Tailwind·Figma 등). file 없이 부르면 목록, file 을 주면 그 파일 내용(텍스트, 최대 200KB). 정본 = 역할 토큰 하나(solideo-tokens.css 의 text·bg·fill·border·icon·accent 앞머리) — 화면 코드는 이 이름만 쓴다. 회사·기관 색은 skin-*.css 예시 스킨(brand 단계만 덮음)을 함께 불러 바꾼다(예: skin-solideo.css = 솔리데오 크림슨).",
     inputSchema: { file: z.string().optional().describe("목록의 name(예: solideo-tokens.css)") },
   }, async (a) => {
     const g = await guard("guide_tokens"); if (g) return g;

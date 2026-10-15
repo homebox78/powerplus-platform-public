@@ -74,7 +74,7 @@ export function registerGuideTools(server: McpServer, ctx: GuideCtx): void {
 
   server.registerTool("guide_check_code", {
     title: "코드 판정(결정적)",
-    description: "만든 HTML(또는 HTML 조각 + CSS)을 렌더 없이 규칙으로 판정해 점수·통과 여부·고칠 곳(fixes)을 준다. 검사: 정본 토큰 밖 하드코딩 색(가장 가까운 토큰 제안), img alt, 버튼·링크 이름, 폼 label, 제목 순서(h1 앞 제목·단계 건너뜀), 글자·배경 대비(인라인·후손 선택자, 대체 색은 대비를 다시 재서 기준을 넘는 것만), html lang, th 없는 데이터 표, onclick 만 붙은 div·span 가짜 버튼(role·tabindex·키보드 처리). 한 줄로 압축된 HTML 이면 줄 번호 대신 where(요소 경로)로 위치를 준다. var(--x, #hex) 의 폴백 hex 는 하드코딩으로 보지 않는다. 85점 이상·오류 0 이 통과. 통과할 때까지 fixes 를 고쳐 다시 부른다.",
+    description: "만든 HTML(또는 HTML 조각 + CSS)을 렌더 없이 규칙으로 판정해 점수·통과 여부·고칠 곳(fixes)을 준다. 검사: 정본 토큰 밖 하드코딩 색(가장 가까운 정본 역할 토큰 이름만 제안, 회사색 같은 예시 스킨 색은 역할 토큰 + skin-*.css 로 안내), img alt, 버튼·링크 이름, 폼 label, 제목 순서(h1 앞 제목·단계 건너뜀), 글자·배경 대비(인라인·후손 선택자, 대체 색은 대비를 다시 재서 기준을 넘는 것만), html lang, th 없는 데이터 표, onclick 만 붙은 div·span 가짜 버튼(role·tabindex·키보드 처리). 한 줄로 압축된 HTML 이면 줄 번호 대신 where(요소 경로)로 위치를 준다. var(--x, #hex) 의 폴백 hex 는 하드코딩으로 보지 않는다. 85점 이상·오류 0 이 통과. 통과할 때까지 fixes 를 고쳐 다시 부른다.",
     inputSchema: {
       html: z.string().describe("판정할 HTML 전체 또는 조각(400KB 이하)"),
       css: z.string().optional().describe("따로 둔 CSS(200KB 이하)"),

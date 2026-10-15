@@ -303,7 +303,7 @@ export function GuideTokensEditor() {
   const editTok = kind === "tokens" && edit ? SEMANTIC.find((t) => t.path === edit) : undefined;
   const editDl = kind === "downloads" && edit ? DOWNLOADS.find((d) => d.file === edit) : undefined;
   return (
-    <ListCard title="토큰·내려받기" desc="의미 토큰의 쓰임 설명, 내려받기 형식 이름·용도·숨김을 고칩니다. 토큰 값은 토큰 원본(guide-files)을 고치고 다시 빌드합니다." count={kind === "tokens" ? toks.length : dls.length}
+    <ListCard title="토큰·내려받기" desc="의미 토큰의 쓰임 설명, 내려받기 형식 이름·용도·숨김을 고칩니다. 토큰 값은 정본(modules/guide/data/tokens.json)을 고치고 scripts/build-guide-tokens.mjs 로 다시 빌드합니다." count={kind === "tokens" ? toks.length : dls.length}
       filters={<><ChoiceButton size="sm" label="종류" value={kind} onChange={(x) => set({ kind: x === "downloads" ? "" : x, q: "" })} options={[{ id: "downloads", label: `내려받기 ${DOWNLOADS.length}` }, { id: "tokens", label: `의미 토큰 ${SEMANTIC.length}` }]} showAll={false} /><SearchBox value={q} onSearch={(x) => set({ q: x })} placeholder="이름" /></>}>
       {kind === "tokens" ? (
         <Table className="min-w-[620px] table-fixed">

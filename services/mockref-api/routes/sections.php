@@ -77,10 +77,11 @@ $router->get('/api/sites/{slug}/sections', static function (array $p): void {
             'locked' => !$ok,
             'id' => (int) $x['id'], 'section_type' => $x['section_type_id'], 'section_type_ko' => $x['section_type_ko'], 'variant' => $x['variant'],
             'w' => (int) $x['bbox_w'], 'h' => (int) $x['bbox_h'], 'confidence' => $x['confidence'] === null ? null : (float) $x['confidence'],
-            'screen_id' => (int) $x['screen_id'], 'page_type' => $x['page_type'], 'page_type_ko' => $x['page_type_ko'], 'screen_title' => $x['screen_title'],
+            'screen_id' => (int) $x['screen_id'], 'page_type' => $x['page_type'], 'page_type_ko' => $x['page_type_ko'], 'screen_title' => Homebox\PublicText::raw() ? $x['screen_title'] : Homebox\PublicText::generalize((string) $x['screen_title']),
             'krds' => is_string($x['krds']) ? (json_decode($x['krds'], true) ?: []) : [],
             // 구조 힌트(탭·캐러셀·표·폼 여부 + 텍스트 발췌) — MCP 가 "탭형인가·슬라이드인가"를 이미지 없이 판단하는 근거 (2026-09-23)
-            'structure' => Homebox\SectionShape::structure($x['structure'] ?? null),
+            // 수집 원문(헤드라인·기관장 실명)은 모양·○○ 로만(O-44)
+            'structure' => Homebox\SectionShape::publicStructure($x['structure'] ?? null),
             'x' => (int) ($x['bbox_x'] ?? 0), 'y' => (int) ($x['bbox_y'] ?? 0),
             'crop_url' => $ok ? Plan::kurl($siteId, $x['crop_asset_id']) : null,
             'image_withheld' => Plan::koglWithheld($siteId), // 공공누리 2~4유형이면 원본 크롭을 뺀 이유(O-04), 아니면 null

@@ -1,4 +1,4 @@
-// powerGuide 토큰 정본(guide-files/solideo-tokens.flat.json) → Tailwind v4 @theme 산출물.
+// powerGuide 토큰 정본(guide-files/solideo-tokens.flat.json — scripts/build-guide-tokens.mjs 가 만든다) → Tailwind v4 @theme 산출물.
 // 2026-10-12 MCP 시험: guide_tokens 에 Tailwind v4 형식이 없어 AI 가 v3 설정(tailwind.config.js)으로 옮겨 적었다.
 // 손으로 적지 않는다 — 토큰이 바뀌면 이 스크립트를 다시 돌린다.
 //   node scripts/build-tailwind-theme.mjs
@@ -41,7 +41,7 @@ for (const [name, t] of Object.entries(tokens)) {
 }
 
 const LABEL = { color: "색", spacing: "간격(p-4 · gap-6 …)", radius: "모서리(rounded-md …)", text: "글자 크기(text-h1 …)", "font-weight": "굵기(font-bold …)", font: "글꼴(font-sans …)", leading: "줄 간격(leading-normal …)", tracking: "자간(tracking-tight)", shadow: "그림자(shadow-2 …)", ease: "움직임 곡선(ease-standard …)", breakpoint: "화면 폭 구간(tablet: · desktop: · wide:)" };
-let out = `/* SOLIDEO powerGuide 토큰 → Tailwind CSS v4 @theme (자동 생성 — 손으로 고치지 마세요)\n * 원본: solideo-tokens.flat.json (버전 ${src.version ?? "-"}) · 생성기: scripts/build-tailwind-theme.mjs\n * 쓰는 법: @import "tailwindcss"; 다음 줄에 이 파일을 @import 하면 bg-blue-500 · text-h1 · rounded-md · shadow-2 같은 유틸리티가 생긴다.\n * 간격은 Tailwind 기본(--spacing 배수)을 덮지 않고 이름 붙은 값(p-4 = 16px 등 정본 값)만 더한다. */\n@theme {\n`;
+let out = `/* powerGuide 토큰 → Tailwind CSS v4 @theme (자동 생성 — 손으로 고치지 마세요)\n * 원본: solideo-tokens.flat.json (버전 ${src.version ?? "-"}) · 생성기: scripts/build-tailwind-theme.mjs\n * 쓰는 법: @import "tailwindcss"; 다음 줄에 이 파일을 @import 하면 bg-blue-500 · text-h1 · rounded-md · shadow-2 같은 유틸리티가 생긴다.\n * 간격은 Tailwind 기본(--spacing 배수)을 덮지 않고 이름 붙은 값(p-4 = 16px 등 정본 값)만 더한다. */\n@theme {\n`;
 for (const [g, rows] of groups) {
   out += `  /* ${LABEL[g] ?? g} */\n`;
   for (const [k, v] of rows) out += `  ${k}: ${v};\n`;
@@ -60,7 +60,7 @@ console.log(`쓴 파일 ${path.relative(root, file)} — 테마 ${[...groups.val
 // ── Tailwind v3 프리셋(tailwind.preset.cjs) — 같은 정본에서 만든다 ──
 // 2026-10-10 MCP 시험(O-39): 손으로 옮겨 둔 v3 프리셋에 green·blue·amber·red·글자 크기·화면 폭이 빠져 있었다.
 // 값은 var(--토큰) 참조(solideo-tokens.css 를 함께 불러야 한다, 다크 모드가 그대로 먹는다). 화면 폭만 미디어 쿼리라 실제 값.
-const COLOR_GROUPS = ["text", "bg", "fill", "border", "icon", "gray", "crimson", "ink", "green", "blue", "amber", "red", "accent", "static"];
+const COLOR_GROUPS = ["text", "bg", "fill", "border", "icon", "gray", "brand", "ink", "green", "blue", "amber", "red", "accent", "static"];
 const colors = {};
 for (const g of COLOR_GROUPS) {
   for (const [name, t] of Object.entries(tokens)) {
@@ -86,7 +86,7 @@ const extend = {
   transitionTimingFunction: byPrefix("easing-"),
   screens,
 };
-const preset = `// SOLIDEO Design System — Tailwind preset (${src.version ?? "-"})\n`
+const preset = `// powerGuide 디자인 토큰 — Tailwind preset (${src.version ?? "-"})\n`
   + `// 자동 생성 파일입니다(생성기: scripts/build-tailwind-theme.mjs — 손으로 고치지 마세요). solideo-tokens.css 를 함께 불러와야 var() 가 해석됩니다.\n`
   + `// 화면 폭(screens: ${Object.keys(screens).join("·")})은 Tailwind 기본 폭(sm·md·lg…)에 더해집니다. 기본 폭과 섞어 쓰지 말고 한쪽만 쓰세요.\n`
   + `module.exports = ${JSON.stringify({ theme: { extend } }, null, 2)};\n`;

@@ -141,19 +141,40 @@ final class Kit
         }
         // 발표 시간 대비 장 수(DCK-104) — 한 장 60~80초. 분은 요청(minutes) 또는 원자료의 '발표 규정'에서, 분량 상한이 있으면 그 값이 먼저
         $minutes = (float) ($in['minutes'] ?? 0) ?: (float) (self::presentMinutes($source) ?? 0);
-        $cap = self::slideCap($source);
+        // O-46(사용자 2026-10-15 결정) — 제안요청서에 분량 상한이 적혀 있으면 넘는 순간 실격 사유다: warn 이 아니라 치명.
+        // 표지·목차·간지 제외 규정이 같은 줄에 있으면 그 장을 빼고 센다. 상한이 없으면 아래 발표 시간 기준(warn)만.
+        $capInfo = self::slideCapInfo($source);
+        $cap = $capInfo['cap'] ?? null;
+        $capStat = null;
+        $capFatal = false;
+        $excl = 0;
+        if ($capInfo) {
+            foreach ($slides as $s) if (($r = self::frontRole($s)) !== null && in_array($r, $capInfo['exclude'], true)) $excl++;
+            $counted = count($slides) - $excl;
+            $capStat = ['cap' => $cap, 'counted' => $counted, 'excluded' => $excl, 'exclude_rule' => $capInfo['exclude'], 'rule' => $capInfo['line']];
+            if ($counted > $cap) {
+                $capFatal = true;
+                $lab = ['cover' => '표지', 'toc' => '목차', 'divider' => '간지'];
+                $exNote = $capInfo['exclude'] ? '(' . implode('·', array_map(static fn($x) => $lab[$x], $capInfo['exclude'])) . ' 제외 ' . $excl . '장 빼고 셈)' : '';
+                $add(null, 'fatal', '제안요청서 분량 상한 ' . $cap . '장 초과 — 실격 사유: 기획 ' . $counted . '장' . $exNote . ' · 근거 "' . $capInfo['line'] . '"',
+                    ($counted - $cap) . '장을 줄이세요 — 배점 낮은 항목의 장을 합치거나 빼고, 상한은 표지·목차까지 세는지 제안요청서 문구로 다시 확인하세요');
+            }
+        }
         if ($minutes > 0 || $cap) {
-            [$lo, $hi] = $minutes > 0 ? self::paceRange($minutes) : [1, $cap];
-            if ($cap) { $hi = min($hi, $cap); $lo = min($lo, $hi); }
+            [$lo, $hi] = $minutes > 0 ? self::paceRange($minutes) : [1, $cap + $excl];
+            if ($cap) { $hi = min($hi, $cap + $excl); $lo = min($lo, $hi); }
             $cnt = count($slides);
             $why = ($minutes > 0 ? '발표 ' . rtrim(rtrim(number_format($minutes, 1), '0'), '.') . '분' : '') . ($cap ? ($minutes > 0 ? ', ' : '') . '분량 상한 ' . $cap . '장' : '');
-            if ($cnt > $hi) $add(null, 'warn', '장 수가 ' . $cnt . '장으로 ' . $why . ' 기준(' . $lo . '~' . $hi . '장)보다 많습니다', '한 장 60~80초 — 덜 중요한 장을 합치거나 빼세요' . ($cap ? '(분량 상한은 넘기면 안 됩니다)' : ''));
+            // 상한 초과는 위에서 치명으로 냈다 — 같은 내용을 warn 으로 한 번 더 내지 않는다
+            if ($cnt > $hi) {
+                if (!$capFatal) $add(null, 'warn', '장 수가 ' . $cnt . '장으로 ' . $why . ' 기준(' . $lo . '~' . $hi . '장)보다 많습니다', '한 장 60~80초 — 덜 중요한 장을 합치거나 빼세요' . ($cap ? '(분량 상한은 넘기면 안 됩니다)' : ''));
+            }
             // 장이 적은 쪽은 기본 info — 단 한 장에 3분(180초)이 넘게 걸리면 경고(Script::MAX_SLIDE 100초의 1.8배, 보수적 기준)
             elseif ($cnt < $lo) $add(null, count(self::evalItems($source)) >= 3 || ($minutes > 0 && $minutes * 60 / max(1, $cnt) > 180) ? 'warn' : 'info','장 수가 ' . $cnt . '장으로 ' . $why . ' 기준(' . $lo . '~' . $hi . '장)보다 적습니다', '배점 상위 항목을 2장으로 나눠 근거를 더하세요');
         }
         // 평가 항목명 원문이 장 제목·절 이름에 있는가(DCK-101) — 위원이 채점표와 장표를 1:1 로 맞춰 본다
         $items = self::evalItems($source);
-        $stat0 = [];
+        $stat0 = $capStat ? ['slide_cap' => $capStat] : [];
         if (count($items) >= 3) {
             // 배점 순위(2026-10-12 MCP 시험) — 상위 항목이 덱 뒤쪽에 몰리거나 한 장뿐이면 경고
             $looseP = static fn(string $t): string => (string) preg_replace('/(?:및|·|ㆍ|,|&)/u', '', self::norm($t));
@@ -342,13 +363,68 @@ final class Kit
         return null;
     }
 
-    /** 발표 자료 분량 상한(장) — '발표자료 20장 이내' 꼴. 제출용 본문 상한(수백 쪽)은 발표 장 수가 아니므로 60장 넘으면 버린다 */
+    /** 발표 자료 분량 상한(장). 없으면 null — 자세한 근거는 slideCapInfo */
     public static function slideCap(string $src): ?int
     {
-        if (preg_match('/(?:분량|발표\s*자료|매수|장\s*수|슬라이드)[^\n]{0,30}?(\d{1,3})\s*(?:장|쪽|매|페이지|p)\s*(?:이내|이하)/u', str_replace('*', '', $src), $m)) {
-            $v = (int) $m[1];
-            return $v >= 3 && $v <= 60 ? $v : null;
+        return self::slideCapInfo($src)['cap'] ?? null;
+    }
+
+    /** 분량 단위 — 시간(분)·기간(일)은 넣지 않는다("발표 20분 이내"·"20일 이내"는 분량이 아니다) */
+    private const CAP_UNIT = '(?:장|쪽|매|페이지|슬라이드|pages?(?![A-Za-z])|p(?![A-Za-z]))';
+
+    /**
+     * 제안요청서의 분량 상한(O-46, 2026-10-15). 표현: "20장 이내·이하·까지", "최대 20매", "20페이지를 초과할 수 없음·넘지 않도록·초과 금지", "A4 20매".
+     * '장' 단위는 그 줄에 분량 맥락(분량·발표·제안·자료·작성·제출·A4·표지·목차·슬라이드…)이 있을 때만 — "사진 20장 이내 첨부" 같은 말을 상한으로 읽지 않게.
+     * 여러 개면 발표 쪽(발표·PT·슬라이드·장표) 상한 중 가장 작은 것, 없으면 전체 중 가장 작은 것. 표지·목차·간지 제외 규정은 같은 줄에서 읽는다.
+     * @return array{cap:int, exclude:list<string>, line:string}|null
+     */
+    public static function slideCapInfo(string $src): ?array
+    {
+        $u = self::CAP_UNIT;
+        $lim = '(?:\s*(?:이내|이하|까지)|\s*(?:을|를)?\s*(?:초과|넘)[^\n]{0,8}?(?:않|말|금지|불가|없|못|안\s*됨|안\s*된))';
+        $forms = [
+            '/(?<![\d.제])(\d{1,3})\s*' . $u . $lim . '/u',
+            '/(?:최대|최다)\s*(\d{1,3})\s*' . $u . '/u',
+            '/A4[^\n\d]{0,12}?(\d{1,3})\s*(?:매|장|쪽|페이지)/u',
+        ];
+        $ctx = '/분량|발표|제안|자료|매수|장\s*수|슬라이드|PT|PPT|작성|제출|A4|표지|목차|본문|장표/u';
+        $cands = [];
+        foreach (preg_split('/\R/u', str_replace('*', '', $src)) as $ln) {
+            // 제안요약서·요약서·요약본 분량(A4 N매)은 발표 장 수 상한이 아니다 — 그 줄은 통째로 건너뛴다(2026-10-15 사용자 결정)
+            if (preg_match('/요약/u', $ln)) continue;
+            foreach ($forms as $re) {
+                if (!preg_match_all($re, $ln, $mm, PREG_SET_ORDER)) continue;
+                foreach ($mm as $m) {
+                    $v = (int) $m[1];
+                    if ($v < 3 || $v > 300) continue;
+                    // '장' 은 뜻이 넓다 — 분량 맥락 낱말이 같은 줄에 있어야 한다
+                    if (preg_match('/^\d+\s*장/u', ltrim(preg_replace('/^(?:최대|최다|A4[^\d]*)/u', '', $m[0]) ?? '')) && !preg_match($ctx, $ln)) continue;
+                    $ex = [];
+                    if (preg_match('/((?:표지|커버|목차|간지)(?:[\s·ㆍ,\/및와과]*(?:표지|커버|목차|간지))*)\s*(?:는|은|를|을)?\s*(?:제외|빼고|미포함|포함\s*(?:하지\s*않|안))/u', $ln, $xm)) {
+                        if (preg_match('/표지|커버/u', $xm[1])) $ex[] = 'cover';
+                        if (str_contains($xm[1], '목차')) $ex[] = 'toc';
+                        if (str_contains($xm[1], '간지')) $ex[] = 'divider';
+                    }
+                    $cands[] = ['cap' => $v, 'exclude' => $ex, 'line' => mb_substr(trim($ln), 0, 80), 'pt' => (bool) preg_match('/발표|PT|슬라이드|장표/u', $ln)];
+                }
+            }
         }
+        if (!$cands) return null;
+        $pt = array_values(array_filter($cands, static fn($c) => $c['pt']));
+        $pool = $pt ?: $cands;
+        usort($pool, static fn($a, $b) => $a['cap'] <=> $b['cap']);
+        $c = $pool[0];
+        unset($c['pt']);
+        return $c;
+    }
+
+    /** 앞장 종류 — 표지(cover)·목차(toc)·간지(divider). 제목·layout·kind·type·page 칸에서 읽는다. 본문이면 null */
+    private static function frontRole(array $s): ?string
+    {
+        $t = trim(implode(' ', array_map(static fn($k) => is_string($s[$k] ?? null) ? $s[$k] : '', ['title', 'layout', 'kind', 'type', 'page', 'scene'])));
+        if (preg_match('/^(?:표지|커버)|\bcover\b/iu', $t)) return 'cover';
+        if (preg_match('/^(?:목차|차례)|\b(?:toc|contents)\b/iu', $t)) return 'toc';
+        if (preg_match('/^간지|\bdivider\b/iu', $t)) return 'divider';
         return null;
     }
 

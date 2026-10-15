@@ -67,7 +67,7 @@
 |:---:|---|---|---|
 | MC-30 | 프록시형 MCP 는 키가 곧 신원이다. 검증한 플랜을 뒤 API 까지 넘긴다(X-Pp-Plan, 서비스 키가 유효할 때만 믿음) | Pro 키로 Free 응답. staff 가 재현 묶음에서 "Pro 이상" 거부 | 같은 호출을 무키·free·staff 키로 세 번 |
 | MC-31 | 권한 판정은 `Access::can()` 하나. MCP 응답·검색·컬렉션·공유 링크 모든 출구가 지난다 (G30) | 상세만 잠그고 검색 출구는 원본 URL | 출시 전 외부 Free 계정 `leak-audit`(MCP 도구 포함) internal/pro 0건 |
-| MC-32 | REST 를 키로 직접 불러도 MCP 와 같은 일 한도·범위를 적용한다 (MCP-006) | REST 직접 호출은 한도 200 통과였다(→ Router 에서 집계로 고침). **범위는 assets REST 에 아직 없음(§5)** | mock 전용 키로 `/api/v1/assets/items` |
+| MC-32 | REST 를 키로 직접 불러도 MCP 와 같은 일 한도·범위를 적용한다 (MCP-006) | REST 직접 호출은 한도·범위 모두 통과였다 → Router 한 곳에서 범위 검사 후 집계(0b4d1fe) | mock 전용 키로 `/api/v1/assets/items` |
 | MC-33 | powerMCP 경유 이중 집계 건너뛰기는 HMAC 헤더(X-Pp-Mcp)로만 인정 | 헤더만으로 흉내 낼 수 있었다 | 헤더 위조 호출 |
 | MC-34 | 판정 결과는 서버가 만든 서명(HMAC `token|score|pass`, PP_JUDGE_SECRET)이 있을 때만 받는다. 비밀이 비면 로그를 남긴다 (MCK-007, R11) | 클라이언트가 보낸 `{score:95,pass:true}`로 게시까지 됐다. 비밀이 빠지면 점수가 조용히 NULL | 위조 점수 POST → 거부 |
 | MC-35 | 시험 산출물 소유자를 확인한다. 끝에 deploy 로 옮기고 시험 키 폐기 (R13) | 시험 시안 11건이 임시 계정에 남아 안 보였다 | `mock_mockups.owner` |
@@ -125,6 +125,11 @@
 | MC-79 | 기본 CSS·동작 스크립트를 고치면 보관 시안까지 | 판정 때 박힌 판이라 이미 만든 시안엔 안 들어감 | api/bin/mock-refresh.php · R37 |
 | MC-80 | 샘플 그림 판별은 주소 열쇠로(id 아님) | id=banner-03-…·주소=2i8u… 라 글자 그림 잘림을 하나도 못 잡음 | index.ts textSampleKeys |
 | MC-81 | 배포 범위에 남의 미커밋 파일이 있으면 커밋된 코드만 깨끗한 작업 트리(git worktree)에서 배포 | R04 를 지키면서 내 배포를 막지 않는다 | git worktree add --detach … HEAD |
+| MC-82 | MCP 가 REST 응답을 읽는 경로는 실제 응답 키와 대조한다(타입 선언만 믿지 않는다) | mock_get_page_code 가 `{screen:{public_url}}` 를 `scr.public_url` 로 읽어 원본 화면 이미지가 늘 빠졌다(bc2324a) | 응답 JSON 을 한 번 찍어 키 경로 확인 |
+| MC-83 | 한글 문자열을 바이트(substr)로 자른 뒤 `/u` 정규식에 넣지 않는다 — 글자 중간이 잘리면 preg 가 false | "보안인증 ISO 27001" 규격 검사가 앞 12바이트를 잘라 치명 오탐(349bd7e) | 한글 앞에 붙은 입력으로 음성 대조 |
+| MC-84 | 만들어 두고 안 쓰는 판정 도우미가 있는지 본다(정의만 있고 호출 0) | flat()·has() 미연결로 "53 퍼센트=53%" 오탐·"19일 속 9일" 미탐(349bd7e) | `grep -n 'function 이름'` 과 호출 수 대조 |
+| MC-85 | 예시 인자 값은 실제 허용값 목록(taxonomy)에 있는지 대조한다 | description 예시 `org_type=univ` 가 taxonomy 에 없어 예시대로 부르면 INVALID_ARGS(bc2324a) | 예시 문구 그대로 호출 |
+| MC-86 | 요청 판정(Triage) capability 를 더하면 MCP 설명·사이트 도우미 바로가기(Assist CAP_LINKS)·낱말 규칙을 같은 이름으로 함께 | 판정은 됐는데 도우미가 "답을 찾지 못했다"(0740c1f) | /assist/scope 의 start 가 null 이 아닌지 |
 
 ---
 
@@ -250,55 +255,62 @@
 
 ---
 
-## 5. 남은 일 (2026-10-15 기준)
+## 5. 남은 일 (2026-10-15 오후 갱신)
 
-코드로 확인한 것은 "코드 확인"이라 적었다. 나머지는 문서상 해결 기록이 없는 것.
+고친 것은 줄을 긋고 커밋을 적었다. 운영 배포·검증까지 마친 것만 긋는다(10-15 deploy.sh·deploy-mcp·deploy-mockref·deploy-engine, 공개본 bd8862b).
 
 ### 높음
-| 번호 | 내용 | 위치·근거 |
+| 번호 | 내용 | 상태 |
 |:---:|---|---|
-| O-01 | **REST 범위 검사 없음** — mock 전용 키로 `/api/v1/assets/items` 200. `Keys::allows` 는 deck·core 에만 | 코드 확인: api/routes/deck.php:35·deck_kit.php:26·core.php:374 뿐 |
-| O-02 | powerplus_check_request 가 코드 판정·지침 검색 capability 를 모름("내 HTML 접근성 검사"에 지원 안 함). 없는 부품을 supported 로 약속 | packages/mcp/src/index.ts capability, api/src/Core/Triage.php |
-| O-03 | KRDS 출신 부품 13개 지침 0, id 체계 셋(키트·krds-components·guide_krds) → search_rules 결과 id 로 get_component 하면 NOT_FOUND | api/data/guide/krds-components.json, Guide/Data.php krdsFor() |
-| O-04 | 레퍼런스 참고 이미지가 공공누리 유형 제한·인물 마스킹·로고 제외 없이 MCP Pro 응답으로 나감(staff 는 Plan::koglOpen 처리 있음) | services/mockref-api/routes/screens.php |
-| O-05 | 게시본끼리 링크 404 (main.html → /api/v1/p/main.html). 서브의 page 를 보관하지 않음 | /p 응답 token 주소 치환 필요 |
-| O-06 | mockref 재현 묶음 7-11 규칙·간격 한 값·library 종류 운영 미배포 — 다른 세션 미커밋 Session.php (R04) | git status |
+| ~~O-01~~ | ~~REST 범위 검사 없음~~ | 0b4d1fe — Router 한 곳에서 경로 첫 단(assets·deck·mock·guide)으로 403 FORBIDDEN_SCOPE, 범위 밖은 한도 미집계. mock 키 /assets/items 403·all 키 200 실측 |
+| ~~O-02~~ | ~~check_request 가 코드 판정·지침 검색을 모름, 없는 부품 약속~~ | 0740c1f — guide_check·guide_rules·checkParts. 운영: "내 HTML 접근성 검사해줘" guide_check 0.9, "KRDS 배너 꼭 넣어야 해?" guide_rules 0.85, "비밀번호 강도 표시 부품" supported false·part_missing |
+| ~~O-03~~ | ~~KRDS 출신 부품 지침 0, id 체계 셋~~ | 0740c1f — Data::KRDS_KIT 하나. 운영: top-navigation→header, gov-banner→masthead 200 |
+| O-04 | 레퍼런스 이미지 공공누리 | **일부** ad08408·bc2324a·d4f3970 — 출구 차단·미제공 이유·판정 전용 원본. 남음: 인물 마스킹·로고 제외(워커·데이터 필요) |
+| ~~O-05~~ | ~~게시본끼리 링크 404~~ | a0ea2cc(다른 세션) |
+| ~~O-06~~ | ~~mockref 7-11 규칙 미배포~~ | 10-15 깨끗한 작업 트리(MC-81)로 deploy-mockref, health 200 |
+| ~~O-44~~ | ~~레퍼런스 분석 도구에 실제 글·실명 잔존~~ | d4f3970 — structure.text 는 길이·형식만, 제목·라벨의 기관명·지명·인명은 ○○, common_titles 일반화. 운영 insights 실명 0(출처 표기 exemplars.title 만 유지) |
 
 ### 중간
-| 번호 | 내용 | 위치 |
+| 번호 | 내용 | 상태 |
 |:---:|---|---|
-| O-10 | deck_kit 범위 오류가 FORBIDDEN(FORBIDDEN_SCOPE 아님) | 코드 확인: api/routes/deck_kit.php:27 |
-| O-11 | guide_get_component 설치 주소가 옛 `homebox-kit-krds.zip` | 코드 확인: api/routes/guide.php:164 |
-| O-12 | guide 토큰 체계 둘(SOLIDEO 크림슨 vs kit --krds-*) — 정본 결정 필요(사용자) | — |
-| O-13 | guide_check_code: 후손 선택자 대비 거짓 통과, 대체 색 대비 재측정 여부 재확인, 제목 순서·lang·th 없는 표 미검출 | mcp-test-1010/guide/REPORT.md |
-| O-14 | 영어 동의어(modal↔dialog, contrast, date↔calendar), KRDS en 이름 첫 단어 잘림 | 같은 곳 |
-| O-15 | 실측 디자인 시스템 값 오류(흰 본문색, 1px 간격, 행간 2.86, `24 px` 띄어쓰기) — 어두운 배경 글자 제외·대비 1.5 미만 "측정 오류 의심" | mock_get_design_system |
-| O-16 | mock_get_design_system 토큰 형식을 powerGuide(tokens.schema.json)와 통일(B2) | PLAN §22 |
-| O-17 | Kit::checkPlan 단위 오탐('24 위'·'2019 건'·(2024)·**191**), 금지어 누락("차질 없"·"…답합니다"·최적의), 발표 시간 대비 장 수 경고 없음 (DCK-104·107·108) | api/src/Deck/Kit.php:21,25,107-123 |
-| O-18 | checkScript 에 PM 1인칭·"저희 제안사"(블라인드)·예상 질문 검사 없음 | Kit.php:464 |
-| O-19 | `/docs/errors` 표에 FORBIDDEN_SCOPE·VALIDATION(422) 없음, `/docs/limits` 설명과 실제 다름 (MCP-009) | apps/web/app/routes/docs.tsx:380-415 |
-| O-20 | 판정 남은 것: D4·D36, 이미지 배너 자리 자동 검사, 높이 비율 축소 본문 폭 오탐(s02), 엉성한 빈칸·꼬리 한 줄 미탐, 모바일 표 | 홈페이지-10곳-시험 |
-| O-21 | 깨진 레퍼런스 캡처 3장(14081·51911·52105) 운영 DB 처리, `published → review` 변경 — 사용자 승인 대기 | — |
-| O-22 | 사진 부족(엉뚱한 사진 33곳), 일반 사진 워터마크라 시안 불가 — 쓸지 결정 필요. 아이콘 스타일 선택지 없음 | — |
-| O-23 | 검색 넓히기 "가장 많이 남는 낱말" 기준 잔존 → 긴 문장 질의에 재발 가능 (R24) | Concierge::query |
+| ~~O-10~~ | ~~deck_kit 범위 오류 FORBIDDEN~~ | 0b4d1fe |
+| O-11 | 설치 zip 주소 | **코드 완료** 0740c1f(powerguide-kit-krds.zip). 남음: 운영 서버의 옛 homebox-kit-krds.zip 삭제 |
+| ~~O-12~~ | ~~토큰 체계 둘~~ | b435e92 — 정본 = 역할 토큰, 기본 brand = KRDS 주색 값, 크림슨은 skin-solideo.css 예시 스킨, kit --krds-primary 는 정본 별칭(계산 색 차이 0), 키트 0.1.1 |
+| ~~O-13~~ | ~~check_code 후손 선택자·대체 색·제목 순서·lang·th~~ | 0740c1f — 대체 색 제안 1,038개 재측정 미달 0, contrast 내림 |
+| ~~O-14~~ | ~~영어 동의어·KRDS en 잘림~~ | 0740c1f(읽을 때 보정). 남음: 원천 krds.ts en 잘림·krds-report.json 208·209행 확인 |
+| ~~O-15~~ | ~~디자인 시스템 실측 값 오류~~ | ad08408 — 1,722곳 이상값 0 |
+| ~~O-16~~ | ~~powerGuide 토큰 형식~~ | ad08408·bc2324a — format=powerguide(DTCG). tokens.schema.json 은 아직 없음(ARCHITECTURE 계획만) |
+| ~~O-17~~ | ~~checkPlan 단위 오탐·금지어·시간 대비 장 수~~ | 349bd7e(+e47466c) — ISO 한글 바이트 잘림·날짜 "202"·붙은 숫자, 단위 환산 대조, 장당 3분 초과 warn |
+| ~~O-18~~ | ~~checkScript 1인칭·블라인드·예상 질문~~ | e47466c + 349bd7e(블라인드 법인 표기) |
+| ~~O-19~~ | ~~/docs/errors·limits~~ | 0b4d1fe |
+| O-20 | 판정 남은 것 | **일부** e78c72c(이미지 배너 자리, 다른 세션). 남음: D4·D36, s02 본문 폭 오탐, 빈칸·꼬리 한 줄 미탐, 모바일 표 |
+| ~~O-21~~ | ~~깨진 캡처 3장~~ | 다른 세션 scripts/capture-blank-scan.mjs(R40) — 3장 포함 173장 review |
+| O-22 | 사진 부족·워터마크·아이콘 스타일 | **대부분** ef16b9b·d4f3970 — Pro·staff 시안에 자체 제작 공개 사진 91장(워터마크 없는 web 판), icon_style 인자, 공개 샘플에서 식약처 엠바고 100건 제외. 남음: 내용 맞춤 사진(대학 비전·교실 등)은 새로 만들어 등록해야 |
+| ~~O-23~~ | ~~넓히기가 핵심어를 버림~~ | 5a60932 — 남긴 낱말 무게 합 기준, Concierge '보고서' 쓰임새 꼴 |
+| ~~O-45~~ | ~~공공누리 111곳 판정이 이미지 없이 대조~~ | d4f3970 — 판정기만 HMAC 서명으로 2분 만료 judge_url 을 받아 대조, 사용자 응답엔 미제공. 운영 mockref judge.secret 설정(10-15). powerMCP 배포는 다른 세션 일괄 수정 끝난 뒤 |
+| ~~O-46~~ | ~~RFP 분량 상한 초과가 warn~~ | ef16b9b — 상한 명시 시 치명(실격 사유), 분·일·사진·제안요약서 분량 제외 |
 
 ### 낮음
-| 번호 | 내용 |
-|:---:|---|
-| O-30 | 키 없는 tools/list 200 (도구 목록 공개) — 의도 확인 |
-| O-31 | Free 차단 코드 API 402 / MCP 403 불일치 — 의도 확인 |
-| O-32 | 남의 시안 고치기가 403 이 아니라 404 |
-| O-33 | 렌더 판정(check_mockup·check_code) 크레딧 차감 미구현(§23 과금) |
-| O-34 | 판정 브라우저 `--no-sandbox` (사용자 판단) |
-| O-35 | 커넥터 OAuth 인증 |
-| O-36 | deck 렌더 계열(extract_text·render_pptx·render_mockup·check_deck·get_design_kit) 미구현 |
-| O-37 | guide_check_code 결과 기록 표(자주 걸리는 규칙) — db-design 먼저 |
-| O-38 | guide 데이터 잡일: 요약 빈 부품 6개, 체크리스트 PDF 찌꺼기(207·241행), 지침 117개 마침표 없음, kit.css 경로 불일치, modal NOT_FOUND 에 dialog 안내 없음, 로그인 패턴·터치 영역 기준 없음, guide_krds 출처 문구 |
-| O-39 | Tailwind v3 프리셋에 green·blue·amber·red·글자 크기·화면 폭 누락 |
-| O-40 | assets: "환경" 검색에 IT 일러스트, 스마트시티 태그 5갈래, 설명 빈 자산(e7z9fh2fmn7gheh6) |
-| O-41 | deck_jobs 실패 원인 없음, 보건소 분류 없음, 보고서 링크 공개(팀 전용 옵션) |
-| O-42 | 섞기에서 B·C 비중 60% 넘는 묶음 3개, 비전 등 일부 화면 종류 레퍼런스 부족 |
-| O-43 | 판정 대기열이 MCP 프로세스 안 단일 직렬 큐(키별 큐·별도 워커 아님) |
+| 번호 | 내용 | 상태 |
+|:---:|---|---|
+| ~~O-30~~ | ~~키 없는 tools/list 200~~ | 유지 결정 — 커넥터 탐색용 표준 동작 |
+| O-31 | Free 차단 API 402 / MCP 403 | 의도 확인 |
+| ~~O-32~~ | ~~남의 시안 고치기 404~~ | 0b4d1fe — 403 |
+| O-33 | 렌더 판정 크레딧 차감 | 과금 설계 후 |
+| O-34 | 판정 브라우저 `--no-sandbox` | 서버 Ubuntu 24.04 가 AppArmor 로 비특권 userns 를 막아 샌드박스 불가 확인. 해법 = 판정 브라우저 실행 파일 하나에만 userns 허용 AppArmor 프로필 → 서버 설정 변경이라 자동 모드가 막음, **사용자 승인 필요** |
+| O-35 | 커넥터 OAuth | 큰 작업 |
+| O-36 | deck 렌더 계열 도구 | 큰 작업 |
+| O-37 | check_code 결과 기록 표 | db-design 먼저 |
+| O-38 | guide 데이터 잡일 | **대부분** 0740c1f(PDF 찌꺼기·출처 문구·터치 기준 token·type 허용값). 남음: 지침 117개 마침표(대부분 KWCAG 항목 이름) |
+| ~~O-39~~ | ~~Tailwind v3 프리셋 누락~~ | 0740c1f — 같은 정본에서 생성, 옛 키 값 변경 0 |
+| O-40 | assets 검색 잡음 | **일부** 5a60932(환경 감점·스마트시티 하나로). 남음: 설명 빈 자산 e7z9fh2fmn7gheh6(DB) |
+| O-41 | deck_jobs 실패 원인·보건소 분류·보고서 공개 | **일부** deck_jobs error 이미 있음(Jobs.php:862). 남음: 보건소 분류, 보고서 팀 전용 옵션 |
+| O-42 | 섞기 B·C 비중, 레퍼런스 부족 | 데이터 |
+| O-43 | 판정 대기열 단일 직렬 | 설계 |
+| O-47 | 숫자 PK 노출 — mock 갤러리 `/mock/gallery/{id}`, gallery.id, 댓글·알림·채팅 id (MC-26). MCP 출구엔 없음 | 웹 계약 변경 필요 |
+| O-48 | `AiKeys::viaEngine` 안 쓰는 함수 — 끊긴 대체 경로인지 일부러 끈 것인지 | 확인 |
+| O-49 | deploy-mcp 가 git 제외 시험 파일(.mcpcall*.mjs)까지 tar 로 싣는다 | git archive 로 바꿀지 |
+| O-50 | 이 PC Node 22.15 — apps/web typecheck(react-router typegen)는 22.22 이상 필요, tsc 로 대신함 | 환경 |
 
 ---
 

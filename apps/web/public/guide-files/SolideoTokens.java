@@ -1,9 +1,9 @@
 package com.solideo.designsystem;
 
 /**
- * SOLIDEO Design System — Design Tokens (v1.3.2)
+ * powerGuide 디자인 토큰 (v1.4.0)
  *
- * 자동 생성 파일입니다. 직접 수정하지 마세요. (원본: tokens/tokens.json)
+ * 자동 생성 파일입니다. 직접 수정하지 마세요. (원본: apps/web/app/modules/guide/data/tokens.json)
  * 서버에서 색 값이 필요한 경우(메일 템플릿 · PDF · 리포트)에 사용합니다.
  * 화면 CSS에는 solideo-tokens.css 를 쓰고 이 클래스를 쓰지 마세요.
  *
@@ -59,24 +59,24 @@ public final class SolideoTokens {
     public static final String GRAY_850 = "#1D1F23";
     /** primitive.gray.900 */
     public static final String GRAY_900 = "#16181B";
-    /** primitive.crimson.100 */
-    public static final String CRIMSON_100 = "#FCE9EF";
-    /** primitive.crimson.150 */
-    public static final String CRIMSON_150 = "#FADCE5";
-    /** primitive.crimson.200 */
-    public static final String CRIMSON_200 = "#F2AEC1";
-    /** primitive.crimson.300 */
-    public static final String CRIMSON_300 = "#E77E9F";
-    /** primitive.crimson.400 */
-    public static final String CRIMSON_400 = "#D74E79";
-    /** primitive.crimson.500 */
-    public static final String CRIMSON_500 = "#C12554";
-    /** primitive.crimson.600 */
-    public static final String CRIMSON_600 = "#A01C46";
-    /** primitive.crimson.700 */
-    public static final String CRIMSON_700 = "#741333";
-    /** primitive.crimson.800 */
-    public static final String CRIMSON_800 = "#360817";
+    /** primitive.brand.100 */
+    public static final String BRAND_100 = "#ECF2FE";
+    /** primitive.brand.150 */
+    public static final String BRAND_150 = "#D8E5FD";
+    /** primitive.brand.200 */
+    public static final String BRAND_200 = "#B1CEFB";
+    /** primitive.brand.300 */
+    public static final String BRAND_300 = "#86AFF9";
+    /** primitive.brand.400 */
+    public static final String BRAND_400 = "#4C87F6";
+    /** primitive.brand.500 */
+    public static final String BRAND_500 = "#256EF4";
+    /** primitive.brand.600 */
+    public static final String BRAND_600 = "#0B50D0";
+    /** primitive.brand.700 */
+    public static final String BRAND_700 = "#083891";
+    /** primitive.brand.800 */
+    public static final String BRAND_800 = "#052561";
     /** primitive.ink.100 */
     public static final String INK_100 = "#E9EEF0";
     /** primitive.ink.150 */
@@ -200,7 +200,7 @@ public final class SolideoTokens {
     /** semantic.text.inverse — 반전 배경 위 텍스트 */
     public static final String TEXT_INVERSE = "#FFFFFF";
     /** semantic.text.accent — 링크 · 강조 텍스트 */
-    public static final String TEXT_ACCENT = "#A01C46";
+    public static final String TEXT_ACCENT = "#0B50D0";
     /** semantic.text.critical */
     public static final String TEXT_CRITICAL = "#B0241B";
     /** semantic.text.positive */
@@ -226,13 +226,13 @@ public final class SolideoTokens {
     /** semantic.fill.tertiary */
     public static final String FILL_TERTIARY = "#F2F4F6";
     /** semantic.fill.accent — Primary 버튼 */
-    public static final String FILL_ACCENT = "#C12554";
+    public static final String FILL_ACCENT = "#256EF4";
     /** semantic.fill.accent-hover */
-    public static final String FILL_ACCENT_HOVER = "#A01C46";
+    public static final String FILL_ACCENT_HOVER = "#0B50D0";
     /** semantic.fill.accent-pressed */
-    public static final String FILL_ACCENT_PRESSED = "#741333";
+    public static final String FILL_ACCENT_PRESSED = "#083891";
     /** semantic.fill.accent-subtle */
-    public static final String FILL_ACCENT_SUBTLE = "#FCE9EF";
+    public static final String FILL_ACCENT_SUBTLE = "#ECF2FE";
     /** semantic.fill.disabled */
     public static final String FILL_DISABLED = "#E5E9ED";
     /** semantic.fill.critical */
@@ -252,7 +252,7 @@ public final class SolideoTokens {
     /** semantic.border.strong — 입력 필드 테두리. UI 요소 3:1 기준을 만족해야 하므로 gray.400 미만으로 낮추지 마세요 */
     public static final String BORDER_STRONG = "#848D9A";
     /** semantic.border.accent */
-    public static final String BORDER_ACCENT = "#C12554";
+    public static final String BORDER_ACCENT = "#256EF4";
     /** semantic.border.critical */
     public static final String BORDER_CRITICAL = "#D93025";
     /** semantic.border.focus */
@@ -264,11 +264,11 @@ public final class SolideoTokens {
     /** semantic.icon.tertiary */
     public static final String ICON_TERTIARY = "#848D9A";
     /** semantic.icon.accent */
-    public static final String ICON_ACCENT = "#C12554";
+    public static final String ICON_ACCENT = "#256EF4";
     /** semantic.icon.inverse */
     public static final String ICON_INVERSE = "#FFFFFF";
-    /** semantic.accent.primary — 솔리데오 CI 크림슨 */
-    public static final String ACCENT_PRIMARY = "#C12554";
+    /** semantic.accent.primary — 주색(브랜드). 기본은 KRDS 주색 — 회사색은 스킨으로 바꾼다 */
+    public static final String ACCENT_PRIMARY = "#256EF4";
     /** semantic.accent.secondary */
     public static final String ACCENT_SECONDARY = "#1B303A";
     /** space.1 */

@@ -180,7 +180,7 @@
       "name": "guide_tokens",
       "module": "powerGuide",
       "title": "디자인 토큰 파일",
-      "description": "powerGuide 가 배포하는 디자인 토큰 산출물(CSS·SCSS·JS·TS·Java·Tailwind·Figma 등). file 없이 부르면 목록, file 을 주면 그 파일 내용(텍스트, 최대 200KB)."
+      "description": "powerGuide 가 배포하는 디자인 토큰 산출물(CSS·SCSS·JS·TS·Java·Tailwind·Figma 등). file 없이 부르면 목록, file 을 주면 그 파일 내용(텍스트, 최대 200KB). 정본 = 역할 토큰 하나(solideo-tokens.css 의 text·bg·fill·border·icon·accent 앞머리) — 화면 코드는 이 이름만 쓴다. 회사·기관 색은 skin-*.css 예시 스킨(brand 단계만 덮음)을 함께 불러 바꾼다(예: skin-solideo.css = 솔리데오 크림슨)."
     },
     {
       "name": "deck_jobs",

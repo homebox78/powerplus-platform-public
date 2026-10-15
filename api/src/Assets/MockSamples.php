@@ -45,18 +45,143 @@ final class MockSamples
         'photo-doc-business' => ['news-thumb', ['biz', 'corp', 'assoc', 'foundation', 'gov']],
     ];
 
-    /** 목업 재료인 행 — 'kind' 태그가 있거나, 공개 등급이고 SET_KIND 세트·아이콘 세트에 든 것. i = asset_items, s = asset_sets(LEFT JOIN) */
+    /**
+     * 목업 재료인 행 — 'kind' 태그가 있거나, 공개 등급이고 SET_KIND 세트·아이콘 세트에 든 것. 엠바고 자산은 뺀다. i = asset_items, s = asset_sets(LEFT JOIN).
+     * 목록·파일 제공이 모두 이 한 곳을 지난다(샘플 파일 주소도 엠바고 자산이면 404).
+     */
     private static function sampleWhere(): string
+    {
+        return '(' . self::poolWhere() . ' AND ' . self::embargoFree() . ')';
+    }
+
+    /** 샘플 묶음 조건(엠바고 거름 전) */
+    private static function poolWhere(): string
     {
         $sets = implode(', ', array_map(static fn ($n) => "'" . $n . "'", array_keys(self::SET_KIND)));
         return "(EXISTS (SELECT 1 FROM asset_tags t WHERE t.item_id = i.id AND t.axis = 'kind')"
             . " OR (i.visibility = 'public' AND i.w > 0 AND (s.name IN ({$sets}) OR (i.category = 'icon' AND s.name LIKE 'icon-%'))))";
     }
 
+    /**
+     * 엠바고(사용자 2026-10-14 "식약처 제안 건 엠바고 — 공개 샘플·기본 양식·공개본엔 가상 프로젝트만", 2026-10-15 샘플 묶음 적용).
+     * 그 사업용으로 만든 묶음(legacy_key 접두) + 그 사업을 가리키는 낱말이 설명·이름·태그에 든 자산.
+     * 낱말은 좁게 — '위생'·'의약품'·'급식' 은 일반 아이콘(손 씻기·알약·청소차)·학교 사진에도 붙어 있어 넣지 않는다.
+     */
+    private static function embargoFree(): string
+    {
+        $series = implode(' AND ', array_map(static fn ($x) => "COALESCE(i.legacy_key, '') NOT LIKE '" . $x . "%'", self::EMBARGO_SERIES));
+        $words = "'" . self::EMBARGO_WORDS . "'";
+        return "({$series}"
+            . " AND NOT (COALESCE(i.alt, '') REGEXP {$words} OR COALESCE(i.name, '') REGEXP {$words})"
+            . " AND NOT EXISTS (SELECT 1 FROM asset_tags et WHERE et.item_id = i.id AND et.tag REGEXP {$words}))";
+    }
+
     private const CACHE_TTL = 300;
 
+    /**
+     * O-22(사용자 2026-10-15 결정) — Pro·임직원·관리자 목업에는 자체 제작 공개 사진의 web 판(긴 변 1920, 워터마크 없음)도 샘플 후보로 준다.
+     * 비회원·Free 는 지금처럼(이 사진들은 일반 경로에서 워터마크). 파일 주소는 서명(?s=) 이 있어야 열린다 — 목록을 Pro 에게만 주므로 서명도 Pro 만 안다.
+     * 자체 제작 = source own·homebox. 라이선스 미확인(unverified)·옛 powerPlus 사진(powerplus)은 넣지 않는다. 공개(public) 등급만.
+     */
+    private const PRO_SOURCES = ['own', 'homebox'];
+    /** 엠바고(식약처 제안 건) — 그 사업용으로 만든 배경 묶음(legacy_key 접두)과 그 낱말이 든 자산은 공개 샘플에 쓰지 않는다 */
+    private const EMBARGO_SERIES = ['docphoto:PD1', 'docphoto:FS', 'docphoto:SC2', 'docphoto:VP1', 'docphoto:VP3'];
+    private const EMBARGO_WORDS = '식약처|식의약|식품의약품|식품안전|식품정보시스템|식중독';
+
+    /** Pro 사진 후보 행(기본 샘플 묶음 조건에 든 것은 뺀다 — 엠바고로 빠진 것이 여기로 새지 않게 거름 전 조건으로). i = asset_items, s = asset_sets */
+    private static function proWhere(): string
+    {
+        $src = implode(', ', array_map(static fn ($x) => "'" . $x . "'", self::PRO_SOURCES));
+        return "i.category = 'photo' AND i.visibility = 'public' AND i.source IN ({$src}) AND i.w > 0 AND i.h > 0"
+            . " AND NOT " . self::poolWhere()
+            . " AND " . self::embargoFree();
+    }
+
+    /** Pro 사진 파일 서명(app.secret). 비밀이 비거나 짧으면 null — 그때는 Pro 사진을 아예 내지 않는다(닫힌 쪽으로). */
+    private static function sig(string $publicId): ?string
+    {
+        $secret = (string) Config::get('app.secret', '');
+        if (strlen($secret) < 16 || str_starts_with($secret, 'change-me')) {
+            return null;
+        }
+        return substr(hash_hmac('sha256', 'mocksample|' . $publicId, $secret), 0, 24);
+    }
+
+    /** 이 요청자가 Pro 사진 후보를 받아도 되는가 — 워커(레퍼런스 엔진), Pro·Team·임직원 플랜, 관리자 */
+    public static function proEligible(\Pp\Core\Actor $a): bool
+    {
+        return $a->kind === 'worker' || in_array($a->plan, ['pro', 'team', 'staff'], true) || $a->hasRole('admin');
+    }
+
+    /**
+     * 목업 샘플 목록. $pro = true 면 Pro 사진 후보(서명 주소)를 뒤에 더한다 — 부르는 쪽이 proEligible 로 먼저 거른다.
+     * @return list<array<string,mixed>>
+     */
+    public static function all(bool $pro = false): array
+    {
+        $base = self::base();
+        return $pro ? array_merge($base, self::proPhotos()) : $base;
+    }
+
     /** @return list<array<string,mixed>> */
-    public static function all(): array
+    private static function proPhotos(): array
+    {
+        if (self::sig('probe0000') === null) {
+            return [];
+        }
+        $cache = rtrim(sys_get_temp_dir(), '/\\') . '/pp-mock-samples-pro.json';
+        if (is_file($cache) && filemtime($cache) > time() - self::CACHE_TTL) {
+            $j = json_decode((string) file_get_contents($cache), true);
+            if (is_array($j)) {
+                return $j;
+            }
+        }
+        $items = Db::rows(
+            "SELECT i.id, i.public_id, i.alt, i.w, i.h, i.has_text FROM asset_items i LEFT JOIN asset_sets s ON s.id = i.set_id
+              WHERE i.deleted_at IS NULL AND " . self::proWhere() . " ORDER BY i.id"
+        );
+        $tags = [];
+        $ids = array_map(static fn ($r) => (int) $r['id'], $items);
+        foreach (array_chunk($ids, 2000) as $chunk) {
+            foreach (Db::rows("SELECT item_id, tag, axis FROM asset_tags WHERE axis IN ('kw','use','target') AND item_id IN (" . implode(',', $chunk) . ") ORDER BY item_id, axis, tag") as $t) {
+                $tags[(int) $t['item_id']][$t['axis']][] = (string) $t['tag'];
+            }
+        }
+        $base = rtrim((string) Config::get('app.url', 'https://powerplus.hom2box.com'), '/') . '/api/v1/assets/samples/';
+        $out = [];
+        foreach ($items as $r) {
+            $pid = (string) $r['public_id'];
+            $w = (int) $r['w']; $h = (int) $r['h'];
+            $asp = $h > 0 ? $w / $h : 1.0;
+            // 종류는 비율로 — 넓은 사진 = 서브 띠, 세로 사진 = 세로 카드·포스터 자리(세로 사진이 아예 없던 자리), 그 밖 = 소식 썸네일
+            $kind = $asp >= 1.5 ? 'sub-visual' : ($asp <= 0.8 ? 'poster' : 'news-thumb');
+            $label = match ($kind) { 'sub-visual' => '넓은 사진(글자 없음, Pro)', 'poster' => '세로 사진(글자 없음, Pro)', default => '사진(글자 없음, Pro)' };
+            $tg = $tags[(int) $r['id']] ?? [];
+            $s = (string) self::sig($pid);
+            $out[] = [
+                'id' => 'pa-' . $pid,
+                'kind' => $kind,
+                'kind_label' => $label,
+                'use_for' => $tg['use'] ?? [],
+                'file' => $base . $pid . '/web?s=' . $s,
+                'thumb' => $base . $pid . '/thumb?s=' . $s,
+                'w' => $w, 'h' => $h, 'aspect' => round($asp, 3),
+                'alt' => (string) ($r['alt'] ?? ''),
+                'tags' => array_values(array_merge($tg['kw'] ?? [], array_map(static fn ($x) => '대상:' . $x, $tg['target'] ?? []))),
+                'has_text' => (bool) $r['has_text'],
+                'temporary' => false,
+                'note' => null,
+                'text_safe' => null,
+                'asset_id' => $pid,
+                'plan' => 'pro',
+            ];
+        }
+        @file_put_contents($cache, json_encode($out, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), LOCK_EX);
+        return $out;
+    }
+
+    /** @return list<array<string,mixed>> */
+    private static function base(): array
     {
         $cache = rtrim(sys_get_temp_dir(), '/\\') . '/pp-mock-samples.json';
         if (is_file($cache) && filemtime($cache) > time() - self::CACHE_TTL) {
@@ -124,21 +249,27 @@ final class MockSamples
     }
 
     /** 샘플 파일 공개 제공 — 샘플 라이브러리('kind' 축 태그가 있는 행)만, 워터마크 없이(목업 <img src> 용, 예전 /mockref/api/samples/file 과 같은 공개 범위). */
-    public static function sendFile(string $publicId, string $kind): never
+    public static function sendFile(string $publicId, string $kind, string $sig = ''): never
     {
         if (!in_array($kind, ['original', 'thumb', 'web'], true) || !preg_match('/^[a-z0-9]{8,32}$/', $publicId)) {
             throw HttpError::notFound('파일');
         }
         $web = $kind === 'web';
         if ($web) { $kind = 'original'; }
-        $f = Db::row(
-            "SELECT f.bucket, f.path, f.mime FROM asset_items i
-               LEFT JOIN asset_sets s ON s.id = i.set_id
-               JOIN asset_files af ON af.item_id = i.id AND af.kind = ?
-               JOIN core_files f ON f.id = af.file_id
-              WHERE i.public_id = ? AND i.deleted_at IS NULL AND " . self::sampleWhere(),
-            [$kind, $publicId]
-        );
+        $sql = "SELECT f.bucket, f.path, f.mime FROM asset_items i
+                  LEFT JOIN asset_sets s ON s.id = i.set_id
+                  JOIN asset_files af ON af.item_id = i.id AND af.kind = ?
+                  JOIN core_files f ON f.id = af.file_id
+                 WHERE i.public_id = ? AND i.deleted_at IS NULL AND ";
+        $f = Db::row($sql . self::sampleWhere(), [$kind, $publicId]);
+        if (!$f && $sig !== '') {
+            // O-22 Pro 사진 후보 — 서명이 맞을 때만, 원본 대신 늘 긴 변 1920 판(원본 고해상도는 회원 경로로만)
+            $want = self::sig($publicId);
+            if ($want !== null && hash_equals($want, $sig)) {
+                $f = Db::row($sql . self::proWhere(), [$kind, $publicId]);
+                if ($f && $kind === 'original') { $web = true; }
+            }
+        }
         if (!$f) {
             throw HttpError::notFound('파일');
         }

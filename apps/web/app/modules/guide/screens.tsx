@@ -53,7 +53,8 @@ function leaves(tree: TokenTree | undefined, prefix = ""): { path: string; node:
   }
   return out;
 }
-const cssVar = (path: string) => `--sd-${path.replace(/\./g, "-")}`;
+/** 배포 파일(solideo-tokens.css)의 변수 이름 — primitive·semantic 머리는 뗀다(scripts/build-guide-tokens.mjs varName 과 같은 규칙). */
+const cssVar = (path: string) => `--${path.replace(/^(primitive|semantic)\./, "").replace(/\./g, "-")}`;
 
 const COLOR_GROUPS: { id: string; label: string; tree: () => TokenTree | undefined; note?: string }[] = [
   { id: "gray", label: "Gray", tree: () => (T.primitive as TokenTree).gray as TokenTree },
@@ -62,7 +63,7 @@ const COLOR_GROUPS: { id: string; label: string; tree: () => TokenTree | undefin
   { id: "green", label: "Green", tree: () => (T.primitive as TokenTree).green as TokenTree },
   { id: "amber", label: "Amber", tree: () => (T.primitive as TokenTree).amber as TokenTree },
   { id: "red", label: "Red", tree: () => (T.primitive as TokenTree).red as TokenTree },
-  { id: "crimson", label: "Crimson", tree: () => (T.primitive as TokenTree).crimson as TokenTree, note: "예시 스킨(솔리데오 CI)의 강조색. 프로젝트 주색으로 바꿔 쓴다." },
+  { id: "brand", label: "Brand", tree: () => (T.primitive as TokenTree).brand as TokenTree, note: "주색 단계. 기본값은 KRDS 주색이고, 회사·기관 색은 스킨(skin-*.css)이 이 단계만 덮어쓴다(예시 스킨: 솔리데오 크림슨)." },
 ];
 const SEMANTIC_GROUPS = ["text", "bg", "fill", "border", "icon", "accent"] as const;
 
@@ -178,13 +179,13 @@ function GuideTokens() {
                 <TableCell className="font-semibold">{d.label}</TableCell>
                 <TableCell className="text-left text-sm text-ink-3">{d.use}</TableCell>
                 <TableCell className="text-left"><code className="text-sm">{d.file}</code></TableCell>
-                <TableCell><Button asChild variant="outline" size="sm"><a href={`/guide-files/${d.file}`} download><Download aria-hidden />받기</a></Button></TableCell>
+                <TableCell><Button asChild variant="outline" size="sm"><a href={`/guide-files/${d.file}?v=${T.$version}`} download><Download aria-hidden />받기</a></Button></TableCell>
               </TableRow>
             ))}
           </TableBody>
         </Table>
         <h3 className="mt-10 text-xl font-bold">바로 쓰기</h3>
-        <CodeBlock className="mt-4" code={`<link rel="stylesheet" href="solideo-tokens.css">\n<!-- 다크 모드 -->\n<html data-theme="dark">\n\n.card { background: var(${cssVar("semantic.bg.surface")}); color: var(${cssVar("semantic.text.primary")}); border-radius: var(--sd-radius-md); }`} />
+        <CodeBlock className="mt-4" code={`<link rel="stylesheet" href="solideo-tokens.css">\n<!-- 다크 모드 -->\n<html data-theme="dark">\n\n.card { background: var(${cssVar("semantic.bg.primary")}); color: var(${cssVar("semantic.text.primary")}); border-radius: var(--radius-md); }\n.button { background: var(${cssVar("semantic.fill.accent")}); color: var(${cssVar("semantic.text.inverse")}); }\n\n<!-- 회사·기관 색(예시 스킨) — 역할 토큰 이름은 그대로, 주색 단계만 바뀐다 -->\n<link rel="stylesheet" href="skin-solideo.css">`} />
       </section>
     </div>
   );

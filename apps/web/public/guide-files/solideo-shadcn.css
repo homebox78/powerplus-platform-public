@@ -1,8 +1,8 @@
-/* SOLIDEO Design System — shadcn/ui + Tailwind v4 테마 레이어 (1.3.2)
-   자동 생성 파일입니다. 직접 수정하지 마세요. (원본: tokens/tokens.json)
+/* powerGuide 디자인 토큰 — shadcn/ui + Tailwind v4 테마 레이어 (1.4.0)
+   자동 생성 파일입니다. 직접 수정하지 마세요. (원본: apps/web/app/modules/guide/data/tokens.json)
 
    shadcn/ui 컴포넌트가 참조하는 표준 변수(--primary, --border, --ring …)를
-   솔리데오 시맨틱 토큰에 연결합니다. 컴포넌트 코드는 손대지 않고 브랜드만 바뀝니다. */
+   역할(semantic) 토큰에 연결합니다. 컴포넌트 코드는 손대지 않고 스킨(skin-*.css)으로 주색만 바뀝니다. */
 
 :root {
   --background: var(--bg-primary);
@@ -32,7 +32,7 @@
   --sidebar-accent-foreground: var(--text-primary);
   --sidebar-border: var(--border-primary);
   --sidebar-ring: var(--border-focus);
-  --chart-1: var(--crimson-500);
+  --chart-1: var(--brand-500);
   --chart-2: var(--ink-700);
   --chart-3: var(--blue-500);
   --chart-4: var(--green-500);
@@ -47,9 +47,9 @@
   --text-tertiary: #1A1D21;
   --border-primary: var(--gray-500);
   --border-strong: var(--gray-700);
-  --fill-accent: var(--crimson-700);
-  --fill-accent-hover: var(--crimson-800);
-  --text-accent: var(--crimson-700);
+  --fill-accent: var(--brand-700);
+  --fill-accent-hover: var(--brand-800);
+  --text-accent: var(--brand-700);
   --fill-critical: var(--red-700);
 }
 
@@ -88,7 +88,7 @@
   --color-chart-4: var(--chart-4);
   --color-chart-5: var(--chart-5);
 
-  /* 솔리데오 시맨틱 토큰 */
+  /* 역할(semantic) 토큰 */
   --color-text-primary: var(--text-primary);
   --color-text-secondary: var(--text-secondary);
   --color-text-tertiary: var(--text-tertiary);
@@ -131,7 +131,7 @@
   --color-accent-primary: var(--accent-primary);
   --color-accent-secondary: var(--accent-secondary);
 
-  /* 솔리데오 팔레트 */
+  /* 팔레트 */
   --color-gray-25: var(--gray-25);
   --color-gray-50: var(--gray-50);
   --color-gray-75: var(--gray-75);
@@ -152,15 +152,15 @@
   --color-gray-800: var(--gray-800);
   --color-gray-850: var(--gray-850);
   --color-gray-900: var(--gray-900);
-  --color-crimson-100: var(--crimson-100);
-  --color-crimson-150: var(--crimson-150);
-  --color-crimson-200: var(--crimson-200);
-  --color-crimson-300: var(--crimson-300);
-  --color-crimson-400: var(--crimson-400);
-  --color-crimson-500: var(--crimson-500);
-  --color-crimson-600: var(--crimson-600);
-  --color-crimson-700: var(--crimson-700);
-  --color-crimson-800: var(--crimson-800);
+  --color-brand-100: var(--brand-100);
+  --color-brand-150: var(--brand-150);
+  --color-brand-200: var(--brand-200);
+  --color-brand-300: var(--brand-300);
+  --color-brand-400: var(--brand-400);
+  --color-brand-500: var(--brand-500);
+  --color-brand-600: var(--brand-600);
+  --color-brand-700: var(--brand-700);
+  --color-brand-800: var(--brand-800);
   --color-ink-100: var(--ink-100);
   --color-ink-150: var(--ink-150);
   --color-ink-200: var(--ink-200);

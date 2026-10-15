@@ -270,8 +270,10 @@ final class Data
     ];
 
     /**
-     * 정본 색 — ['names' => [--이름 => #rrggbb], 'values' => [#rrggbb => 이름]].
-     * powerGuide 토큰(flat) + 키트 kit.css 의 사용자 속성(KRDS 팔레트) + 브랜드 색. 한 단계 var() 참조는 풀어 둔다.
+     * 정본 색 — ['names' => [--이름 => #rrggbb], 'values' => [#rrggbb => 이름], 'canonical' => [--이름 => layer], 'skins' => [#rrggbb => [skin, token, label]]].
+     * names(판정에서 정본으로 인정) = powerGuide 토큰(flat) + 키트 kit.css 의 사용자 속성(KRDS 팔레트) + 브랜드 색. 한 단계 var() 참조는 풀어 둔다.
+     * canonical(고칠 점으로 제안하는 이름) = powerGuide 정본 토큰(flat)만 — layer semantic(역할 토큰)이 정본, primitive 는 팔레트(O-12, 2026-10-15).
+     * skins = 예시 스킨(솔리데오 크림슨 등)이 brand 단계에 입히는 색 — 정본 기본값이 아니라 판정에서 '스킨 색 직접 씀'으로 따로 안내한다.
      */
     public static function palette(): array
     {
@@ -279,6 +281,8 @@ final class Data
             return self::$cache['palette'];
         }
         $names = [];
+        $canonical = [];
+        $skins = [];
         $flat = self::webRoot() . '/guide-files/solideo-tokens.flat.json';
         if (is_file($flat)) {
             $j = json_decode((string) file_get_contents($flat), true);
@@ -286,6 +290,16 @@ final class Data
                 $hex = Color::toHex((string) ($t['value'] ?? ''));
                 if ($hex !== null && ($t['type'] ?? '') === 'color') {
                     $names['--' . $n] = $hex;
+                    // layer 가 없는 옛 평면 JSON(v1.3) — 이름 앞머리로 역할 토큰을 가린다
+                    $canonical['--' . $n] = (string) ($t['layer'] ?? (preg_match('/^(text|bg|fill|border|icon|accent)-/', (string) $n) ? 'semantic' : 'primitive'));
+                }
+            }
+            foreach ((array) ($j['skins'] ?? []) as $sid => $s) {
+                foreach ((array) ($s['tokens'] ?? []) as $n => $v) {
+                    $hex = Color::toHex((string) $v);
+                    if ($hex !== null) {
+                        $skins[$hex] ??= ['skin' => (string) $sid, 'token' => '--' . $n, 'label' => (string) ($s['label'] ?? $sid), 'file' => (string) ($s['file'] ?? '')];
+                    }
                 }
             }
         }
@@ -318,6 +332,8 @@ final class Data
         foreach ($names as $n => $hex) {
             $values[$hex] ??= $n;
         }
-        return self::$cache['palette'] = ['names' => $names, 'values' => $values];
+        // 스킨 색이 정본·키트 값과 우연히 같으면 그쪽으로 인정한다(스킨 안내 대상 아님)
+        $skins = array_diff_key($skins, $values);
+        return self::$cache['palette'] = ['names' => $names, 'values' => $values, 'canonical' => $canonical, 'skins' => $skins];
     }
 }

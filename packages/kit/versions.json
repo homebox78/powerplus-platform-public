@@ -2,10 +2,22 @@
   "rule": "큰 개편(부품 추가·삭제, 마크업·클래스 변경, 스타일 층 교체)은 package.json version 을 올리고 여기에 한 줄을 더한다. 문구·버그 수정은 같은 버전 안에서 덮어쓴다. 올린 뒤 npm run build 하면 apps/web/public/kit-files/v<버전>/ 이 새로 생기고 옛 버전 폴더는 그대로 남는다.",
   "versions": [
     {
+      "version": "0.1.1",
+      "date": "2026-10-15",
+      "label": "주색 정본 별칭",
+      "notes": [
+        "KRDS 주색(--krds-color-light-primary-5~80)이 powerGuide 정본 --brand-* 를 가리킨다(값 동일, 화면 그대로). skin-*.css 로 주색을 바꿀 수 있다"
+      ]
+    },
+    {
       "version": "0.1.0",
       "date": "2026-09-26",
       "label": "첫 공개",
-      "notes": ["KRDS·shadcn 부품 77종 React·Vue 두 판", "홈박스 스타일 층(기본) + KRDS 원형 모드", "KRDS 체크리스트 274항목 판정 결과표"]
+      "notes": [
+        "KRDS·shadcn 부품 77종 React·Vue 두 판",
+        "홈박스 스타일 층(기본) + KRDS 원형 모드",
+        "KRDS 체크리스트 274항목 판정 결과표"
+      ]
     }
   ]
 }

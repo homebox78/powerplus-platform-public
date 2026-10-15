@@ -1,0 +1,17 @@
+{
+  "$description": "예시 스킨 — 솔리데오 CI 크림슨. 정본(tokens.json)의 primitive.brand 단계만 덮어쓴다. 역할(semantic) 토큰 이름은 그대로라 화면 코드는 바뀌지 않는다. 출처: D:\\solideos tokens/tokens.json v1.3.2 primitive.crimson",
+  "id": "solideo",
+  "label": "SOLIDEO 크림슨(예시 스킨)",
+  "legacy": "crimson",
+  "brand": {
+    "100": "#FCE9EF",
+    "150": "#FADCE5",
+    "200": "#F2AEC1",
+    "300": "#E77E9F",
+    "400": "#D74E79",
+    "500": "#C12554",
+    "600": "#A01C46",
+    "700": "#741333",
+    "800": "#360817"
+  }
+}

@@ -31,7 +31,7 @@ const kb = (n: number) => (n >= 1024 * 1024 ? `${(n / 1024 / 1024).toFixed(1)}MB
 // 고치는 곳 — 화면에서 편집하지 않는 이유와 순서
 const EDIT = [
   { what: "부품(React·Vue 코드·문서)", where: "packages/kit", how: "버전을 올리고 키트를 빌드합니다. 큰 개편은 versions.json 에 한 줄 더합니다." },
-  { what: "토큰(17종 형식)", where: "apps/web/public/guide-files", how: "평면 JSON 을 고친 뒤 build-tailwind-theme 를 다시 돌립니다." },
+  { what: "토큰(정본 tokens.json → 산출물 guide-files)", where: "apps/web/app/modules/guide/data/tokens.json · skins/", how: "tokens.json(역할 토큰 정본)·스킨을 고친 뒤 node scripts/build-guide-tokens.mjs 를 돌립니다(대비 검증 포함)." },
   { what: "KRDS 지침·패턴·체크리스트", where: "apps/web/app/modules/guide/data", how: "원천을 고치면 배포 때 build-guide-data 가 서버용 사본을 만듭니다." },
 ];
 

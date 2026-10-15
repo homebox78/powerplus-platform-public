@@ -167,7 +167,7 @@ $router->get('/api/insights/section', static function () use ($scope, $scoreSql,
         if (isset($used[$r['site_id']]) || count($exemplars) >= 6) { continue; }
         $used[$r['site_id']] = true;
         $ok = Plan::canSee(Plan::allowedScreens((int) $r['site_id'], $plan), (int) $r['screen_id']);
-        $exemplars[] = ['slug' => $r['slug'], 'title' => $r['title'], 'score' => round((float) $r['score'], 3), 'section_id' => (int) $r['id'], 'screen_id' => (int) $r['screen_id'], 'page_type' => $r['page_type_id'], 'variant' => $r['variant'], 'w' => (int) $r['bbox_w'], 'h' => (int) $r['bbox_h'], 'structure' => SectionShape::structure($r['structure'] ?? null), 'locked' => !$ok, 'crop_url' => $ok ? Plan::kurl((int) $r['site_id'], $r['crop_asset_id']) : null]
+        $exemplars[] = ['slug' => $r['slug'], 'title' => $r['title'], 'score' => round((float) $r['score'], 3), 'section_id' => (int) $r['id'], 'screen_id' => (int) $r['screen_id'], 'page_type' => $r['page_type_id'], 'variant' => $r['variant'], 'w' => (int) $r['bbox_w'], 'h' => (int) $r['bbox_h'], 'structure' => SectionShape::publicStructure($r['structure'] ?? null), 'locked' => !$ok, 'crop_url' => $ok ? Plan::kurl((int) $r['site_id'], $r['crop_asset_id']) : null]
             + (($why = Plan::koglWithheld((int) $r['site_id'], $plan)) !== null ? ['image_withheld' => $why] : []); // 공공누리 2~4유형이면 이유(O-04)
     }
     $conf = $sitesN >= 30 ? 'high' : ($sitesN >= 10 ? 'medium' : 'low');

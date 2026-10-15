@@ -9,7 +9,9 @@ namespace Pp\Guide;
  *
  * 규칙(감점):
  *  colors   정본 토큰(powerGuide 토큰 + 키트 KRDS 팔레트 + 브랜드 --pp-*) 밖의 하드코딩 색 — 색마다 -4, 최대 -24 (경고)
- *           고칠 점은 쓰임(글자·면)과 대비(본문 4.5·큰 글자 3)를 지키는 가장 가까운 배포 토큰(--krds-* 제외)
+ *           고칠 점은 쓰임(글자·면)과 대비(본문 4.5·큰 글자 3)를 지키는 가장 가까운 정본 토큰 — powerGuide 역할(semantic) 토큰 우선,
+ *           없을 때만 정본 팔레트. --krds-*·--hb-*·--pp-* 는 판정에선 인정하되 제안하지 않는다(O-12 정본 한 체계).
+ *           예시 스킨 색(솔리데오 크림슨 등)을 직접 쓰면 같은 brand 단계의 역할 토큰 + 스킨 파일로 안내한다.
  *  img_alt  alt 속성이 없는 <img>                                           — 개마다 -5, 최대 -20 (오류)
  *  name     이름이 없는 버튼·링크(글자·aria-label·aria-labelledby·title·alt 모두 없음) — -5, 최대 -25 (오류)
  *  label    label·aria-label 이 없는 입력칸(placeholder 만으로는 이름이 아니다)  — -5, 최대 -20 (오류)
@@ -263,8 +265,50 @@ final class CodeCheck
             }
         }
         foreach ($found as $hex => $f) {
+            $skin = $this->palette['skins'][$hex] ?? null;
+            if ($skin !== null) {
+                // 예시 스킨 색(솔리데오 크림슨 등)은 정본 기본값이 아니다 — 같은 brand 단계를 쓰는 역할 토큰 + 스킨 파일로 안내(O-12)
+                $this->add('colors', 'warn', $f['where'], "예시 스킨({$skin['label']}) 색 {$hex}({$skin['token']})를 {$f['count']}번 직접 썼습니다({$f['prop']}) — 정본은 역할 토큰입니다.", $this->suggestSkin($hex, $skin, $f), 4, $f['line']);
+                continue;
+            }
             $this->add('colors', 'warn', $f['where'], "정본 밖 색 {$hex} 를 {$f['count']}번 직접 썼습니다({$f['prop']}).", $this->suggest($hex, $f), 4, $f['line']);
         }
+    }
+
+    /**
+     * 스킨 색 → 그 brand 단계를 가리키는 역할 토큰(정본 기본값이 같은 단계 값인 것) 중 쓰임이 맞는 것.
+     * 대비는 스킨을 입혔을 때 실제로 보이는 색(이 hex)으로 잰다. 맞는 역할 토큰이 없으면 일반 제안으로.
+     */
+    private function suggestSkin(string $hex, array $skin, array $f): string
+    {
+        $base = $this->palette['names'][$skin['token']] ?? null; // 정본 기본값에서 같은 단계의 색
+        $c = Color::parse($hex);
+        $need = $f['large'] ? 3.0 : 4.5;
+        $cands = [];
+        if ($base !== null && $c !== null) {
+            foreach ($this->palette['canonical'] as $name => $layer) {
+                if ($layer !== 'semantic' || strtolower($this->palette['names'][$name] ?? '') !== strtolower($base) || !self::roleOk($f['role'], $name)) {
+                    continue;
+                }
+                $ratio = null;
+                if ($f['pair'] !== null) {
+                    $ratio = $f['role'] === 'text' ? Color::contrast($c, $f['pair']) : Color::contrast($f['pair'], $c);
+                }
+                // 쓰임 앞머리가 맞는 이름 먼저(면=fill/bg, 글자=text, 테두리=border, 아이콘=icon)
+                $pref = match ($f['role']) { 'bg' => '/^--(fill|bg)-/', 'text' => '/^--text-/', 'border' => '/^--border-/', 'icon' => '/^--icon-/', default => '/^--accent-/' };
+                $cands[] = ['token' => $name, 'ratio' => $ratio, 'rank' => preg_match($pref, $name) ? 0 : 1];
+            }
+        }
+        if (!$cands) {
+            return $this->suggest($hex, $f);
+        }
+        usort($cands, static fn (array $a, array $b): int => $a['rank'] <=> $b['rank'] ?: strcmp($a['token'], $b['token']));
+        $best = $cands[0];
+        $file = $skin['file'] !== '' ? $skin['file'] : '스킨 파일';
+        $tail = $best['ratio'] !== null
+            ? ($best['ratio'] >= $need ? " — 짝 색과 대비 {$best['ratio']}:1(기준 {$need}:1)" : " — 다만 짝 색과 대비 {$best['ratio']}:1 이 기준 {$need}:1 미달이라 짝 색도 바꾸세요")
+            : '';
+        return "역할 토큰 var({$best['token']}) 로 바꾸고, 색은 {$file}(--brand-* 덮어쓰기)로 입히세요{$tail}.";
     }
 
     /** 정본 밖 색에 붙는 계열 — 정보·성공·경고·위험 색은 그 의미로 쓰일 때만 제안한다. */
@@ -285,12 +329,18 @@ final class CodeCheck
     }
 
     /**
-     * 제안할 수 있는 토큰 — 배포 토큰 파일(solideo-tokens.css)에 있는 이름과 브랜드(--pp-…)만.
-     * 키트 내부 이름(--krds-…·--hb-…)은 판정에선 정본으로 인정하지만, 받는 쪽 프로젝트엔 없으므로 제안하지 않는다.
+     * 제안할 수 있는 토큰 — powerGuide 정본(solideo-tokens.css 에 있는 이름) 한 체계만(O-12, 2026-10-15).
+     * 키트 내부 이름(--krds-…·--hb-…)·플랫폼 브랜드(--pp-…)는 판정에선 정본으로 인정하지만 제안하지 않는다(두 체계를 섞지 않는다).
      */
-    private static function suggestable(string $name): bool
+    private function suggestable(string $name): bool
     {
-        return !str_starts_with($name, '--krds-') && !str_starts_with($name, '--hb-') && !str_contains(substr($name, 2), '--');
+        return isset($this->palette['canonical'][$name]);
+    }
+
+    /** 역할(semantic) 토큰인가 — 정본. 아니면 팔레트(primitive) */
+    private function isRole(string $name): bool
+    {
+        return ($this->palette['canonical'][$name] ?? '') === 'semantic';
     }
 
     /** 토큰 이름이 쓰임과 맞는가 — 글자 자리에 bg-/fill- 이름, 면 자리에 text-/border- 이름을 내지 않는다. */
@@ -347,18 +397,19 @@ final class CodeCheck
             return null;
         }
         $need = $large ? 3.0 : 4.5;
-        $tiers = [[], [], []];
+        // 역할 토큰(0~2) 먼저, 기준을 넘는 역할 토큰이 없을 때만 팔레트(3~5)
+        $tiers = [[], [], [], [], [], []];
         $chroma = max($c[0], $c[1], $c[2]) - min($c[0], $c[1], $c[2]);
-        // 같은 계열 우선 — 유채색 면(버튼 등)은 주색·브랜드 계열, 글자는 글자·회색 계열
+        // 같은 계열 우선 — 유채색 면(버튼 등)은 주색(accent·brand) 계열, 글자는 글자·회색 계열
         $family = match (true) {
-            $role === 'bg' && $chroma > 40 => '/(primary|secondary|point|accent|pp-|blue|crimson)/',
+            $role === 'bg' && $chroma > 40 => '/(accent|brand|blue)/',
             $role === 'text' && $chroma <= 40 => '/(^--text-|gray|ink|static-black)/',
-            $role === 'text' => '/(^--text-|primary|secondary|point|accent|pp-|blue|crimson)/',
-            $role === 'bg' => '/(^--bg-|^--fill-|gray|ink|static-white)/',
+            $role === 'text' => '/(^--text-|accent|brand|blue)/',
+            $role === 'bg' => '/(^--bg-|^--fill-(primary|secondary|tertiary|disabled)$|gray|ink|static-white)/', // 무채색 면에 주색(fill-accent…)을 내지 않는다
             default => null,
         };
         foreach ($this->palette['names'] as $name => $h) {
-            if (preg_match(self::EFFECT_TOKEN, $name) || !self::suggestable($name)) {
+            if (preg_match(self::EFFECT_TOKEN, $name) || !$this->suggestable($name)) {
                 continue;
             }
             if (preg_match(self::SEMANTIC_TOKEN, $name) && !$semantic) {
@@ -376,12 +427,14 @@ final class CodeCheck
                 }
             }
             $dist = ($c[0] - $d[0]) ** 2 + ($c[1] - $d[1]) ** 2 + ($c[2] - $d[2]) ** 2;
-            $tier = !self::roleOk($role, $name) ? 2 : ($family !== null && !preg_match($family, $name) ? 1 : 0);
-            $tiers[$tier][] = ['token' => $name, 'hex' => $h, 'dist' => $dist, 'ratio' => $ratio];
+            $tier = (!self::roleOk($role, $name) ? 2 : ($family !== null && !preg_match($family, $name) ? 1 : 0)) + ($this->isRole($name) ? 0 : 3);
+            // 같은 값이면 쓰임 앞머리가 맞는 이름(면=fill/bg, 글자=text …)을 먼저 — #256ef4 면에 --accent-primary 대신 --fill-accent
+            $pref = match ($role) { 'bg' => '/^--(fill|bg)-/', 'text' => '/^--text-/', 'border' => '/^--border-/', 'icon' => '/^--icon-/', default => '/^$/' };
+            $tiers[$tier][] = ['token' => $name, 'hex' => $h, 'dist' => $dist, 'ratio' => $ratio, 'pref' => preg_match($pref, $name) ? 0 : 1];
         }
         foreach ($tiers as $list) {
             if ($list) {
-                usort($list, static fn (array $a, array $b): int => $a['dist'] <=> $b['dist'] ?: strcmp($a['token'], $b['token']));
+                usort($list, static fn (array $a, array $b): int => $a['dist'] <=> $b['dist'] ?: ($a['pref'] <=> $b['pref'] ?: strcmp($a['token'], $b['token'])));
                 return $list;
             }
         }
@@ -655,7 +708,7 @@ final class CodeCheck
                     "{$sel} 에서 포커스 테두리(outline)를 지웠습니다 — 키보드 사용자가 지금 어디에 있는지 볼 수 없습니다.",
                     $hasVisible
                         ? ':focus-visible 표시가 있으니 이 규칙의 outline:none 은 빼도 됩니다(마우스 클릭 때만 숨기려면 :focus:not(:focus-visible)).'
-                        : 'outline:none 을 지우거나, :focus-visible { outline: 2px solid var(--primary-50); outline-offset: 2px } 처럼 보이는 표시를 함께 주세요.',
+                        : 'outline:none 을 지우거나, :focus-visible { outline: 2px solid var(--border-focus); outline-offset: 2px } 처럼 보이는 표시를 함께 주세요.',
                     $hasVisible ? 2 : 5
                 );
             }
@@ -715,7 +768,7 @@ final class CodeCheck
                 'warn',
                 $where,
                 "버튼 면에 의미 색 {$v}({$semName} 계열)을 썼습니다 — 정보·성공·경고·위험 색은 알림·상태 표시용입니다.",
-                $t !== null ? "주색 계열 var({$t['token']}) ({$t['hex']}) 로 바꾸세요 — 글자와 대비 {$t['ratio']}:1." : '주색 계열(var(--primary-…)) 토큰으로 바꾸세요.',
+                $t !== null ? "주색 계열 var({$t['token']}) ({$t['hex']}) 로 바꾸세요 — 글자와 대비 {$t['ratio']}:1." : '주색 역할 토큰 var(--fill-accent) 로 바꾸세요.',
                 3,
                 $el->getLineNo()
             );

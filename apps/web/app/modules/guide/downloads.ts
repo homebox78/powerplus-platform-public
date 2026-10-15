@@ -2,6 +2,7 @@
 export const DOWNLOADS: { file: string; label: string; use: string }[] = [
   { file: "solideo-tokens.css", label: "CSS 변수", use: "어떤 스택이든 — :root 에 변수 선언" },
   { file: "solideo-dark.css", label: "다크 모드 CSS", use: "[data-theme=dark] 덮어쓰기" },
+  { file: "skin-solideo.css", label: "예시 스킨(크림슨)", use: "주색 단계(--brand-*)만 회사색으로 — 역할 토큰 이름은 그대로" },
   { file: "solideo-components.css", label: "CSS 전용 부품", use: "퍼블리싱만 있는 프로젝트(.sds-*)" },
   { file: "solideo-shadcn.css", label: "shadcn 레이어", use: "React + shadcn/ui 프로젝트" },
   { file: "tailwind.preset.cjs", label: "Tailwind 프리셋", use: "tailwind.config 의 presets" },

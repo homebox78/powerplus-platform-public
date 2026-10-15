@@ -40,6 +40,13 @@ $router->get('/api/mockups/replica', static function (): void {
     if ($lq !== '' && $lq !== 'ko') { if (!isset(ReplicaKit::LANGS[$lq])) { Response::error(400, 'BAD_LANG', 'lang 은 ko·en·ja·zh·fr·es·de·vi 중 하나입니다.'); } $custom['lang'] = $lq; }
     $wq = (int) ($_GET['width'] ?? 0); // 요청 폭(2026-10-11) — 없으면 PC 본문 최소 1400px
     if ($wq > 0) { if ($wq < 960 || $wq > 1880) { Response::error(400, 'BAD_WIDTH', 'width 는 960~1880 사이 px 입니다.'); } $custom['width'] = $wq; }
+    $is = trim((string) ($_GET['icon_style'] ?? '')); // 아이콘 스타일(O-22) — 없으면 지금처럼 AI 가 주색에 맞춰 하나 고른다
+    if ($is !== '') {
+        $allowed = Homebox\Samples::iconStyles();
+        if (!in_array($is, $allowed, true)) { Response::error(400, 'BAD_ICON_STYLE', 'icon_style 은 ' . implode('·', $allowed) . ' 중 하나입니다.', ['allowed' => $allowed]); }
+        $custom['icon_style'] = $is;
+        Homebox\Samples::forceIconStyle($is);
+    }
 
     $extra = Db::row('SELECT full_h, public_asset_id FROM screens WHERE id = ?', [(int) $sc['id']]) ?? [];
     $sc['full_h'] = (int) ($extra['full_h'] ?? 0);
@@ -138,9 +145,26 @@ $router->get('/api/mockups/check-ref', static function (): void {
     $rid = trim((string) ($_GET['ref_id'] ?? ''));
     $single = str_starts_with($rid, 'single:');
     if ($single) { $rid = substr($rid, 7); }
-    $ref = str_starts_with($rid, 'mix1:') ? ReplicaKit::checkRefMix($rid) : ReplicaKit::checkRef((int) ($rid !== '' ? $rid : ($_GET['screen_id'] ?? 0)));
+    // 판정 전용 원본(O-45): powerMCP 판정기가 서명했을 때만 공공누리 2~4유형 화면도 judge_url(2분 만료)을 싣는다
+    $judge = homebox_judge_signed($rid !== '' ? (string) ($_GET['ref_id'] ?? '') : (string) ($_GET['screen_id'] ?? ''));
+    $ref = str_starts_with($rid, 'mix1:') ? ReplicaKit::checkRefMix($rid, $judge) : ReplicaKit::checkRef((int) ($rid !== '' ? $rid : ($_GET['screen_id'] ?? 0)), $judge);
     // 메인 화면 한 장을 숫자 id 로 판정하려는 경우 = 한 사이트를 통째로 따른 시안(2026-10-02 섞기로 전환). 묶음이 single: 로 준 경우와 관리자 점검만 허용한다.
     if ($ref !== null && !empty($ref['single_main']) && !$single && empty($_GET['screen_id'])) { $ref['copy_risk'] = true; }
     if ($ref === null) { Response::error(404, 'NOT_FOUND', '판정 기준을 찾지 못했습니다. get_replica_kit 응답의 reference.ref_id 를 그대로 주세요.'); }
     Response::json($ref, 200, ['Cache-Control' => 'private, no-store']);
 });
+
+/**
+ * 판정기 서명 확인(O-45, 2026-10-15) — powerMCP 가 X-Pp-Judge-Ts(유닉스 초) + X-Pp-Judge-Ref = HMAC-SHA256(judge.secret, "ref|{ref_id}|{ts}") hex 를 실어 보낸다.
+ * 비밀은 플랫폼 mock.judge_secret·powerMCP PP_JUDGE_SECRET 과 같은 값. 비었으면 늘 false(원본 미제공 유지) + error_log. 시각은 ±300초만 받는다.
+ */
+function homebox_judge_signed(string $refId): bool
+{
+    $sig = strtolower(trim((string) ($_SERVER['HTTP_X_PP_JUDGE_REF'] ?? '')));
+    if ($sig === '') { return false; }
+    $secret = (string) Config::get('judge.secret', '');
+    if ($secret === '') { error_log('[mockref] check-ref: 판정 서명이 왔지만 config judge.secret 이 비어 judge_url 을 싣지 않는다'); return false; }
+    $ts = (int) ($_SERVER['HTTP_X_PP_JUDGE_TS'] ?? 0);
+    if ($ts <= 0 || abs(time() - $ts) > 300) { return false; }
+    return hash_equals(hash_hmac('sha256', 'ref|' . $refId . '|' . $ts, $secret), $sig);
+}

@@ -11,7 +11,7 @@
 
    규칙
      - 이 파일은 토큰(var(--...))만 참조합니다. 색·간격을 직접 쓰지 않습니다.
-       tools/build-components-css.mjs 가 CI 에서 이를 검사합니다.
+       scripts/build-guide-tokens.mjs 가 빌드 때 정의 없는 토큰 참조를 검사합니다(이 저장소에서는 이 파일이 원본 — 출처 solideos 저장소 css/solideo-components.css v1.3.2).
      - 클래스 이름은 sds- 접두 + BEM 변형입니다.
      - 상태는 :hover / :focus-visible / [disabled] / [aria-invalid] 로 표현합니다.
        JS 로 상태 클래스를 붙이지 않아도 동작합니다.
@@ -168,7 +168,7 @@
   text-decoration: underline;
   text-underline-offset: 2px;
 }
-.sds-link:hover { color: var(--crimson-700); }
+.sds-link:hover { color: var(--fill-accent-pressed); }
 
 /* ------------------------------------------------------------ 폼 · 입력 */
 

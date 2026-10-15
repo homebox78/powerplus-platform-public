@@ -101,7 +101,7 @@ final class Samples
     public static function context(string $org): void
     {
         self::$org = $org;
-        self::$iconStyle = '';
+        if (!self::$iconForced) { self::$iconStyle = ''; }
         $who = (string) ($_SERVER['HTTP_X_HOMEBOX_KEY'] ?? $_SERVER['HTTP_AUTHORIZATION'] ?? $_GET['key'] ?? '');
         if ($who === '' && session_status() === PHP_SESSION_ACTIVE) { $who = 'sid:' . session_id(); }
         if ($who === '') { $who = 'ip:' . ($_SERVER['REMOTE_ADDR'] ?? 'cli'); }
@@ -110,6 +110,25 @@ final class Samples
         $j = is_file($f) ? json_decode((string) file_get_contents($f), true) : null;
         $cut = time() - 3 * 86400;
         self::$recent = array_filter(is_array($j) ? $j : [], static fn ($t) => is_int($t) && $t >= $cut);
+    }
+
+    /** 고객이 고른 아이콘 스타일(O-22) — 주면 find() 가 자동 고르기 대신 이 스타일만 쓴다(없으면 아이콘을 빼고 사진으로) */
+    private static bool $iconForced = false;
+
+    public static function forceIconStyle(string $style): void
+    {
+        self::$iconStyle = $style;
+        self::$iconForced = $style !== '';
+    }
+
+    /** @return list<string> 지금 목록에 있는 아이콘 스타일(styleOf 값) — icon_style 허용값 */
+    public static function iconStyles(): array
+    {
+        $s = [];
+        foreach (self::all() as $it) { $x = self::styleOf($it); if ($x !== null) { $s[$x] = true; } }
+        $s = array_keys($s);
+        sort($s);
+        return $s;
     }
 
     /** 목업에 실제로 넣은 샘플을 이력에 남긴다 (최근 300개) */
@@ -192,8 +211,25 @@ final class Samples
     public static function all(): array
     {
         // 원본은 powerAssets 하나뿐 — 옛 data/sample-images.json 사본으로 떨어지지 않는다(사용자 2026-10-11 "모든 목업은 파워에셋을 통해서").
-        self::$all ??= self::fromAssets() ?? [];
+        if (self::$all === null) {
+            $base = self::fromAssets() ?? [];
+            // Pro 목록(2026-10-15): 자체 제작 공개 사진(plan:"pro") — Pro·임직원·관리자 요청에만 합친다. 같은 id 는 한 번만
+            $pro = self::proPlan() ? (self::fromAssets(true) ?? []) : [];
+            if ($pro !== []) {
+                $seen = [];
+                foreach ($base as $it) { $seen[(string) ($it['id'] ?? '')] = true; }
+                foreach ($pro as $it) { if (is_array($it) && !isset($seen[(string) ($it['id'] ?? '')])) { $base[] = $it; $seen[(string) ($it['id'] ?? '')] = true; } }
+            }
+            self::$all = $base;
+        }
         return self::$all;
+    }
+
+    /** Pro 샘플을 줄 요청인가 — 플랜 pro 이상(free 아님)·임직원·관리자 */
+    private static function proPlan(): bool
+    {
+        $p = Plan::current();
+        return !empty($p['admin']) || !empty($p['staff']) || (string) ($p['id'] ?? 'free') !== 'free';
     }
 
     /**
@@ -201,11 +237,16 @@ final class Samples
      * 플랫폼 /api/v1/assets/mock-samples 를 5분 파일 캐시로 읽는다. 못 읽으면 지난 캐시, 그것도 없으면 null(샘플 없음).
      * @return list<array<string,mixed>>|null
      */
-    private static function fromAssets(): ?array
+    private static function fromAssets(bool $pro = false): ?array
     {
         $src = (string) \Config::get('app.samples_url', 'https://powerplus.hom2box.com/api/v1/assets/mock-samples');
         if ($src === '' || $src === 'off') { return null; }
-        $cache = rtrim(sys_get_temp_dir(), '/\\') . '/mockref-samples-' . substr(md5($src), 0, 8) . '.json';
+        // Pro 목록은 플랫폼 worker 키(app.samples_key)로만 받는다. 비었으면 조용히 기본 목록만(로그 없음)
+        $key = $pro ? trim((string) \Config::get('app.samples_key', '')) : '';
+        if ($pro && $key === '') { return null; }
+        if ($pro) { $src .= (str_contains($src, '?') ? '&' : '?') . 'pool=pro'; }
+        // 캐시는 기본·Pro 따로 — 주소가 달라 md5 가 다르고, 이름에도 -pro 를 붙여 눈으로 구분
+        $cache = rtrim(sys_get_temp_dir(), '/\\') . '/mockref-samples-' . substr(md5($src), 0, 8) . ($pro ? '-pro' : '') . '.json';
         $read = static function () use ($cache): ?array {
             $j = is_file($cache) ? json_decode((string) file_get_contents($cache), true) : null;
             return is_array($j) && $j !== [] ? $j : null;
@@ -214,9 +255,12 @@ final class Samples
             $c = $read();
             if ($c !== null) { return $c; }
         }
-        $ctx = stream_context_create(['http' => ['timeout' => 8, 'header' => "Accept: application/json\r\n", 'ignore_errors' => true]]);
+        $hdr = "Accept: application/json\r\n" . ($pro ? "Authorization: Bearer $key\r\nX-Worker: mockref\r\n" : '');
+        $ctx = stream_context_create(['http' => ['timeout' => 8, 'header' => $hdr, 'ignore_errors' => true]]);
         $raw = @file_get_contents($src, false, $ctx);
         $j = is_string($raw) ? json_decode($raw, true) : null;
+        // Pro 는 플랫폼이 pool:"pro" 라고 답했을 때만 쓴다(키가 틀리면 기본 목록이 오므로 그대로 쓰면 안 된다)
+        if ($pro && (($j['data']['pool'] ?? $j['pool'] ?? '') !== 'pro')) { return $read(); }
         $items = $j['data']['items'] ?? $j['items'] ?? null;
         if (is_array($items) && $items !== []) {
             @file_put_contents($cache, json_encode($items, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), LOCK_EX);
@@ -309,7 +353,7 @@ final class Samples
         $cnt = [];
         foreach ($rows as $r) { $s = self::styleOf($r['it']); if ($s !== null) { $cnt[$s] = ($cnt[$s] ?? 0) + 1; } }
         if ($cnt !== []) {
-            $pick = self::$iconStyle !== '' && isset($cnt[self::$iconStyle]) ? self::$iconStyle : '';
+            $pick = self::$iconStyle !== '' && (isset($cnt[self::$iconStyle]) || self::$iconForced) ? self::$iconStyle : '';
             // 이미 고른 스타일이 이 자리 후보에 없으면, 사진으로 채울 수 있는 자리는 아이콘을 아예 빼고(다른 스타일로 새지 않게)
             $hasPhoto = false;
             foreach ($rows as $r) { if (self::styleOf($r['it']) === null) { $hasPhoto = true; break; } }

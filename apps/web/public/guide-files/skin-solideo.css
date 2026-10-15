@@ -1,0 +1,28 @@
+/* powerGuide 예시 스킨 — SOLIDEO 크림슨(예시 스킨) (1.4.0)
+   자동 생성 파일입니다. 직접 수정하지 마세요. (원본: apps/web/app/modules/guide/data/skins/solideo.json · 생성: node scripts/build-guide-tokens.mjs)
+
+   정본 역할 토큰(--fill-accent · --text-accent …)은 그대로 두고 주색 단계(--brand-*)만 덮어씁니다.
+   순서: solideo-tokens.css → (solideo-dark.css) → 이 파일. 키트(kit.css)의 KRDS 주색도 --brand-* 를 따라옵니다. */
+
+:root {
+  --brand-100: #FCE9EF;
+  --brand-150: #FADCE5;
+  --brand-200: #F2AEC1;
+  --brand-300: #E77E9F;
+  --brand-400: #D74E79;
+  --brand-500: #C12554;
+  --brand-600: #A01C46;
+  --brand-700: #741333;
+  --brand-800: #360817;
+
+  /* 옛 이름(v1.3 이하 --crimson-*) — 신규 코드에서는 --brand-* 나 역할 토큰을 쓰세요. */
+  --crimson-100: var(--brand-100);
+  --crimson-150: var(--brand-150);
+  --crimson-200: var(--brand-200);
+  --crimson-300: var(--brand-300);
+  --crimson-400: var(--brand-400);
+  --crimson-500: var(--brand-500);
+  --crimson-600: var(--brand-600);
+  --crimson-700: var(--brand-700);
+  --crimson-800: var(--brand-800);
+}

@@ -1,7 +1,8 @@
-/* SOLIDEO Design System — TypeScript declarations
+/* powerGuide 디자인 토큰 — TypeScript declarations
    자동 생성 파일입니다. 직접 수정하지 마세요.
-   원본: tokens/tokens.json · 생성: node tokens/build.mjs
-   version 1.3.2 */
+   원본: apps/web/app/modules/guide/data/tokens.json · 생성: node scripts/build-guide-tokens.mjs
+   정본은 역할(semantic) 토큰입니다. 회사·기관 색은 skin-*.css 로 brand 단계만 덮어씁니다.
+   version 1.4.0 */
 
 export interface SolideoTokens {
   readonly staticBlack: string;
@@ -26,15 +27,15 @@ export interface SolideoTokens {
   readonly gray800: string;
   readonly gray850: string;
   readonly gray900: string;
-  readonly crimson100: string;
-  readonly crimson150: string;
-  readonly crimson200: string;
-  readonly crimson300: string;
-  readonly crimson400: string;
-  readonly crimson500: string;
-  readonly crimson600: string;
-  readonly crimson700: string;
-  readonly crimson800: string;
+  readonly brand100: string;
+  readonly brand150: string;
+  readonly brand200: string;
+  readonly brand300: string;
+  readonly brand400: string;
+  readonly brand500: string;
+  readonly brand600: string;
+  readonly brand700: string;
+  readonly brand800: string;
   readonly ink100: string;
   readonly ink150: string;
   readonly ink200: string;

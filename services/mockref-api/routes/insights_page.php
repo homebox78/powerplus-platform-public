@@ -38,6 +38,7 @@ $router->get('/api/insights/page', static function () use ($scope, $scoreSql, $W
         }
     }
     $agg = [];
+    $rawOk = \Homebox\PublicText::raw(); // 세션 관리자만 원문. 그 밖은 흔한 제목을 ○○ 로 일반화해 같은 꼴끼리 합친다(O-44: '인천소식'·'부산민원120')
     foreach ($screens as $sc) {
         $fh = max(1, (int) $sc['full_h']);
         $vw = max(1, (int) $sc['viewport_w']);
@@ -50,8 +51,9 @@ $router->get('/api/insights/page', static function () use ($scope, $scoreSql, $W
             $a['w'][] = round((float) $x['bbox_w'] / $vw, 3);
             $a['h'][] = (float) $x['bbox_h'];
             $st = SectionShape::structure($x['structure'] ?? null) ?? [];
-            if (!empty($st['title'])) {
-                $a['titles'][$st['title']] = ($a['titles'][$st['title']] ?? 0) + 1;
+            $ttl = !empty($st['title']) && is_string($st['title']) ? ($rawOk ? $st['title'] : \Homebox\PublicText::label($st['title'])) : null;
+            if ($ttl !== null && $ttl !== '') {
+                $a['titles'][$ttl] = ($a['titles'][$ttl] ?? 0) + 1;
             }
             foreach ((array) ($st['flags'] ?? []) as $k => $v) {
                 if ($v) {
@@ -74,12 +76,14 @@ $router->get('/api/insights/page', static function () use ($scope, $scoreSql, $W
     }
     $sections = [];
     foreach ($agg as $t => $a) {
+        $a['titles'] = array_filter($a['titles'], static fn ($k): bool => !str_starts_with((string) $k, '[글 '), ARRAY_FILTER_USE_KEY);
         arsort($a['titles']);
         $sections[] = [
             'section_type' => $t, 'presence_pct' => $n ? round($a['screens'] / $n * 100, 1) : 0, 'count' => $a['count'],
             'y_ratio' => $median($a['y']), 'x_ratio' => $median($a['x']), 'w_ratio' => $median($a['w']), 'height_px' => $median($a['h']),
             'cols' => $median($a['cols']),
-            'common_titles' => array_slice(array_keys($a['titles']), 0, 6),
+            // 흔한 제목과 그 개수 — 긴 문장('[글 N자]')은 제목이 아니라 뺀다
+            'common_titles' => array_slice(array_map(static fn ($k, int $v): array => ['title' => (string) $k, 'n' => $v], array_keys($a['titles']), array_values($a['titles'])), 0, 6),
             'flags_pct' => array_map(static fn (int $v): float => round($v / max(1, $a['count']) * 100, 1), $a['flags']),
             'style' => SectionShape::styleSummary($a['styles']),
         ];
@@ -162,18 +166,18 @@ $router->get('/api/insights/page', static function () use ($scope, $scoreSql, $W
         $exemplars[] = [
             'slug' => $sc['slug'], 'title' => $sc['title'], 'renewal_year' => $sc['renewal_year'] === null ? null : (int) $sc['renewal_year'], 'score' => round((float) $sc['score'], 3),
             'layout' => $arch[(int) $sc['id']], 'unknown_pct' => (int) round($unkShare($sc) * 100),
-            'screen_id' => (int) $sc['id'], 'screen_title' => $sc['screen_title'], 'url' => $sc['url'], 'full_h' => (int) $sc['full_h'], 'viewport_w' => (int) $sc['viewport_w'], 'locked' => !$ok,
+            'screen_id' => (int) $sc['id'], 'screen_title' => $rawOk ? $sc['screen_title'] : \Homebox\PublicText::generalize((string) $sc['screen_title']), 'url' => $sc['url'], 'full_h' => (int) $sc['full_h'], 'viewport_w' => (int) $sc['viewport_w'], 'locked' => !$ok,
             'thumb_url' => $ok && $sc['thumb_asset_id'] ? Signer::url((int) $sc['thumb_asset_id']) : null,
             'public_url' => $ok ? Plan::kurl((int) $sc['site_id'], $sc['public_asset_id']) : null,
             'image_withheld' => Plan::koglWithheld((int) $sc['site_id'], $plan), // 공공누리 2~4유형이면 원본 화면·크롭을 뺀 이유(O-04), 아니면 null
-            'sections' => array_map(static function (array $x) use ($ok, $sc): array {
-                $st = SectionShape::structure($x['structure'] ?? null) ?? [];
+            'sections' => array_map(static function (array $x) use ($ok, $sc, $rawOk): array {
+                $st = SectionShape::publicStructure($x['structure'] ?? null, $rawOk) ?? [];
                 // 값이 없는(null·빈 목록) 칸은 뺀다 — 빠진 키 = 없음(응답 크기, 2026-10-12)
                 return array_filter([
                     'section_id' => (int) $x['id'], 'type' => $x['type'], 'x' => (int) $x['bbox_x'], 'y' => (int) $x['bbox_y'], 'w' => (int) $x['bbox_w'], 'h' => (int) $x['bbox_h'],
                     'title' => $st['title'] ?? null, 'cols' => $st['cols'] ?? null, 'links' => $st['links']['n'] ?? null, 'colors' => $st['colors'] ?? null, 'style' => isset($st['style']) ? (array_filter((array) $st['style'], static fn ($v): bool => $v !== null && $v !== false && $v !== []) ?: null) : null,
                     'headings' => array_slice((array) ($st['headings'] ?? []), 0, 6), 'link_labels' => array_slice((array) ($st['links']['labels'] ?? []), 0, 8),
-                    'text' => isset($st['text']) ? mb_substr((string) $st['text'], 0, 120) : null,
+                    'text' => isset($st['text']) ? (is_string($st['text']) ? mb_substr($st['text'], 0, 120) : $st['text']) : null, // 관리자 외에는 {chars, words, kind}
                     'crop_url' => $ok ? Plan::kurl((int) $sc['site_id'], $x['crop_asset_id']) : null,
                 ], static fn ($v): bool => $v !== null && $v !== []);
             }, $bySc[(int) $sc['id']] ?? []),

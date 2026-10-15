@@ -92,6 +92,37 @@ tokens = splitDerived(remToPx(tokens).replace(/@charset[^;]+;/, ""));
 // 글꼴 이름: 토큰은 'Pretendard GOV' 한 단어만 → 폴백을 붙인다
 tokens += `\n:root{--krds-typo-font-type:"Pretendard GOV", "Pretendard", system-ui, -apple-system, "Malgun Gothic", sans-serif;}\n`;
 
+// ── 1-1. KRDS 주색 → powerGuide 정본 brand 단계 별칭 (2026-10-15, MCP 개선 O-12 토큰 정본 결정)
+// 정본 = apps/web/app/modules/guide/data/tokens.json(→ guide-files/solideo-tokens.flat.json). 키트의 --krds-color-light-primary-* 는
+// 값을 따로 갖지 않고 정본 --brand-* 를 가리킨다. 값이 정본과 같은 단계만 바꾸고(화면 그대로), 다르거나 대응 단계가 없으면 KRDS 값을 남긴다.
+//  - 정본 기본값 블록은 :where(:root)(특이도 0) — 받는 쪽이 solideo-tokens.css·skin-*.css 를 어느 순서로 불러도 그쪽 --brand-* 가 이긴다.
+//  - 별칭은 :root 에만 둔다(splitDerived 뒤에 바꾼다) — .hb-kit 에서 다시 선언하면 theme.css·목업(KitPage)이 :root 에서
+//    --krds-color-light-primary-* 를 직접 덮는 기존 방식이 가려진다. 직접 덮기는 그대로 이긴다.
+const flatFile = path.resolve(root, "../../apps/web/public/guide-files/solideo-tokens.flat.json");
+const KRDS_TO_BRAND = { 5: 100, 10: 150, 20: 200, 30: 300, 40: 400, 50: 500, 60: 600, 70: 700, 80: 800 };
+const brandAlias = { aliased: [], kept: [] };
+if (fs.existsSync(flatFile)) {
+  const canon = JSON.parse(fs.readFileSync(flatFile, "utf8")).tokens ?? {};
+  const block = [];
+  tokens = tokens.replace(/(:root\s*\{)([^}]*)\}/, (all, open, body) => {
+    const next = body.replace(/(--krds-color-light-primary-(\d+))\s*:\s*(#[0-9a-fA-F]{6})\s*;/g, (decl, name, step, hex) => {
+      const b = KRDS_TO_BRAND[step];
+      const c = b ? canon[`brand-${b}`]?.value : undefined;
+      if (c && c.toLowerCase() === hex.toLowerCase()) {
+        brandAlias.aliased.push(`${name}→--brand-${b}`);
+        block.push(`--brand-${b}:${c};`);
+        return `${name}:var(--brand-${b});`;
+      }
+      brandAlias.kept.push(`${name} ${hex}${b ? ` (정본 --brand-${b} ${c ?? "없음"})` : " (정본 대응 단계 없음)"}`);
+      return decl;
+    });
+    return `${open}${next}}`;
+  });
+  if (block.length) tokens = `/* powerGuide 정본 brand 단계 기본값(특이도 0) — solideo-tokens.css · skin-*.css 가 덮는다 */\n:where(:root){${block.join("")}}\n` + tokens;
+} else {
+  console.log(`⚠ 정본 토큰(${path.relative(root, flatFile)})이 없어 KRDS 주색 별칭을 건너뜀 — scripts/build-guide-tokens.mjs 먼저`);
+}
+
 // ── 2. 공통 (변수·아이콘까지만, 초기화는 가둬서)
 let common = read("css/common.css").replace(/@import[^;]+;/, "").replace(/@charset[^;]+;/, "");
 const resetAt = common.search(/\nhtml,\s*body\s*\{/);
@@ -164,3 +195,4 @@ const kb = (s) => `${Math.round(Buffer.byteLength(s) / 1024)}KB`;
 console.log(`tokens.css ${kb(tokens)} · kit.css ${kb(kit)} · 아이콘 ${fs.readdirSync(path.join(out, "icons")).length}개`);
 const left = (kit.match(/\d+\.?\d*rem\b/g) || []).length;
 if (left) console.log(`⚠ rem 남음 ${left}건`);
+console.log(`KRDS 주색 → 정본 --brand-* 별칭 ${brandAlias.aliased.length}개${brandAlias.kept.length ? ` · KRDS 값 유지 ${brandAlias.kept.length}개: ${brandAlias.kept.join(", ")}` : ""}`);

@@ -5,8 +5,12 @@ return [
         'debug'  => true,            // 운영은 false
         'base'   => '/',             // 운영 개발 중 '/homebox/', 완성 시 '/'
         'secret' => 'change-me-32chars-minimum-secret-key', // 서명 URL HMAC (운영은 랜덤 48자)
+        // 'samples_url' => 'https://powerplus.hom2box.com/api/v1/assets/mock-samples', // 샘플 목록(powerAssets). 생략하면 이 주소
+        'samples_key' => '', // 플랫폼 worker.key — Pro 샘플(자체 제작 공개 사진, ?pool=pro) 목록용. 비우면 기본 목록만
     ],
     'admin'   => ['token' => 'dev-admin-token'],            // Phase 2 임시 관리자 API 토큰 (X-Admin-Token)
+    // 판정 전용 원본(O-45): powerMCP PP_JUDGE_SECRET·플랫폼 mock.judge_secret 과 같은 값. 비우면 공공누리 2~4유형 화면은 판정기에도 원본을 주지 않는다
+    'judge'   => ['secret' => ''],
     'storage' => ['dir' => __DIR__ . '/../storage'],        // 워커 STORAGE_DIR 와 동일 경로
     'db' => [
         // MariaDB 10.11 (운영 hom2box.com) / 로컬 docker compose 동일

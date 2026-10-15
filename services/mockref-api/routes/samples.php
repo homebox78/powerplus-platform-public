@@ -22,6 +22,16 @@ $router->get('/api/samples', static function (): void {
     if (trim((string) ($_GET['org_name'] ?? '')) !== '' || trim((string) ($_GET['org_type'] ?? '')) !== '') {
         Samples::context(Homebox\SampleContent::persona((string) ($_GET['org_type'] ?? ''), (string) ($_GET['org_name'] ?? ''))['org']);
     }
+    // 아이콘 스타일 고르기(O-22) — 허용값은 지금 목록의 styleOf 값. 틀리면 허용값을 알려 준다(MC-06)
+    $is = trim((string) ($_GET['icon_style'] ?? ''));
+    if ($is !== '') {
+        $allowed = Samples::iconStyles();
+        if (!in_array($is, $allowed, true)) { Response::error(400, 'BAD_ICON_STYLE', 'icon_style 은 ' . implode('·', $allowed) . ' 중 하나입니다.', ['allowed' => $allowed]); }
+        Samples::forceIconStyle($is);
+        // 아이콘을 찾는 요청인데 고른 스타일의 종류가 kind 목록에 없어도 받게(사진만 찾는 요청에는 아이콘을 끼우지 않는다)
+        $wantsIcon = array_filter($kinds, static fn ($k): bool => str_starts_with((string) $k, 'icon')) !== [];
+        if ($wantsIcon && !in_array('icon-*', $kinds, true)) { $kinds[] = 'icon-*'; }
+    }
     $items = Samples::find($kinds, $split('tags'), max(1, min(40, (int) ($_GET['limit'] ?? 12))), (int) ($_GET['seed'] ?? 0));
     $counts = [];
     foreach (Samples::all() as $it) { $counts[$it['kind']] = ($counts[$it['kind']] ?? 0) + 1; }
@@ -29,7 +39,7 @@ $router->get('/api/samples', static function (): void {
         'count' => count($items), 'library' => $counts,
         'items' => array_map([Samples::class, 'view'], $items),
         'usage' => '홈박스가 만든 가상 인물·풍경이다(실존 인물·기관 아님). 목업·시안에 자유롭게 쓰되 실서비스 게시 전에는 실제 사진으로 교체한다. 글자를 얹을 쪽은 text_safe.side, scrim=true 면 그 쪽에 어두운 그라데이션을 깐다.',
-    ], 200, ['Cache-Control' => 'public, max-age=300']);
+    ] + ($is !== '' ? ['icon_style' => $is] : []), 200, ['Cache-Control' => 'private, max-age=300']); // 플랜마다 목록이 달라(Pro 샘플) 공용 캐시 금지
 });
 
 $router->get('/api/samples/file/{file}', static function (array $p): void {

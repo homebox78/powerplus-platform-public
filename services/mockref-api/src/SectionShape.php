@@ -39,6 +39,33 @@ final class SectionShape
         return $out;
     }
 
+    /**
+     * 응답용 구조(O-44, 2026-10-15) — structure() 에서 수집 원문을 걷어낸 것. 판정·조립(내부)은 structure() 를 그대로 쓴다.
+     *   text → {chars, words, kind} · title·name·evidence.name → 기관명·지명·인명 ○○(긴 문장은 "[글 N자]") · headings·links.labels → 같은 규칙(개수 유지)
+     * 세션 관리자(검수 화면)는 원문 그대로(PublicText::raw).
+     * @param mixed $raw @return array<string,mixed>|null
+     */
+    public static function publicStructure($raw, ?bool $rawOk = null): ?array
+    {
+        $s = self::structure($raw);
+        if ($s === null || ($rawOk ?? PublicText::raw())) {
+            return $s;
+        }
+        // 역대 기관장·인사말·조직도처럼 사람 이름이 나열될 섹션이면 홀로 선 세 글자 이름도 지운다(부산 '역대시장' 소제목에 '박형준'·'전재수')
+        $ctx = implode(' ', array_filter(array_merge([is_string($s['title'] ?? null) ? $s['title'] : '', is_string($s['name'] ?? null) ? $s['name'] : '', is_string($s['text'] ?? null) ? mb_substr($s['text'], 0, 200) : ''], array_filter((array) ($s['headings'] ?? []), 'is_string'))));
+        $people = preg_match(PublicText::PEOPLE_CTX, $ctx) === 1;
+        $s['text'] = PublicText::shape(is_string($s['text'] ?? null) ? $s['text'] : null);
+        foreach (['title', 'name'] as $k) {
+            if (array_key_exists($k, $s)) { $s[$k] = is_string($s[$k]) ? PublicText::label($s[$k], 20, $people) : null; }
+        }
+        if (isset($s['headings']) && is_array($s['headings'])) { $s['headings'] = PublicText::labels($s['headings'], 20, $people); }
+        if (isset($s['links']['labels']) && is_array($s['links']['labels'])) { $s['links']['labels'] = PublicText::labels($s['links']['labels'], 20, $people); }
+        if (isset($s['evidence']) && is_array($s['evidence']) && array_key_exists('name', $s['evidence'])) {
+            $s['evidence']['name'] = is_string($s['evidence']['name']) ? PublicText::label($s['evidence']['name']) : null;
+        }
+        return $s;
+    }
+
     /** CSS 규칙(`.x { … }`, `prop: value;`) 과 선택자 조각을 걷어낸 텍스트. 남는 게 없으면 null */
     public static function cleanText(?string $t): ?string
     {

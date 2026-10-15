@@ -564,7 +564,7 @@ final class Assembly
             'spec' => $g['spec'],
             'patterns' => array_values(array_map(static fn (string $c): array => $patterns[$c], $pick)),
             'component_plan' => $plan,
-            'candidates' => array_map(static fn (array $s): array => ['screen_id' => (string) $s['screen_id'], 'site' => (string) $s['slug'], 'title' => $s['screen_title'], 'score' => round((float) $s['score'], 3)], $cands),
+            'candidates' => array_map(static fn (array $s): array => ['screen_id' => (string) $s['screen_id'], 'site' => (string) $s['slug'], 'title' => PublicText::raw() ? $s['screen_title'] : PublicText::generalize((string) $s['screen_title']), 'score' => round((float) $s['score'], 3)], $cands),
             'quality' => $g['report'],
             'n_screens' => $n,
             'confidence' => $conf,

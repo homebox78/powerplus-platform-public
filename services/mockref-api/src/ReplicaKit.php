@@ -262,7 +262,7 @@ final class ReplicaKit
                 'measure_note' => 'radius_px·container_px 는 자동 측정값이라 틀릴 수 있다. 참고 이미지와 다르면 이미지를 따른다.',
             ],
             'sub_shell' => self::SUB_SHELL + ['content_w' => $sub !== null ? '메인 묶음 theme.container_px 와 같은 값' : ($mix['frame']['w'] ?? null)],
-            'samples' => self::samples((string) ($persona['virtual'] ?? $persona['org']), !empty($persona['client'])),
+            'samples' => self::samples((string) ($persona['virtual'] ?? $persona['org']), !empty($persona['client']), isset($custom['icon_style']) ? (string) $custom['icon_style'] : null),
             'icons' => self::icons(),
             'behavior' => [
                 'contract' => (string) @file_get_contents(dirname(__DIR__) . '/data/hb-behavior.md'),
@@ -662,7 +662,7 @@ final class ReplicaKit
      * 섞기 판정 기준 — ref_id(mix1:총높이:조각들)로 조각마다 레퍼런스 섹션을 잘라 시안 좌표로 옮기고, 누출 검사 문자열은 출처 전부를 합친다.
      * @return array<string, mixed>|null
      */
-    public static function checkRefMix(string $refId): ?array
+    public static function checkRefMix(string $refId, bool $judge = false): ?array
     {
         // 조각 좌표가 음수인 옛 ref_id(예: 11345--35-662--35)도 읽는다 — 머리 위 섹션이 y<0 이던 때 만든 묶음.
         if (!preg_match('/^mix1:(\d+):((?:\d+--?\d+--?\d+--?\d+_?)+)$/', $refId, $m)) { return null; }
@@ -675,11 +675,11 @@ final class ReplicaKit
         if (!$pieces || count($pieces) > 40) { return null; }
         $secs = []; $leak = []; $caps = []; $vw = 1920; $no = 0; $refs = [];
         foreach ($pieces as $pc) {
-            $one = $refs[$pc['screen_id']] ??= self::checkRef($pc['screen_id']);
+            $one = $refs[$pc['screen_id']] ??= self::checkRef($pc['screen_id'], $judge);
             if ($one === null) { return null; }
             $vw = (int) $one['width'];
             foreach ($one['leak'] as $l) { $leak[] = $l; }
-            $caps[] = ['capture_url' => $one['capture_url'], 'src_y' => $pc['src_y'], 'src_h' => $pc['src_h'], 'y' => $pc['y'], 'width' => $vw];
+            $caps[] = ['capture_url' => $one['capture_url'], 'src_y' => $pc['src_y'], 'src_h' => $pc['src_h'], 'y' => $pc['y'], 'width' => $vw] + (isset($one['judge_url']) ? ['judge_url' => $one['judge_url']] : []);
             foreach (Db::rows('SELECT section_type_id AS type, bbox_x AS x, bbox_y AS y, bbox_w AS w, bbox_h AS h, structure FROM sections WHERE screen_id = ? AND bbox_y >= ? AND bbox_y < ? ORDER BY bbox_y, bbox_x', [$pc['screen_id'], $pc['src_y'] - 4, $pc['src_y'] + $pc['src_h'] - 4]) as $r) {
                 $st = is_string($r['structure'] ?? null) ? (json_decode((string) $r['structure'], true) ?: []) : (array) ($r['structure'] ?? []);
                 $h = self::saneH((string) $r['type'], (int) $r['h'], $st);
@@ -752,8 +752,9 @@ final class ReplicaKit
     }
 
     /** 샘플 이미지 전체(짧은 형식). 글자가 든 이미지 중 다른 가상 기관 이름이 찍힌 것은 뺀다. */
-    private static function samples(string $org, bool $client = false): array
+    private static function samples(string $org, bool $client = false, ?string $iconStyle = null): array
     {
+        // icon_style(O-22, 2026-10-15): 고객이 고른 아이콘 스타일이면 그 스타일 아이콘만 싣는다(한 줄을 채우게 12장까지). 없으면 지금처럼 전 스타일 맛보기
         // 종류마다 앞에서 몇 장만 싣는다 — 전부 실으면 1,900여 장(510KB)이라 묶음이 600KB 가 됐다(2026-10-10 MCP 시험).
         // 더 필요하면 mock_get_sample_images(kind) 로 그 종류만 더 받는다. 아이콘은 한 style 로 한 줄을 채워야 해서 조금 더 싣는다.
         $out = [];
@@ -772,8 +773,10 @@ final class ReplicaKit
             if (str_starts_with($u, '/')) { $u = KitPage::abs($u); }
             // 한 줄 = [url 열쇠, 가로, 세로, 설명, 태그, 표시] — 키 이름·kind·ratio 를 줄마다 되풀이하지 않는다(묶음 215KB → 100KB 아래, 2026-10-12).
             // url 은 url_template 의 {key} 자리에 열쇠를 넣으면 된다. 틀과 다른 주소는 열쇠 자리에 주소 전체를 둔다.
-            $key = preg_match('#^' . preg_quote($urlBase, '#') . '([A-Za-z0-9_-]+)/original$#', $u, $mm) ? $mm[1] : $u;
+            // Pro 샘플(plan:"pro")은 주소가 …/web?s=서명 꼴이라 틀({key}/web)에 못 넣는다 — 열쇠 자리에 주소 전체(2026-10-15)
+            $key = (($it['plan'] ?? '') !== 'pro' && preg_match('#^' . preg_quote($urlBase, '#') . '([A-Za-z0-9_-]+)/original$#', $u, $mm)) ? $mm[1] : $u;
             $isIcon = Samples::styleOf($it) !== null;
+            if ($iconStyle !== null && $isIcon && Samples::styleOf($it) !== $iconStyle) { continue; }
             $tags = $isIcon ? [] : array_values(array_filter((array) ($it['tags'] ?? []), static fn ($t) => !str_starts_with((string) $t, '대상:')));
             $flags = [];
             if (!empty($it['has_text'])) { $flags[] = 'text'; }
@@ -784,7 +787,7 @@ final class ReplicaKit
             $total[$k] = ($total[$k] ?? 0) + 1;
             if (($st ?? null) === $k) { $row[5] = trim(str_replace('style=' . $k, '', $row[5])); } // 스타일 = 종류 이름이면 되풀이하지 않는다
             // 아이콘 한 줄은 12칸이면 찬다 — 더는 more 로. powerAssets 세트에서 온 아이콘 종류(2026-10-14, 28종)는 맛보기 4장만(묶음 크기)
-            $cap = in_array($k, Samples::ICON_KINDS, true) ? 12 : (str_starts_with($k, 'icon') ? 4 : 10);
+            $cap = (in_array($k, Samples::ICON_KINDS, true) || ($iconStyle !== null && $isIcon)) ? 12 : (str_starts_with($k, 'icon') ? 4 : 10);
             if (($byKind[$k] ?? 0) >= $cap) { continue; }
             $byKind[$k] = ($byKind[$k] ?? 0) + 1;
             $out[$k][] = $row;
@@ -806,6 +809,9 @@ final class ReplicaKit
         }
         $more = array_filter($total, static fn($n, $k) => $n > ($byKind[$k] ?? 0), ARRAY_FILTER_USE_BOTH);
         return ['count' => array_sum($byKind), 'available' => $total,
+            'icon_style' => $iconStyle !== null
+                ? ['chosen' => $iconStyle, 'rule' => '고객이 고른 아이콘 스타일이다. 이 시안(메인·서브 전부)의 아이콘은 이 스타일만 쓴다.']
+                : ['chosen' => null, 'rule' => '아이콘 스타일을 따로 고르지 않았다 — 주색에 어울리는 스타일 하나를 골라 시안 전체에 그 스타일만 쓴다(icon_style 인자로 지정할 수 있다).', 'allowed' => Samples::iconStyles()],
             // web = 긴 변을 줄인 사본 — 원본(장당 최대 3MB)을 그대로 걸어 메인 한 장이 15MB 가 되던 것(2026-10-15 시험 s10)
             'url_template' => $urlBase . '{key}/web',
             'columns' => ['key', 'w', 'h', 'alt', 'tags', 'flags'],
@@ -1022,7 +1028,7 @@ final class ReplicaKit
      * 레퍼런스 글은 내보내지 않는다(누출 검사용 짧은 문자열만).
      * @return array<string, mixed>|null
      */
-    public static function checkRef(int $screenId): ?array
+    public static function checkRef(int $screenId, bool $judge = false): ?array
     {
         $sc = Db::row('SELECT sc.id, sc.site_id, sc.page_type_id AS page_type, sc.viewport_w, sc.full_h, sc.public_asset_id, sc.ocr_text, s.slug, s.url, s.domain, s.title AS site_title,
                 o.name AS org_name, o.display_name, o.name_aliases, o.phone, o.fax, o.address
@@ -1061,15 +1067,19 @@ final class ReplicaKit
         if (preg_match_all('/0\d{1,2}-\d{3,4}-\d{4}|1[5-9]\d{2}-\d{4}/', (string) ($sc['ocr_text'] ?? ''), $m)) { foreach (array_slice(array_unique($m[0]), 0, 8) as $p) { $leak[] = $p; } }
         $addr = trim((string) ($sc['address'] ?? ''));
         if (mb_strlen($addr) >= 8) { $leak[] = mb_substr((string) preg_replace('/\s+/u', ' ', $addr), 0, 14); }
+        $capture = Plan::kurl((int) ($sc['site_id'] ?? 0), $sc['public_asset_id'] ?? null);
+        // 판정 전용 원본(O-45, 2026-10-15): 공공누리 2~4유형이라 capture_url 이 빠진 화면도 판정기(서명 확인된 powerMCP)만 짧은 만료 주소로 대조한다.
+        // 사용자 응답에는 싣지 않는다 — powerMCP 가 렌더·대조에만 쓰고 버린다. 서명 확인은 호출한 쪽(routes/replica.php check-ref)이 한다.
+        $judgeUrl = ($judge && $capture === null && (int) ($sc['public_asset_id'] ?? 0) > 0) ? Signer::url((int) $sc['public_asset_id'], 120) : null;
         return [
             'screen_id' => (int) $sc['id'], 'ref_id' => (string) (int) $sc['id'], 'site_slug' => $sc['slug'], 'page_type' => $pt,
             'single_main' => $pt === 'main',
             'width' => $vw, 'height' => $height,
             'sub' => $pt === 'main' ? null : ['body_y_from' => $top, 'body_y_to' => $bot, 'body_h' => max(0, $bot - $top)],
             'rows' => self::rows($secs, $vw),
-            'capture_url' => Plan::kurl((int) ($sc['site_id'] ?? 0), $sc['public_asset_id'] ?? null),
+            'capture_url' => $capture,
             'leak' => array_values(array_unique($leak)),
-        ];
+        ] + ($judgeUrl !== null ? ['judge_url' => $judgeUrl] : []);
     }
 
     /** 첫 판정에서 크게 깎이는 항목(감점 큰 순) — 묶음 맨 앞에 둔다. 운영 기록: 첫 판정 57·32점에서 시작해 세 바퀴를 돈 시안이 있었다(2026-10-02). */

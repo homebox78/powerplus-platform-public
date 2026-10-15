@@ -40,7 +40,7 @@ $router->get('/api/screens/{id}', static function (array $p): void {
         $x['bbox'] = ['x' => (int) $x['bbox_x'], 'y' => (int) $x['bbox_y'], 'w' => (int) $x['bbox_w'], 'h' => (int) $x['bbox_h']];
         $x['confidence'] = $x['confidence'] === null ? null : (float) $x['confidence'];
         $x['krds'] = is_string($x['krds']) ? (json_decode($x['krds'], true) ?: []) : [];
-        $x['structure'] = Homebox\SectionShape::structure($x['structure'] ?? null); // flags(탭·캐러셀·표·폼) + CSS 잔재 걷어낸 발췌
+        $x['structure'] = Homebox\SectionShape::publicStructure($x['structure'] ?? null); // flags(탭·캐러셀·표·폼) + 원문은 모양·○○ 로만(O-44)
         $x['crop_url'] = Plan::kurl((int) $sc['site_id'], $x['crop_asset_id']); // 공공누리 2~4유형이면 null(LEGAL-006)
         unset($x['bbox_x'], $x['bbox_y'], $x['bbox_w'], $x['bbox_h'], $x['crop_asset_id']);
     }
@@ -51,7 +51,7 @@ $router->get('/api/screens/{id}', static function (array $p): void {
     Response::json([
         'screen' => [
             'screen_id' => (int) $sc['id'], 'site_id' => (int) $sc['site_id'], 'site_slug' => $sc['site_slug'], 'site_title' => $sc['site_title'], 'org_name' => $sc['org_name'],
-            'page_type' => $sc['page_type_id'], 'page_type_ko' => $sc['page_type_ko'], 'url' => $sc['url'], 'title' => $sc['title'], 'device' => $sc['device'],
+            'page_type' => $sc['page_type_id'], 'page_type_ko' => $sc['page_type_ko'], 'url' => $sc['url'], 'title' => Homebox\PublicText::raw() ? $sc['title'] : Homebox\PublicText::generalize((string) $sc['title']), 'device' => $sc['device'],
             'viewport_w' => (int) $sc['viewport_w'], 'full_h' => (int) $sc['full_h'], 'is_highlight' => (bool) $sc['is_highlight'], 'captured_at' => $sc['captured_at'],
             'tone' => $sc['tone'], 'primary' => $sc['primary_hex'],
             'public_url' => Plan::kurl((int) $sc['site_id'], $sc['public_asset_id']),

@@ -67,12 +67,18 @@ return static function (Router $r): void {
     });
 
     // 목업 샘플 라이브러리(사용자 2026-10-11) — 레퍼런스 엔진(powerMCP mock_ 도구)이 5분마다 읽는다. 샘플 파일은 공개(목업 <img src>).
+    // ?pool=pro — Pro·임직원·관리자·레퍼런스 엔진(워커 키)이면 자체 제작 공개 사진(워터마크 없는 web 판, 서명 주소)을 더한다(O-22, 2026-10-15).
+    // 자격이 없으면 조용히 기본 목록만(pool=base) — 비회원·Free 는 지금처럼.
     $r->get('/assets/mock-samples', function (array $p, Actor $a): void {
-        $items = \Pp\Assets\MockSamples::all();
-        Response::json(['count' => count($items), 'items' => $items]);
+        $pro = ($_GET['pool'] ?? '') === 'pro' && \Pp\Assets\MockSamples::proEligible($a);
+        $items = \Pp\Assets\MockSamples::all($pro);
+        if ($pro) {
+            header('Cache-Control: private, no-store');
+        }
+        Response::json(['count' => count($items), 'pool' => $pro ? 'pro' : 'base', 'items' => $items]);
     });
     $r->get('/assets/samples/{id}/{kind}', function (array $p, Actor $a): void {
-        \Pp\Assets\MockSamples::sendFile((string) $p['id'], (string) $p['kind']);
+        \Pp\Assets\MockSamples::sendFile((string) $p['id'], (string) $p['kind'], (string) ($_GET['s'] ?? ''));
     });
 
     $r->get('/assets/items/{id}/similar', function (array $p, Actor $a): void {

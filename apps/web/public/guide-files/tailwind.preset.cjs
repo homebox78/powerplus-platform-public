@@ -1,4 +1,4 @@
-// SOLIDEO Design System — Tailwind preset (1.3.2)
+// powerGuide 디자인 토큰 — Tailwind preset (1.4.0)
 // 자동 생성 파일입니다(생성기: scripts/build-tailwind-theme.mjs — 손으로 고치지 마세요). solideo-tokens.css 를 함께 불러와야 var() 가 해석됩니다.
 // 화면 폭(screens: tablet·desktop·wide)은 Tailwind 기본 폭(sm·md·lg…)에 더해집니다. 기본 폭과 섞어 쓰지 말고 한쪽만 쓰세요.
 module.exports = {
@@ -76,16 +76,16 @@ module.exports = {
           "850": "var(--gray-850)",
           "900": "var(--gray-900)"
         },
-        "crimson": {
-          "100": "var(--crimson-100)",
-          "150": "var(--crimson-150)",
-          "200": "var(--crimson-200)",
-          "300": "var(--crimson-300)",
-          "400": "var(--crimson-400)",
-          "500": "var(--crimson-500)",
-          "600": "var(--crimson-600)",
-          "700": "var(--crimson-700)",
-          "800": "var(--crimson-800)"
+        "brand": {
+          "100": "var(--brand-100)",
+          "150": "var(--brand-150)",
+          "200": "var(--brand-200)",
+          "300": "var(--brand-300)",
+          "400": "var(--brand-400)",
+          "500": "var(--brand-500)",
+          "600": "var(--brand-600)",
+          "700": "var(--brand-700)",
+          "800": "var(--brand-800)"
         },
         "ink": {
           "100": "var(--ink-100)",

@@ -1,802 +1,1014 @@
 {
-  "version": "1.3.2",
+  "version": "1.4.0",
+  "canonical": "semantic",
   "tokens": {
     "static-black": {
       "value": "#14161A",
-      "type": "color"
+      "type": "color",
+      "layer": "primitive"
     },
     "static-white": {
       "value": "#FFFFFF",
-      "type": "color"
+      "type": "color",
+      "layer": "primitive"
     },
     "gray-25": {
       "value": "#F8F9FA",
-      "type": "color"
+      "type": "color",
+      "layer": "primitive"
     },
     "gray-50": {
       "value": "#F2F4F6",
-      "type": "color"
+      "type": "color",
+      "layer": "primitive"
     },
     "gray-75": {
       "value": "#ECEFF2",
-      "type": "color"
+      "type": "color",
+      "layer": "primitive"
     },
     "gray-100": {
       "value": "#E5E9ED",
-      "type": "color"
+      "type": "color",
+      "layer": "primitive"
     },
     "gray-150": {
       "value": "#D3D8DE",
-      "type": "color"
+      "type": "color",
+      "layer": "primitive"
     },
     "gray-200": {
       "value": "#C4CAD2",
-      "type": "color"
+      "type": "color",
+      "layer": "primitive"
     },
     "gray-250": {
       "value": "#B5BCC5",
-      "type": "color"
+      "type": "color",
+      "layer": "primitive"
     },
     "gray-300": {
       "value": "#A7AEB9",
-      "type": "color"
+      "type": "color",
+      "layer": "primitive"
     },
     "gray-350": {
       "value": "#98A0AC",
-      "type": "color"
+      "type": "color",
+      "layer": "primitive"
     },
     "gray-400": {
       "value": "#848D9A",
-      "type": "color"
+      "type": "color",
+      "layer": "primitive"
     },
     "gray-450": {
       "value": "#737C89",
-      "type": "color"
+      "type": "color",
+      "layer": "primitive"
     },
     "gray-500": {
       "value": "#68707C",
-      "type": "color"
+      "type": "color",
+      "layer": "primitive"
     },
     "gray-550": {
       "value": "#5B626D",
-      "type": "color"
+      "type": "color",
+      "layer": "primitive"
     },
     "gray-600": {
       "value": "#4F555F",
-      "type": "color"
+      "type": "color",
+      "layer": "primitive"
     },
     "gray-650": {
       "value": "#454A52",
-      "type": "color"
+      "type": "color",
+      "layer": "primitive"
     },
     "gray-700": {
       "value": "#3A3E45",
-      "type": "color"
+      "type": "color",
+      "layer": "primitive"
     },
     "gray-750": {
       "value": "#2E3238",
-      "type": "color"
+      "type": "color",
+      "layer": "primitive"
     },
     "gray-800": {
       "value": "#23262A",
-      "type": "color"
+      "type": "color",
+      "layer": "primitive"
     },
     "gray-850": {
       "value": "#1D1F23",
-      "type": "color"
+      "type": "color",
+      "layer": "primitive"
     },
     "gray-900": {
       "value": "#16181B",
-      "type": "color"
+      "type": "color",
+      "layer": "primitive"
     },
-    "crimson-100": {
-      "value": "#FCE9EF",
-      "type": "color"
+    "brand-100": {
+      "value": "#ECF2FE",
+      "type": "color",
+      "layer": "primitive"
     },
-    "crimson-150": {
-      "value": "#FADCE5",
-      "type": "color"
+    "brand-150": {
+      "value": "#D8E5FD",
+      "type": "color",
+      "layer": "primitive"
     },
-    "crimson-200": {
-      "value": "#F2AEC1",
-      "type": "color"
+    "brand-200": {
+      "value": "#B1CEFB",
+      "type": "color",
+      "layer": "primitive"
     },
-    "crimson-300": {
-      "value": "#E77E9F",
-      "type": "color"
+    "brand-300": {
+      "value": "#86AFF9",
+      "type": "color",
+      "layer": "primitive"
     },
-    "crimson-400": {
-      "value": "#D74E79",
-      "type": "color"
+    "brand-400": {
+      "value": "#4C87F6",
+      "type": "color",
+      "layer": "primitive"
     },
-    "crimson-500": {
-      "value": "#C12554",
-      "type": "color"
+    "brand-500": {
+      "value": "#256EF4",
+      "type": "color",
+      "layer": "primitive"
     },
-    "crimson-600": {
-      "value": "#A01C46",
-      "type": "color"
+    "brand-600": {
+      "value": "#0B50D0",
+      "type": "color",
+      "layer": "primitive"
     },
-    "crimson-700": {
-      "value": "#741333",
-      "type": "color"
+    "brand-700": {
+      "value": "#083891",
+      "type": "color",
+      "layer": "primitive"
     },
-    "crimson-800": {
-      "value": "#360817",
-      "type": "color"
+    "brand-800": {
+      "value": "#052561",
+      "type": "color",
+      "layer": "primitive"
     },
     "ink-100": {
       "value": "#E9EEF0",
-      "type": "color"
+      "type": "color",
+      "layer": "primitive"
     },
     "ink-150": {
       "value": "#D8E0E4",
-      "type": "color"
+      "type": "color",
+      "layer": "primitive"
     },
     "ink-200": {
       "value": "#AFBEC5",
-      "type": "color"
+      "type": "color",
+      "layer": "primitive"
     },
     "ink-300": {
       "value": "#86A0AA",
-      "type": "color"
+      "type": "color",
+      "layer": "primitive"
     },
     "ink-400": {
       "value": "#5D7F8C",
-      "type": "color"
+      "type": "color",
+      "layer": "primitive"
     },
     "ink-500": {
       "value": "#3F626F",
-      "type": "color"
+      "type": "color",
+      "layer": "primitive"
     },
     "ink-600": {
       "value": "#2C4954",
-      "type": "color"
+      "type": "color",
+      "layer": "primitive"
     },
     "ink-700": {
       "value": "#1B303A",
-      "type": "color"
+      "type": "color",
+      "layer": "primitive"
     },
     "ink-800": {
       "value": "#0E1A20",
-      "type": "color"
+      "type": "color",
+      "layer": "primitive"
     },
     "green-100": {
       "value": "#E6F4EC",
-      "type": "color"
+      "type": "color",
+      "layer": "primitive"
     },
     "green-150": {
       "value": "#D2ECDD",
-      "type": "color"
+      "type": "color",
+      "layer": "primitive"
     },
     "green-200": {
       "value": "#96D4B3",
-      "type": "color"
+      "type": "color",
+      "layer": "primitive"
     },
     "green-300": {
       "value": "#4CB783",
-      "type": "color"
+      "type": "color",
+      "layer": "primitive"
     },
     "green-400": {
       "value": "#1E9A62",
-      "type": "color"
+      "type": "color",
+      "layer": "primitive"
     },
     "green-500": {
       "value": "#12805C",
-      "type": "color"
+      "type": "color",
+      "layer": "primitive"
     },
     "green-600": {
       "value": "#0D6449",
-      "type": "color"
+      "type": "color",
+      "layer": "primitive"
     },
     "green-700": {
       "value": "#08402F",
-      "type": "color"
+      "type": "color",
+      "layer": "primitive"
     },
     "green-800": {
       "value": "#04261C",
-      "type": "color"
+      "type": "color",
+      "layer": "primitive"
     },
     "blue-100": {
       "value": "#E8EFFF",
-      "type": "color"
+      "type": "color",
+      "layer": "primitive"
     },
     "blue-150": {
       "value": "#D8E4FF",
-      "type": "color"
+      "type": "color",
+      "layer": "primitive"
     },
     "blue-200": {
       "value": "#A9C0FF",
-      "type": "color"
+      "type": "color",
+      "layer": "primitive"
     },
     "blue-300": {
       "value": "#7A9CFF",
-      "type": "color"
+      "type": "color",
+      "layer": "primitive"
     },
     "blue-400": {
       "value": "#5580FF",
-      "type": "color"
+      "type": "color",
+      "layer": "primitive"
     },
     "blue-500": {
       "value": "#3C6AFF",
-      "type": "color"
+      "type": "color",
+      "layer": "primitive"
     },
     "blue-600": {
       "value": "#2A50CC",
-      "type": "color"
+      "type": "color",
+      "layer": "primitive"
     },
     "blue-700": {
       "value": "#1B3689",
-      "type": "color"
+      "type": "color",
+      "layer": "primitive"
     },
     "blue-800": {
       "value": "#0D1C4A",
-      "type": "color"
+      "type": "color",
+      "layer": "primitive"
     },
     "amber-100": {
       "value": "#FEF3E6",
-      "type": "color"
+      "type": "color",
+      "layer": "primitive"
     },
     "amber-150": {
       "value": "#FCE8D2",
-      "type": "color"
+      "type": "color",
+      "layer": "primitive"
     },
     "amber-200": {
       "value": "#F7C68F",
-      "type": "color"
+      "type": "color",
+      "layer": "primitive"
     },
     "amber-300": {
       "value": "#EFA451",
-      "type": "color"
+      "type": "color",
+      "layer": "primitive"
     },
     "amber-400": {
       "value": "#DC7C12",
-      "type": "color"
+      "type": "color",
+      "layer": "primitive"
     },
     "amber-500": {
       "value": "#B95E04",
-      "type": "color"
+      "type": "color",
+      "layer": "primitive"
     },
     "amber-600": {
       "value": "#944A03",
-      "type": "color"
+      "type": "color",
+      "layer": "primitive"
     },
     "amber-700": {
       "value": "#633102",
-      "type": "color"
+      "type": "color",
+      "layer": "primitive"
     },
     "amber-800": {
       "value": "#331901",
-      "type": "color"
+      "type": "color",
+      "layer": "primitive"
     },
     "red-100": {
       "value": "#FDECEB",
-      "type": "color"
+      "type": "color",
+      "layer": "primitive"
     },
     "red-150": {
       "value": "#FBDCDA",
-      "type": "color"
+      "type": "color",
+      "layer": "primitive"
     },
     "red-200": {
       "value": "#F4ABA5",
-      "type": "color"
+      "type": "color",
+      "layer": "primitive"
     },
     "red-300": {
       "value": "#EC7C74",
-      "type": "color"
+      "type": "color",
+      "layer": "primitive"
     },
     "red-400": {
       "value": "#E1544A",
-      "type": "color"
+      "type": "color",
+      "layer": "primitive"
     },
     "red-500": {
       "value": "#D93025",
-      "type": "color"
+      "type": "color",
+      "layer": "primitive"
     },
     "red-600": {
       "value": "#B0241B",
-      "type": "color"
+      "type": "color",
+      "layer": "primitive"
     },
     "red-700": {
       "value": "#7A1812",
-      "type": "color"
+      "type": "color",
+      "layer": "primitive"
     },
     "red-800": {
       "value": "#400C09",
-      "type": "color"
+      "type": "color",
+      "layer": "primitive"
     },
     "opacity-black-5": {
       "value": "rgba(20,22,26,0.05)",
-      "type": "color"
+      "type": "color",
+      "layer": "primitive"
     },
     "opacity-black-10": {
       "value": "rgba(20,22,26,0.1)",
-      "type": "color"
+      "type": "color",
+      "layer": "primitive"
     },
     "opacity-black-15": {
       "value": "rgba(20,22,26,0.15)",
-      "type": "color"
+      "type": "color",
+      "layer": "primitive"
     },
     "opacity-black-25": {
       "value": "rgba(20,22,26,0.25)",
-      "type": "color"
+      "type": "color",
+      "layer": "primitive"
     },
     "opacity-black-40": {
       "value": "rgba(20,22,26,0.4)",
-      "type": "color"
+      "type": "color",
+      "layer": "primitive"
     },
     "opacity-black-65": {
       "value": "rgba(20,22,26,0.65)",
-      "type": "color"
+      "type": "color",
+      "layer": "primitive"
     },
     "opacity-black-80": {
       "value": "rgba(20,22,26,0.8)",
-      "type": "color"
+      "type": "color",
+      "layer": "primitive"
     },
     "opacity-white-10": {
       "value": "rgba(255,255,255,0.1)",
-      "type": "color"
+      "type": "color",
+      "layer": "primitive"
     },
     "opacity-white-25": {
       "value": "rgba(255,255,255,0.25)",
-      "type": "color"
+      "type": "color",
+      "layer": "primitive"
     },
     "opacity-white-65": {
       "value": "rgba(255,255,255,0.65)",
-      "type": "color"
+      "type": "color",
+      "layer": "primitive"
     },
     "opacity-white-80": {
       "value": "rgba(255,255,255,0.8)",
-      "type": "color"
+      "type": "color",
+      "layer": "primitive"
     },
     "text-primary": {
       "value": "#16181B",
       "type": "color",
+      "layer": "semantic",
       "description": "본문 · 제목"
     },
     "text-secondary": {
       "value": "#4F555F",
       "type": "color",
+      "layer": "semantic",
       "description": "보조 설명"
     },
     "text-tertiary": {
       "value": "#68707C",
       "type": "color",
+      "layer": "semantic",
       "description": "도움말 · 주석. 텍스트 최소 단계"
     },
     "text-disabled": {
       "value": "#98A0AC",
       "type": "color",
+      "layer": "semantic",
       "description": "비활성 텍스트 전용"
     },
     "text-inverse": {
       "value": "#FFFFFF",
       "type": "color",
+      "layer": "semantic",
       "description": "반전 배경 위 텍스트"
     },
     "text-accent": {
-      "value": "#A01C46",
+      "value": "#0B50D0",
       "type": "color",
+      "layer": "semantic",
       "description": "링크 · 강조 텍스트"
     },
     "text-critical": {
       "value": "#B0241B",
-      "type": "color"
+      "type": "color",
+      "layer": "semantic"
     },
     "text-positive": {
       "value": "#0D6449",
-      "type": "color"
+      "type": "color",
+      "layer": "semantic"
     },
     "text-caution": {
       "value": "#944A03",
-      "type": "color"
+      "type": "color",
+      "layer": "semantic"
     },
     "text-info": {
       "value": "#2A50CC",
-      "type": "color"
+      "type": "color",
+      "layer": "semantic"
     },
     "bg-primary": {
       "value": "#FFFFFF",
-      "type": "color"
+      "type": "color",
+      "layer": "semantic"
     },
     "bg-secondary": {
       "value": "#F8F9FA",
-      "type": "color"
+      "type": "color",
+      "layer": "semantic"
     },
     "bg-tertiary": {
       "value": "#F2F4F6",
-      "type": "color"
+      "type": "color",
+      "layer": "semantic"
     },
     "bg-inverse": {
       "value": "#1B303A",
-      "type": "color"
+      "type": "color",
+      "layer": "semantic"
     },
     "bg-dim": {
       "value": "rgba(20,22,26,0.65)",
       "type": "color",
+      "layer": "semantic",
       "description": "모달 · 바텀시트 뒤 음영"
     },
     "fill-primary": {
       "value": "#16181B",
-      "type": "color"
+      "type": "color",
+      "layer": "semantic"
     },
     "fill-secondary": {
       "value": "#E5E9ED",
-      "type": "color"
+      "type": "color",
+      "layer": "semantic"
     },
     "fill-tertiary": {
       "value": "#F2F4F6",
-      "type": "color"
+      "type": "color",
+      "layer": "semantic"
     },
     "fill-accent": {
-      "value": "#C12554",
+      "value": "#256EF4",
       "type": "color",
+      "layer": "semantic",
       "description": "Primary 버튼"
     },
     "fill-accent-hover": {
-      "value": "#A01C46",
-      "type": "color"
+      "value": "#0B50D0",
+      "type": "color",
+      "layer": "semantic"
     },
     "fill-accent-pressed": {
-      "value": "#741333",
-      "type": "color"
+      "value": "#083891",
+      "type": "color",
+      "layer": "semantic"
     },
     "fill-accent-subtle": {
-      "value": "#FCE9EF",
-      "type": "color"
+      "value": "#ECF2FE",
+      "type": "color",
+      "layer": "semantic"
     },
     "fill-disabled": {
       "value": "#E5E9ED",
-      "type": "color"
+      "type": "color",
+      "layer": "semantic"
     },
     "fill-critical": {
       "value": "#D93025",
-      "type": "color"
+      "type": "color",
+      "layer": "semantic"
     },
     "fill-critical-subtle": {
       "value": "#FDECEB",
-      "type": "color"
+      "type": "color",
+      "layer": "semantic"
     },
     "fill-positive-subtle": {
       "value": "#E6F4EC",
-      "type": "color"
+      "type": "color",
+      "layer": "semantic"
     },
     "fill-caution-subtle": {
       "value": "#FEF3E6",
-      "type": "color"
+      "type": "color",
+      "layer": "semantic"
     },
     "fill-info-subtle": {
       "value": "#E8EFFF",
-      "type": "color"
+      "type": "color",
+      "layer": "semantic"
     },
     "border-primary": {
       "value": "#D3D8DE",
-      "type": "color"
+      "type": "color",
+      "layer": "semantic"
     },
     "border-secondary": {
       "value": "#E5E9ED",
-      "type": "color"
+      "type": "color",
+      "layer": "semantic"
     },
     "border-strong": {
       "value": "#848D9A",
       "type": "color",
+      "layer": "semantic",
       "description": "입력 필드 테두리. UI 요소 3:1 기준을 만족해야 하므로 gray.400 미만으로 낮추지 마세요"
     },
     "border-accent": {
-      "value": "#C12554",
-      "type": "color"
+      "value": "#256EF4",
+      "type": "color",
+      "layer": "semantic"
     },
     "border-critical": {
       "value": "#D93025",
-      "type": "color"
+      "type": "color",
+      "layer": "semantic"
     },
     "border-focus": {
       "value": "#3C6AFF",
-      "type": "color"
+      "type": "color",
+      "layer": "semantic"
     },
     "icon-primary": {
       "value": "#16181B",
-      "type": "color"
+      "type": "color",
+      "layer": "semantic"
     },
     "icon-secondary": {
       "value": "#4F555F",
-      "type": "color"
+      "type": "color",
+      "layer": "semantic"
     },
     "icon-tertiary": {
       "value": "#848D9A",
-      "type": "color"
+      "type": "color",
+      "layer": "semantic"
     },
     "icon-accent": {
-      "value": "#C12554",
-      "type": "color"
+      "value": "#256EF4",
+      "type": "color",
+      "layer": "semantic"
     },
     "icon-inverse": {
       "value": "#FFFFFF",
-      "type": "color"
+      "type": "color",
+      "layer": "semantic"
     },
     "accent-primary": {
-      "value": "#C12554",
+      "value": "#256EF4",
       "type": "color",
-      "description": "솔리데오 CI 크림슨"
+      "layer": "semantic",
+      "description": "주색(브랜드). 기본은 KRDS 주색 — 회사색은 스킨으로 바꾼다"
     },
     "accent-secondary": {
       "value": "#1B303A",
-      "type": "color"
+      "type": "color",
+      "layer": "semantic"
     },
     "space-1": {
       "value": "4px",
-      "type": "dimension"
+      "type": "dimension",
+      "layer": "space"
     },
     "space-2": {
       "value": "8px",
-      "type": "dimension"
+      "type": "dimension",
+      "layer": "space"
     },
     "space-3": {
       "value": "12px",
-      "type": "dimension"
+      "type": "dimension",
+      "layer": "space"
     },
     "space-4": {
       "value": "16px",
-      "type": "dimension"
+      "type": "dimension",
+      "layer": "space"
     },
     "space-5": {
       "value": "20px",
-      "type": "dimension"
+      "type": "dimension",
+      "layer": "space"
     },
     "space-6": {
       "value": "24px",
-      "type": "dimension"
+      "type": "dimension",
+      "layer": "space"
     },
     "space-8": {
       "value": "32px",
-      "type": "dimension"
+      "type": "dimension",
+      "layer": "space"
     },
     "space-10": {
       "value": "40px",
-      "type": "dimension"
+      "type": "dimension",
+      "layer": "space"
     },
     "space-12": {
       "value": "48px",
-      "type": "dimension"
+      "type": "dimension",
+      "layer": "space"
     },
     "space-16": {
       "value": "64px",
-      "type": "dimension"
+      "type": "dimension",
+      "layer": "space"
     },
     "space-20": {
       "value": "80px",
-      "type": "dimension"
+      "type": "dimension",
+      "layer": "space"
     },
     "space-24": {
       "value": "96px",
-      "type": "dimension"
+      "type": "dimension",
+      "layer": "space"
     },
     "radius-xs": {
       "value": "2px",
-      "type": "dimension"
+      "type": "dimension",
+      "layer": "radius"
     },
     "radius-sm": {
       "value": "4px",
-      "type": "dimension"
+      "type": "dimension",
+      "layer": "radius"
     },
     "radius-md": {
       "value": "8px",
-      "type": "dimension"
+      "type": "dimension",
+      "layer": "radius"
     },
     "radius-lg": {
       "value": "12px",
-      "type": "dimension"
+      "type": "dimension",
+      "layer": "radius"
     },
     "radius-xl": {
       "value": "20px",
-      "type": "dimension"
+      "type": "dimension",
+      "layer": "radius"
     },
     "radius-full": {
       "value": "999px",
-      "type": "dimension"
+      "type": "dimension",
+      "layer": "radius"
     },
     "font-size-display": {
       "value": "3.5rem",
-      "type": "dimension"
+      "type": "dimension",
+      "layer": "font"
     },
     "font-size-h1": {
       "value": "2.5rem",
-      "type": "dimension"
+      "type": "dimension",
+      "layer": "font"
     },
     "font-size-h2": {
       "value": "1.75rem",
-      "type": "dimension"
+      "type": "dimension",
+      "layer": "font"
     },
     "font-size-h3": {
       "value": "1.25rem",
-      "type": "dimension"
+      "type": "dimension",
+      "layer": "font"
     },
     "font-size-h4": {
       "value": "1.125rem",
-      "type": "dimension"
+      "type": "dimension",
+      "layer": "font"
     },
     "font-size-body-lg": {
       "value": "1.125rem",
-      "type": "dimension"
+      "type": "dimension",
+      "layer": "font"
     },
     "font-size-body": {
       "value": "1rem",
       "type": "dimension",
+      "layer": "font",
       "description": "루트 글자 크기(16px) 기준. 이용자가 글자 크기를 키우면 모든 단계가 함께 커집니다"
     },
     "font-size-sm": {
       "value": "0.875rem",
-      "type": "dimension"
+      "type": "dimension",
+      "layer": "font"
     },
     "font-size-xs": {
       "value": "0.75rem",
-      "type": "dimension"
+      "type": "dimension",
+      "layer": "font"
     },
     "font-weight-regular": {
       "value": 400,
-      "type": "fontWeight"
+      "type": "fontWeight",
+      "layer": "font"
     },
     "font-weight-medium": {
       "value": 500,
-      "type": "fontWeight"
+      "type": "fontWeight",
+      "layer": "font"
     },
     "font-weight-bold": {
       "value": 700,
-      "type": "fontWeight"
+      "type": "fontWeight",
+      "layer": "font"
     },
     "font-weight-black": {
       "value": 800,
-      "type": "fontWeight"
+      "type": "fontWeight",
+      "layer": "font"
     },
     "font-family-sans": {
       "value": "\"Pretendard\", \"Pretendard Variable\", \"Noto Sans KR\", -apple-system, BlinkMacSystemFont, \"Malgun Gothic\", sans-serif",
-      "type": "fontFamily"
+      "type": "fontFamily",
+      "layer": "font"
     },
     "font-family-mono": {
       "value": "\"Pretendard\", \"Pretendard Variable\", \"Noto Sans KR\", -apple-system, BlinkMacSystemFont, \"Malgun Gothic\", sans-serif",
-      "type": "fontFamily"
+      "type": "fontFamily",
+      "layer": "font"
     },
     "line-height-tight": {
       "value": 1.25,
-      "type": "number"
+      "type": "number",
+      "layer": "line-height"
     },
     "line-height-normal": {
       "value": 1.5,
-      "type": "number"
+      "type": "number",
+      "layer": "line-height"
     },
     "line-height-loose": {
       "value": 1.7,
-      "type": "number"
+      "type": "number",
+      "layer": "line-height"
     },
     "letter-spacing-tight": {
       "value": "-0.02em",
-      "type": "dimension"
+      "type": "dimension",
+      "layer": "letter-spacing"
     },
     "shadow-1": {
       "value": "0 1px 2px rgba(20,22,26,.05), 0 1px 3px rgba(20,22,26,.05)",
       "type": "shadow",
+      "layer": "shadow",
       "description": "카드 · 입력 그룹"
     },
     "shadow-2": {
       "value": "0 2px 8px rgba(20,22,26,.10)",
       "type": "shadow",
+      "layer": "shadow",
       "description": "드롭다운 · 툴팁"
     },
     "shadow-3": {
       "value": "0 8px 24px rgba(20,22,26,.10)",
       "type": "shadow",
+      "layer": "shadow",
       "description": "팝오버"
     },
     "shadow-4": {
       "value": "0 16px 48px rgba(20,22,26,.15)",
       "type": "shadow",
+      "layer": "shadow",
       "description": "모달 · 바텀시트"
     },
     "duration-fast": {
       "value": "120ms",
-      "type": "duration"
+      "type": "duration",
+      "layer": "duration"
     },
     "duration-base": {
       "value": "200ms",
-      "type": "duration"
+      "type": "duration",
+      "layer": "duration"
     },
     "duration-slow": {
       "value": "320ms",
-      "type": "duration"
+      "type": "duration",
+      "layer": "duration"
     },
     "easing-standard": {
       "value": "cubic-bezier(.2,0,.2,1)",
-      "type": "cubicBezier"
+      "type": "cubicBezier",
+      "layer": "easing"
     },
     "easing-decelerate": {
       "value": "cubic-bezier(0,0,.2,1)",
-      "type": "cubicBezier"
+      "type": "cubicBezier",
+      "layer": "easing"
     },
     "layout-max": {
       "value": "1280px",
-      "type": "dimension"
+      "type": "dimension",
+      "layer": "layout"
     },
     "layout-gutter": {
       "value": "24px",
-      "type": "dimension"
+      "type": "dimension",
+      "layer": "layout"
     },
     "layout-sidebar": {
       "value": "240px",
-      "type": "dimension"
+      "type": "dimension",
+      "layer": "layout"
     },
     "layout-header": {
       "value": "72px",
-      "type": "dimension"
+      "type": "dimension",
+      "layer": "layout"
     },
     "layout-content": {
       "value": "848px",
-      "type": "dimension"
+      "type": "dimension",
+      "layer": "layout"
     },
     "breakpoint-mobile": {
       "value": "0px",
-      "type": "dimension"
+      "type": "dimension",
+      "layer": "breakpoint"
     },
     "breakpoint-tablet": {
       "value": "600px",
-      "type": "dimension"
+      "type": "dimension",
+      "layer": "breakpoint"
     },
     "breakpoint-desktop": {
       "value": "900px",
-      "type": "dimension"
+      "type": "dimension",
+      "layer": "breakpoint"
     },
     "breakpoint-wide": {
       "value": "1280px",
-      "type": "dimension"
+      "type": "dimension",
+      "layer": "breakpoint"
     },
     "component-control-height-sm": {
       "value": "32px",
       "type": "dimension",
+      "layer": "component",
       "description": "작은 컨트롤. 표 안 · 밀집 영역"
     },
     "component-control-height-md": {
       "value": "40px",
       "type": "dimension",
+      "layer": "component",
       "description": "기본. 터치 영역 44px 을 여백과 함께 확보합니다"
     },
     "component-control-height-lg": {
       "value": "48px",
       "type": "dimension",
+      "layer": "component",
       "description": "주요 행동 · 모바일"
     },
     "component-control-radius": {
       "value": "4px",
       "type": "dimension",
+      "layer": "component",
       "description": "버튼 · 입력 필드의 모서리. Foundations › Shape 기준"
     },
     "component-control-padding-x": {
       "value": "16px",
-      "type": "dimension"
+      "type": "dimension",
+      "layer": "component"
     },
     "component-control-font-size": {
       "value": "0.875rem",
-      "type": "dimension"
+      "type": "dimension",
+      "layer": "component"
     },
     "component-control-target-min": {
       "value": "24px",
       "type": "dimension",
+      "layer": "component",
       "description": "클릭 · 터치 대상의 최소 크기 (WCAG 2.5.8 AA). 시각 크기가 이보다 작으면 히트 영역을 넓힙니다"
     },
     "component-button-font-weight": {
       "value": 700,
       "type": "fontWeight",
+      "layer": "component",
       "description": "버튼 레이블은 굵게. 주변 텍스트와 구분됩니다"
     },
     "component-badge-height": {
       "value": "22px",
-      "type": "dimension"
+      "type": "dimension",
+      "layer": "component"
     },
     "component-badge-radius": {
       "value": "999px",
-      "type": "dimension"
+      "type": "dimension",
+      "layer": "component"
     },
     "component-badge-padding-x": {
       "value": "8px",
-      "type": "dimension"
+      "type": "dimension",
+      "layer": "component"
+    }
+  },
+  "skins": {
+    "solideo": {
+      "label": "SOLIDEO 크림슨(예시 스킨)",
+      "file": "skin-solideo.css",
+      "tokens": {
+        "brand-100": "#FCE9EF",
+        "brand-150": "#FADCE5",
+        "brand-200": "#F2AEC1",
+        "brand-300": "#E77E9F",
+        "brand-400": "#D74E79",
+        "brand-500": "#C12554",
+        "brand-600": "#A01C46",
+        "brand-700": "#741333",
+        "brand-800": "#360817"
+      }
     }
   }
 }

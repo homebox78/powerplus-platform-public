@@ -94,6 +94,20 @@ def _lum(im, box):
     return sum(ImageStat.Stat(im.crop(box).convert("L")).mean)
 
 
+def _ink_for(im, box, dark=(0x1F, 0x29, 0x37)):
+    """작은 글 색 — 그 자리 바탕과 대비(WCAG)가 더 큰 쪽(흰색 / 짙은 먹색). 배경이 어떻게 나와도 글이 읽힌다(10-15 사용자 '배경은 글자가 보이는 색으로')"""
+    def rel(c):
+        c = [x / 255 for x in c[:3]]
+        c = [x / 12.92 if x <= 0.03928 else ((x + 0.055) / 1.055) ** 2.4 for x in c]
+        return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2]
+    st = ImageStat.Stat(im.convert("RGB").crop(box))
+    lb = rel(st.mean)
+    lb_hi = rel([min(255, m + s) for m, s in zip(st.mean, st.stddev)])   # 고리·빛줄기처럼 밝은 무늬가 지나가면 그쪽도 본다
+    cw = 1.05 / (max(lb, lb_hi) + 0.05)
+    cd = (lb + 0.05) / (rel(dark) + 0.05)
+    return (255, 255, 255, 255) if cw >= cd else dark + (255,)
+
+
 def _veil(im, dark, width_ratio=0.62, strength=0.78):
     """글 자리(왼쪽)에 부드러운 그라데이션 — 사진 위 글이 읽히게. 어두우면 남색, 밝으면 흰색"""
     col = (8, 24, 64) if dark else (255, 255, 255)
@@ -480,15 +494,16 @@ def compose(kind, bg_png, texts, st, accent, title_font=None, body_font=None, lo
             lx = xo(W * 0.05)
             d.line([lx, y + H * 0.01, lx + W * 0.05, y + H * 0.01], fill=key_c, width=4)
             y += H * 0.07
+            row_c = title_c if dark else _hex("333333")   # 목차 큰 글씨만 색, 번호·장 이름은 먹색(10-15 사용자 "아래 목차글자는 검정색 #333 정도")
             if lay == "center":   # 장들을 한 줄에 나란히 — 번호 위, 이름 아래
                 colw = min(W * 0.22, textw / n)
                 x = X + (textw - colw * n) / 2
                 for no, name in rows:
-                    d.text((x + colw / 2, y), f"{int(no):02d}", font=f_no, fill=key_c, anchor="ma")
+                    d.text((x + colw / 2, y), f"{int(no):02d}", font=f_no, fill=row_c, anchor="ma")
                     nm = name
                     while _width(nm, f_nm, rs * -0.017) > colw * 0.92 and len(nm) > 4:
                         nm = nm[:-1]
-                    _draw(d, x + (colw - _width(nm, f_nm, rs * -0.017)) / 2, y + rs * 1.5, nm, f_nm, title_c, rs * -0.017)
+                    _draw(d, x + (colw - _width(nm, f_nm, rs * -0.017)) / 2, y + rs * 1.5, nm, f_nm, row_c, rs * -0.017)
                     x += colw
             else:   # 번호 01~ · 굵은 장 이름(자르지 않는다 — 줄이고, 그래도 넘치면 두 줄) · 그 아래 절 이름 작은 회색(학습-표지목차간지: 4~5장 보통, 6장 넘으면 두 열)
                 cols = 2 if n > 6 else 1
@@ -505,7 +520,7 @@ def compose(kind, bg_png, texts, st, accent, title_font=None, body_font=None, lo
                     subs = [str(t).replace("**", "") for t in (r[2] if len(r) > 2 else []) if str(t).strip()]
                     cx = X + (i // per) * colw
                     yy = y0 + (i % per) * rs * unit
-                    d.text((cx, yy), f"{int(no):02d}", font=f_no, fill=key_c)
+                    d.text((cx, yy), f"{int(no):02d}", font=f_no, fill=row_c)
                     nx = cx + f_no.getlength("00") + rs * 0.7
                     room = colw - (nx - cx) - W * 0.01
                     ns = rs
@@ -514,7 +529,7 @@ def compose(kind, bg_png, texts, st, accent, title_font=None, body_font=None, lo
                     f_nm2 = _font(tpath, ns)
                     nl = [name] if _width(name, f_nm2, ns * -0.017) <= room else _wrap_even(name, f_nm2, ns * -0.017, room)[:2]
                     for k, ln in enumerate(nl):
-                        _draw(d, nx, yy + (rs * 1.05 - ns) * 0.5 + k * ns * 1.1, ln, f_nm2, title_c, ns * -0.017)
+                        _draw(d, nx, yy + (rs * 1.05 - ns) * 0.5 + k * ns * 1.1, ln, f_nm2, row_c, ns * -0.017)
                     if subs:
                         sy = yy + rs * 1.25 + (len(nl) - 1) * ns * 1.1
                         ss = rs * 0.5
@@ -548,7 +563,11 @@ def compose(kind, bg_png, texts, st, accent, title_font=None, body_font=None, lo
             y_top = y
             if no is not None:
                 part = f"PART {no}"
-                _draw(d, xo(_width(part, f_no, H * 0.10 * -0.017)), y, part, f_no, key_c, H * 0.10 * -0.017)
+                px0 = xo(_width(part, f_no, H * 0.10 * -0.017))
+                # 강약 — PART 번호는 연한 반투명 파랑(바탕에 40% 만 얹은 색), 장 이름이 주인공(10-15 사용자 "강약이 있어야함 part 1은 연한 파랑 반투명")
+                under = ImageStat.Stat(im.convert("RGB").crop((int(px0), int(y), int(min(W, px0 + W * 0.3)), int(y + H * 0.10)))).mean
+                part_c = tuple(int(k * 0.4 + b * 0.6) for k, b in zip(key_c[:3], under)) + (255,)
+                _draw(d, px0, y, part, f_no, part_c, H * 0.10 * -0.017)
             y += head
             for ln in lines:
                 _draw(d, xo(_width(ln, f_nm, tr)), y, ln, f_nm, title_c, tr)
@@ -594,13 +613,13 @@ def compose(kind, bg_png, texts, st, accent, title_font=None, body_font=None, lo
         yt, yb = body(ImageDraw.Draw(Image.new("RGBA", (W, H))))
         cx0, cx1 = int(X - W * 0.035), int(min(X + textw + W * 0.03, max(RIGHT[0], X + W * 0.18) + W * 0.035))
         cy0, cy1 = int(max(H * 0.04, yt - H * 0.06)), int(min(H * 0.96, yb + H * 0.05))
-        blur = im.crop((cx0, cy0, cx1, cy1)).filter(ImageFilter.GaussianBlur(46))   # 파랑 유리 — 뒤 그림은 아주 연하게만(10-15 사용자)
+        blur = im.crop((cx0, cy0, cx1, cy1)).filter(ImageFilter.GaussianBlur(30))   # 파랑 유리 — 뒤 그림이 살짝 비치게(10-15 사용자 "배경 약간 투명하게": 흐림 46→30, 면 80%→65%)
         m = Image.new("L", blur.size, 0)
         ImageDraw.Draw(m).rounded_rectangle([0, 0, blur.width - 1, blur.height - 1], radius=int(H * 0.03), fill=255)
         im.paste(blur, (cx0, cy0), m)
         ov = Image.new("RGBA", im.size, (0, 0, 0, 0))
         gl = _hex(fd.get("glass", "#DCE4FA"))[:3]
-        ImageDraw.Draw(ov).rounded_rectangle([cx0, cy0, cx1, cy1], radius=int(H * 0.03), fill=gl + (205,), outline=(255, 255, 255, 230), width=3)
+        ImageDraw.Draw(ov).rounded_rectangle([cx0, cy0, cx1, cy1], radius=int(H * 0.03), fill=gl + (165,), outline=(255, 255, 255, 230), width=3)
         im.alpha_composite(ov)
     if save_bg:   # 글만 빠진 손본 배경(그림 비키기·경계 녹이기·덮개 반영) — 최종 장표가 이것을 깔고 글을 얹는다(원본을 깔면 글이 그림과 다시 겹친다)
         im.convert("RGB").save(save_bg)
@@ -616,7 +635,7 @@ def compose(kind, bg_png, texts, st, accent, title_font=None, body_font=None, lo
         else:   # 오른쪽 위 끝에 — 글 단 끝에 맞추면 화면 가운데에 떠 보인다(사용자 2026-10-15)
             tx = W - X0
         box = (int(tx - tw), int(H * 0.03), int(tx), int(H * 0.08))
-        tc = (255, 255, 255, 230) if _lum(im, box) < 120 else _hex("5B6475")
+        tc = _ink_for(im, box)   # 밝기 문턱(120) 대신 대비 — 중간 밝기 파랑회색에 회색 글이 묻혔다(10-15 D 목차)
         d.text((tx, H * 0.042), tag, font=f_tag, fill=tc, anchor="ra")
     buf = io.BytesIO()
     im.convert("RGB").save(buf, "PNG")

@@ -146,11 +146,11 @@ TYPES = {
     },
     "f": {   # 딥 컬러 선화 — 가는 외곽선 플랫
         "name": "Deep color line art (thin-outline flat)",
-        "palette": [("primary", "#1E2A5A"), ("secondary", "{accent}"), ("tint_strong", "#DCE7F7"), ("tint", "#F3F7FC"), ("line", "#D2DAE6"),
+        "palette": [("primary", "#1E2A5A"), ("secondary", "#3B82F6"), ("tint_strong", "#DCE7F7"), ("tint", "#F3F7FC"), ("line", "#D2DAE6"),
                     ("text", "#1E2A5A"), ("text_sub", "#4A5568"), ("caption", "#6B7280")],
-        "card": "white fill, 1.5 px #D2DAE6 border, 12 px radius, NO shadow (flat); the one key panel may get a #1E2A5A header band; other blocks are white with a 3 px accent left rule.",
-        "icon": "THIN-OUTLINE flat icons, 2 px #1E2A5A outline with one flat fill (accent or pale sky), on no background.",
-        "picture": "thin-outline flat vector illustrations (2 px dark outlines, 2–3 flat colors: accent, navy, pale sky), small simple figures, same line weight as the icons.",
+        "card": "white fill, 1.5 px #D2DAE6 border, 12 px radius, NO shadow (flat); the one key panel may get a #1E2A5A header band; other blocks are white with a 3 px #3B82F6 left rule (header blue, not the accent).",
+        "icon": "THIN-OUTLINE flat icons, 2 px #1E2A5A outline with one flat fill (header blue #3B82F6 or pale sky), on no background.",
+        "picture": "thin-outline flat vector illustrations (2 px dark outlines, 2–3 flat colors: navy, header blue #3B82F6, pale sky — the accent at most as one tiny spot), small simple figures, same line weight as the icons.",
         "never": ["gradients", "3D or clay", "outlines thicker or thinner than 2 px"],
     },
 }
@@ -167,7 +167,8 @@ def spec_text(type_id, accent="#FF2A6D"):
     L = [f"DESIGN SYSTEM — {t['name']} (follow these exact values on every slide of this deck; they override any other color or size mentioned elsewhere)"]
     L.append("PALETTE (use ONLY these colors, by role):")
     L += [f"- {k}: {v.replace('{accent}', acc)}" for k, v in t["palette"]]
-    L.append(f"- accent: {acc} — ONLY for 1–3 key words and at most one warning/differentiator badge; never as a fill for cards or bands")
+    # 포인트색은 조금만(10-15 사용자 — 제목 왼쪽 선·라벨 칩·큰 숫자 알약까지 분홍이라 산만) — 나머지 강조는 헤더 파랑
+    L.append(f"- accent: {acc} — use SPARINGLY: ONLY the slide's single most important number or 1–2 key words. Never for panel title bars or left rules, label chips, tags, pills, pins, callouts or fills of cards and bands — those use the secondary / light header blue")
     for sec, head in (("form", "LAYOUT LOGIC"), ("grid", "GRID & SPACING"), ("type", "TYPOGRAPHY"), ("shape", "STROKES, RADII, PADDING"), ("parts", "COMPONENTS")):
         L.append(head + ":")
         L += ["- " + x.format(**fill) for x in BASE[sec]]

@@ -1,0 +1,13 @@
+# powerMCP 판정 브라우저(Playwright chromium headless shell)에만 사용자 네임스페이스를 허용 — 샌드박스를 켜고 띄우기 위해(O-34, 2026-10-15 사용자 승인).
+# Ubuntu 24.04 는 kernel.apparmor_restrict_unprivileged_userns=1 이라 프로필 없는 chromium 은 "No usable sandbox" 로 죽는다.
+# 시스템 전체 설정은 그대로 두고 이 실행 파일 하나만 허용한다(Chromium 공식 안내 apparmor-userns-restrictions.md 방식).
+# 설치: sudo cp scripts/apparmor-pw-headless-shell /etc/apparmor.d/pw-headless-shell && sudo apparmor_parser -r /etc/apparmor.d/pw-headless-shell
+# Playwright 판이 바뀌어 폴더 번호(chromium_headless_shell-NNNN)가 달라져도 와일드카드로 맞는다.
+abi <abi/4.0>,
+include <tunables/global>
+
+profile pw-headless-shell /home/deploy/.cache/ms-playwright/chromium_headless_shell-*/chrome-headless-shell-linux64/chrome-headless-shell flags=(unconfined) {
+  userns,
+
+  include if exists <local/pw-headless-shell>
+}

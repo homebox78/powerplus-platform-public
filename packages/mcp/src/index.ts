@@ -810,7 +810,10 @@ function buildServer(key: string | null): McpServer {
       let refImage: Buffer | null = null;
       if (judgePieces?.length) refImage = await composeRef(sharp, judgePieces, Number(ref.height ?? 0)).catch(() => null);
       else if (judgeUrl) { const r = await fetch(judgeUrl.startsWith("http") ? judgeUrl : `${ORIGIN}${judgeUrl}`).catch(() => null); if (r?.ok) refImage = Buffer.from(await r.arrayBuffer()); }
-      const { result, compare, thumb } = await checkMockup({ html, ref, refImage, sharp, want, textKeys: await textSampleKeys(), iconKeys: textKeyCache.icons, peers: Array.isArray(d.json.peers) ? d.json.peers : [], width: a.device === "mobile" ? 390 : 1920, launch: () => pw[engine].launch({ args: engine === "chromium" ? ["--no-sandbox", "--disable-dev-shm-usage"] : [] }) });
+      // 판정 브라우저는 사용자 HTML 을 그리므로 샌드박스를 켠다(O-34). Playwright 는 chromiumSandbox:true 를 줘야 --no-sandbox 를 안 붙인다(args 에서 빼는 것만으론 안 켜진다). 서버는 AppArmor 프로필(scripts/apparmor-pw-headless-shell)이 있어야 뜬다 —
+      // 프로필이 없는 서버(이관 직후 등)에선 PP_JUDGE_NO_SANDBOX=1 로 예전처럼 끌 수 있다
+      const judgeArgs = engine === "chromium" ? [...(process.env.PP_JUDGE_NO_SANDBOX === "1" ? ["--no-sandbox"] : []), "--disable-dev-shm-usage"] : [];
+      const { result, compare, thumb } = await checkMockup({ html, ref, refImage, sharp, want, textKeys: await textSampleKeys(), iconKeys: textKeyCache.icons, peers: Array.isArray(d.json.peers) ? d.json.peers : [], width: a.device === "mobile" ? 390 : 1920, launch: () => pw[engine].launch({ args: judgeArgs, chromiumSandbox: engine === "chromium" && process.env.PP_JUDGE_NO_SANDBOX !== "1" }) });
       const rec = await internal(`mockup-pages/${token}/check`, { score: result.score, pass: result.pass, ref_id: refId, result: { ...result, rows: undefined }, thumb: thumb ? thumb.toString("base64") : undefined, device: a.device ?? "pc", page: refId.startsWith("mix1:") ? "main" : String((ref as { page_type?: string }).page_type ?? "") }).catch(() => null);
       // 기록이 안 되면 점수·통과가 DB 에 NULL 로 남아 게시가 막힌다 — 조용히 넘기지 않고 로그에 남긴다(PP_JUDGE_SECRET 누락이 흔한 원인)
       if (!rec?.ok) console.error(`[mcp] 판정 기록 실패 token=${token.slice(0, 8)} status=${rec?.status ?? "-"} ${rec?.json?.error?.message ?? ""}${JUDGE_SECRET ? "" : " (PP_JUDGE_SECRET 없음)"}`);

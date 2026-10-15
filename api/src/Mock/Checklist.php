@@ -22,7 +22,10 @@ final class Checklist
 
     /** 판정 고칠 목록의 머리말(" · " 앞) → 분야 */
     private const JUDGE_AREA = [
-        '/간격|빈칸|높이|폭|틀|옆 메뉴|서브 비주얼|덮임|가로 스크롤|반응형|묶음/u' => 'layout',
+        // 구성·반응형 규칙 중 색·그림 쪽은 먼저 가른다(아래 layout 줄이 '구성' 으로 전부 잡기 전에)
+        '/글자 강약|꾸밈 아이콘|아이콘 단추/u' => 'visual',
+        '/이미지 비율|배경 사진|팝업존|글자 든 그림/u' => 'content',
+        '/간격|빈칸|높이|폭|틀|옆 메뉴|서브 비주얼|덮임|가로 스크롤|반응형|묶음|구성|불균형|성긴|걸침|첫 화면|빈 띠|짝|탭 줄|꺾임|구분선|화면 밖|중복/u' => 'layout',
         '/색|묻힘|밝기/u' => 'visual',
         '/글자|섹션 제목/u' => 'type',
         '/동작|움직임|주 메뉴|검색|게이트/u' => 'behavior',
@@ -110,7 +113,15 @@ final class Checklist
     {
         $p = mb_strpos($f, ' · ');
         if ($p !== false && $p <= 24) {
-            return trim(mb_substr($f, 0, $p));
+            $h = trim(mb_substr($f, 0, $p));
+            // 구성·반응형·게이트는 규칙이 여럿이다 — "구성 · 나란한 칸 높이·내용 불균형" 처럼 규칙 이름까지 한 줄(2026-10-15 사용자 눈 점검 20건을 규칙별로 쌓기)
+            if (in_array($h, ['구성', '반응형', '게이트'], true)) {
+                $rest = mb_substr($f, $p + 3);
+                $c = mb_strpos($rest, ':');
+                $name = trim((string) preg_replace('/^(모바일|태블릿)\s+/u', '', $c !== false ? mb_substr($rest, 0, $c) : mb_substr($rest, 0, 30)));
+                return mb_substr($h . ' · ' . $name, 0, 60);
+            }
+            return $h;
         }
         foreach (['높이' => '/높이가 레퍼런스/u', '밝기 구성' => '/밝기 구성/u', '동작 규약' => '/동작 규약/u'] as $k => $re) {
             if (preg_match($re, $f)) {

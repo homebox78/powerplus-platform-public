@@ -26,6 +26,12 @@ const SETS = {
   // 제안서 장(章) 배경(인사말·목차·회사소개·비전·Q&A·맺음말 A/B, 밝은 실사·왼쪽 글자 자리) — set:"section"
   section: { cat: "photo", set: "photo-section-keyvisual", style: "section-keyvisual-bright", ko: ["키비주얼", "배경", "섹션배경", "장표배경", "간지", "제안서", "발표자료", "AI이미지"], en: ["key visual", "background", "section background", "slide background", "proposal"] },
   illust: { set: "illust-doc-concept", style: "doc-concept-render", ko: ["일러스트", "개념이미지", "3D"], en: ["illustration", "concept", "3d render"] },
+  // 홈페이지 목업 장면(2026-10-15 시안 10곳 시험에서 모자란 자리) — set:"mock". 태그 json 의 kind(hero-city·sub-visual·news-thumb…)·target(univ·school…)이
+  // 목업 샘플 풀(MockSamples)에 들어가는 열쇠다. kind 가 없으면 시안에 안 나온다.
+  mock: { cat: "photo", prefix: "mock-", set: "photo-mock-scene", style: "mock-scene-photo", ko: ["목업", "홈페이지", "샘플사진", "AI이미지"], en: ["mockup", "homepage", "sample photo"] },
+  mockill: { cat: "illust", prefix: "mock-", set: "illust-mock-scene", style: "mock-scene-flat", ko: ["목업", "홈페이지", "평면일러스트", "AI이미지"], en: ["mockup", "homepage", "flat illustration"] },
+  // 초록 유리 3D 아이콘(학교·교육 사이트 주색 초록 대응) — 세트 이름이 icon- 로 시작하면 목업 아이콘 풀에 바로 든다
+  icongreen: { cat: "icon", prefix: "icon-glass-green-", set: "icon-glass-green", style: "icon-glass-green", ko: ["아이콘", "유리질감", "3D", "초록", "AI이미지"], en: ["icon", "glass", "3d", "green"] },
 };
 const norm = (t) => String(t).normalize("NFC").trim().toLowerCase().slice(0, 64);
 
@@ -42,14 +48,16 @@ if (MODE === "prepare") {
     if (!f) throw new Error(`번호표에 없음: ${t.idx}`);
     const S = SETS[t.set] ?? SETS[t.cat === "illust" ? "illust" : "photo"];
     const cat = S.cat ?? (t.cat === "illust" ? "illust" : "photo");
-    const base = (S.prefix ?? "") + f.replace(/\.jpe?g$/i, "");
+    const ext = /\.png$/i.test(f) ? "png" : "jpg"; // 아이콘은 투명 배경 png 그대로
+    const base = (S.prefix ?? "") + f.replace(/\.(jpe?g|png)$/i, "");
     const src = join(SRC, f);
     const m = await sharp(src).metadata();
-    copyFileSync(src, join(out, `${base}.jpg`));
+    copyFileSync(src, join(out, `${base}.${ext}`));
     await sharp(src).resize(360, 360, { fit: "inside" }).webp({ quality: 84 }).toFile(join(out, `${base}.thumb.webp`));
-    const ko = [...t.ko, ...S.ko], en = [...t.en, ...S.en];
-    items.push({ base, legacy: `docphoto:${S.prefix ?? ""}${f}`, name: t.name, cat, set: S.set, style: S.style, w: m.width, h: m.height, alt: t.name,
-      ko: [...new Set(ko.map(norm))].filter(Boolean), en: [...new Set(en.map(norm))].filter(Boolean) });
+    const ko = [...t.ko, ...S.ko], en = [...(t.en ?? []), ...S.en];
+    items.push({ base, ext, legacy: `docphoto:${S.prefix ?? ""}${f}`, name: t.name, cat, set: S.set, style: S.style, w: m.width, h: m.height, alt: t.alt ?? t.name,
+      ko: [...new Set(ko.map(norm))].filter(Boolean), en: [...new Set(en.map(norm))].filter(Boolean),
+      kind: t.kind ? norm(t.kind) : null, target: (t.target ?? []).map(norm) });
   }
   writeFileSync(join(out, "manifest.json"), JSON.stringify({ items }, null, 1));
   console.log(`준비 ${items.length}개 → ${out}`);
@@ -76,7 +84,7 @@ for (const a of man) {
 
 let created = 0, updated = 0, tags = 0, dup = 0;
 for (const a of man) {
-  const files = { original: [`${DIR}/${a.base}.jpg`, "image/jpeg"], thumb: [`${DIR}/${a.base}.thumb.webp`, "image/webp"] };
+  const files = { original: a.ext === "png" ? [`${DIR}/${a.base}.png`, "image/png"] : [`${DIR}/${a.base}.jpg`, "image/jpeg"], thumb: [`${DIR}/${a.base}.thumb.webp`, "image/webp"] };
   const abs = (p) => resolve(STORE, "assets", p);
   for (const [p] of Object.values(files)) if (!existsSync(abs(p))) throw new Error(`파일 없음: ${p}`);
   const sha = createHash("sha256").update(readFileSync(abs(files.original[0]))).digest("hex");
@@ -102,7 +110,9 @@ for (const a of man) {
     else { const [r] = await db.query("INSERT INTO core_files (public_id, bucket, path, mime, bytes, sha256, visibility) VALUES (?,?,?,?,?,?, 'public')", [pid(), "assets", p, mime, statSync(abs(p)).size, fsha]); fid = r.insertId; }
     await db.query("INSERT INTO asset_files (item_id, kind, file_id) VALUES (?,?,?) ON DUPLICATE KEY UPDATE file_id = VALUES(file_id)", [id, kind, fid]);
   }
-  const rows = [...a.ko.map((t) => [t, "ko", "kw"]), ...a.en.map((t) => [t, "en", "kw"]), [norm(a.style), "ko", "style"]];
+  // kind·target = 목업 샘플 풀의 열쇠(MockSamples::sampleWhere 는 kind 태그가 있는 행을 받는다)
+  const rows = [...a.ko.map((t) => [t, "ko", "kw"]), ...a.en.map((t) => [t, "en", "kw"]), [norm(a.style), "ko", "style"],
+    ...(a.kind ? [[a.kind, "ko", "kind"]] : []), ...(a.target ?? []).map((t) => [t, "ko", "target"])];
   await db.query("DELETE FROM asset_tags WHERE item_id = ?", [id]);
   const [r] = await db.query("INSERT IGNORE INTO asset_tags (item_id, tag, lang, axis) VALUES " + rows.map(() => "(?,?,?,?)").join(","), rows.flatMap((x) => [id, ...x]));
   tags += r.affectedRows;

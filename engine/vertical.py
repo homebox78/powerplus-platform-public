@@ -606,7 +606,9 @@ def _pick(category, text, queries, exclude, set_=None):
     return d.get("pick"), float(d.get("confidence") or 0)
 
 
-PHOTO_SKIP = ("photo-section-keyvisual",)        # 표지·간지 배경(가운데가 비고 하얗게 날아감) — 본문 사진으로 안 쓴다
+# 표지·간지 배경(가운데가 비고 하얗게 날아감) — 본문 사진으로 안 쓴다. vp-bg-dark(다크 3D, 2026-10-15)는 흰 바탕 장표에 안 맞고
+# 표지·간지 글씨도 짙은 색이라 다크 테마가 생길 때까지 엔진이 쓰지 않는다(VP_SETS 에도 없다 → 세로 배경 후보에서도 빠짐)
+PHOTO_SKIP = ("photo-section-keyvisual", "vp-bg-dark")
 # 세로 전용 세트의 본문 장면(이름에 표지·목차·간지가 없는 것)은 위쪽이 글 자리로 비어 있다 — 톤에 맞는 세트만 쓰고 아래쪽 장면을 자른다
 VP_ROLE = r"표지|목차|간지|맺음말"
 PHOTO_PREFER = {"photo-doc-business": 1.0}       # 실사 문서·비즈니스 사진 우선

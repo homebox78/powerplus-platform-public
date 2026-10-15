@@ -4,6 +4,7 @@
 // 렌더러는 호출부가 넘긴다(서버 = chromium, 로컬 = firefox). 한 번에 한 장씩 처리한다(서버 메모리).
 import { behavior } from "./behavior.mjs";
 import { gates } from "./gates.mjs";
+import { layoutChecks, deviceChecks } from "./layout.mjs";
 import { measureDesign, designFixes, colorShare } from "./design.mjs";
 import { measureVisual, visualFixes, capByKinds } from "./visual.mjs";
 import { guardContext } from "./netguard.mjs";
@@ -201,7 +202,7 @@ export function checkMockup(o) {
   return run;
 }
 
-async function doCheck({ html, ref, refImage, launch, sharp, width = 1920, peers = [], want = "" }) {
+async function doCheck({ html, ref, refImage, launch, sharp, width = 1920, peers = [], want = "", textKeys = [], iconKeys = [] }) {
   const browser = await getBrowser(launch);
   // serviceWorkers block: 서비스 워커 요청은 route 를 거치지 않아 막이를 우회한다
   const ctx = await browser.newContext({ viewport: { width, height: width < 800 ? 844 : 1080 }, reducedMotion: "reduce", serviceWorkers: "block" });
@@ -210,7 +211,8 @@ async function doCheck({ html, ref, refImage, launch, sharp, width = 1920, peers
   const p = await ctx.newPage();
   const errors = []; p.on("pageerror", (e) => errors.push(String(e.message || e).slice(0, 120)));
   try {
-    await p.setContent(html, { waitUntil: "load", timeout: 40_000 });
+    // 그림이 많아 load 가 40초를 넘으면 실패하던 것(2026-10-15 일괄 수정 2장) — DOM 이 섰으면 그대로 잰다
+    await p.setContent(html, { waitUntil: "load", timeout: 60_000 }).catch(async (e) => { if (!(await p.evaluate(() => !!document.body).catch(() => false))) throw e; });
     // 지연 로딩 이미지가 뜨도록 끝까지 한 번 내린다
     await p.evaluate(async () => { const H = document.documentElement.scrollHeight; for (let y = 0; y < H; y += 900) { scrollTo(0, y); await new Promise((r) => setTimeout(r, 60)); } scrollTo(0, 0); });
     // 지연 로딩을 즉시 로딩으로 바꾸고 모든 이미지가 끝날 때까지 기다린다(최대 6초)
@@ -221,6 +223,8 @@ async function doCheck({ html, ref, refImage, launch, sharp, width = 1920, peers
     });
     await p.waitForTimeout(600);
     const g = await gates(p);
+    // 구성·균형(2026-10-15 사용자 눈 점검 20건, R35) — 첫 화면은 900px 로 잰다(노트북 브라우저 안쪽 높이)
+    const lay = width >= 800 ? await layoutChecks(p, { textKeys, iconKeys, sub: !!ref.sub, viewportH: 900, org: want }).catch(() => ({ r: {}, fails: [] })) : { r: {}, fails: [] };
     const m = await measure(p, ref);
     const shot = await p.screenshot({ fullPage: true, type: "png", clip: { x: 0, y: 0, width, height: Math.min(m.height, 16000) } });
     // D1·D25: 그림 위 글자는 캡처 픽셀로 대비를 잰다 / D5·D6: 기관명·화면 종류 이름 (behavior 가 메뉴를 열기 전에)
@@ -239,6 +243,7 @@ async function doCheck({ html, ref, refImage, launch, sharp, width = 1920, peers
       return tried > 0 && ok === tried;
     }).catch(() => false);
     // 반응형(2026-10-02 사용자: 반응형은 기본으로 같이): 390 폭으로 다시 그려 가로 넘침·작은 글자를 잰다
+    let dev = [];
     let mob = { overflow: 0, wide: [], tiny: 0, media: /@media[^{]*(max|min)-width/.test(html) };
     if (width >= 800) {
       await p.setViewportSize({ width: 390, height: 844 }); await p.waitForTimeout(500);
@@ -268,6 +273,10 @@ async function doCheck({ html, ref, refImage, launch, sharp, width = 1920, peers
         return { overflow: sw - 390, wide, tiny, cut, cutw, headH };
       });
       mob = { ...mob, ...r };
+      // 모바일·태블릿 구성(2026-10-15 사용자 지적: 모바일에서 다 깨짐 — 입력칸·단추 짝, 탭 줄 잘림, 짧은 이름 꺾임, 구분선 줄바꿈, 열린 판이 화면 밖)
+      dev = [...(await deviceChecks(p, 390, lay.r.font ?? null).catch(() => ({ fails: [] }))).fails];
+      await p.setViewportSize({ width: 768, height: 1024 }); await p.waitForTimeout(400);
+      dev.push(...(await deviceChecks(p, 768, lay.r.font ?? null).catch(() => ({ fails: [] }))).fails);
       await p.setViewportSize({ width, height: 1080 });
     }
 
@@ -469,6 +478,8 @@ async function doCheck({ html, ref, refImage, launch, sharp, width = 1920, peers
     if (ref.sub ? diffPct > 15 : Math.abs(diffPct) > 2) { score -=Math.min(25, Math.round((Math.abs(diffPct) - 2) * 1.5)); fixes.push(`${ref.sub ? "본문 구간" : "전체"} 높이가 레퍼런스 ${refH}px 대비 ${mockH}px (${diffPct > 0 ? "+" : ""}${diffPct}%) — ${diffPct > 0 ? "여백·글이 너무 길거나 칸이 세로로 늘어났다" : "빠진 줄이 있거나 칸이 납작하다"}. 2% 이내로 맞춘다 — 높이는 각 줄의 칸 높이(sections 의 h)와 줄별 y 간격 그대로로 맞춘다(mix 면 줄별 실측 간격으로 다시 계산한 값이다). 줄 사이를 한 값으로 통일하거나 빈 상자·min-height 로 채우지 않는다(빈칸은 따로 감점).`); }
     if (!ref.sub && diffPct < -2 && pc.blanks.length) fixes.push("높이·빈칸 같이 걸림 · 높이를 맞추려 여백을 늘린 것으로 보인다 — 여백을 원래대로 줄이고, 레퍼런스보다 납작한 칸(사진·카드·목록 줄 수)을 sections 의 h 만큼 키운다.");
     if (g.fails.length) { score -= Math.min(35, g.fails.length * 5); for (const f of g.fails.slice(0, 10)) fixes.push(`게이트 · ${f}`); }
+    if (lay.fails.length) { score -= Math.min(30, lay.fails.length * 4); for (const f of lay.fails.slice(0, 12)) fixes.push(`구성 · ${f}`); }
+    if (dev.length) { score -= Math.min(16, dev.length * 3); for (const f of dev.slice(0, 8)) fixes.push(`반응형 · ${f}`); }
     if (beh.fails.length) { score -= Math.min(30, beh.fails.length * 5); for (const f of beh.fails.slice(0, 10)) fixes.push(`동작 · ${f}`); }
     if (beh.hard?.length) { score -= Math.min(10, beh.hard.length * 5); for (const h of beh.hard.slice(0, 5)) { hard.push(`주 메뉴 · ${h}`); fixes.push(`동작 · ${h} — 펼친 판에 z-index 를 주고 머리 띠 위로 올린다.`); } }
     { const cf = contrastFixes(overBad); score -= cf.minus; hard.push(...cf.hard); fixes.push(...cf.fixes); }

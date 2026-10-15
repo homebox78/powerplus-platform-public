@@ -1,6 +1,7 @@
 // 세로(A4) 제안서 전용 배경을 세트로 묶는다 — 사용자 2026-10-14 "세로제안서용 이미지는 따로 분리, 9:16 세로제안서 전용으로 올린 것들은 같이 묶어서",
 // "실사·3D 따로 올렸는데 디자인 테마에 따라 다르게". 원래는 가로 장표용 세트(photo-hero-keyvisual·photo-section-keyvisual)에 섞여 있었다.
-//   VP1-* (실사)  → vp-bg-photo   ·  VP2-*·VP3-* … (3D 렌더) → vp-bg-3d   — 세로 비율(h > w)만. 정사각은 원래 세트에 둔다.
+//   VP1-* (실사)  → vp-bg-photo   ·  VP2-* (밝은 3D 렌더) → vp-bg-3d   ·  VP3-* (다크 3D — 짙은 남색·네온 홀로그램) → vp-bg-dark
+//   — 세로 비율(h > w)만. 정사각은 원래 세트에 둔다. 2026-10-15 사용자 "세로 제안서용은 맞는데 다크 버전" → 밝은 3D 와 섞지 않는다.
 // 등록 키(legacy_key = 'docphoto:VPn-…')로 고르므로 멱등 — 새 묶음을 등록한 뒤 다시 돌리면 된다.
 //   node vp-sets.mjs [--dry]      (DATABASE_URL — register-photos.mjs 와 같은 방식)
 import { existsSync } from "node:fs";
@@ -21,7 +22,8 @@ const pid = () => Array.from({ length: 16 }, () => ALPHABET[randomInt(ALPHABET.l
 // 묶음 접두 → 세트. 3D 묶음이 더 오면 접두만 더한다
 const GROUPS = [
   { set: "vp-bg-photo", style: "vp-bg-photo", cat: "photo", like: ["docphoto:VP1-%"], tag: "실사" },
-  { set: "vp-bg-3d", style: "vp-bg-3d", cat: "photo", like: ["docphoto:VP2-%", "docphoto:VP3-%", "docphoto:VP4-%"], tag: "3D" },
+  { set: "vp-bg-3d", style: "vp-bg-3d", cat: "photo", like: ["docphoto:VP2-%"], tag: "3D" },
+  { set: "vp-bg-dark", style: "vp-bg-dark", cat: "photo", like: ["docphoto:VP3-%"], tag: "다크" },
 ];
 
 const touched = new Set();
@@ -47,6 +49,6 @@ for (const g of GROUPS) {
     ids.flatMap((id) => [id, g.style, "ko", "style", id, g.tag.toLowerCase(), "ko", "kw"]));
 }
 if (!DRY) for (const sid of touched) await db.query("UPDATE asset_sets SET item_count = (SELECT COUNT(*) FROM asset_items WHERE set_id = ? AND deleted_at IS NULL) WHERE id = ?", [sid, sid]);
-const [cnt] = await db.query("SELECT s.name, s.item_count FROM asset_sets s WHERE s.name IN ('vp-bg-photo','vp-bg-3d','photo-hero-keyvisual','photo-section-keyvisual')");
+const [cnt] = await db.query("SELECT s.name, s.item_count FROM asset_sets s WHERE s.name IN ('vp-bg-photo','vp-bg-3d','vp-bg-dark','photo-hero-keyvisual','photo-section-keyvisual')");
 console.log(DRY ? "[DRY]" : "완료", cnt.map((c) => `${c.name} ${c.item_count}`).join(" · "));
 await db.end();

@@ -22,6 +22,10 @@ main>:last-child{margin-bottom:0}
 :where(body>footer,.hb-footer){margin-top:var(--hb-foot,80px)}
 /* 마지막 구역이 폭 가득 색 띠면 띠와 바닥글 사이 흰 줄이 생긴다 — 바닥글에 hb-foot-flush 를 달면 붙인다(2026-10-15 시험 s01·s04) */
 footer.hb-foot-flush,.hb-footer.hb-foot-flush{margin-top:0}
+/* 넘김 정지·재생 아이콘 감싸개(span[data-hb-when])가 인라인 줄 높이를 가져 아이콘이 3.8px 위로 뜨던 것(2026-10-15 사용자 지적 '버튼 안 아이콘이 정중앙이 아님') */
+[data-hb-when]:not([hidden]){display:inline-flex;align-items:center;justify-content:center;line-height:0;vertical-align:middle}
+/* 펼침판 안 .hb-wrap 에 머리 줄 높이(.headrow .hb-wrap{height:…})가 걸려 판이 잘리고 링크가 히어로 위로 비치던 것(2026-10-15 '상단 메뉴 깨짐') */
+header [data-hb-mega] .hb-wrap,header .mega .hb-wrap,header [data-hb-sub] .hb-wrap{height:auto;max-height:none}
 /* 고정 높이 카드·목록 상자는 글·단추를 잘라 먹거나 아래를 비운다 — 같은 줄 높이는 stretch 로 */
 :where(.hb-card,.hb-grid>*){height:auto}
 /* 메가 메뉴 판은 히어로·캐러셀 위로 */

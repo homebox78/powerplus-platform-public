@@ -44,10 +44,81 @@ if ($cmd === 'issue') {
     echo "발급: {$pub['masked']}\n";
     exit(0);
 }
-if ($cmd === 'revoke') {
-    $n = $uid ? Db::exec('UPDATE core_api_keys SET revoked_at = NOW(3) WHERE user_id = ? AND revoked_at IS NULL', [$uid]) : 0;
-    echo "폐기: {$n}개\n";
+/**
+ * 시험이 만든 시안·갤러리 보관본을 관리자 계정(config admin.owner_email, 없으면 superadmin 역할 첫 계정)으로 옮긴다.
+ * 시험 계정에 남으면 사용자 '내 시안'에 안 보인다(2026-10-12·10-15 사용자 "테스트한 것들은 내 시안에 다 올라가 있어야").
+ * 테스트 로그인 계정은 auth.test.mirror 로 그 관리자 시안을 함께 본다.
+ */
+$transfer = static function (int $from): array {
+    $to = 0;
+    $em = (string) \Pp\Core\Config::get('admin.owner_email', '');
+    if ($em !== '') {
+        $to = (int) Db::val('SELECT id FROM core_users WHERE LOWER(email) = LOWER(?)', [$em]);
+    }
+    if (!$to) {
+        $to = (int) Db::val("SELECT u.id FROM core_users u JOIN core_user_roles r ON r.user_id = u.id WHERE r.role = 'superadmin' ORDER BY u.id LIMIT 1");
+    }
+    if (!$from || !$to || $from === $to) {
+        return [0, 0, $to];
+    }
+    $m = Db::exec('UPDATE mock_mockups SET owner_user_id = ? WHERE owner_user_id = ?', [$to, $from]);
+    $g = Db::exec('UPDATE mock_gallery SET owner_user_id = ? WHERE owner_user_id = ?', [$to, $from]);
+    return [$m, $g, $to];
+};
+// 관리자 계정 소유 시안을 일괄 고칠 때(2026-10-15 "만들어진 모든 목업에 같이 반영") — 관리자 계정에 mock 범위만 쓰는 임시 키.
+// 원문은 화면에 찍지 않고 파일에만(권한 600). 다 고치면 revoke-owner 로 폐기.
+if ($cmd === 'issue-owner' || $cmd === 'revoke-owner') {
+    [, , $owner] = $transfer(0);
+    if (!$owner) {
+        fwrite(STDERR, "관리자 계정을 찾지 못했습니다.\n");
+        exit(1);
+    }
+    if ($cmd === 'revoke-owner') {
+        $n = Db::exec("UPDATE core_api_keys SET revoked_at = NOW(3) WHERE user_id = ? AND name = 'mock-repair-temp' AND revoked_at IS NULL", [$owner]);
+        echo "폐기: {$n}개\n";
+        exit(0);
+    }
+    $out = (string) ($argv[2] ?? '');
+    if ($out === '') {
+        fwrite(STDERR, "키 저장 파일 경로가 필요합니다.\n");
+        exit(1);
+    }
+    [$pub, $raw] = Keys::issue($owner, 'mock-repair-temp', ['mock']);
+    file_put_contents($out, $raw);
+    chmod($out, 0600);
+    echo "발급(관리자 {$owner}, mock 범위): {$pub['masked']}\n";
     exit(0);
 }
-fwrite(STDERR, "사용: issue <파일> | revoke\n");
+// 관리자 시안을 시험 계정에 잠깐 빌려준다(관리자 플랜 일 한도 100건으로는 87장 일괄 수정이 막혀서, 2026-10-15 사용자 선택).
+// 목록 파일 = 한 줄에 token 하나. 다 고치면 transfer(또는 revoke)로 관리자에게 되돌린다.
+if ($cmd === 'lend') {
+    [, , $owner] = $transfer(0);
+    $file = (string) ($argv[2] ?? '');
+    $tokens = $file !== '' && is_file($file) ? array_values(array_filter(array_map('trim', file($file) ?: []))) : [];
+    if (!$owner || !$uid || !$tokens) {
+        fwrite(STDERR, "사용: lend <token 목록 파일>\n");
+        exit(1);
+    }
+    $m = 0;
+    $g = 0;
+    foreach (array_chunk($tokens, 200) as $chunk) {
+        $ph = implode(',', array_fill(0, count($chunk), '?'));
+        $m += Db::exec("UPDATE mock_mockups SET owner_user_id = ? WHERE owner_user_id = ? AND token IN ({$ph})", array_merge([$uid, $owner], $chunk));
+        $g += Db::exec("UPDATE mock_gallery g JOIN mock_mockups m ON m.id = g.mockup_id SET g.owner_user_id = ? WHERE g.owner_user_id = ? AND m.token IN ({$ph})", array_merge([$uid, $owner], $chunk));
+    }
+    echo "빌려줌: 시안 {$m}건 · 갤러리 {$g}건 → 시험 계정 {$uid}\n";
+    exit(0);
+}
+if ($cmd === 'transfer') {
+    [$m, $g, $to] = $transfer($uid);
+    echo "옮김: 시안 {$m}건 · 갤러리 {$g}건 → 계정 {$to}\n";
+    exit(0);
+}
+if ($cmd === 'revoke') {
+    [$m, $g, $to] = $transfer($uid);
+    $n = $uid ? Db::exec('UPDATE core_api_keys SET revoked_at = NOW(3) WHERE user_id = ? AND revoked_at IS NULL', [$uid]) : 0;
+    echo "옮김: 시안 {$m}건 · 갤러리 {$g}건 → 계정 {$to}\n폐기: {$n}개\n";
+    exit(0);
+}
+fwrite(STDERR, "사용: issue <파일> | transfer | revoke(옮긴 뒤 폐기)\n");
 exit(1);

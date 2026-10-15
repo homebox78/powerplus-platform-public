@@ -170,8 +170,16 @@ export async function behavior(p, { force = false, errors = [] } = {}) {
         const menu = s.closest('[data-hb="menu"]'); const tops = new Set([...menu.querySelectorAll("[data-hb-menu]")].map((m) => (m.querySelector("a,button,span") || m).textContent.trim().replace(/\s+/g, " ")).filter(Boolean));
         const labs = [...s.querySelectorAll("a[href]")].map((a) => a.textContent.trim().replace(/\s+/g, " ")).filter(Boolean);
         const rep = labs.filter((t) => tops.has(t)).length;
-        return { hid, n: links.length, rep, labs: labs.length };
+        // 판 바탕(불투명 배경을 칠한 자기 또는 조상) 밖으로 나온 링크 — 판에 고정 높이가 걸려 아랫줄 링크가 히어로 위에 비쳐 보였다
+        // (2026-10-15 사용자 지적: 머리 줄 .hb-wrap{height:114px} 가 펼침판 안 .hb-wrap 에도 걸려 판 191px·링크 438px)
+        const opaque = (el) => { const c = getComputedStyle(el).backgroundColor; return c && !/rgba\(0, 0, 0, 0\)|transparent/.test(c) && !/rgba\(.*,\s*0(\.[0-4]\d*)?\)$/.test(c); };
+        let bgEl = s; while (bgEl && bgEl !== document.body && !opaque(bgEl)) bgEl = bgEl.parentElement;
+        let out = 0; const outN = [];
+        if (bgEl && bgEl !== document.body) { const pr = bgEl.getBoundingClientRect();
+          for (const a of s.querySelectorAll("a[href]")) { const r = a.getBoundingClientRect(); if (!r.width || !r.height) continue; if (r.bottom > pr.bottom + 1 || r.right > pr.right + 1 || r.top < pr.top - 1) { out++; if (outN.length < 3) outN.push(a.textContent.trim().slice(0, 10)); } } }
+        return { hid, n: links.length, rep, labs: labs.length, out, outN };
       }, !!mega);
+      if (pv.out) { const m = `#${n + 1} 펼친 판 바탕 밖으로 나온 링크 ${pv.out}개(${pv.outN.join("·")}) — 판에 고정 height 가 걸렸는지(머리 줄의 .hb-wrap 같은 자손 선택자) 확인, 판은 height:auto`; if (!hard.includes(m)) hard.push(m); }
       if (pv.n && pv.hid >= Math.max(1, Math.ceil(pv.n / 2))) { const m = `#${n + 1} 펼친 판이 다른 요소 뒤로 숨음(링크 ${pv.hid}/${pv.n} 가려짐 — z-index)`; if (!hard.includes(m)) hard.push(m); }
       if (pv.labs >= 4 && pv.rep >= 3 && pv.rep / pv.labs >= 0.3) men.push(`#${n + 1} 펼친 판이 주 메뉴 이름을 되풀이(${pv.rep}개)`);
     }

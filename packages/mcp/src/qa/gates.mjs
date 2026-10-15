@@ -146,6 +146,7 @@ export async function gates(p) {
     { const W = innerWidth; const w = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT); let n;
       while ((n = w.nextNode()) && out.edgeText.length < 6) {
         const t = n.nodeValue.trim(); if (t.length < 2) continue; const el = n.parentElement; if (!el || el.closest("script,style,[aria-hidden=true]") || !vis(el)) continue;
+        { let hid = false; for (let a = el; a && a !== document.body; a = a.parentElement) { const cs = getComputedStyle(a); const ab = a.getBoundingClientRect(); if (cs.clip !== "auto" || (cs.clipPath && cs.clipPath !== "none") || ab.width <= 2 || ab.height <= 2) { hid = true; break; } } if (hid) continue; } // 화면에서 숨긴 제목(.sr·sr-only)은 빼고
         const rg = document.createRange(); rg.selectNodeContents(n); const b = rg.getBoundingClientRect(); if (!b.width || !b.height) continue;
         if (b.left >= 4 && b.right <= W - 4) continue;
         if (b.right <= 0 || b.left >= W) continue; // 화면 밖(넘김 슬라이드)

@@ -125,6 +125,14 @@ const qs = (o: Record<string, unknown>) => Object.entries(o).filter(([, v]) => v
 // 숫자·글자만 받은 AI 는 흔한 와이어프레임을 그렸다(Claude 웹 인사말 테스트). 실제 화면·섹션을 보여 줘야 관공서 디자인 언어
 // (사진 위 글자·겹침·둥근 모서리·아이콘 퀵메뉴·강조 글자색)를 따라 그린다. 원본 해상도는 주지 않는다 — 폭 축소 JPEG + 출처 워터마크.
 const ORIGIN = new URL(API).origin;
+// 글자 든 샘플(배너·팝업·포스터) 열쇠 — 판정이 그 그림의 잘림을 잡는다(2026-10-15 팝업존 배너 아래 잘림). 10분 캐시
+let textKeyCache: { at: number; keys: string[]; icons: string[] } = { at: 0, keys: [], icons: [] };
+async function textSampleKeys(): Promise<string[]> {
+  if (Date.now() - textKeyCache.at < 600_000) return textKeyCache.keys;
+  try { const r = await fetch(`${PP_API}/assets/mock-samples`); const j = (await r.json()) as { data?: { items?: Array<{ id: string; has_text?: boolean; kind?: string }> } }; const it = j.data?.items ?? [];
+    textKeyCache = { at: Date.now(), keys: it.filter((x) => x.has_text).map((x) => String(x.id).replace(/^pa-/, "")), icons: it.filter((x) => String(x.kind ?? "").startsWith("icon")).map((x) => String(x.id).replace(/^pa-/, "")) }; } catch { textKeyCache.at = Date.now(); }
+  return textKeyCache.keys;
+}
 /** 샘플 이미지를 외부(사용자 목업)에서 열 공개 주소의 앞부분 — 운영은 https://hom2box.com, 개발은 HOMEBOX_PUBLIC_ORIGIN 로 */
 const PUBLIC_ORIGIN = (process.env.HOMEBOX_PUBLIC_ORIGIN ?? new URL(WEB).origin).replace(/\/$/, "");
 type SampleImage = { id: string; url: string; thumb_url: string; alt: string; temporary?: boolean; text_safe?: { side: string; text_color: string; scrim?: boolean } | null } & Record<string, unknown>;
@@ -719,7 +727,7 @@ function buildServer(key: string | null): McpServer {
       let refImage: Buffer | null = null;
       if (ref.pieces?.length) refImage = await composeRef(sharp, ref.pieces, Number(ref.height ?? 0)).catch(() => null);
       else if (ref.capture_url) { const r = await fetch(ref.capture_url.startsWith("http") ? ref.capture_url : `${ORIGIN}${ref.capture_url}`).catch(() => null); if (r?.ok) refImage = Buffer.from(await r.arrayBuffer()); }
-      const { result, compare, thumb } = await checkMockup({ html, ref, refImage, sharp, want, peers: Array.isArray(d.json.peers) ? d.json.peers : [], width: a.device === "mobile" ? 390 : 1920, launch: () => pw[engine].launch({ args: engine === "chromium" ? ["--no-sandbox", "--disable-dev-shm-usage"] : [] }) });
+      const { result, compare, thumb } = await checkMockup({ html, ref, refImage, sharp, want, textKeys: await textSampleKeys(), iconKeys: textKeyCache.icons, peers: Array.isArray(d.json.peers) ? d.json.peers : [], width: a.device === "mobile" ? 390 : 1920, launch: () => pw[engine].launch({ args: engine === "chromium" ? ["--no-sandbox", "--disable-dev-shm-usage"] : [] }) });
       const rec = await internal(`mockup-pages/${token}/check`, { score: result.score, pass: result.pass, ref_id: refId, result: { ...result, rows: undefined }, thumb: thumb ? thumb.toString("base64") : undefined, device: a.device ?? "pc" }).catch(() => null);
       // 기록이 안 되면 점수·통과가 DB 에 NULL 로 남아 게시가 막힌다 — 조용히 넘기지 않고 로그에 남긴다(PP_JUDGE_SECRET 누락이 흔한 원인)
       if (!rec?.ok) console.error(`[mcp] 판정 기록 실패 token=${token.slice(0, 8)} status=${rec?.status ?? "-"} ${rec?.json?.error?.message ?? ""}${JUDGE_SECRET ? "" : " (PP_JUDGE_SECRET 없음)"}`);

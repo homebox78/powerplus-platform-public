@@ -8,4 +8,4 @@ export type CheckResult = {
   fixes: string[];
 };
 export type CheckCompare = { slices: Array<{ from: number; to: number; jpeg: Buffer }>; scaleRef: number; totalH: number } | null;
-export function checkMockup(o: { html: string; ref: unknown; refImage: Buffer | null; launch: () => Promise<unknown>; sharp: unknown; width?: number; peers?: unknown[]; want?: string }): Promise<{ result: CheckResult; compare: CheckCompare; thumb: Buffer | null }>;
+export function checkMockup(o: { html: string; ref: unknown; refImage: Buffer | null; launch: () => Promise<unknown>; sharp: unknown; width?: number; peers?: unknown[]; want?: string; textKeys?: string[]; iconKeys?: string[] }): Promise<{ result: CheckResult; compare: CheckCompare; thumb: Buffer | null }>;

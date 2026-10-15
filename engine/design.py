@@ -2922,7 +2922,7 @@ def make_front_mockup(job, f, plan, accent, feedback=""):
         if len(f["chapters"]) == 1:
             rows = "\n".join(f"{i + 1}. {t}" for i, t in enumerate(f["chapters"][0]["items"][:14]))
             draw["rows"] = [(i + 1, str(t).replace("**", "")) for i, t in enumerate(f["chapters"][0]["items"][:14])]
-        detail = (f'Table of contents. Label "목차". Numbered list — chapter names only, big and bold (number style and colors as the rules below say):\n{rows}\n'
+        detail = (f'Table of contents. Label "{front_word(getattr(job, "lang", "ko"), "toc", "목차")}". Numbered list — chapter names only, big and bold (number style and colors as the rules below say):\n{rows}\n'
                   f'Very small tag at the top-right: "{plan.get("title") or ""}"')
     else:
         first = next((s for s in (plan.get("slides") or []) if str(s.get("chapter") or str(s.get("section") or "").split(" · ")[0]).strip().startswith(str(f.get("name") or "").strip()[:4])), None)
@@ -3505,7 +3505,8 @@ def _plan_phase(job, j):
     else:
         todo = [s for s in plan["slides"] if s["n"] not in have]
     # 표지·목차·간지 시안 — 처음 '전체' 로 만들 때, 다시 만들기로 고른 것, 아직 없는 것(본문 시안을 만들 때 함께 — 따로 고르지 않아도 결과를 볼 수 있게)
-    title = str(j.get("title") or plan.get("title") or "")
+    # 한국어가 아닌 덱 — 표지 큰 글은 작업 이름(대개 한국어 파일 이름)이 아니라 기획이 그 언어로 지은 제목
+    title = str((plan.get("title") if lang_of(j) != "ko" else "") or j.get("title") or plan.get("title") or "")
     specs = front_specs(plan, opts, title, str(opts.get("project") or ""))
     old = {x.get("id"): x for x in (plan.get("front") or []) if isinstance(x, dict)}
     for f in specs:

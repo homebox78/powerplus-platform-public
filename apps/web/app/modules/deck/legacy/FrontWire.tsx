@@ -38,7 +38,20 @@ function Ed({ v, on, cls, ph, multi }: { v: string; on?: (v: string) => void; cl
  * 표지·목차·간지 와이어프레임 — 본문 와이어프레임(WireCanvas)과 같은 모양: 흰 상자 · 회색 테두리 · 그림 자리는 X · 색 없음.
  * onEdit 을 주면 글을 두 번 눌러 그 자리에서 고친다. 글자 크기는 상자 폭 기준(cqw)이라 썸네일과 큰 화면이 같은 비율.
  */
-export function FrontWire({ f, className, onEdit }: { f: PlanFront; accent?: string; className?: string; onEdit?: (e: FrontEditEv) => void }) {
+/** 제작 언어별 앞장 낱말 — 엔진 engine/design.py FRONT_WORDS 와 같은 말 */
+const FRONT_WORDS: Record<string, { toc: string; present: string; end: string; qna: string }> = {
+  ko: { toc: "목차", present: "제안설명회", end: "감사합니다", qna: "질의응답" },
+  en: { toc: "Contents", present: "Proposal Presentation", end: "Thank you", qna: "Q&A" },
+  ja: { toc: "目次", present: "提案説明会", end: "ありがとうございました", qna: "質疑応答" },
+  zh: { toc: "目录", present: "方案说明会", end: "谢谢", qna: "问答" },
+  fr: { toc: "Sommaire", present: "Présentation de la proposition", end: "Merci", qna: "Questions" },
+  es: { toc: "Índice", present: "Presentación de la propuesta", end: "Gracias", qna: "Preguntas" },
+  de: { toc: "Inhalt", present: "Angebotspräsentation", end: "Vielen Dank", qna: "Fragen" },
+  vi: { toc: "Mục lục", present: "Thuyết trình đề xuất", end: "Xin cảm ơn", qna: "Hỏi đáp" },
+};
+export const frontWord = (lang: string | undefined, k: "toc" | "present" | "end" | "qna") => (FRONT_WORDS[lang ?? "ko"] ?? FRONT_WORDS.ko!)[k];
+
+export function FrontWire({ f, className, onEdit, lang }: { f: PlanFront; accent?: string; className?: string; onEdit?: (e: FrontEditEv) => void; lang?: string }) {
   const BOX = "absolute bg-white border border-[var(--color-ink-4)] rounded-[2px]";
   const pic = (label: string, cls: string) => (
     <div className={cn(BOX, "overflow-hidden", cls)}>
@@ -62,7 +75,7 @@ export function FrontWire({ f, className, onEdit }: { f: PlanFront; accent?: str
           <Ed v={f.project || f.title || ""} ph="사업명(표지 큰 글)" multi on={e && ((v) => e({ k: "cover", field: "project", v }))}
             cls="text-[3.9cqw] font-extrabold leading-[1.2] text-[var(--color-ink)] break-keep line-clamp-2" />
           <span className="self-start border-2 border-[var(--color-ink-4)] rounded-[2px] px-[1.2cqw] py-[0.3cqw]">
-            <Ed v={f.tail || ""} ph="제안설명회" on={e && ((v) => e({ k: "cover", field: "tail", v }))} cls="text-[1.7cqw] font-bold text-[var(--color-ink-2)]" />
+            <Ed v={f.tail || ""} ph={frontWord(lang, "present")} on={e && ((v) => e({ k: "cover", field: "tail", v }))} cls="text-[1.7cqw] font-bold text-[var(--color-ink-2)]" />
           </span>
           <Ed v={f.date || ""} ph="작성한 달" on={e && ((v) => e({ k: "cover", field: "date", v }))} cls="text-[1.5cqw] text-[var(--color-ink-4)]" />
         </div>
@@ -71,7 +84,7 @@ export function FrontWire({ f, className, onEdit }: { f: PlanFront; accent?: str
       </>}
       {f.kind === "toc" && <>
         <div className={cn(BOX, "left-[4%] top-[8%] bottom-[8%] w-[26%] flex flex-col justify-center pl-[3%] gap-[0.6cqw]")}>
-          <span className="text-[4.6cqw] font-extrabold text-[var(--color-ink)]">목차</span>
+          <span className="text-[4.6cqw] font-extrabold text-[var(--color-ink)]">{frontWord(lang, "toc")}</span>
           <span className="text-[1.4cqw] tracking-[0.3em] text-[var(--color-ink-4)] font-bold">CONTENTS</span>
         </div>
         <div className={cn("absolute left-[35%] right-[5%] top-[10%] bottom-[10%] grid content-center gap-x-[3cqw] gap-y-[1.1cqw]", chs.length > 7 ? "grid-cols-2" : "grid-cols-1")}>
@@ -95,7 +108,7 @@ export function FrontWire({ f, className, onEdit }: { f: PlanFront; accent?: str
       {(f.kind === "end" || f.kind === "qna") && <>
         {pic(f.kind === "end" ? "엔딩 그림 (흐린 무늬)" : "질의응답 그림 (흐린 무늬)", "left-[56%] top-[10%] w-[40%] h-[80%]")}
         <div className="absolute left-[7%] top-[30%] w-[45%] flex flex-col gap-[1.2cqw]">
-          <Ed v={f.title || ""} ph={f.kind === "end" ? "감사합니다" : "질의응답"} on={e && ((v) => e({ k: "close", id: f.kind as "end" | "qna", field: "title", v }))} cls="text-[5cqw] font-extrabold leading-[1.2] text-[var(--color-ink)] break-keep" />
+          <Ed v={f.title || ""} ph={frontWord(lang, f.kind === "end" ? "end" : "qna")} on={e && ((v) => e({ k: "close", id: f.kind as "end" | "qna", field: "title", v }))} cls="text-[5cqw] font-extrabold leading-[1.2] text-[var(--color-ink)] break-keep" />
           <Ed v={f.desc || ""} ph={f.kind === "end" ? "마무리 한 줄 (선택)" : "Q&A"} on={e && ((v) => e({ k: "close", id: f.kind as "end" | "qna", field: "desc", v }))} cls="text-[1.9cqw] font-semibold text-[var(--color-ink-2)] break-keep line-clamp-2" />
         </div>
       </>}

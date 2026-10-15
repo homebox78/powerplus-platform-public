@@ -3,7 +3,7 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { api, fileUrl, unwrapList, usd, type Job, type PinComment, type PlanFront, type PlanSlide, type WireBlock } from "../api";
 import { autoWire, WireCanvas, WireTools } from "../Wireframe";
 import { OverviewCanvas } from "../OverviewCanvas";
-import { FrontWire, type FrontEditEv } from "../FrontWire";
+import { FrontWire, frontWord, type FrontEditEv } from "../FrontWire";
 import { JobSettingsEdit } from "../JobSettingsEdit";
 import { ShareLevel } from "../Feedback";
 import { cn, GenStamp, GuestHeader, JobHeader, Ms, Seg, useToastOn, ask, useContextMenu, type CtxItem, sent } from "../ui";
@@ -245,6 +245,7 @@ export function MockupReview({ job, onChange, isAdmin, me, onLogout }: { job: Jo
   const fe: Record<string, Record<string, string>> = { ...(job.plan?.front_edit ?? {}) };
   for (const [id, v] of Object.entries(feLocal)) fe[id] = { ...fe[id], ...v };
   const subOf = (s: PlanSlide) => { const ch = (s.chapter ?? (s.section ?? "").split(" · ")[0])!.trim(); const sec = s.section ?? ""; return (sec.startsWith(ch) ? sec.slice(ch.length).replace(/^[\s·]+/, "") : "").trim(); };
+  const lang = job.opts?.lang || "ko";
   const frontView = (f: PlanFront): PlanFront => {
     const o = fe[f.id] ?? {};
     if (f.kind === "toc") return { ...f, chapters: chapters.map((c, i) => ({ no: i + 1, name: fe[`div${i + 1}`]?.name || c.name, items: c.slides.map((s) => subOf(s) || val(s, "title")) })) };
@@ -253,8 +254,10 @@ export function MockupReview({ job, onChange, isAdmin, me, onLogout }: { job: Jo
       const goal = job.plan?.chapters?.find((x) => x.name === (c?.name ?? f.name))?.goal;
       return { ...f, name: nm, desc: o.desc || f.desc || goal || (c ? val(c.slides[0]!, "title").replace(/\*\*/g, "") : "") };
     }
-    if (f.kind === "end" || f.kind === "qna") return { ...f, title: o.title || f.title || (f.kind === "end" ? "감사합니다" : "질의응답"), desc: o.desc ?? f.desc };
-    return { ...f, title: o.title || f.title, project: o.project || f.project, tail: o.tail || f.tail, date: o.date || f.date };
+    if (f.kind === "end" || f.kind === "qna") return { ...f, title: o.title || f.title || frontWord(lang, f.kind === "end" ? "end" : "qna"), desc: o.desc ?? f.desc };
+    // 한국어가 아닌 덱은 표지 큰 글을 작업 이름(대개 한국어 파일 이름) 대신 기획이 그 언어로 지은 제목으로
+    const title = o.title || (lang !== "ko" && job.plan?.title) || f.title;
+    return { ...f, title, project: o.project || f.project, tail: o.tail || f.tail, date: o.date || f.date };
   };
   // 앞장 글을 그 자리에서 고친다 — 표지 칸·장 이름·간지 핵심 한 줄은 front_edit
   const editFront = (ev: FrontEditEv) => {
@@ -495,7 +498,7 @@ export function MockupReview({ job, onChange, isAdmin, me, onLogout }: { job: Jo
           return (
             <div key={`f${f.id}`} role="button" onClick={() => pickFront(f.id)} className={item(fsel === f.id)}>
               <div className="relative rounded-md border border-line overflow-hidden bg-white">
-                {fm ? <img src={imgSrc(fm.name, fm.ts)} alt="" loading="lazy" className="block w-full aspect-[3/2] object-cover" /> : <FrontWire f={frontView(f)} />}
+                {fm ? <img src={imgSrc(fm.name, fm.ts)} alt="" loading="lazy" className="block w-full aspect-[3/2] object-cover" /> : <FrontWire f={frontView(f)} lang={lang} />}
               </div>
               <div className="flex items-center gap-1.5 text-[12.5px] mt-1.5 px-0.5">
                 {owner && <Check size={18} on={on} title={fm ? `${f.label} 시안 다시 만들기` : `${f.label} 시안 만들기`} onClick={() => setFpick({ ...fpick, [f.id]: !on })} />}
@@ -593,7 +596,7 @@ export function MockupReview({ job, onChange, isAdmin, me, onLogout }: { job: Jo
     const fm = fmock(fcur.id);
     return fm ? <div className="relative inline-block max-w-full"><img src={imgSrc(fm.name, fm.ts)} alt={`${fcur.label} 시안`} draggable={false} className={cn("block max-w-full object-contain bg-white", SLIDE)} style={{ maxHeight: `max(346px, calc(100vh - ${roomY}px))` }} /><GenStamp at={fm.ts} /></div>
       : <div className="w-full flex flex-col gap-2" style={{ maxWidth: `max(520px, calc((100vh - ${roomY}px) * 1.5))` }}>
-          <FrontWire f={frontView(fcur)} className={SLIDE} onEdit={mine ? editFront : undefined} />
+          <FrontWire f={frontView(fcur)} lang={lang} className={SLIDE} onEdit={mine ? editFront : undefined} />
           <span className="text-[13px] text-dim text-center">{mine ? "글을 두 번 눌러 그 자리에서 고칩니다(자동 저장). 왼쪽에서 체크하고 ‘시안 만들기’를 누르면 이 구성으로 시안을 만듭니다 — 없으면 기본 모양으로 넣습니다." : "시안이 없으면 기본 모양으로 들어갑니다."}</span>
         </div>;
   })();

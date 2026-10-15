@@ -3055,7 +3055,9 @@ def make_front_mockup(job, f, plan, accent, feedback=""):
                         "This is NOT the cover. Show a DIFFERENT subject and composition from the cover of the same deck — different people (or no people), a different place, object or moment that fits the Subject above. "
                         "Never repeat the cover's scene. " + ("For the contents page show the PLACE or the EQUIPMENT of the project (a wide, calm view) with no people in the foreground. " if k == "toc" else "") + "\n")
                 if tset and tset.get(k + "_what"):
-                    bgp += f"Background treatment of this page (Korean): {tset[k + '_what']}\n"
+                    bgp += (f"Background treatment of this page (Korean): {tset[k + '_what']}\n"
+                            "Take ONLY the background color, shapes and where the picture sits from that description. Draw NO list, numbers, dots, bullets, "
+                            "placeholder lines, titles, labels or words (no '목차', no '제안서') — every text and list marker is added afterwards by the engine.\n")   # 10-15 A 목차 배경에 GPT 가 '제안서 목차'·점 목록을 그렸다
                 if k == "div" and not panel:
                     bgp += ("QUIET PAGE: a chapter divider only announces a new section. The picture is small and simple — at most 2 elements (for a hexagon cluster: 2 hexagons, not a honeycomb), "
                             "occupying no more than about 20% of the page at the lower right; everything else is calm, flat, empty background. Low contrast, no busy detail.\n")

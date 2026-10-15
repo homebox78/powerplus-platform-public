@@ -1,3 +1,4 @@
+// 앞장 고치기(표지 칸·장 이름·장표 제목) — 출처: powerDeck web/src/FrontWire.tsx (옛 화면 그대로 이식, eslint.config.js legacy 구역).
 import { useEffect, useRef, useState } from "react";
 import type { PlanFront } from "./api";
 import { cn } from "./ui";

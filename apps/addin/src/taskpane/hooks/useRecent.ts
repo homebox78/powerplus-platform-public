@@ -1,3 +1,4 @@
+// 최근 사용 훅 — 출처: powerPlus addin/src/taskpane/hooks/useRecent.ts.
 import { useCallback, useEffect, useState } from "react";
 import { fetchRecent } from "../api/prefs";
 

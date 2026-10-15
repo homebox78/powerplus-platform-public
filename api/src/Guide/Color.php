@@ -78,7 +78,8 @@ final class Color
         }
         $l1 = self::luminance($fg);
         $l2 = self::luminance($bg);
-        return round((max($l1, $l2) + 0.05) / (min($l1, $l2) + 0.05), 2);
+        // 반올림이 아니라 내림 — 4.496 을 4.5 로 올려 기준 통과로 읽지 않게(대체 토큰 제안도 이 값으로 기준을 다시 잰다, MC-64)
+        return floor((max($l1, $l2) + 0.05) / (min($l1, $l2) + 0.05) * 100) / 100;
     }
 
     /** 정본 중 가장 가까운 색(RGB 거리). */

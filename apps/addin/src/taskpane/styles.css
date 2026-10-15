@@ -1,3 +1,4 @@
+/* powerAssets 애드인 작업창 스타일 — 출처: powerPlus addin/src/taskpane/styles.css. 웹팩이 해시 이름으로 묶는다. */
 :root {
   /* 플랫폼 토큰(apps/web/app/styles/app.css)과 같은 값 — 2026-10-07 플랫폼 이식 때 맞춤 */
   --bg: #ffffff;   /* 페이지는 흰 바탕 — 검색칸·카드(회색 #F4F4F4)와 구분되게(2026-10-07 사용자 지적) */

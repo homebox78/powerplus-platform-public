@@ -34,6 +34,8 @@ final class Jobs
     /** 제작 언어(장표 글) — 엔진 design.LANGS 와 같은 목록 */
     public const LANGS = ['ko', 'en', 'ja', 'zh', 'fr', 'es', 'de', 'vi'];
 
+    /* ───────────── 작업 만들기 · 폴더 ───────────── */
+
     public const KINDS = ['source', 'result', 'before', 'after', 'extra', 'live', 'frames', 'draft', 'pilot', 'mockup', 'brand'];
 
     public static function dir(string $id, string $kind = ''): string
@@ -333,7 +335,9 @@ final class Jobs
         // project = 머리 띠 오른쪽에 넣는 사업명, style = 디자인 타입(reference/styles), purpose = 용도(제출용: 평가항목 빠짐없이 / 발표용: 한 장 한 메시지)
     }
 
-    /** 작업의 단계별 비용 — digest(자료 요약)·plan(기획)·image(시안)은 실제 청구액, engine(장표 제작)은 구독 사용분의 API 환산액 */
+    /* ───────────── 비용 · 로고 · 설정 바꾸기 ───────────── */
+
+    /** 작업의 단계별 비용 —digest(자료 요약)·plan(기획)·image(시안)은 실제 청구액, engine(장표 제작)은 구독 사용분의 API 환산액 */
     public static function costs(string $id): array
     {
         $st = Db::pdo()->prepare('SELECT kind, model, COUNT(*) n, SUM(cost_usd) usd, SUM(tokens_in) a, SUM(tokens_out) b FROM deck_ai_usage WHERE job_id = ? GROUP BY kind, model ORDER BY MIN(id)');
@@ -647,6 +651,8 @@ final class Jobs
         return self::get($id, $email, $admin);
     }
 
+    /* ───────────── 파일 기록 · 동시 작업 한도 · 권한 ───────────── */
+
     public static function addFile(string $id, string $kind, ?int $slide, string $name, int $size): void
     {
         Db::pdo()->prepare('INSERT INTO deck_job_files (job_id, kind, slide, name, size, created_at)
@@ -813,6 +819,8 @@ final class Jobs
         return ['data' => self::comments($id)];
     }
 
+    /* ───────────── 목록 · 상세 · 진행 기록 ───────────── */
+
     private static function shape(array $j): array
     {
         $j['size'] = (int) $j['size'];
@@ -931,6 +939,8 @@ final class Jobs
         $st->execute([':j' => $id, ':a' => $after]);
         return array_map(static fn($e) => ['id' => (int) $e['id']] + $e, $st->fetchAll());
     }
+
+    /* ───────────── 상태 바꾸기 — 취소 · 되돌리기 · 삭제 · 다시 · 보내기 ───────────── */
 
     public static function cancel(string $id, string $email, bool $admin): array
     {
@@ -1293,6 +1303,8 @@ final class Jobs
         self::notifyOwner($id, '한 장 시안이 나왔습니다', '확인하고 의견을 주시면 나머지 장을 진행합니다.', 'deck_review');
         return ['ok' => true];
     }
+
+    /* ───────────── 시안 확인 · 승인 · 편집 ───────────── */
 
     /**
      * 시안 확인 후 진행 — mode=continue: 나머지 장 진행 / mode=redo: 의견 반영해 시안 한 장 다시.

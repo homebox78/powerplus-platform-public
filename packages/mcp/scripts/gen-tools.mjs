@@ -62,8 +62,8 @@ const PUBLIC_DESC = {
   powerplus_check_request: "요청이 powerPlus 로 할 수 있는 일인지, 어느 서비스로 하면 되는지 판정합니다.",
 };
 
-// AI 에게 주는 "예: '질문' → 이렇게 부른다." 머리말은 공개 설명에서 뺀다
-const stripAiHint = (d) => (d ?? "").replace(/^예: .*?(부른다|답한다)[^.]*\.\s*/, "").replace(/^'A가 좋아 B가 좋아'[^.]*\.\s*/, "");
+// AI 에게 주는 "[먼저 부른다] " 꼬리표·"예: '질문' → 이렇게 부른다." 머리말은 공개 설명에서 뺀다
+const stripAiHint = (d) => (d ?? "").replace(/^\[[^\]]*\]\s*/, "").replace(/^예:.*?(부른다|답한다)[^.]*\.\s*/, "").replace(/^'A가 좋아 B가 좋아'[^.]*\.\s*/, "");
 
 const MODULES = [["assets_", "powerAssets"], ["deck_", "powerDeck"], ["mock_", "powerMock"], ["guide_", "powerGuide"]];
 const head = /server\.registerTool\(\s*"([a-z0-9_]+)"\s*,\s*\{/g;

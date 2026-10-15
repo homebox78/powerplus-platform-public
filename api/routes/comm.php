@@ -89,6 +89,7 @@ return static function (Router $r): void {
         'created_at' => $row['created_at'], 'author' => $author($row),
     ];
 
+    // ---- 커뮤니티 (분류·글·댓글·좋아요)
     $r->get('/community/categories', function (array $p, Actor $a) use ($catIds): void {
         [$sql, $params] = Access::whereVisible($a, 'p');
         $cnt = [];

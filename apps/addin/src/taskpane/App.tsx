@@ -1,3 +1,5 @@
+// powerAssets 애드인 작업창 본 화면 — 로그인·분류 탭·검색·카드 목록·삽입·즐겨찾기/최근·요청·공지·도움말 봇.
+// 출처: powerPlus addin/src/taskpane/App.tsx (플랫폼 REST /api/v1 로 이식).
 import * as React from "react";
 import AssetGrid from "./components/AssetGrid";
 import AuthImg from "./components/AuthImg";

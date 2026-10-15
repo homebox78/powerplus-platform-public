@@ -56,3 +56,40 @@ if (extra.length) {
 const file = path.join(dir, "solideo-tailwind.theme.css");
 fs.writeFileSync(file, out);
 console.log(`쓴 파일 ${path.relative(root, file)} — 테마 ${[...groups.values()].reduce((a, r) => a + r.length, 0)}개, 그 밖 ${extra.length}개`);
+
+// ── Tailwind v3 프리셋(tailwind.preset.cjs) — 같은 정본에서 만든다 ──
+// 2026-10-10 MCP 시험(O-39): 손으로 옮겨 둔 v3 프리셋에 green·blue·amber·red·글자 크기·화면 폭이 빠져 있었다.
+// 값은 var(--토큰) 참조(solideo-tokens.css 를 함께 불러야 한다, 다크 모드가 그대로 먹는다). 화면 폭만 미디어 쿼리라 실제 값.
+const COLOR_GROUPS = ["text", "bg", "fill", "border", "icon", "gray", "crimson", "ink", "green", "blue", "amber", "red", "accent", "static"];
+const colors = {};
+for (const g of COLOR_GROUPS) {
+  for (const [name, t] of Object.entries(tokens)) {
+    if (t.type !== "color" || !name.startsWith(`${g}-`)) continue;
+    (colors[g] ??= {})[name.slice(g.length + 1)] = `var(--${name})`;
+  }
+}
+const byPrefix = (prefix, raw = false) => Object.fromEntries(Object.entries(tokens)
+  .filter(([n]) => n.startsWith(prefix))
+  .map(([n, t]) => [n.slice(prefix.length), raw ? String(t.value) : `var(--${n})`]));
+const screens = Object.fromEntries(Object.entries(byPrefix("breakpoint-", true)).filter(([, v]) => v !== "0px"));
+const extend = {
+  colors,
+  spacing: byPrefix("space-"),
+  borderRadius: byPrefix("radius-"),
+  boxShadow: byPrefix("shadow-"),
+  fontFamily: byPrefix("font-family-"),
+  fontSize: byPrefix("font-size-"),
+  fontWeight: byPrefix("font-weight-"),
+  lineHeight: byPrefix("line-height-"),
+  letterSpacing: byPrefix("letter-spacing-"),
+  transitionDuration: byPrefix("duration-"),
+  transitionTimingFunction: byPrefix("easing-"),
+  screens,
+};
+const preset = `// SOLIDEO Design System — Tailwind preset (${src.version ?? "-"})\n`
+  + `// 자동 생성 파일입니다(생성기: scripts/build-tailwind-theme.mjs — 손으로 고치지 마세요). solideo-tokens.css 를 함께 불러와야 var() 가 해석됩니다.\n`
+  + `// 화면 폭(screens: ${Object.keys(screens).join("·")})은 Tailwind 기본 폭(sm·md·lg…)에 더해집니다. 기본 폭과 섞어 쓰지 말고 한쪽만 쓰세요.\n`
+  + `module.exports = ${JSON.stringify({ theme: { extend } }, null, 2)};\n`;
+const presetFile = path.join(dir, "tailwind.preset.cjs");
+fs.writeFileSync(presetFile, preset);
+console.log(`쓴 파일 ${path.relative(root, presetFile)} — 색 ${Object.values(colors).reduce((a, g) => a + Object.keys(g).length, 0)}개, 글자 크기 ${Object.keys(extend.fontSize).length}개, 화면 폭 ${Object.keys(screens).length}개`);

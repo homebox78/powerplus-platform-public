@@ -1,3 +1,4 @@
+// powerDeck 설정 — 출처: powerDeck web/src/screens/Settings.tsx (옛 화면 그대로 이식, eslint.config.js legacy 구역).
 import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { Arrow, Ms, Select, cn, useToastOn, sent } from "../ui";
 import { LiveDot } from "@/components/hb/live-status";

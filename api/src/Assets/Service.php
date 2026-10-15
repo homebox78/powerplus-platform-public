@@ -34,7 +34,6 @@ final class Service
         '질의응답' => 'qa', 'q&a' => 'qa', 'qa' => 'qa',
         '본문' => 'content', '내용' => 'content',
     ];
-    /** 목업 샘플(글자 박힌 그래픽)은 MCP 키·관리자만 — 웹 powerAssets 에선 검색·목록·상세 어디에도 안 나온다(사용자 2026-10-07). */
     /**
      * 검색 기록·통계에 남기지 않을 검색어 — 글자·숫자가 없는 것(이모지·기호만), 태그·스크립트 꼴,
      * SQL 주입 꼴(시험·공격 흔적). 검색 자체는 그대로 하고 기록만 뺀다.
@@ -55,6 +54,7 @@ final class Service
         return (bool) preg_match('/\b(drop|alter|truncate)\s+table\b|\bdelete\s+from\b|\binsert\s+into\b|\bunion\s+(all\s+)?select\b|\bselect\b.+\bfrom\b|\bupdate\s+\w+\s+set\b|\bor\s+\d+\s*=\s*\d+|\bjavascript:/i', $q);
     }
 
+    /** 목업 샘플(글자 박힌 그래픽)은 MCP 키·관리자만 — 웹 powerAssets 에선 검색·목록·상세 어디에도 안 나온다(사용자 2026-10-07). */
     public static function canSample(Actor $a): bool
     {
         // 애드인 로그인 키는 MCP 키가 아니다 — 목업 샘플을 열지 않는다
@@ -135,10 +135,29 @@ final class Service
         // 어미·조사는 떼고("회의하는 사람들"→회의·사람), 동의어는 함께 찾는다(지피유↔gpu, 서울시↔서울특별시) — 2026-10-12 사용자 지적.
         $catHint = null;
         $raw = [];
-        foreach (self::tokens((string) ($f['q'] ?? '')) as $t) {
+        $place = [];
+        // 낱말 6개 제한은 분류·자리 낱말을 뺀 뒤에 건다 — 먼저 자르면 긴 문장 끝의 "아이콘" 이 잘려 사진이 섞였다(O-23)
+        foreach (self::tokens((string) ($f['q'] ?? ''), 12) as $t) {
             if (isset(Lexicon::CATEGORY_WORDS[$t])) {
                 $catHint ??= Lexicon::CATEGORY_WORDS[$t];
                 continue;
+            }
+            // 자리·문맥 낱말(옆·문장·어울리는…)과 개수("8개를")는 찾을 대상이 아니다 — 오타 교정·쪼개기 전에 따로 둔다(문장→문자, 스타일로→사일로, O-23)
+            if (in_array($t, Lexicon::PLACE_WORDS, true) || in_array(Lexicon::stem($t), Lexicon::PLACE_WORDS, true) || preg_match('/^\d+(개|장|가지|건|종|점)?(를|을|만|씩|쯤|정도)?$/u', $t)) {
+                $place[] = $t;
+                continue;
+            }
+            // 쓰임새 말("보고서 표지에", "제안서 표지")은 장표를 찾는 게 아니면 대상이 아니다 — '보고서' 태그가 진한 것만 앞섰다(O-23).
+            // "보고서 아이콘" 처럼 홀로 쓴 쓰임새 말은 주제일 수 있어 둔다: 조사가 붙었거나(표지에·보고서용) 쓰임새 말이 이어질 때만 뺀다.
+            if ($cat !== 'ppt') {
+                $u = preg_match('/^(.+?)(에|에서|용|용으로|으로)$/u', $t, $um) && in_array($um[1], Lexicon::USAGE_WORDS, true);
+                if ($u || (in_array($t, Lexicon::USAGE_WORDS, true) && $raw && in_array(end($raw), Lexicon::USAGE_WORDS, true))) {
+                    if ($raw && in_array(end($raw), Lexicon::USAGE_WORDS, true)) {
+                        $place[] = array_pop($raw);
+                    }
+                    $place[] = $t;
+                    continue;
+                }
             }
             // 붙여 쓴 복합어는 아는 말 조각으로("기후위기제안서" 0건 → 기후위기·제안서, "esg경영" → esg·경영, 2026-10-12 MCP 시험 r1-a1)
             foreach (Lexicon::split(Lexicon::stem($t)) as $p) {
@@ -155,7 +174,14 @@ final class Service
             $notes[] = "검색어의 '" . ($ko ?: $catHint) . "'은 종류를 뜻하는 말이라 빼고 찾았습니다. 지금 고른 종류는 " . (self::CATEGORY_KO[$cat] ?? $cat) . '입니다. ' . (self::CATEGORY_KO[$catHint] ?? $catHint) . '을(를) 보려면 category=' . $catHint . ' 로 다시 찾으세요.';
             $catHint = null;
         }
+        // 자리 낱말만 있었으면("옆") 그대로 찾는다
+        if (!$raw) {
+            $raw = $place;
+        }
+        $raw = array_slice(array_values(array_unique($raw)), 0, 6);
         [$toks, $corrected] = Lexicon::correctTokens(Lexicon::glue(array_values(array_unique($raw))));
+        // 표기만 다른 같은 말은 대표 표기로(smart city·smart-city → 스마트시티, O-40) — 어느 표기로 찾아도 같은 순서
+        $toks = array_values(array_unique(array_map(Lexicon::canon(...), $toks)));
         // 한 글자 낱말은 정확한 태그·이름만(부분 일치는 "차"가 차트·절차·자동차까지 1,400건을 긁었다) — 그걸로 0건일 때만 부분 일치로 넓힌다(옛 powerPlus 규칙)
         $condFor = static function (string $tok, bool $loose): array {
             if (mb_strlen($tok) === 1 && !$loose) {
@@ -198,8 +224,12 @@ final class Service
             $total = (int) Db::val("SELECT COUNT(*) {$base} AND {$visSql}", array_merge($qp, $visParams));
         }
         // 낱말을 전부 AND 로 묶으면 하나만 안 맞아도 0건이 됐다("서울시 청사 야경 사진" 0건, 2026-10-12 MCP 시험 r1).
-        // 0건이면 한 낱말씩 빼 보고 가장 많이 남는 조합을, 그래도 없으면 한 낱말짜리 중 가장 많은 것을 쓴다. 뺀 낱말은 relaxed 로 돌려준다.
+        // 0건이면 한 낱말씩 빼 본 조합과 한 낱말짜리를 견주어, 주제 낱말을 가장 많이 남기는 조합을 쓴다. 뺀 낱말은 relaxed 로 돌려준다.
+        // 예전엔 "결과가 가장 많이 남는" 조합이라 흔한 말(제안서·기간)만 남고 핵심어(보안·민원처리)가 버려졌다(O-23·R24, 2026-10-15).
+        // 무게: 주제 낱말 3, 쓰임새·색·일반어(제안서·파란·기간·단축…) 1 — 무게가 같을 때만 결과 수로 가른다.
         $relaxed = null;
+        $isGeneric = static fn(string $t): bool => in_array($t, self::PICK_STOP, true) || in_array($t, Lexicon::COLOR_WORDS, true)
+            || ($cat !== 'ppt' && in_array($t, Lexicon::USAGE_WORDS, true));
         // 다 맞는 것이 몇 개뿐이어도 넓힌다("ESG 경영" 3건, 2026-10-12 MCP 시험 r1-a1) — 점수가 낱말 전부로 매겨져 다 맞는 것이 앞에 선다
         $strict = $total;
         if ($total < 5 && count($toks) > 1) {
@@ -207,17 +237,29 @@ final class Service
                 [$b2, $q2] = $build(false, $keep);
                 return [(int) Db::val("SELECT COUNT(*) {$b2} AND {$visSql}", array_merge($q2, $visParams)), $b2, $q2];
             };
+            $weight = static function (array $keep) use ($isGeneric): int {
+                $w = 0;
+                foreach ($keep as $t) {
+                    $w += $isGeneric($t) ? 1 : 3;
+                }
+                return $w;
+            };
             $best = null;
             foreach ([count($toks) - 1, 1] as $size) {
                 foreach ($toks as $i => $_) {
                     $keep = $size === 1 ? [$toks[$i]] : array_values(array_diff_key($toks, [$i => 1]));
+                    $w = $weight($keep);
+                    // 한 낱말짜리는 무게가 최대 3 — 이미 그보다 무거운 조합을 찾았으면 셀 필요 없다
+                    if ($best !== null && $w < $best[4]) {
+                        continue;
+                    }
                     [$n, $b2, $q2] = $tryKeep($keep);
-                    if ($n > $strict && ($best === null || $n > $best[0])) {
-                        $best = [$n, $b2, $q2, $keep];
+                    if ($n > $strict && ($best === null || $w > $best[4] || ($w === $best[4] && $n > $best[0]))) {
+                        $best = [$n, $b2, $q2, $keep, $w];
                     }
                 }
-                if ($best) {
-                    break;
+                if ($best && $best[4] > 3) {
+                    break;   // 한 낱말짜리(무게 3 이하)가 이길 수 없다
                 }
                 if (count($toks) === 2) {
                     break;   // 둘이면 한 낱말 빼기 = 한 낱말짜리라 다시 볼 필요 없음
@@ -246,6 +288,11 @@ final class Service
             $sp[] = $catHint;
         }
         foreach ($toks as $tok) {
+            // 넓히며 뺀 일반어(보고서·기간…)는 순서에도 쓰지 않는다 — 남긴 핵심어보다 일반어 태그가 진한 것이 앞서던 것(O-23)
+            // 색 낱말은 남긴다(1점) — "파란 톤" 은 넓힌 뒤에도 바라는 꾸밈이다
+            if ($relaxed && in_array($tok, $relaxed, true) && $isGeneric($tok) && !in_array($tok, Lexicon::COLOR_WORDS, true)) {
+                continue;
+            }
             $like = '%' . self::escapeLike($tok) . '%';
             foreach (array_slice(Lexicon::variants($tok), 1) as $v) {
                 $score[] = "(EXISTS (SELECT 1 FROM asset_tags t WHERE t.item_id = i.id AND t.tag = ?)) * 2 + (LOWER(COALESCE(i.name,'')) LIKE ?) * 2";
@@ -262,6 +309,12 @@ final class Service
             // 주제가 진짜인 에셋은 그 낱말이 든 태그가 여럿(행정서비스·공공행정…) — 묶음 공통으로 붙은 태그 하나보다 앞으로(최대 3)
             $score[] = "LEAST(3, (SELECT COUNT(*) FROM asset_tags t WHERE t.item_id = i.id AND t.tag <> ? AND t.tag LIKE ?))";
             array_push($sp, $tok, $like);
+            // 같은 글자의 다른 뜻("환경" 의 환경설정·코딩)을 가리키는 맥락 태그가 붙은 것은 뒤로 — 검색어에 그 맥락어가 있으면 그대로(O-40)
+            $off = array_values(array_diff(Lexicon::SENSE_OFF[$tok] ?? [], $toks));
+            if ($off && count($off) === count(Lexicon::SENSE_OFF[$tok])) {
+                $score[] = "-(EXISTS (SELECT 1 FROM asset_tags t WHERE t.item_id = i.id AND t.axis = 'kw' AND t.tag IN (" . implode(',', array_fill(0, count($off), '?')) . '))) * 8';
+                array_push($sp, ...$off);
+            }
             // 장표 낱장 종류 낱말(표지·목차·간지…)은 그 종류를 앞으로
             if (isset(self::SLIDE_PAGE_WORDS[$tok])) {
                 $score[] = '(i.slide_page = ?) * 4';
@@ -500,7 +553,6 @@ final class Service
         return array_slice(array_map(static fn(array $r): string => (string) $r['tag'], $rows), 0, 4);
     }
 
-    /** 카테고리별 건수 — 보이는 것과 전체(플랜 올리면 열리는 수). */
     /** 애드인 설치 파일 정보 — 설정 assets.setup(url·version·size·published) 가 있으면 그것, 없으면 옛 powerPlus 릴리스 v1.0.4. */
     public static function setupInfo(): array
     {
@@ -519,6 +571,7 @@ final class Service
         ];
     }
 
+    /** 카테고리별 건수 — 보이는 것과 전체(플랜 올리면 열리는 수). */
     public static function categories(Actor $a): array
     {
         [$visSql, $visParams] = Access::whereVisible($a, 'i');
@@ -690,7 +743,6 @@ final class Service
         };
     }
 
-    /**
     /**
      * 비회원용 워터마크 판을 미리 만든다(PERF-004, api/bin/prewarm-wm.php 가 부른다).
      * 이미 최신 판이 있으면 바로 돌아온다. 그림이 아니거나 파일이 없으면 null.
@@ -950,7 +1002,7 @@ final class Service
     }
 
     /** 검색어 → 소문자 낱말(2자 이상, 최대 6개). 태그는 소문자로 저장돼 있다. */
-    public static function tokens(string $q): array
+    public static function tokens(string $q, int $max = 6): array
     {
         $q = mb_strtolower(trim($q));
         if ($q === '') {
@@ -960,7 +1012,7 @@ final class Service
         // "a.i" 처럼 점 찍은 약어는 점을 뗀다(A.I 0건 → AI 와 같게)
         $toks = array_map(static fn(string $t): string => Lexicon::unDot($t), $toks);
         $toks = array_values(array_unique(array_filter($toks, static fn(string $t): bool => mb_strlen($t) >= 1)));
-        return array_slice($toks, 0, 6);
+        return array_slice($toks, 0, $max);
     }
 
     private static function escapeLike(string $s): string

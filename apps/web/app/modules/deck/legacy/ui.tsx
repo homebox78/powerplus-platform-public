@@ -1,3 +1,4 @@
+// 옛 화면 공용 UI 부품(셸·상태 표시·단계·모달·토스트·아바타 등) — 출처: powerDeck web/src/ui.tsx (옛 화면 그대로 이식, eslint.config.js legacy 구역).
 import { pdGo } from "./nav";
 import { WideToggle } from "@/components/hb/work-space";
 import { thumb } from "./DesignTypes";

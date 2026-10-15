@@ -5,6 +5,8 @@
 # 의존성을 맞춘 뒤 scripts/powermcp.service 를 설치하고 다시 시작한다. 키 값은 /var/www/platform_conf/powermcp.env 에만.
 set -euo pipefail
 cd "$(dirname "$0")/.."
+bash scripts/preflight.sh mcp || exit 1   # 배포 전 자가 검사 — 남의 미커밋 변경이 같이 올라가지 않게(R39)
+# 정리 필요: tar 가 작업 트리를 싣는다 — git 제외된 시험 파일 packages/mcp/.mcpcall*.mjs·.mcprun.mjs 도 서버로 간다.
 HOST="${PP_HOST:?PP_HOST=user@host 필요}"
 KEY_SRC="${PP_SSH_KEY:-}"
 for k in "$HOME/google_key.pem"; do [ -n "$KEY_SRC" ] && break; [ -f "$k" ] && KEY_SRC="$k"; done

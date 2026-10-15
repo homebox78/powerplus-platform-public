@@ -11,7 +11,6 @@ declare(strict_types=1);
 use Homebox\Db;
 use Homebox\Http\Response;
 use Homebox\Plan;
-use Homebox\Signer;
 
 $router->get('/api/sites/{slug}/components', static function (array $p): void {
     $slug = (string) $p['slug'];

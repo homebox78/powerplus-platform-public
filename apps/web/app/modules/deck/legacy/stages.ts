@@ -1,3 +1,4 @@
+// 변환 단계 이름·순서 — 출처: powerDeck web/src/stages.ts (옛 화면 그대로 이식, eslint.config.js legacy 구역).
 import type { Job } from "./api";
 
 // 변환 단계 — 엔진(worker/prompt.md·prompt_design.md)이 같은 이름으로 보고한다. 이름을 바꾸면 양쪽을 함께 바꿀 것.

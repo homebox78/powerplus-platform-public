@@ -165,6 +165,7 @@ $router->get('/api/insights/page', static function () use ($scope, $scoreSql, $W
             'screen_id' => (int) $sc['id'], 'screen_title' => $sc['screen_title'], 'url' => $sc['url'], 'full_h' => (int) $sc['full_h'], 'viewport_w' => (int) $sc['viewport_w'], 'locked' => !$ok,
             'thumb_url' => $ok && $sc['thumb_asset_id'] ? Signer::url((int) $sc['thumb_asset_id']) : null,
             'public_url' => $ok ? Plan::kurl((int) $sc['site_id'], $sc['public_asset_id']) : null,
+            'image_withheld' => Plan::koglWithheld((int) $sc['site_id'], $plan), // 공공누리 2~4유형이면 원본 화면·크롭을 뺀 이유(O-04), 아니면 null
             'sections' => array_map(static function (array $x) use ($ok, $sc): array {
                 $st = SectionShape::structure($x['structure'] ?? null) ?? [];
                 // 값이 없는(null·빈 목록) 칸은 뺀다 — 빠진 키 = 없음(응답 크기, 2026-10-12)
@@ -181,7 +182,9 @@ $router->get('/api/insights/page', static function () use ($scope, $scoreSql, $W
     $conf = $sitesN >= 30 ? 'high' : ($sitesN >= 10 ? 'medium' : 'low');
     Response::json([ 'scope_note' => $GLOBALS['hb_scope_note'] ?? null,
         'page_type' => $pt, 'device' => $device, 'n_screens' => $n, 'n_sites' => $sitesN, 'confidence' => $conf,
-        'note' => $conf === 'low' ? "표본 {$sitesN}곳 — 구성은 exemplars 를 우선 참고." : "{$sitesN}곳 · 화면 {$n}장 합성",
+        // 0곳이면 이유와 다음 행동을 말한다(MC-25) — 전엔 "exemplars 를 우선 참고"라 했지만 exemplars 도 비어 있었다
+        'note' => $sitesN === 0 ? '이 조건(page_type·org_type·tone·개편 연도)에 맞는 화면이 없습니다. org_type·tone·renewal_from 을 빼거나 비슷한 page_type 으로 다시 부르세요.'
+            : ($conf === 'low' ? "표본 {$sitesN}곳 — 구성은 exemplars 를 우선 참고." : "{$sitesN}곳 · 화면 {$n}장 합성"),
         'full_h_px' => $median(array_column($screens, 'full_h')),
         'layouts' => $layouts,
         'presence_note' => 'presence_pct 는 자동 분해가 인식한 비율(하한)이다. 경로·페이지 제목·탭·만족도처럼 작은 요소는 인식률이 낮아 실제보다 낮게 나온다 — exemplars 이미지로 확인할 것.',

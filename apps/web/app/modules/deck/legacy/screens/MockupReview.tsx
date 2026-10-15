@@ -1,3 +1,4 @@
+// 시안 검토 화면 — 출처: powerDeck web/src/screens/MockupReview.tsx (옛 화면 그대로 이식, eslint.config.js legacy 구역).
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { api, fileUrl, unwrapList, usd, type Job, type PinComment, type PlanFront, type PlanSlide, type WireBlock } from "../api";
 import { autoWire, WireCanvas, WireTools } from "../Wireframe";

@@ -1,5 +1,6 @@
 // SOLIDEO Design System — Tailwind preset (1.3.2)
-// 자동 생성 파일입니다. solideo-tokens.css 를 함께 불러와야 var() 가 해석됩니다.
+// 자동 생성 파일입니다(생성기: scripts/build-tailwind-theme.mjs — 손으로 고치지 마세요). solideo-tokens.css 를 함께 불러와야 var() 가 해석됩니다.
+// 화면 폭(screens: tablet·desktop·wide)은 Tailwind 기본 폭(sm·md·lg…)에 더해집니다. 기본 폭과 섞어 쓰지 말고 한쪽만 쓰세요.
 module.exports = {
   "theme": {
     "extend": {
@@ -96,6 +97,58 @@ module.exports = {
           "600": "var(--ink-600)",
           "700": "var(--ink-700)",
           "800": "var(--ink-800)"
+        },
+        "green": {
+          "100": "var(--green-100)",
+          "150": "var(--green-150)",
+          "200": "var(--green-200)",
+          "300": "var(--green-300)",
+          "400": "var(--green-400)",
+          "500": "var(--green-500)",
+          "600": "var(--green-600)",
+          "700": "var(--green-700)",
+          "800": "var(--green-800)"
+        },
+        "blue": {
+          "100": "var(--blue-100)",
+          "150": "var(--blue-150)",
+          "200": "var(--blue-200)",
+          "300": "var(--blue-300)",
+          "400": "var(--blue-400)",
+          "500": "var(--blue-500)",
+          "600": "var(--blue-600)",
+          "700": "var(--blue-700)",
+          "800": "var(--blue-800)"
+        },
+        "amber": {
+          "100": "var(--amber-100)",
+          "150": "var(--amber-150)",
+          "200": "var(--amber-200)",
+          "300": "var(--amber-300)",
+          "400": "var(--amber-400)",
+          "500": "var(--amber-500)",
+          "600": "var(--amber-600)",
+          "700": "var(--amber-700)",
+          "800": "var(--amber-800)"
+        },
+        "red": {
+          "100": "var(--red-100)",
+          "150": "var(--red-150)",
+          "200": "var(--red-200)",
+          "300": "var(--red-300)",
+          "400": "var(--red-400)",
+          "500": "var(--red-500)",
+          "600": "var(--red-600)",
+          "700": "var(--red-700)",
+          "800": "var(--red-800)"
+        },
+        "accent": {
+          "primary": "var(--accent-primary)",
+          "secondary": "var(--accent-secondary)"
+        },
+        "static": {
+          "black": "var(--static-black)",
+          "white": "var(--static-white)"
         }
       },
       "spacing": {
@@ -129,6 +182,45 @@ module.exports = {
       "fontFamily": {
         "sans": "var(--font-family-sans)",
         "mono": "var(--font-family-mono)"
+      },
+      "fontSize": {
+        "display": "var(--font-size-display)",
+        "h1": "var(--font-size-h1)",
+        "h2": "var(--font-size-h2)",
+        "h3": "var(--font-size-h3)",
+        "h4": "var(--font-size-h4)",
+        "body-lg": "var(--font-size-body-lg)",
+        "body": "var(--font-size-body)",
+        "sm": "var(--font-size-sm)",
+        "xs": "var(--font-size-xs)"
+      },
+      "fontWeight": {
+        "regular": "var(--font-weight-regular)",
+        "medium": "var(--font-weight-medium)",
+        "bold": "var(--font-weight-bold)",
+        "black": "var(--font-weight-black)"
+      },
+      "lineHeight": {
+        "tight": "var(--line-height-tight)",
+        "normal": "var(--line-height-normal)",
+        "loose": "var(--line-height-loose)"
+      },
+      "letterSpacing": {
+        "tight": "var(--letter-spacing-tight)"
+      },
+      "transitionDuration": {
+        "fast": "var(--duration-fast)",
+        "base": "var(--duration-base)",
+        "slow": "var(--duration-slow)"
+      },
+      "transitionTimingFunction": {
+        "standard": "var(--easing-standard)",
+        "decelerate": "var(--easing-decelerate)"
+      },
+      "screens": {
+        "tablet": "600px",
+        "desktop": "900px",
+        "wide": "1280px"
       }
     }
   }

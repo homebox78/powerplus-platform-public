@@ -3,7 +3,8 @@
  * MCP 반복 시험용 임시 키(서버 CLI 전용) — 운영 powerMCP 를 실제로 불러 보는 시험(docs/MCP-반복시험-*).
  *   발급: php8.4 api/bin/mcp-test-key.php issue <키 저장 파일>   (원문은 화면에 찍지 않고 그 파일에만, 권한 600)
  *   폐기: php8.4 api/bin/mcp-test-key.php revoke                (이 시험 계정 키 전부 폐기)
- * 계정은 임직원(staff) 시험 계정 하나 — 관리자 역할은 주지 않는다. 시험이 만든 시안·보고서는 이 계정 소유로 남는다.
+ * 계정은 임직원(staff) 시험 계정 하나 — 관리자 역할은 주지 않는다. 시험이 만든 시안·갤러리는 transfer·revoke 때 관리자 계정으로 옮긴다(MC-35).
+ *   그 밖: issue-owner·revoke-owner(관리자 mock 임시 키), lend·lend-any·unlend(시안 잠깐 빌려 고치기).
  */
 declare(strict_types=1);
 
@@ -107,6 +108,44 @@ if ($cmd === 'lend') {
         $g += Db::exec("UPDATE mock_gallery g JOIN mock_mockups m ON m.id = g.mockup_id SET g.owner_user_id = ? WHERE g.owner_user_id = ? AND m.token IN ({$ph})", array_merge([$uid, $owner], $chunk));
     }
     echo "빌려줌: 시안 {$m}건 · 갤러리 {$g}건 → 시험 계정 {$uid}\n";
+    exit(0);
+}
+// 소유자가 여러 명인 시안을 잠깐 빌려 고칠 때(2026-10-15 동료 계정의 '제목 없는 시안' 개선) — 원래 소유자를 지도 파일에 남기고 unlend 로 그대로 되돌린다.
+//   lend-any <token 목록 파일> <지도 파일>   /   unlend <지도 파일>
+if ($cmd === 'lend-any') {
+    $file = (string) ($argv[2] ?? '');
+    $mapf = (string) ($argv[3] ?? '');
+    $tokens = $file !== '' && is_file($file) ? array_values(array_filter(array_map('trim', file($file) ?: []))) : [];
+    if (!$uid || !$tokens || $mapf === '') {
+        fwrite(STDERR, "사용: lend-any <token 목록 파일> <지도 파일>\n");
+        exit(1);
+    }
+    $map = [];
+    foreach ($tokens as $t) {
+        $o = (int) Db::val('SELECT owner_user_id FROM mock_mockups WHERE token = ? AND deleted_at IS NULL', [$t]);
+        if (!$o || $o === $uid) {
+            continue;
+        }
+        $map[$t] = $o;
+        Db::exec('UPDATE mock_mockups SET owner_user_id = ? WHERE token = ?', [$uid, $t]);
+        Db::exec('UPDATE mock_gallery g JOIN mock_mockups m ON m.id = g.mockup_id SET g.owner_user_id = ? WHERE m.token = ?', [$uid, $t]);
+    }
+    file_put_contents($mapf, json_encode($map));
+    echo '빌려줌: ' . count($map) . "건 → 시험 계정 {$uid}\n";
+    exit(0);
+}
+if ($cmd === 'unlend') {
+    $map = json_decode((string) @file_get_contents((string) ($argv[2] ?? '')), true);
+    if (!is_array($map)) {
+        fwrite(STDERR, "사용: unlend <지도 파일>\n");
+        exit(1);
+    }
+    $n = 0;
+    foreach ($map as $t => $o) {
+        $n += Db::exec('UPDATE mock_mockups SET owner_user_id = ? WHERE token = ? AND owner_user_id = ?', [(int) $o, (string) $t, $uid]);
+        Db::exec('UPDATE mock_gallery g JOIN mock_mockups m ON m.id = g.mockup_id SET g.owner_user_id = ? WHERE m.token = ?', [(int) $o, (string) $t]);
+    }
+    echo "되돌림: {$n}건\n";
     exit(0);
 }
 if ($cmd === 'transfer') {

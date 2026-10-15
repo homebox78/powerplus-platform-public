@@ -96,7 +96,12 @@ export async function layoutChecks(p, o = {}) {
     // ④ 바닥글 아래 빈 띠: 바닥글 내용 끝 ~ 문서 끝
     const ft = [...document.querySelectorAll("footer")].filter(vis).pop();
     if (ft) { const H = document.documentElement.scrollHeight; let last = 0; for (const z of leaves) if (z.el !== ft && ft.contains(z.el) && z.b - z.t < 160 && z.b > last) last = z.b; /* 바닥글 면 자체·큰 감싸개는 빼고 글·그림 조각만 */ const fb = ft.getBoundingClientRect().bottom + scrollY;
-      if (last && H - last > 96) out.footTail.push(`바닥글 마지막 글(y ${Math.round(last)}) 아래가 문서 끝(${H})까지 ${Math.round(H - last)}px 비어 있음 — 바닥글 padding-bottom·min-height 를 줄인다(48~80px)`); void fb; }
+      if (last && H - last > 96) out.footTail.push(`바닥글 마지막 글(y ${Math.round(last)}) 아래가 문서 끝(${H})까지 ${Math.round(H - last)}px 비어 있음 — 바닥글 padding-bottom·min-height 를 줄인다(48~80px)`); void fb;
+      // 바닥글 안 줄 사이가 너무 벌어짐(사용자 지적: 주소 묶음과 정책 링크 사이 90px) — 글·그림 조각을 위아래로 묶어 묶음 사이 빈 간격이 56px 를 넘으면
+      { const parts = leaves.filter((z) => z.el !== ft && ft.contains(z.el) && z.b - z.t < 120 && z.r - z.l < innerWidth * 0.95).sort((a, b) => a.t - b.t); const gaps = []; let bot = null;
+        for (const z of parts) { if (bot !== null && z.t - bot > 56) gaps.push(Math.round(z.t - bot)); bot = bot === null ? z.b : Math.max(bot, z.b); }
+        if (gaps.length) out.footGap = [`바닥글 안 묶음 사이 ${gaps.join("·")}px — 줄 사이는 24~48px(기관 정보·정책 링크·저작권을 붙여 쓴다, 큰 margin·padding·고정 높이를 줄인다)`]; } }
+    out.footGap = out.footGap ?? [];
     // ③ 같은 메인에 게시판 목록 두 번: 글 제목만 4줄 이상인 목록이 서로 다른 구역에 둘 이상(탭으로 묶을 것)
     const lists = []; if (!isSub) {
     for (const ul of document.querySelectorAll("ul, ol")) { if (!vis(ul) || ul.closest("header, footer, nav, [data-hb=menu]")) continue; const it = [...ul.children].filter(vis); if (it.length < 4) continue;
@@ -156,6 +161,7 @@ export async function layoutChecks(p, o = {}) {
   chk(!r.crop.length, "이미지 비율이 자리와 맞지 않음", r.crop);
   chk(!r.bgPartial.length, "배경 사진이 일부만 보임", r.bgPartial);
   chk(!r.hero.length, "첫 화면에 히어로가 다 안 들어옴", r.hero);
+  chk(!r.footGap.length, "바닥글 안 줄 사이 여백이 너무 큼", r.footGap);
   chk(!r.footTail.length, "바닥글 아래 빈 띠", r.footTail);
   chk(!r.dupList.length, "같은 형식 게시판 목록 중복", r.dupList);
   chk(!r.bannerPlain.length, "이미지 배너 자리에 글자 없는 사진", r.bannerPlain);

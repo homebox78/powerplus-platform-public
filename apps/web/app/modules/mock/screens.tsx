@@ -1,7 +1,7 @@
 // powerMock 작업 단위 화면 — 시안(내 시안·갤러리·공유·열람·포인트), 기획·컴포넌트 안내, 시작하기 STEP.
 // 출처: homebox-handoff apps/web/app/routes/gallery.tsx(갤러리 2열 그리드·순위·포인트 안내·공유 창·sandbox iframe) 를 REST v1·module.tsx 틀로.
 // 기획 §20: 수집 레퍼런스 탐색은 공개하지 않는다 — 여기엔 사용자 산출물(시안)만. 제작·판정은 MCP(powerMCP) 가 하고 이 화면은 결과를 본다.
-import { ArrowLeft, Copy as CopyIcon, ExternalLink, Eye, Heart, Lock, MoreHorizontal, Share2, Trash2, Trophy } from "lucide-react";
+import { ArrowLeft, Copy as CopyIcon, ExternalLink, Eye, Heart, Layers, Lock, MoreHorizontal, Share2, Trash2, Trophy } from "lucide-react";
 import { MobileCarousel } from "@/components/hb/mobile-carousel";
 import { WireframeScreen } from "./wireframe";
 import { MockupPreview } from "@/components/hb/mockup-preview";
@@ -156,9 +156,18 @@ function ShareDialog({ item, onClose }: { item: MockupItem | null; onClose: () =
 }
 
 // ---------------------------------------------------------------- 갤러리
-function GalleryCard({ g, onOpen, unlockCost }: { g: GalleryItem; onOpen: (id: number) => void; unlockCost: number }) {
+/** 서브 페이지 유형 이름 — 모르는 유형은 "서브" */
+const PAGE_KO: Record<string, string> = {
+  main: "메인", greeting: "인사말", org: "조직도", organization: "조직도", org_chart: "조직도", history: "연혁", location: "오시는 길", map: "오시는 길",
+  board_list: "게시판 목록", board_view: "게시판 상세", gallery: "갤러리", gallery_list: "갤러리", photo: "갤러리", content: "콘텐츠", faq: "자주 묻는 질문",
+  search: "통합검색", sitemap: "사이트맵", login: "로그인", vision: "비전", intro: "소개",
+};
+const pageLabel = (g: GalleryItem) => (g.role === "sub" ? (g.page ? PAGE_KO[g.page] ?? "서브" : "서브") : "메인");
+
+function GalleryCard({ g, onOpen, unlockCost, onSet }: { g: GalleryItem; onOpen: (id: number) => void; unlockCost: number; onSet?: (set: string) => void }) {
   const m = useMockMutations();
   const saved = useIsSaved("gallery", g.id);
+  const setN = g.set_size ?? 1;
   return (
     <div role="button" tabIndex={0} onClick={() => onOpen(g.id)} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onOpen(g.id); } }} className="group flex min-w-0 cursor-pointer flex-col gap-3 text-left" aria-label={`${g.title} 상세`}>
       <div className="relative">
@@ -166,10 +175,15 @@ function GalleryCard({ g, onOpen, unlockCost }: { g: GalleryItem; onOpen: (id: n
           <span className="relative flex w-full overflow-hidden rounded-md bg-white shadow-[0_1px_3px_rgba(0,0,0,0.08)]"><img src={g.thumb_url} alt="" loading="lazy" className="aspect-[16/10] w-full object-cover object-top" /></span>
         </ThumbFrame>
         {saved && <SavedBadge />}
+        {onSet && g.set && setN > 1 && (
+          <button type="button" onClick={(e) => { e.stopPropagation(); onSet(g.set!); }} className="absolute left-3 top-3 z-10 inline-flex h-7 items-center gap-1 rounded-chip bg-ink px-2.5 text-xs font-semibold text-white hover:bg-ink-2" aria-label={`${g.title} 세트 ${setN}장 함께 보기`}>
+            <Layers className="size-3.5" aria-hidden />세트 {setN}장
+          </button>
+        )}
       </div>
       <span className="flex min-w-0 items-center gap-3">
         <span className="flex min-w-0 flex-1 flex-col">
-          <span className="truncate text-md font-bold tracking-[-0.01em]">{g.title}</span>
+          <span className="flex min-w-0 items-center gap-1.5"><Tag tone={g.role === "sub" ? "line" : "soft"} className="h-5 px-[7px]">{pageLabel(g)}</Tag><span className="truncate text-md font-bold tracking-[-0.01em]">{g.title}</span></span>
           <span className="truncate text-sm text-ink-4">{g.owner.name}{g.owner.badge ? <RankBadge badge={g.owner.badge} className="ml-1" /> : null} · {DEVICE_KO[g.device]} · {fmtDate(g.shared_at ?? g.created_at)}</span>
         </span>
         <span className="flex shrink-0 items-center gap-2 text-sm font-semibold text-ink-3">
@@ -185,28 +199,41 @@ function Gallery({ open, onOpen }: { open: number | null; onOpen: (id: number | 
   const [sp, setSp] = useSearchParams();
   const view = sp.get("view") === "mine" ? "mine" : "shared";
   const sort = (["popular", "new", "score"].includes(sp.get("sort") ?? "") ? sp.get("sort") : "popular") as "popular" | "new" | "score";
-  const set = (k: string, v: string) => setSp((p) => { const n = new URLSearchParams(p); n.set(k, v); return n; }, { replace: true });
-  const q = useQuery(galleryQuery({ view, sort }));
+  const type = (["main", "sub"].includes(sp.get("type") ?? "") ? sp.get("type") : "all") as "all" | "main" | "sub";
+  const setKey = sp.get("set") ?? "";
+  const set = (k: string, v: string) => setSp((p) => { const n = new URLSearchParams(p); if (v) n.set(k, v); else n.delete(k); return n; }, { replace: true });
+  const openSet = (s: string) => { setSp((p) => { const n = new URLSearchParams(p); n.set("set", s); return n; }); document.getElementById("mock-gallery")?.scrollIntoView({ block: "start" }); };
+  const q = useQuery(galleryQuery({ view, sort, type: setKey ? "all" : type, set: setKey || undefined }));
   const leaders = useQuery(leadersQuery);
   const { me } = useMe();
   const [points, setPoints] = useState(false);
   const cost = q.data?.meta.unlock_cost ?? 30;
-  if (open !== null) return <GalleryDetail id={open} onClose={() => onOpen(null)} />;
+  if (open !== null) return <GalleryDetail id={open} onClose={() => onOpen(null)} onOpen={onOpen} />;
   return (
-    <div className="mt-6 grid grid-cols-1 gap-12 lg:grid-cols-[1fr_300px]">
+    <div id="mock-gallery" className="mt-6 grid scroll-mt-24 grid-cols-1 gap-12 lg:grid-cols-[1fr_300px]">
       <div>
-        <div className="flex flex-wrap items-center gap-2">
-          <ChoiceButton label="범위" value={view} onChange={(v) => set("view", v)} options={[{ id: "shared", label: "공유된 시안" }, { id: "mine", label: "내가 만든 시안" }]} size="sm" />
-          <span className="h-5 w-px bg-line" aria-hidden />
-          <ChoiceButton label="정렬" value={sort} onChange={(v) => set("sort", v)} options={Object.entries(SORT_KO).map(([id, label]) => ({ id, label }))} size="sm" />
-          <span className="ml-auto text-sm text-ink-4">{q.data ? `${q.data.total}개` : ""}</span>
-        </div>
+        {setKey ? (
+          <div className="flex flex-wrap items-center gap-3">
+            <button type="button" onClick={() => setSp((p) => { const n = new URLSearchParams(p); n.delete("set"); return n; })} className="inline-flex h-9 items-center gap-1.5 text-sm font-semibold text-ink-3 hover:text-ink"><ArrowLeft className="size-4" aria-hidden />전체 시안</button>
+            <span className="h-5 w-px bg-line" aria-hidden />
+            <h3 className="min-w-0 truncate text-lg font-bold">{q.data?.items[0]?.title ?? "세트"}<span className="ml-2 text-sm font-semibold text-ink-4">세트</span></h3>
+            <span className="ml-auto text-sm text-ink-4">{q.data ? `메인 ${q.data.items.filter((x) => x.role !== "sub").length} · 서브 ${q.data.items.filter((x) => x.role === "sub").length}` : ""}</span>
+          </div>
+        ) : (
+          <div className="flex flex-wrap items-center gap-2">
+            <ChoiceButton label="범위" value={view} onChange={(v) => set("view", v)} options={[{ id: "shared", label: "공유된 시안" }, { id: "mine", label: "내가 만든 시안" }]} size="sm" />
+            <ChoiceButton label="구분" value={type} onChange={(v) => set("type", v === "all" ? "" : v)} options={[{ id: "all", label: "전체" }, { id: "main", label: "메인" }, { id: "sub", label: "서브" }]} size="sm" />
+            <span className="h-5 w-px bg-line" aria-hidden />
+            <ChoiceButton label="정렬" value={sort} onChange={(v) => set("sort", v)} options={Object.entries(SORT_KO).map(([id, label]) => ({ id, label }))} size="sm" />
+            <span className="ml-auto text-sm text-ink-4">{q.data ? `${q.data.total}개` : ""}</span>
+          </div>
+        )}
         {q.isPending ? (
-          <div className="mt-8 grid grid-cols-1 gap-x-8 gap-y-12 md:grid-cols-2">{Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="aspect-[16/10] rounded-panel" />)}</div>
+          <div className="mt-8 grid grid-cols-1 gap-x-6 gap-y-10 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">{Array.from({ length: 8 }).map((_, i) => <Skeleton key={i} className="aspect-[16/10] rounded-panel" />)}</div>
         ) : (q.data?.items.length ?? 0) === 0 ? (
           <section className="mt-5 rounded-panel border border-dashed border-line-3 p-10 text-center text-md text-ink-4"><Copy text={view === "mine" ? "보관된 내 시안이 없습니다. 판정 점수가 기준을 넘으면 자동으로 보관됩니다." : "아직 공유된 시안이 없습니다. 첫 시안을 공유해 보세요."} /></section>
         ) : (
-          <div className="mt-8 grid grid-cols-1 gap-x-8 gap-y-12 md:grid-cols-2">{q.data!.items.map((g) => <GalleryCard key={g.id} g={g} onOpen={onOpen} unlockCost={cost} />)}</div>
+          <div className="mt-8 grid grid-cols-1 gap-x-6 gap-y-10 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">{q.data!.items.map((g) => <GalleryCard key={g.id} g={g} onOpen={onOpen} unlockCost={cost} onSet={setKey ? undefined : openSet} />)}</div>
         )}
       </div>
       <aside className="flex flex-col gap-8">
@@ -284,11 +311,14 @@ function CheckedItems({ token }: { token: string }) {
   );
 }
 
-function GalleryDetail({ id, onClose }: { id: number; onClose: () => void }) {
+function GalleryDetail({ id, onClose, onOpen }: { id: number; onClose: () => void; onOpen: (id: number) => void }) {
   const q = useGalleryDetail(id);
   const m = useMockMutations();
   const { me } = useMe();
   const g = q.data?.item;
+  // 같은 세트(메인 + 그 메인 기준 서브)를 탭처럼 — 세트 안에서 바로 옮겨 다닌다
+  const sib = useQuery({ ...galleryQuery({ view: g?.mine ? "mine" : "shared", sort: "new", set: g?.set }), enabled: !!g?.set });
+  const members = sib.data?.items ?? [];
   const unlock = () => { if (!g) return; m.unlock.mutate(g.id, { onSuccess: (r) => { toast.success(`열었습니다. 남은 포인트 ${r.points}P`); void q.refetch(); }, onError: (e) => toastError(e) }); };
   const cost = q.data?.unlock_cost ?? 30;
   useEffect(() => { document.getElementById("mock-detail")?.scrollIntoView({ block: "start" }); }, [id]);
@@ -313,6 +343,14 @@ function GalleryDetail({ id, onClose }: { id: number; onClose: () => void }) {
                 : <Button size="md" asChild><Link to="/login?next=/mock/mockups">로그인하고 열기</Link></Button>}
             </div>
           </div>
+          {members.length > 1 && (
+            <nav aria-label="같은 세트" className="mt-5 flex flex-wrap items-center gap-2">
+              <span className="mr-1 inline-flex items-center gap-1 text-sm font-semibold text-ink-3"><Layers className="size-4" aria-hidden />세트 {members.length}장</span>
+              {members.map((x) => (
+                <Button key={x.id} size="sm" variant={x.id === g.id ? "default" : "outline"} aria-current={x.id === g.id ? "page" : undefined} onClick={() => { if (x.id !== g.id) onOpen(x.id); }}>{pageLabel(x)}</Button>
+              ))}
+            </nav>
+          )}
           {g.note && <Copy className="mt-4 max-w-[820px] rounded-card bg-ground-2 px-5 py-4 text-md text-ink-2" text={g.note} />}
           <div className="mt-6 grid gap-6">
             <div>

@@ -1,3 +1,4 @@
+// 결과 상세·비용 정산 — 출처: powerDeck web/src/screens/ResultDetail.tsx (옛 화면 그대로 이식, eslint.config.js legacy 구역).
 import { useState } from "react";
 import { usd, type Job } from "../api";
 import { Arrow, cn, fmtDur, Ms, parseTs } from "../ui";

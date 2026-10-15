@@ -1,3 +1,4 @@
+// 작업창 로그인 — 출처: powerPlus addin/src/taskpane/components/Login.tsx.
 import * as React from "react";
 import { requestCode, verifyCode } from "../api/auth";
 

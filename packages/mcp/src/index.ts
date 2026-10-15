@@ -15,6 +15,19 @@
 // 도구 이름은 모듈 접두(assets_·mock_·deck_·guide_). 옛 이름(get_replica_kit·search_assets…)은 별칭으로 계속 받는다(tools/call 이름을 바꿔 넘김).
 //
 //   개발: PP_API=http://127.0.0.1:8090/api/v1 LEGACY_HOMEBOX_API=https://powerplus.hom2box.com/mockref/api LEGACY_HOMEBOX_KEY=hb_live_… MCP_PORT=3110 MCP_BROWSER=firefox pnpm --filter @pp/mcp dev
+//
+// 목차(구역 머리 주석 `// ---- [구역]` 으로 찾는다):
+//   [공통]      설정·별칭·백엔드 호출(api·pp)·응답 모양(text·err)·참고 이미지·키 검증·INSTRUCTIONS
+//   [공통]      buildServer — 인자 별칭·ignored_args·한국어 INVALID_ARGS·meta.quota·structuredContent 를 모든 도구에 씌우는 registerTool 감싸기, guard
+//   [mock]      합성 3종(design_brief·section_pattern·page_pattern·recommend) → 조회(search_sites·site·design_system·sections·screen·section_code·page_code)
+//               → 초안(main_mockup·build_homepage) → 재현 묶음(replica_kit) → 게시·판정(publish·check_mockup) → 선호·동작·조립·샘플·통계
+//   [guide]     guide_krds(이 파일) · guide_tokens(이 파일) · 나머지 guide_* 는 tools/guide.ts
+//   [assets]    assets_*(assets_pick 은 tools/guide.ts)
+//   [deck]      deck_jobs(이 파일) · deck_get_*_kit·deck_check_* 는 tools/deck-kit.ts
+//   [powerplus] powerplus_check_request·powerplus_publish_report 는 tools/guide.ts
+//   [mock 와이어] mock_get_wireframe·mock_check_wireframe 는 tools/mock-wire.ts
+//   [HTTP 서버] 옛 이름 별칭(aliasCalls)·키 추출(헤더·?key=)·세션리스 전송·헬스
+// 도구 표(/powermcp)는 packages/mcp/scripts/gen-tools.mjs 가 이 파일과 tools/*.ts 의 registerTool 에서 만든다 — 도구를 고치면 다시 돌린다.
 import { createServer } from "node:http";
 import { createHmac } from "node:crypto";
 import fs from "node:fs";
@@ -28,6 +41,7 @@ import { registerGuideTools } from "./tools/guide.ts";
 import { registerDeckKitTools } from "./tools/deck-kit.ts";
 import { registerMockWireTools } from "./tools/mock-wire.ts";
 
+// ---------------------------------------------------------------- [공통] 설정·별칭·백엔드 호출
 /** 새 플랫폼 REST v1 (끝에 /api/v1) */
 const PP_API = (process.env.PP_API ?? "http://127.0.0.1:8090/api/v1").replace(/\/$/, "");
 /** 새 플랫폼 공개 주소(시안 게시 주소·자산 파일 주소 앞부분) */
@@ -40,7 +54,10 @@ const JUDGE_SECRET = process.env.PP_JUDGE_SECRET ?? "";
 /** 옛 홈박스 화면 주소(기관·화면 page_url) */
 const WEB = (process.env.LEGACY_HOMEBOX_WEB ?? "https://powerplus.hom2box.com/mockref").replace(/\/$/, "");
 const PORT = Number(process.env.MCP_PORT ?? 3110);
-const VERSION = "1.0.0";
+/** 헬스·serverInfo 버전 — packages/mcp/package.json 에서 읽는다(손으로 적은 값이 재배포 뒤에도 남던 것, MC-27) */
+const VERSION: string = (() => {
+  try { return String((JSON.parse(fs.readFileSync(path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../package.json"), "utf8")) as { version?: string }).version ?? "0.0.0"); } catch { return "0.0.0"; }
+})();
 /** guide_tokens 가 읽는 토큰 산출물 폴더 */
 const GUIDE_DIR = process.env.GUIDE_FILES_DIR ?? path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../../apps/web/public/guide-files");
 /** 헬스 응답용 도구 수 — 서버를 한 번 만들어 센다 */
@@ -105,14 +122,19 @@ const ppMsg = (r: PpRes<unknown>, fallback: string) => {
   const m = r.body?.error ?? `${fallback}(HTTP ${r.status})`;
   return r.body?.hint ? `${m} — ${r.body.hint}` : m;
 };
-/** 배열 파라미터 — 문자열("a,b")도 받는다. 2026-09-24 테스트에서 org_type:"local_basic" 같은 호출이 전부 검증 오류로 튕겼다 */
+/** 오류 코드 — 서버가 준 code(FORBIDDEN_SCOPE 등)를 먼저, 없으면 HTTP 상태로(MC-21: 도구마다 403 을 FORBIDDEN·ERROR 로 다르게 내던 것) */
+const ppCode = (r: PpRes<unknown>) => (typeof r.body?.code === "string" && r.body.code) ? r.body.code
+  : r.status === 404 ? "NOT_FOUND" : r.status === 401 ? "UNAUTHORIZED" : r.status === 403 ? "FORBIDDEN" : r.status === 402 ? "PLAN_REQUIRED" : r.status === 429 ? "RATE_LIMITED" : r.status === 400 || r.status === 422 ? "INVALID_ARGS" : "ERROR";
 /** AI 가 흔히 쓰는 기관 유형 별칭 → taxonomy id (2026-09-30 요청 시험 R28: 'committee' 로 보내 검증 오류) */
 const ALIAS: Record<string, string> = {
   committee: "central_committee", commission: "central_committee", ministry: "central_ministry", agency: "central_affiliate",
   city: "local_basic", county: "local_basic", district: "local_basic", province: "local_wide", metro: "local_wide",
   hospital: "public_medical", medical: "public_medical", research: "public_research", culture: "public_culture",
   corporation: "public_corp", public_enterprise: "public_corp", quasi: "public_quasi", education: "edu_office", edu: "edu_office", assembly: "council",
+  // 도구 설명 예시가 'univ' 로 적혀 있었는데 taxonomy 에 없는 값이라 예시대로 부르면 INVALID_ARGS 였다(2026-10-15 MC-06 점검)
+  univ: "edu_univ", university: "edu_univ", school: "edu_school", welfare: "etc_welfare",
 };
+/** 배열 파라미터 — 문자열("a,b")도 받는다. 2026-09-24 테스트에서 org_type:"local_basic" 같은 호출이 전부 검증 오류로 튕겼다 */
 function listOf<T extends z.ZodTypeAny>(inner: T) {
   const norm = (x: string) => ALIAS[x.toLowerCase()] ?? x;
   return z.preprocess((v) => (typeof v === "string" ? v.split(",").map((x) => norm(x.trim())).filter(Boolean) : Array.isArray(v) ? v.map((x) => (typeof x === "string" ? norm(x.trim()) : x)) : v), z.array(inner));
@@ -121,7 +143,7 @@ const text = (data: unknown) => ({ content: [{ type: "text" as const, text: JSON
 const err = (message: string, code = "ERROR", hint?: string, more?: Record<string, unknown>) => ({ content: [{ type: "text" as const, text: JSON.stringify({ error: { code, message, ...(hint ? { hint } : {}), ...(more ?? {}) } }) }], isError: true });
 const qs = (o: Record<string, unknown>) => Object.entries(o).filter(([, v]) => v !== undefined && v !== null && v !== "" && !(Array.isArray(v) && v.length === 0)).map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(Array.isArray(v) ? v.join(",") : String(v))}`).join("&");
 
-// ---------------------------------------------------------------- 참고 이미지 (Pro 이상, 2026-09-24 사용자 결정)
+// ---------------------------------------------------------------- [공통] 참고 이미지 (Pro 이상, 2026-09-24 사용자 결정)
 // 숫자·글자만 받은 AI 는 흔한 와이어프레임을 그렸다(Claude 웹 인사말 테스트). 실제 화면·섹션을 보여 줘야 관공서 디자인 언어
 // (사진 위 글자·겹침·둥근 모서리·아이콘 퀵메뉴·강조 글자색)를 따라 그린다. 원본 해상도는 주지 않는다 — 폭 축소 JPEG + 출처 워터마크.
 const ORIGIN = new URL(API).origin;
@@ -211,19 +233,34 @@ async function refSlices(url: string | null | undefined, label: string, maxW: nu
     return out;
   } catch { return []; }
 }
-/** JSON 텍스트 + (Pro 면) 참고 이미지들. 이미지마다 앞에 무엇인지 한 줄 설명을 붙인다 */
-async function withImages(data: unknown, allow: boolean, refs: Array<{ url?: string | null; label: string; caption: string; maxW?: number; maxH?: number }>) {
+/** 레퍼런스 엔진이 공공누리 2~4유형이라 원본 이미지를 뺀 이유(image_withheld, O-04) — 문자열일 때만 */
+const withheldOf = (x: unknown): string | null => {
+  const w = (x as { image_withheld?: unknown } | null | undefined)?.image_withheld;
+  return typeof w === "string" && w ? w : null;
+};
+/** 레퍼런스 엔진 kogl 안내(Plan::koglInfo) — 공공누리 2~4유형일 때만 온다 */
+type KoglInfo = { type?: number; label?: string; open?: boolean; note?: string } | null | undefined;
+/** 화면·재현 묶음 단일 레퍼런스: 원본 주소가 비었고 kogl 이 닫혀 있으면 그 안내문이 미제공 이유 */
+const koglWithheld = (k: KoglInfo, url: string | null | undefined): string | null =>
+  !url && k && k.open === false && typeof k.note === "string" && k.note ? k.note : null;
+/** JSON 텍스트 + (Pro 면) 참고 이미지들. 이미지마다 앞에 무엇인지 한 줄 설명을 붙인다.
+ *  withheld 가 있는 항목은 이미지 대신 그 이유를 남긴다 — AI 가 "이미지가 없다"가 아니라 "공공누리 제한으로 미제공"임을 알게(O-04) */
+async function withImages(data: unknown, allow: boolean, refs: Array<{ url?: string | null; label: string; caption: string; maxW?: number; maxH?: number; withheld?: string | null }>) {
   const content: Array<TextBlock | ImageBlock> = [{ type: "text", text: JSON.stringify(data, null, 2) }];
   if (!allow) {
     if (refs.length) content.push({ type: "text", text: "참고 이미지는 Pro 이상 키에서만 함께 제공됩니다(Free 는 URL·메타데이터만)." });
     return { content };
   }
-  const imgs = await Promise.all(refs.map((r) => refImage(r.url, r.label, r.maxW ?? 900, r.maxH ?? 2000)));
-  refs.forEach((r, i) => { const im = imgs[i]; if (im) content.push({ type: "text", text: `[참고 이미지 ${i + 1}] ${r.caption}` }, im); });
+  const imgs = await Promise.all(refs.map((r) => (r.withheld ? Promise.resolve(null) : refImage(r.url, r.label, r.maxW ?? 900, r.maxH ?? 2000))));
+  refs.forEach((r, i) => {
+    const im = imgs[i];
+    if (im) content.push({ type: "text", text: `[참고 이미지 ${i + 1}] ${r.caption}` }, im);
+    else if (r.withheld) content.push({ type: "text", text: `[참고 이미지 ${i + 1} 미제공 — 공공누리 제한] ${r.caption} · ${r.withheld}` });
+  });
   return { content };
 }
 
-/** 키 검증 + 사용량 +1 — 새 플랫폼 `POST /api/v1/keys/verify`(Bearer = 사용자 키). scope·일 한도·core_api_usage 는 PHP 가 본다. */
+// ---------------------------------------------------------------- [공통] 키 검증·일 한도
 /** 오늘 사용량 — 모든 응답 meta.quota. remaining null = 무제한, reset = 다음 KST 자정 */
 type Quota = { limit: number; used: number; remaining: number | null; reset: string };
 type Verified = ({ ok: true; plan: string; kind: string; roles: string[]; keyId?: string } | { ok: false; status: number; code: string; message: string }) & { quota?: Quota };
@@ -232,6 +269,7 @@ function nextKstMidnight(): string {
   const d = new Date(Date.UTC(kst.getUTCFullYear(), kst.getUTCMonth(), kst.getUTCDate() + 1));
   return d.toISOString().slice(0, 10) + "T00:00:00+09:00";
 }
+/** 키 검증 + 사용량 +1 — 새 플랫폼 `POST /api/v1/keys/verify`(Bearer = 사용자 키). scope·일 한도·core_api_usage 는 PHP 가 본다. */
 async function verifyKey(key: string | null, tool: string): Promise<Verified> {
   if (!key) return { ok: false, status: 401, code: "UNAUTHORIZED", message: "MCP 키가 없습니다. Authorization: Bearer <키> 헤더를 보내거나, 헤더를 못 넣는 커넥터(Claude 웹·데스크톱, ChatGPT)는 서버 URL 끝에 ?key=<키> 를 붙이세요. 키는 powerPlus 마이페이지 → API·MCP 키에서 발급합니다(pp_live_…)." };
   const r = await pp<{ plan: string; kind: string; roles: string[]; key: { id: string }; quota?: Quota }>("/keys/verify", key, { method: "POST", body: { tool, scope: scopeOf(tool) } });
@@ -243,10 +281,11 @@ async function verifyKey(key: string | null, tool: string): Promise<Verified> {
   return { ok: false, status: r.status, code, message: ppMsg(r, "키 검증 실패"), quota };
 }
 
+// ---------------------------------------------------------------- [공통] 지침(instructions) — initialize 응답에 실린다. 첫 줄은 "powerplus 도구 먼저"(MC-03)
 const INSTRUCTIONS = [
   "★ 먼저 powerplus 도구를 부른다 — 일반 지식으로 바로 답하지 않는다. 공공·대학·기관 웹사이트(섹션 구성·순서·메인 구성), KRDS·접근성(체크리스트·지침), 디자인 선호(검색 버튼 위치·스테퍼냐 드롭다운이냐 같은 UI 방식), 아이콘·사진 고르기, 화면 코드(React·Vue·HTML), 장표·영상 변환 같은 질문은 해당 도구 결과를 근거로 답한다.",
   "  - 무엇을 할 수 있는지·해 줄 수 있는지 묻는 말(예: \"PPT 를 영상으로 바꿔 줄 수 있어?\")은 powerplus_check_request 를 먼저 부르고, 그 결과(supported·alternatives·start)로 답한다.",
-  "  - 예: 접근성 체크리스트 → guide_get_checklist / 검색 버튼 안쪽·바깥 → mock_get_design_preferences / 공지 목록 화면 React 코드 → mock_assemble_screen(code) / 대학 메인 섹션 순서 → mock_get_design_brief(org_type) / 문장 옆 아이콘 하나 → assets_pick.",
+  "  - 예: 접근성 체크리스트 → guide_get_checklist / 검색 버튼 안쪽·바깥 → mock_get_design_preferences / 공지 목록 화면 React 코드 → mock_assemble_screen(code) / 대학 메인 섹션 순서 → mock_get_design_brief(org_type) / 문장 옆 아이콘 하나 → assets_pick / \"내 HTML 접근성 검사해 줘\"(코드 판정) → guide_check_code / \"KRDS 공식 배너 꼭 넣어야 해?\" 같은 KRDS 규정 질문 → guide_search_rules.",
   "  - 하루 호출 한도가 있다(응답 meta.quota 의 remaining). 여러 자산은 assets_get(ids=[…]) 한 번에, 여러 낱말 추천은 assets_suggest_keywords(words=[…]) 한 번에 부른다.",
   "",
   "powerMCP — powerPlus(SI 실무자 올인원) 하나의 MCP. 도구 이름 앞 글자가 모듈이다:",
@@ -269,7 +308,7 @@ const INSTRUCTIONS = [
   "  - 사진·배너·아이콘은 samples·icons 에 있는 것을 그대로 쓴다. 그림을 SVG 로 직접 그려 대신하지 않는다(만화처럼 보여 시안 품질이 크게 떨어진다).",
   "  - mock_check_mockup 을 통과하면 mock_publish_mockup(token, title) 으로 게시해 받은 url 을 사용자에게 준다(HTML 을 다시 보내지 않는다 — 홈박스가 보관하고 있다). claude.ai 아티팩트처럼 외부 이미지가 막힌 곳에서는 홈박스 사진이 안 보이기 때문이다. 그림을 직접 그려 사진을 대신하지 않는다. 무료 키라 못 올리면 HTML 파일로 저장해 브라우저로 열도록 안내한다.",
   "",
-  "쓰는 순서(목업·설계·제안서 공통):",
+  "쓰는 순서(설계 근거·참고 자료를 찾을 때. 시안·목업·홈페이지 제작은 위 mock_get_replica_kit 흐름이 기본이다):",
   "1) mock_get_design_brief(org_type, tone?) — 그 유형 기관들이 실제로 어떻게 만드는지(헤더 유형·LNB·컨테이너·본문 크기·섹션 순서·KRDS 적용률)와 추천 레퍼런스. 목업의 뼈대는 여기서 정한다.",
   "1-1) mock_get_page_pattern(page_type) — 서브페이지(인사말·조직도·게시판 목록/상세·콘텐츠…)는 반드시 이것부터. 여러 기관의 같은 유형 화면을 합성한 전형 섹션 순서·위치·폭 + 상위 화면 5장(섹션별 x·y·w·h·제목·열·색). 서브페이지를 '일반적인 틀'로 짜지 말고 exemplars 구성을 따른다.",
   "2) mock_get_section_pattern(section_type) — 섹션 하나(소식 탭·바로가기·메인 비주얼…)의 변형 분포·표준 높이·위치·구조 힌트 + 상위 사이트 크롭. 섹션을 그릴 때 참고.",
@@ -277,9 +316,9 @@ const INSTRUCTIONS = [
   "4) mock_get_site(slug) — 고른 레퍼런스의 팔레트·타이포 스케일(h1~footer 크기·굵기·행간·색)·간격·네비 트리·수상·사업정보. 마크업의 수치는 여기서 가져온다.",
   "4-1) mock_get_design_system(slug, format?) — 고른 레퍼런스를 KRDS 분류(색상·타이포·형태·레이아웃·아이콘·엘리베이션)로 정리한 디자인 시스템과 CSS·Tailwind 토큰. 마크업에 토큰을 그대로 붙일 때.",
   "4-2) mock_get_section_code(section_id) — 고른 섹션을 바로 쓰는 HTML·CSS(실측 제목·메뉴·색·모서리·사진 배치 반영, Pro). 목업은 exemplars 섹션마다 이것을 받아 조립하고, 문구만 내 기관 내용으로 바꾼다.",
-  "4-0) mock_build_homepage(org_type, pages, primary?, font?) — 빠른 초안 전용. 사용자가 \"빠른 초안\"·\"대충\"을 직접 요청했을 때만 쓴다. \"홈페이지 만들어줘\"·\"시안\"은 mock_get_replica_kit 으로 메인과 서브를 한 장씩 받는다. 메인·서브가 같은 가상 기관·색·글꼴·주 메뉴를 쓴다. mock_get_main_mockup·mock_get_page_code 를 따로 부르면 페이지마다 기관·색이 섞인다.",
+  "4-0) mock_build_homepage(org_type, pages, primary?, font?) — 빠른 초안 전용. 사용자가 \"빠른 초안\"·\"대충\"을 직접 요청했을 때만 쓴다. \"홈페이지 만들어줘\"·\"시안\"은 mock_get_replica_kit 으로 메인과 서브를 한 장씩 받는다(초안 안에서는 메인·서브가 같은 가상 기관·색·글꼴·주 메뉴를 쓴다).",
   "4-3) mock_get_main_mockup(org_type) — 빠른 초안 전용(사용자가 초안을 직접 요청했을 때만). 채택률로 필수 블록·순서를 정하고 캐러셀·탭·메가 메뉴가 동작하는 완성형 한 장(가상 기관·글, 샘플 사진). 섹션을 쌓아 메인을 만들지 않는다.",
-  "4-4) mock_get_page_code(screen_id) — exemplars 화면 한 장을 바로 열리는 HTML 문서로 조립(LNB 2단 배치·샘플 사진 포함, Pro). 목업의 출발점으로 쓰고 문구만 바꾼다.",
+  "4-4) mock_get_page_code(screen_id) — exemplars 화면 한 장을 바로 열리는 HTML 문서로 조립(LNB 2단 배치·샘플 사진 포함, Pro). 화면 한 장을 참고할 때 쓴다(시안 제작은 mock_get_replica_kit(page=…)).",
   "4-5) mock_get_sample_images(kind|section_type, tags?) — 목업 사진·배너 자리에 넣을 샘플 이미지. mock_get_section_code 는 이미 사진 자리에 넣어 준다.",
   "4-6) mock_assemble_screen(keyword, screen_type, org_type?) — 디자인 조립 명세(Assembly Spec JSON). 후보 화면 → 섹션 → 패턴(PatternSummary) → 컴포넌트(ComponentPlan) → 슬롯 배치를 거쳐, 슬롯마다 원본 section_id(ref)와 근거(rationale)를 붙이고 품질 게이트 7종(근거·복제 방지·원본 색 금지·KRDS·접근성·출처·삭제요청) 결과를 준다. 목업·코드는 이 명세의 슬롯 순서·영역·칸 수대로 만들고, 스타일은 spec.theme(KRDS 또는 고객 주색)만 쓴다 — 원본 기관 색을 쓰지 않는다. 각 슬롯의 근거 화면은 ref → mock_get_section_code·mock_get_screen 으로 본다. 응답 code 의 Page.tsx·Page.vue·theme.css 가 그 명세의 키트 구현이다(글·연락처는 가상 값).",
   "4-7) mock_get_replica_kit(org_type, org_name?, rank?, page?, primary?) — 시안·목업의 품질이 중요할 때(\"홈페이지 시안\", \"실제 사이트처럼\")는 이것을 쓴다. 레퍼런스 캡처와 줄·칸 좌표, 샘플 이미지, 아이콘, 동작 스크립트, 제작 절차를 한 번에 받고 직접 HTML 을 만든다: 배치는 레퍼런스와 같게(칸을 비우거나 넓게 늘이지 않는다), 글·이미지·색은 전부 바꾸고, 조작 요소는 전부 실제로 동작하게. 시안이 2종이면 rank 1·2 로 두 번 부른다. 빠른 초안은 mock_get_main_mockup·mock_build_homepage.",
@@ -294,6 +333,7 @@ const INSTRUCTIONS = [
   "'평가(rating)'는 홈박스 사용자(퍼블리셔·디자이너)가 매긴 값이고 '점수(score)'는 평가·KRDS·개편연도·인증·조회를 가중한 합성값이다.",
 ].join("\n");
 
+// ---------------------------------------------------------------- [공통] buildServer — 요청마다 새로 만든다(세션리스)
 function buildServer(key: string | null): McpServer {
   const server = new McpServer({ name: "powermcp", version: VERSION }, { instructions: INSTRUCTIONS });
   let registered = 0;
@@ -310,7 +350,7 @@ function buildServer(key: string | null): McpServer {
     if (i.code === "invalid_type") return `${p}: 형식이 맞지 않습니다(${String(i.expected ?? "")} 이어야 합니다)`;
     if (i.code === "too_small") return `${p}: 너무 짧거나 작습니다(최소 ${String(i.minimum)})`;
     if (i.code === "too_big") return `${p}: 너무 길거나 큽니다(최대 ${String(i.maximum)})`;
-    if (i.code === "invalid_value" || i.code === "invalid_enum_value") return `${p}: 허용된 값이 아닙니다${Array.isArray(i.values) ? `(${i.values.slice(0, 12).join("·")}${i.values.length > 12 ? " …" : ""})` : ""}`;
+    if (i.code === "invalid_value" || i.code === "invalid_enum_value") return `${p}: 허용된 값이 아닙니다${Array.isArray(i.values) ? `(${i.values.slice(0, 50).join("·")}${i.values.length > 50 ? " …" : ""})` : ""}`;
     if (i.code === "invalid_format" || i.code === "invalid_string") return `${p}: 형식이 맞지 않습니다`;
     return `${p}: 값이 맞지 않습니다`;
   };
@@ -348,8 +388,16 @@ function buildServer(key: string | null): McpServer {
   const addMeta = (res: unknown, extra: Record<string, unknown>) => {
     const c = (res as { content?: Array<{ type: string; text?: string }> } | null)?.content?.[0];
     if (!c || c.type !== "text" || typeof c.text !== "string") return;
-    try { const j = JSON.parse(c.text); if (j && typeof j === "object" && !Array.isArray(j)) { c.text = JSON.stringify({ ...j, ...extra, meta: { ...(j.meta ?? {}), ...(extra.meta as object ?? {}) } }, null, 2); return; } } catch { /* 글 응답 */ }
+    try { const j = JSON.parse(c.text); if (j && typeof j === "object" && !Array.isArray(j)) { const meta = { ...(j.meta ?? {}), ...(extra.meta as object ?? {}) }; c.text = JSON.stringify({ ...j, ...extra, ...(Object.keys(meta).length ? { meta } : {}) }, null, 2); return; } } catch { /* 글 응답 */ }
     c.text += "\n" + JSON.stringify(extra);
+  };
+  /** 첫 JSON 글을 structuredContent 로도 싣는다(MC-22 — content 와 둘 다). outputSchema 가 없으니 SDK 는 검증 없이 그대로 넘긴다.
+   *  글 응답(CSS·토큰 텍스트)·배열은 싣지 않는다. 큰 응답(재현 묶음 등)은 같은 JSON 을 두 번 보내지 않게 100KB 까지만 */
+  const addStructured = (res: unknown) => {
+    const r = res as { content?: Array<{ type: string; text?: string }>; structuredContent?: unknown } | null;
+    const c = r?.content?.[0];
+    if (!r || r.structuredContent !== undefined || !c || c.type !== "text" || typeof c.text !== "string" || c.text.length > 100_000) return;
+    try { const j: unknown = JSON.parse(c.text); if (j && typeof j === "object" && !Array.isArray(j)) r.structuredContent = j; } catch { /* 글 응답 */ }
   };
   const origRegister = server.registerTool.bind(server) as (...args: unknown[]) => unknown;
   (server as unknown as { registerTool: (...args: unknown[]) => unknown }).registerTool = (...args: unknown[]) => {
@@ -379,6 +427,7 @@ function buildServer(key: string | null): McpServer {
       }
       if (quota) extra.meta = { quota };
       if (Object.keys(extra).length) addMeta(res, extra);
+      addStructured(res);
       return res;
     };
     return origRegister(...args);
@@ -395,13 +444,19 @@ function buildServer(key: string | null): McpServer {
   const orgTypes = taxonomy.org_types.map((o) => o.id) as [string, ...string[]];
   const sectionTypes = taxonomy.section_types.map((s) => s.id) as [string, ...string[]];
   const pageTypes = taxonomy.page_types.map((p) => p.id) as [string, ...string[]];
-  const get = <T,>(path: string) => api<T>(path, pro ? "pro" : "free"); // guard 뒤에 불러야 pro 가 채워져 있다
+  // enum 인자 설명에 허용값을 그대로 싣는다(MC-06) — taxonomy 에서 만들어 손으로 적은 목록이 어긋나지 않게
+  const orgTypeDesc = `기관 유형 id(여러 개면 쉼표). 허용값: ${orgTypes.join("·")}`;
+  const sectionTypeDesc = `섹션 유형 id. 허용값: ${sectionTypes.join("·")}`;
+  const pageTypeDesc = `페이지 유형 id. 허용값: ${pageTypes.join("·")}`;
+  const deviceDesc = "pc(기본) 또는 mobile";
+  const get =<T,>(path: string) => api<T>(path, pro ? "pro" : "free"); // guard 뒤에 불러야 pro 가 채워져 있다
 
-  // ---------------------------------------------------------------- 합성 도구 3종 (차별점)
+  // ================================================================ [mock] powerMock
+  // ---------------------------------------------------------------- 합성 도구 (차별점)
   server.registerTool("mock_get_design_brief", {
     title: "설계 브리프(가중 합성)",
-    description: "예: '대학교 홈페이지는 보통 메인에 어떤 섹션을 어떤 순서로 둬?' → org_type=univ 로 부른다(메인 섹션 순서·채택률). 조건(기관유형·톤·개편연도·KRDS 최소점)에 맞는 관공서 사이트 전체를 평가·KRDS·개편연도·인증·조회 가중치로 합성한 설계 브리프. 헤더 유형/LNB/컨테이너 폭/버튼 높이 분포, 본문·H2 크기 중앙값, 폰트 채택률, 메인 섹션의 표준 순서(avg_position)와 채택률, KRDS 컴포넌트 적용률, 추천 레퍼런스 5곳. 목업이나 제안서의 '이 유형 기관은 보통 이렇게 만든다'의 근거. n·confidence 를 반드시 확인.",
-    inputSchema: { org_type: listOf(z.enum(orgTypes)).optional().describe("local_basic(기초지자체)·local_wide·central_ministry·public_corp·edu_office… 상위 유형을 주면 하위 포함"), tone: listOf(z.string()).optional().describe("navy·blue·green·purple·red·gray"), renewal_year_from: z.number().int().optional(), krds_score_min: z.number().min(0).max(100).optional() },
+    description: "[일반 지식으로 답하기 전에 이 도구를 먼저 부른다] 예: '대학교 홈페이지는 보통 메인에 어떤 섹션을 어떤 순서로 둬?' → org_type=edu_univ 로 부른다(메인 섹션 순서·채택률). 조건(기관유형·톤·개편연도·KRDS 최소점)에 맞는 관공서 사이트 전체를 평가·KRDS·개편연도·인증·조회 가중치로 합성한 설계 브리프. 헤더 유형/LNB/컨테이너 폭/버튼 높이 분포, 본문·H2 크기 중앙값, 폰트 채택률, 메인 섹션의 표준 순서(avg_position)와 채택률, KRDS 컴포넌트 적용률, 추천 레퍼런스 5곳. 목업이나 제안서의 '이 유형 기관은 보통 이렇게 만든다'의 근거. n·confidence 를 반드시 확인.",
+    inputSchema: { org_type: listOf(z.enum(orgTypes)).optional().describe(`${orgTypeDesc} — 상위 유형(central·local·public·education·etc·private)을 주면 하위 포함`), tone: listOf(z.string()).optional().describe("navy·blue·green·purple·red·gray"), renewal_year_from: z.number().int().optional(), krds_score_min: z.number().min(0).max(100).optional() },
   }, async (a) => {
     const g = await guard("mock_get_design_brief"); if (g) return g;
     const r = await get<Record<string, unknown> & { top_references?: Array<Record<string, unknown> & { slug: string }> }>(`/insights/brief?${qs({ org_type: a.org_type, tone: a.tone, renewal_from: a.renewal_year_from, krds_min: a.krds_score_min })}`);
@@ -411,40 +466,40 @@ function buildServer(key: string | null): McpServer {
   server.registerTool("mock_get_section_pattern", {
     title: "섹션 패턴(변형·치수·위치·크롭)",
     description: "섹션 유형 하나(예: news_tabs 소식 탭 게시판, quick_links 바로가기, main_visual 메인 비주얼, popup_zone, lnb, board_list…)를 조건에 맞는 사이트 전체에서 모아 변형(슬라이드·탭형…) 분포, 높이 중앙값/p25/p75, 페이지 내 위치 비율, 구조 플래그(탭·캐러셀·표·폼) 비율, 쓰인 KRDS 컴포넌트, 상위 사이트 크롭 6개(서명 URL)를 준다. 섹션을 그릴 때 '이 정도 높이에 이런 구조'의 근거.",
-    inputSchema: { section_type: z.enum(sectionTypes), org_type: listOf(z.enum(orgTypes)).optional(), tone: listOf(z.string()).optional(), device: z.enum(["pc", "mobile"]).optional(), renewal_year_from: z.number().int().optional() },
+    inputSchema: { section_type: z.enum(sectionTypes).describe(sectionTypeDesc), org_type: listOf(z.enum(orgTypes)).optional().describe(orgTypeDesc), tone: listOf(z.string()).optional(), device: z.enum(["pc", "mobile"]).optional().describe(deviceDesc), renewal_year_from: z.number().int().optional() },
   }, async (a) => {
     const g = await guard("mock_get_section_pattern"); if (g) return g;
     const r = await get<Record<string, unknown> & { exemplars?: Array<Record<string, unknown> & { slug: string; title?: string; screen_id: number; section_id: number; crop_url?: string | null; variant?: string | null; h?: number }> }>(`/insights/section?${qs({ type: a.section_type, org_type: a.org_type, tone: a.tone, device: a.device ?? "pc", renewal_from: a.renewal_year_from })}`);
     const ex = r.exemplars ?? [];
     return withImages({ ...r, exemplars: ex.map((e) => ({ ...e })), attribution: ATTRIBUTION }, pro,
-      ex.slice(0, 4).map((e) => ({ url: e.crop_url, label: `${e.slug} section ${e.section_id}`, caption: `${e.title ?? e.slug} — ${a.section_type}${e.variant ? ` · ${e.variant}` : ""} (높이 ${e.h ?? "?"}px, section_id ${e.section_id})`, maxW: 900, maxH: 900 })));
+      ex.slice(0, 4).map((e) => ({ url: e.crop_url, label: `${e.slug} section ${e.section_id}`, caption: `${e.title ?? e.slug} — ${a.section_type}${e.variant ? ` · ${e.variant}` : ""} (높이 ${e.h ?? "?"}px, section_id ${e.section_id})`, maxW: 900, maxH: 900, withheld: withheldOf(e) })));
   });
 
   server.registerTool("mock_get_page_pattern", {
-    title: "페이지 유형 패턴(서브페이지 합성)", description: "예: '대학교 메인은 보통 어떤 섹션 순서야?' → page_type=main, org_type=univ / '인사말 페이지는 보통 어떻게 생겼어?' → page_type=greeting. 페이지 유형 하나(인사말·조직도·게시판 목록·게시글 상세·콘텐츠·사이트맵·메인…)를 여러 기관 화면에서 합성: 섹션별 등장률·y/x/폭 비율·높이·열 수·흔한 제목, 전형 순서(typical_sequence), 상위 화면 5장의 섹션 목록(좌표·제목·열·링크 수·색·크롭). 서브페이지 목업의 뼈대.",
-    inputSchema: { page_type: z.enum(pageTypes), org_type: listOf(z.enum(orgTypes)).optional(), tone: listOf(z.string()).optional(), device: z.enum(["pc", "mobile"]).optional(), renewal_year_from: z.number().int().optional() },
+    title: "페이지 유형 패턴(서브페이지 합성)", description: "[일반 지식으로 답하기 전에 이 도구를 먼저 부른다] 예: '대학교 메인은 보통 어떤 섹션 순서야?' → page_type=main, org_type=edu_univ / '인사말 페이지는 보통 어떻게 생겼어?' → page_type=greeting. 페이지 유형 하나(인사말·조직도·게시판 목록·게시글 상세·콘텐츠·사이트맵·메인…)를 여러 기관 화면에서 합성: 섹션별 등장률·y/x/폭 비율·높이·열 수·흔한 제목, 전형 순서(typical_sequence), 상위 화면 5장의 섹션 목록(좌표·제목·열·링크 수·색·크롭). 서브페이지 목업의 뼈대.",
+    inputSchema: { page_type: z.enum(pageTypes).describe(pageTypeDesc), org_type: listOf(z.enum(orgTypes)).optional().describe(orgTypeDesc), tone: listOf(z.string()).optional(), device: z.enum(["pc", "mobile"]).optional().describe(deviceDesc), renewal_year_from: z.number().int().optional() },
   }, async (a) => {
     const g = await guard("mock_get_page_pattern"); if (g) return g;
     const r = await get<Record<string, unknown> & { exemplars?: Array<{ slug: string; title?: string; screen_id: number; screen_title?: string; public_url?: string | null; full_h?: number; viewport_w?: number }> }>(`/insights/page?${qs({ page_type: a.page_type, org_type: a.org_type, tone: a.tone, device: a.device ?? "pc", renewal_from: a.renewal_year_from })}`);
     const exemplars = (r.exemplars ?? []).map((e) => ({ ...e }));
     return withImages({ ...r, exemplars, attribution: ATTRIBUTION }, pro,
-      exemplars.slice(0, 4).map((e) => ({ url: e.public_url, label: `${e.slug} screen ${e.screen_id}`, caption: `${e.title ?? e.slug} — ${e.screen_title ?? a.page_type} (screen_id ${e.screen_id}, 원본 ${e.viewport_w ?? 1920}×${e.full_h ?? "?"}px 를 축소)`, maxW: 760, maxH: 1900 })));
+      exemplars.slice(0, 4).map((e) => ({ url: e.public_url, label: `${e.slug} screen ${e.screen_id}`, caption: `${e.title ?? e.slug} — ${e.screen_title ?? a.page_type} (screen_id ${e.screen_id}, 원본 ${e.viewport_w ?? 1920}×${e.full_h ?? "?"}px 를 축소)`, maxW: 760, maxH: 1900, withheld: withheldOf(e) })));
   });
 
   server.registerTool("mock_recommend_references", {
     title: "레퍼런스 추천(가중 순위 + 근거)",
     description: "조건에 맞는 사이트를 평가 0.35·KRDS 0.25·개편연도 0.20·접근성 인증 0.10·조회 0.10 가중으로 순위 매겨 why(선정 근거 문장)와 디자인 요약(톤·주색·헤더·컨테이너·본문 폰트)을 준다. '어느 사이트를 참고할까'에 대한 답. 결과의 slug 로 mock_get_site 를 이어 부른다.",
-    inputSchema: { org_type: listOf(z.enum(orgTypes)).optional(), tone: listOf(z.string()).optional(), renewal_year_from: z.number().int().optional(), krds_score_min: z.number().min(0).max(100).optional(), limit: z.number().int().min(1).max(20).optional() },
+    inputSchema: { org_type: listOf(z.enum(orgTypes)).optional().describe(orgTypeDesc), tone: listOf(z.string()).optional(), renewal_year_from: z.number().int().optional(), krds_score_min: z.number().min(0).max(100).optional(), limit: z.number().int().min(1).max(20).optional() },
   }, async (a) => {
     const g = await guard("mock_recommend_references"); if (g) return g;
     const r = await get<{ n: number; weights: unknown; items: Array<Record<string, unknown> & { slug: string }> }>(`/insights/references?${qs({ org_type: a.org_type, tone: a.tone, renewal_from: a.renewal_year_from, krds_min: a.krds_score_min, limit: a.limit ?? 5 })}`);
     return text({ ...r, items: r.items.map((s) => ({ ...s })), attribution: ATTRIBUTION });
   });
 
-  // ---------------------------------------------------------------- 조회 도구 6종
+  // ---------------------------------------------------------------- 조회 도구 · 코드 · 초안 · 재현 묶음
   server.registerTool("mock_search_sites", {
     title: "관공서 사이트 검색", description: "기관유형·톤·레이아웃·개편연도·접근성 인증·KRDS 점수로 관공서 사이트를 검색한다. 기본 정렬은 사용자 평가(rating)가 높은 순. 결과에는 디자인 요약(주색·폰트·컨테이너·헤더 유형)과 썸네일 링크가 포함된다. 순위 근거가 필요하면 mock_recommend_references 를 쓴다.",
-    inputSchema: { query: z.string().optional(), org_type: listOf(z.enum(orgTypes)).optional(), tone: listOf(z.string()).optional().describe("navy·green·blue·purple…"), layout: listOf(z.string()).optional().describe("layout_mega·layout_lnb_left…"), renewal_year_from: z.number().int().optional(), renewal_year_to: z.number().int().optional(), wa_certified: z.boolean().optional(), krds_score_min: z.number().min(0).max(100).optional(), sort: z.enum(["rating", "renewed", "newest", "views", "krds"]).optional(), limit: z.number().int().min(1).max(50).optional(), cursor: z.string().optional() },
+    inputSchema: { query: z.string().optional(), org_type: listOf(z.enum(orgTypes)).optional().describe(orgTypeDesc), tone: listOf(z.string()).optional().describe("navy·green·blue·purple…"), layout: listOf(z.string()).optional().describe("layout_mega·layout_lnb_left…"), renewal_year_from: z.number().int().optional(), renewal_year_to: z.number().int().optional(), wa_certified: z.boolean().optional(), krds_score_min: z.number().min(0).max(100).optional(), sort: z.enum(["rating", "renewed", "newest", "views", "krds"]).optional().describe("rating(기본, 평가순)·renewed(개편순)·newest(등록순)·views(조회순)·krds(KRDS 점수순)"), limit: z.number().int().min(1).max(50).optional(), cursor: z.string().optional() },
   }, async (a) => {
     const g = await guard("mock_search_sites"); if (g) return g;
     const r = await get<{ total: number; items: Array<Record<string, unknown> & { slug: string }>; next_cursor: string | null }>(`/sites?${qs({ q: a.query, org_type: a.org_type, tone: a.tone, layout: a.layout, renewal_from: a.renewal_year_from, renewal_to: a.renewal_year_to, wa: a.wa_certified === undefined ? undefined : a.wa_certified ? 1 : 0, krds_min: a.krds_score_min, sort: a.sort ?? "rating", limit: a.limit ?? 20, cursor: a.cursor })}`);
@@ -461,8 +516,8 @@ function buildServer(key: string | null): McpServer {
   });
 
   server.registerTool("mock_get_design_system", {
-    title: "기관 디자인 시스템(KRDS 분류 + 토큰)", description: "사이트 1곳의 디자인 시스템 문서(hb-ds/1) — KRDS 스타일 가이드 분류(색상·타이포그래피·형태·레이아웃·아이콘·엘리베이션)로 정리. 주색과 5~95 단계(파생)·역할별 색·대비비(AA 판정), KRDS 토큰 이름(display·heading-large…detail)에 대응한 실측 타이포 스케일, 모서리 반경·버튼/입력 높이, 컨테이너·4구간 브레이크포인트·헤더/LNB·메인 섹션 순서, 아이콘 스타일, 그림자. format=css|tailwind 면 바로 붙여 쓸 수 있는 CSS 변수·Tailwind v4 @theme 텍스트, tokens 면 평면 토큰 맵. '이 기관 톤으로 마크업을 짜라'에 쓴다. Pro 전용(Free 키는 채워진 카테고리 목록만).",
-    inputSchema: { slug: z.string().describe("사이트 slug (예: seongnam-go-kr-main)"), format: z.enum(["json", "css", "tailwind", "tokens"]).optional().describe("기본 json(전체 문서)") },
+    title: "기관 디자인 시스템(KRDS 분류 + 토큰)", description: "사이트 1곳의 디자인 시스템 문서(hb-ds/1) — KRDS 스타일 가이드 분류(색상·타이포그래피·형태·레이아웃·아이콘·엘리베이션)로 정리. 주색과 5~95 단계(파생)·역할별 색·대비비(AA 판정), KRDS 토큰 이름(display·heading-large…detail)에 대응한 실측 타이포 스케일, 모서리 반경·버튼/입력 높이, 컨테이너·4구간 브레이크포인트·헤더/LNB·메인 섹션 순서, 아이콘 스타일, 그림자. format=css|tailwind 면 바로 붙여 쓸 수 있는 CSS 변수·Tailwind v4 @theme 텍스트, tokens 면 평면 토큰 맵, powerguide 면 powerGuide 토큰 형식(DTCG {$value,$type}, guide_tokens 의 tokens.json 과 같은 구조). '이 기관 톤으로 마크업을 짜라'에 쓴다. Pro 전용(Free 키는 채워진 카테고리 목록만).",
+    inputSchema: { slug: z.string().describe("사이트 slug (예: seongnam-go-kr-main)"), format: z.enum(["json", "css", "tailwind", "tokens", "powerguide"]).optional().describe("json(기본, 전체 문서)·css(CSS 변수)·tailwind(Tailwind v4 @theme)·tokens(평면 토큰 맵)·powerguide(powerGuide 토큰 형식 — tokens.json 과 같은 DTCG {$value,$type} 구조)") },
   }, async (a) => {
     const g = await guard("mock_get_design_system"); if (g) return g;
     const fmt = a.format ?? "json";
@@ -470,7 +525,8 @@ function buildServer(key: string | null): McpServer {
     if (fmt === "css" || fmt === "tailwind") {
       const res = await fetch(`${API}${path}`, { headers: legacyHeaders(pro ? "pro" : "free", "text/css") });
       const body = await res.text();
-      if (!res.ok) { let m = `HTTP ${res.status}`; try { m = (JSON.parse(body) as { error?: { message: string } }).error?.message ?? m; } catch { /* 텍스트 */ } return err(m, res.status === 402 ? "UPGRADE_REQUIRED" : "ERROR"); }
+      // 오류 코드는 api() 와 같은 규칙(402·403 = PLAN_REQUIRED) — 이 갈래만 UPGRADE_REQUIRED 로 달랐다(MC-21)
+      if (!res.ok) { let m = `HTTP ${res.status}`; let code = res.status === 404 ? "NOT_FOUND" : res.status === 402 || res.status === 403 ? "PLAN_REQUIRED" : res.status === 400 ? "BAD_REQUEST" : "ERROR"; try { const j = JSON.parse(body) as { error?: { message?: string; code?: string } }; m = j.error?.message ?? m; code = j.error?.code ?? code; } catch { /* 텍스트 */ } return err(m, code); }
       return { content: [{ type: "text" as const, text: body }] };
     }
     const r = await get<Record<string, unknown>>(path);
@@ -479,7 +535,7 @@ function buildServer(key: string | null): McpServer {
 
   server.registerTool("mock_search_sections", {
     title: "섹션 검색(사이트 단위)", description: "사이트 1곳의 섹션(헤더·메인비주얼·바로가기·소식 탭 게시판·팝업존·뉴스티커·경로·페이지 타이틀·탭·LNB·게시판·만족도·푸터…) 크롭 목록. 각 항목에 structure.flags(탭·캐러셀·표·폼·페이지네이션)와 텍스트 발췌가 있어 이미지를 열지 않아도 구조를 알 수 있다. 여러 사이트를 가로지르는 패턴은 mock_get_section_pattern.",
-    inputSchema: { slug: z.string(), section_type: listOf(z.enum(sectionTypes)).optional(), page_type: listOf(z.enum(pageTypes)).optional().describe("main·greeting·org_chart·board_list… 그 유형 화면의 섹션만"), screen_id: z.number().int().optional(), device: z.enum(["pc", "mobile"]).optional(), compact: z.boolean().optional().describe("true(기본) = 크롭 URL·패싯 없이 위치·구성만 — 응답이 작다"), limit: z.number().int().min(1).max(200).optional() },
+    inputSchema: { slug: z.string(), section_type: listOf(z.enum(sectionTypes)).optional().describe(`${sectionTypeDesc} (여러 개면 쉼표)`), page_type: listOf(z.enum(pageTypes)).optional().describe(`그 유형 화면의 섹션만. ${pageTypeDesc}`), screen_id: z.number().int().optional(), device: z.enum(["pc", "mobile"]).optional().describe(deviceDesc), compact: z.boolean().optional().describe("true(기본) = 크롭 URL·패싯 없이 위치·구성만 — 응답이 작다"), limit: z.number().int().min(1).max(200).optional() },
   }, async (a) => {
     const g = await guard("mock_search_sections"); if (g) return g;
     const r = await get<{ total: number; facets: unknown; items: Array<Record<string, unknown> & { id: number; screen_id: number }> }>(`/sites/${encodeURIComponent(a.slug)}/sections?${qs({ device: a.device ?? "pc", section_type: a.section_type, page_type: a.page_type, screen_id: a.screen_id })}`);
@@ -497,10 +553,10 @@ function buildServer(key: string | null): McpServer {
     inputSchema: { screen_id: z.number().int() },
   }, async (a) => {
     const g = await guard("mock_get_screen"); if (g) return g;
-    const r = await get<Record<string, unknown> & { screen?: { site_slug?: string; site_title?: string; title?: string; public_url?: string; full_h?: number } }>(`/screens/${a.screen_id}`);
+    const r = await get<Record<string, unknown> & { screen?: { site_slug?: string; site_title?: string; title?: string; public_url?: string | null; full_h?: number; kogl?: KoglInfo } }>(`/screens/${a.screen_id}`);
     const s = r.screen ?? {};
     return withImages({ ...r, attribution: ATTRIBUTION }, pro,
-      [{ url: s.public_url, label: `${s.site_slug ?? ""} screen ${a.screen_id}`, caption: `${s.site_title ?? ""} — ${s.title ?? ""} (1920×${s.full_h ?? "?"}px 를 축소. 섹션 bbox 는 원본 좌표)`, maxW: 960, maxH: 2600 }]);
+      [{ url: s.public_url, label: `${s.site_slug ?? ""} screen ${a.screen_id}`, caption: `${s.site_title ?? ""} — ${s.title ?? ""} (1920×${s.full_h ?? "?"}px 를 축소. 섹션 bbox 는 원본 좌표)`, maxW: 960, maxH: 2600, withheld: koglWithheld(s.kogl, s.public_url) }]);
   });
 
   server.registerTool("mock_get_section_code", {
@@ -512,20 +568,21 @@ function buildServer(key: string | null): McpServer {
     // 샘플 이미지는 공개 주소로 — 받은 HTML 을 파일로 저장해 열면 사진이 그대로 보이게
     const html = (r.html ?? "").replace(/src="(\/[^"]*\/api\/samples\/file\/|\/api\/samples\/file\/)/g, (_m, p: string) => `src="${PUBLIC_ORIGIN}${p}`);
     return withImages({ ...r, html, sample_images: (r.sample_images ?? []).map(absSample), attribution: ATTRIBUTION }, pro,
-      [{ url: r.crop_url, label: `${r.site_slug ?? ""} section ${a.section_id}`, caption: `${r.site_slug ?? ""} ${r.section_type ?? ""} 원본 크롭 — 코드와 나란히 보고 차이를 보정`, maxW: 900, maxH: 1200 }]);
+      [{ url: r.crop_url, label: `${r.site_slug ?? ""} section ${a.section_id}`, caption: `${r.site_slug ?? ""} ${r.section_type ?? ""} 원본 크롭 — 코드와 나란히 보고 차이를 보정`, maxW: 900, maxH: 1200, withheld: withheldOf(r) }]);
   });
 
   server.registerTool("mock_get_page_code", {
     title: "페이지 코드(한 장 조립)",
-    description: "화면 한 장을 바로 열리는 HTML 문서로 조립한다. 섹션 코드를 위→아래로 쌓되 LNB 가 있으면 [LNB | 본문] 2단으로 배치하고, 사진 자리에는 홈박스 샘플 이미지(가상 인물·풍경)를 넣는다. screen_id 는 mock_get_page_pattern exemplars 에서. 목업의 출발점 — 받은 뒤 문구를 내 기관 내용으로 바꾸고 섹션을 더하거나 뺀다. Pro 이상.",
+    description: "화면 한 장을 바로 열리는 HTML 문서로 조립한다. 섹션 코드를 위→아래로 쌓되 LNB 가 있으면 [LNB | 본문] 2단으로 배치하고, 사진 자리에는 홈박스 샘플 이미지(가상 인물·풍경)를 넣는다. screen_id 는 mock_get_page_pattern exemplars 에서. 화면 한 장을 참고할 때 쓴다 — 시안·홈페이지 요청은 mock_get_replica_kit(page=…)이 기본이다. 받은 뒤 문구를 내 기관 내용으로 바꾸고 섹션을 더하거나 뺀다. Pro 이상.",
     inputSchema: { screen_id: z.number().int() },
   }, async (a) => {
     const g = await guard("mock_get_page_code"); if (g) return g;
     const r = await get<Record<string, unknown> & { html?: string; sample_images?: SampleImage[]; site_slug?: string }>(`/screens/${a.screen_id}/code`);
     const html = (r.html ?? "").replace(/src="(\/[^"]*\/api\/samples\/file\/|\/api\/samples\/file\/)/g, (_m, p: string) => `src="${PUBLIC_ORIGIN}${p}`);
-    const scr = await get<{ public_url?: string | null }>(`/screens/${a.screen_id}`).catch(() => null);
+    // /screens/{id} 응답은 { screen: { public_url, kogl } } — 예전엔 scr.public_url 을 읽어 원본 화면 이미지가 늘 빠졌다(2026-10-15 수정)
+    const scr = await get<{ screen?: { public_url?: string | null; kogl?: KoglInfo } }>(`/screens/${a.screen_id}`).catch(() => null);
     return withImages({ ...r, html, sample_images: (r.sample_images ?? []).map(absSample), attribution: ATTRIBUTION }, pro,
-      [{ url: scr?.public_url, label: `${r.site_slug ?? ""} screen ${a.screen_id}`, caption: `원본 화면(축소) — 조립 결과와 나란히 보고 간격·색을 보정`, maxW: 760, maxH: 1900 }]);
+      [{ url: scr?.screen?.public_url, label: `${r.site_slug ?? ""} screen ${a.screen_id}`, caption: `원본 화면(축소) — 조립 결과와 나란히 보고 간격·색을 보정`, maxW: 760, maxH: 1900, withheld: koglWithheld(scr?.screen?.kogl, scr?.screen?.public_url) }]);
   });
 
   server.registerTool("mock_get_main_mockup", {
@@ -547,7 +604,7 @@ function buildServer(key: string | null): McpServer {
       org_name: z.string().max(30).optional().describe("고객 기관명(예: 청주시청) — 기관 종류(시·군·구·도·청…)에 맞는 가상 기관(한빛시·새솔군·푸른구…)으로 만든다. 레퍼런스가 구청이어도 시청 요청은 시로 나온다. 실제 기관명·로고로 바꾸는 것은 받은 HTML 에서"),
       ref: z.string().optional().describe("메인 레퍼런스 사이트 slug(선택)"),
       rank: z.number().int().min(1).max(50).optional().describe("1=가중 점수 1위 레퍼런스, 2·3…=다른 구성"),
-      pages: listOf(z.enum(pageTypes)).optional().describe("서브페이지 유형 목록, 기본 board_list,content,greeting"),
+      pages: listOf(z.enum(pageTypes)).optional().describe(`서브페이지 유형 목록(쉼표), 기본 board_list,content,greeting. ${pageTypeDesc}`),
       primary: z.string().regex(/^#[0-9A-Fa-f]{6}$/).optional().describe("고객 주색 — 모든 페이지에 적용"),
       font: z.string().max(40).optional().describe("고객 글꼴 이름 — 예 Noto Sans KR, Nanum Gothic"),
     },
@@ -562,17 +619,17 @@ function buildServer(key: string | null): McpServer {
 
   server.registerTool("mock_get_replica_kit", {
     title: "재현 묶음(실제 사이트 수준 시안을 직접 만들 재료)",
-    description: "실제 관공서 사이트 수준의 시안이 필요할 때 쓴다. 레퍼런스 화면 한 장의 캡처(여러 장으로 잘라 첨부)·줄 묶음(rows)·섹션 좌표와 구성(sections)과 함께, 가상 기관(persona)·색(theme)·샘플 이미지 전체(samples)·머티리얼 아이콘(icons)·동작 스크립트와 규약(behavior)·제작 절차(procedure)·검사 기준(acceptance)을 한 번에 준다. 받은 AI 가 직접 HTML 한 파일을 만든다 — 배치(줄·칸·크기·간격·밀도)는 레퍼런스와 같게, 글·이미지·색은 전부 바꾸고, 캐러셀·탭·메뉴·레이어·검색은 behavior 규약으로 실제 동작하게. mock_get_main_mockup(자동 조립)보다 품질이 높지만 만드는 데 시간이 든다. 서브페이지는 page 에 유형을 준다(같은 사이트의 화면을 먼저 고른다).",
+    description: "[시안·목업·홈페이지 제작 요청의 기본 도구] 실제 관공서 사이트 수준의 시안이 필요할 때 쓴다. 레퍼런스 화면 한 장의 캡처(여러 장으로 잘라 첨부)·줄 묶음(rows)·섹션 좌표와 구성(sections)과 함께, 가상 기관(persona)·색(theme)·샘플 이미지 전체(samples)·머티리얼 아이콘(icons)·동작 스크립트와 규약(behavior)·제작 절차(procedure)·검사 기준(acceptance)을 한 번에 준다. 받은 AI 가 직접 HTML 한 파일을 만든다 — 배치(줄·칸·크기·간격·밀도)는 레퍼런스와 같게, 글·이미지·색은 전부 바꾸고, 캐러셀·탭·메뉴·레이어·검색은 behavior 규약으로 실제 동작하게. mock_get_main_mockup(자동 조립)보다 품질이 높지만 만드는 데 시간이 든다. 서브페이지는 page 에 유형을 준다(같은 사이트의 화면을 먼저 고른다).",
     inputSchema: {
       org_type: z.string().optional().describe("기관 유형 id — 예 local_basic·central_ministry·public_corp·edu_univ_private·edu_school·etc_welfare·etc_assoc·private_corp·private_culture. 비우면 org_name 으로 짐작한다(대학교·학교·복지관·재단·협회·미술관·회사 등). 게시 레퍼런스가 없는 종류는 가까운 종류로 넓혀 고른다"),
       org_name: z.string().max(30).optional().describe("고객 기관명(예: 청운군청·한빛대학교·한빛복지관·한빛문화재단·한빛솔루션) — 관공서·대학·학교·복지관·재단·협회·문화시설·기업 어느 종류든 된다. 기관장 직함(시장·총장·교장·관장·이사장·대표이사)·주 메뉴·문구가 그 종류에 맞게 나온다. 없으면 레퍼런스 종류에 맞는 가상 기관"),
       ref: z.string().optional().describe("레퍼런스 사이트 slug(선택)"),
       rank: z.number().int().min(1).max(50).optional().describe("1=가중 점수 1위 레퍼런스, 2·3…=다른 레퍼런스(시안을 여러 개 만들 때)"),
-      page: z.enum(["main", ...pageTypes.filter((p) => p !== "main")] as [string, ...string[]]).optional().describe("기본 main. 서브는 board_list·board_view·content·greeting 등"),
+      page: z.enum(["main", ...pageTypes.filter((p) => p !== "main")] as [string, ...string[]]).optional().describe(`기본 main. 서브는 board_list·board_view·content·greeting 등. ${pageTypeDesc}`),
       primary: z.string().regex(/^#[0-9A-Fa-f]{6}$/).optional().describe("고객 주색"),
       font: z.string().max(40).optional().describe("고객 글꼴 이름"),
       width: z.number().int().min(960).max(1880).optional().describe("PC 본문 폭 px — 고객이 폭을 정했을 때만. 생략하면 최소 1400px(레퍼런스가 좁으면 칸 비율을 지켜 넓혀 준다)"),
-      lang: z.enum(["ko", "en", "ja", "zh", "fr", "es", "de", "vi"]).optional().describe("제작 언어 — 생략하면 한국어. 영어·일본어 등이면 응답 language.rule 대로 메뉴·본문·기관 이름까지 그 언어로 만든다"),
+      lang: z.enum(["ko", "en", "ja", "zh", "fr", "es", "de", "vi"]).optional().describe("제작 언어(허용값: ko·en·ja·zh·fr·es·de·vi) — 생략하면 한국어. 영어·일본어 등이면 응답 language.rule 대로 메뉴·본문·기관 이름까지 그 언어로 만든다"),
       zoom: z.boolean().optional().describe("true 면 참고 이미지를 본문 폭만 잘라 더 크게 준다(좌우 여백 제외). 처음엔 생략해 전체를 보고, 글자 크기·칸 안쪽이 안 읽히면 true 로 한 번 더 부른다"),
     },
   }, async (a) => {
@@ -581,7 +638,7 @@ function buildServer(key: string | null): McpServer {
     const ref = r.reference ?? {};
     const cbox = (ref as { content?: { x: number; w: number } }).content;
     const zoom = a.zoom && cbox ? { x: cbox.x, w: cbox.w, vw: ref.width ?? 1920 } : undefined;
-    type Piece = { src: string; screen_id: number; src_y: number; src_h: number; y: number; h: number; capture_url?: string | null };
+    type Piece = { src: string; screen_id: number; src_y: number; src_h: number; y: number; h: number; capture_url?: string | null; image_withheld?: string | null };
     const mix = (ref as { mix?: { pieces?: Piece[] } | null }).mix ?? null;
     let slices: Array<{ block: ImageBlock; from: number; to: number; scale: number; src?: string }> = [];
     if (pro && mix?.pieces?.length) {
@@ -592,7 +649,12 @@ function buildServer(key: string | null): McpServer {
       ));
       const pieces = mix.pieces;
       const missing: string[] = [];
-      perPiece.forEach((part, i) => { const p = pieces[i]; if (!p) return; if (!part.length) { missing.push(`${p.src}(screen ${p.screen_id} y${p.src_y}~${p.src_y + p.src_h} → 시안 y${p.y}~${p.y + p.h})`); } });
+      const withheld: string[] = []; // 공공누리 2~4유형이라 레퍼런스 엔진이 원본을 뺀 조각(O-04) — "못 읽음"과 구분해 알린다
+      perPiece.forEach((part, i) => {
+        const p = pieces[i]; if (!p || part.length) return;
+        const where = `${p.src}(screen ${p.screen_id} y${p.src_y}~${p.src_y + p.src_h} → 시안 y${p.y}~${p.y + p.h})`;
+        if (withheldOf(p)) withheld.push(`${where} — ${withheldOf(p)}`); else missing.push(where);
+      });
       // 라운드로빈 인터리브: 각 조각에서 1장씩 번갈아 가져온다.
       // 응답 크기(D8): 첫 바퀴(조각당 1장)는 무조건, 그다음부터는 이미지 합계 약 380KB(base64) 안에서만 더 싣는다.
       let bytes = 0;
@@ -607,21 +669,27 @@ function buildServer(key: string | null): McpServer {
         });
         if (slices.length >= 14) break;
       }
-      if (missing.length) {
+      if (missing.length || withheld.length) {
         (ref as Record<string, unknown>).images_missing = {
-          pieces: missing,
-          note: "이 구간의 참고 이미지가 없어 좌표(sections·rows)로만 만들어야 한다. 글자 크기·칸 안쪽이 불확실하면 zoom=true로 한 번 더 부르거나 rank를 바꿔 다시 부른다.",
+          ...(missing.length ? { pieces: missing } : {}),
+          ...(withheld.length ? { withheld, withheld_reason: "공공누리 제한(2~4유형, 상업 이용·변경 제한)으로 원본 이미지를 제공하지 않는 구간이다 — 오류가 아니다. 다시 불러도 같다." } : {}),
+          note: "이 구간의 참고 이미지가 없어 좌표(sections·rows)로만 만들어야 한다. 글자 크기·칸 안쪽이 불확실하면 zoom=true로 한 번 더 부르거나 rank를 바꿔 다시 부른다(공공누리 제한 구간은 rank 를 바꿔야 이미지가 있는 레퍼런스가 나온다).",
         };
       }
       mix.pieces = mix.pieces.map((p) => ({ ...p, capture_url: undefined }));
     } else if (pro) {
       slices = await refSlices(ref.capture_url, `${ref.site_slug ?? ""} screen ${ref.screen_id ?? ""}`, 900, 1500, zoom ? 12 : 8, zoom);
     }
+    // 단일 레퍼런스가 공공누리 제한이면(reference.kogl.note) 그 이유를 images_missing 에 싣는다(O-04)
+    const singleWithheld = !mix ? koglWithheld((ref as { kogl?: KoglInfo }).kogl, ref.capture_url) : null;
+    if (singleWithheld) (ref as Record<string, unknown>).images_missing = { withheld: [`${ref.site_slug ?? "?"} screen ${ref.screen_id ?? "?"} — ${singleWithheld}`], withheld_reason: "공공누리 제한(2~4유형)으로 원본 이미지를 제공하지 않는다 — 오류가 아니다. 이미지가 필요하면 rank 를 바꿔 다른 레퍼런스를 받는다." };
     const scale = slices[0]?.scale ?? null;
     const data = { ...r, reference: { ...ref, capture_url: undefined, images: slices.length ? { count: slices.length, width: 900, scale, x_offset: zoom ? zoom.x : 0, note: `${zoom ? `본문 폭만 자른 확대본이다(원본 x ${zoom.x}~${zoom.x + zoom.w}). 원본 x = 이미지 x ÷ scale + x_offset. ` : ""}참고 이미지는 원본의 ${scale ? Math.round(scale * 100) : "?"}% 크기다. 이미지에서 잰 px ÷ scale = 원본 px. sections 의 x·y·w·h(원본 px)는 자동 분해라 칸이 빠지거나 합쳐졌을 수 있다 — 이미지와 다르면 이미지가 우선이다.` } : null }, attribution: ATTRIBUTION };
     const content: Array<TextBlock | ImageBlock> = [{ type: "text", text: JSON.stringify(data) }];
     slices.forEach((s, i) => content.push({ type: "text", text: `[참고 이미지 ${i + 1}/${slices.length}] ${s.src ? `출처 ${s.src} · 시안 y ${s.from}~${s.to}px 구간` : `레퍼런스 캡처 y ${s.from}~${s.to}px (원본 px 기준)`} — 이 구간의 줄·칸·글자 크기·둥글기·겹침을 그대로 따른다${s.src ? "(가로는 본문 폭 container_w 에 맞춘다)" : ""}` }, s.block));
-    if (!slices.length) content.push({ type: "text", text: pro
+    if (!slices.length) content.push({ type: "text", text: singleWithheld
+      ? `참고 이미지 미제공 — 공공누리 제한: ${singleWithheld} rank 를 바꾸면 이미지가 있는 다른 레퍼런스를 받을 수 있습니다.`
+      : pro
       ? `참고 이미지를 싣지 못했습니다 — 레퍼런스 캡처(${ref.site_slug ?? "?"} screen ${ref.screen_id ?? "?"})를 서버에서 읽지 못했습니다. ref 를 비우거나 rank 를 바꿔 다시 부르세요. 좌표만으로 만들면 품질이 크게 떨어집니다.`
       : "참고 이미지를 싣지 못했습니다(Pro 이상 키에서 제공). sections·rows 의 좌표로만 만들면 품질이 떨어집니다." });
     return { content };
@@ -681,8 +749,8 @@ function buildServer(key: string | null): McpServer {
 
   server.registerTool("mock_get_design_preferences", {
     title: "디자이너 선호 규칙(A/B 투표)",
-    description: "예: '검색 버튼은 입력칸 안쪽이 좋아, 바깥이 좋아?' → q='검색' 으로 부른다. 'A가 좋아 B가 좋아' 식 UI 질문은 짐작으로 답하지 말고 이 도구의 투표 결과로 답한다. 디자이너들이 A/B 투표로 더 낫다고 고른 UI 방식(designus, 참여 300명 이상·한쪽 65% 이상만). 예: 수량은 드롭다운보다 −/+ 스테퍼(98%), 생년월일은 휠 피커보다 키패드 입력(77%). 관공서 수집 근거(mock_get_design_brief·mock_get_replica_kit = 무엇을 실제로 만들었나)와 함께 쓰는 두 번째 근거(무엇이 더 낫다고 골랐나). 요소를 그리기 전에 kind(form·overlay·feedback·list·nav·button·data·visual·icon·layout)나 q(낱말)로 찾아 rule 쪽으로 만든다.",
-    inputSchema: { kind: listOf(z.enum(["form", "overlay", "feedback", "list", "nav", "button", "data", "visual", "icon", "layout"])).optional().describe("요소 분야 — 여러 개면 하나라도 맞는 규칙"), q: z.string().max(80).optional().describe("찾을 낱말(예: 생년월일·페이지네이션·바텀시트)"), limit: z.number().int().min(1).max(60).optional() },
+    description: "[일반 지식으로 답하기 전에 이 도구를 먼저 부른다] 예: '검색 버튼은 입력칸 안쪽이 좋아, 바깥이 좋아?' → q='검색' 으로 부른다. 'A가 좋아 B가 좋아' 식 UI 질문은 짐작으로 답하지 말고 이 도구의 투표 결과로 답한다. 디자이너들이 A/B 투표로 더 낫다고 고른 UI 방식(designus, 참여 300명 이상·한쪽 65% 이상만). 예: 수량은 드롭다운보다 −/+ 스테퍼(98%), 생년월일은 휠 피커보다 키패드 입력(77%). 관공서 수집 근거(mock_get_design_brief·mock_get_replica_kit = 무엇을 실제로 만들었나)와 함께 쓰는 두 번째 근거(무엇이 더 낫다고 골랐나). 요소를 그리기 전에 kind(form·overlay·feedback·list·nav·button·data·visual·icon·layout)나 q(낱말)로 찾아 rule 쪽으로 만든다.",
+    inputSchema: { kind: listOf(z.enum(["form", "overlay", "feedback", "list", "nav", "button", "data", "visual", "icon", "layout"])).optional().describe("요소 분야(허용값: form·overlay·feedback·list·nav·button·data·visual·icon·layout) — 여러 개면 하나라도 맞는 규칙"), q: z.string().max(80).optional().describe("찾을 낱말(예: 생년월일·페이지네이션·바텀시트)"), limit: z.number().int().min(1).max(60).optional() },
   }, async (a) => {
     const g = await guard("mock_get_design_preferences"); if (g) return g;
     const r = await get<Record<string, unknown>>(`/insights/preferences?${qs({ kind: a.kind, q: a.q, limit: a.limit ?? 20 })}`);
@@ -717,7 +785,7 @@ function buildServer(key: string | null): McpServer {
     if (!refId) return err("이 시안에는 보관된 ref_id 가 없습니다. ref_id 를 함께 보내세요(mock_get_replica_kit 응답의 reference.ref_id).", "INVALID_ARGS", undefined, { field: "ref_id" });
     type Ref = { capture_url?: string | null; site_slug?: string; height?: number; pieces?: Array<{ capture_url?: string | null; src_y: number; src_h: number; y: number; width: number }> } & Record<string, unknown>;
     let ref: Ref;
-    try { ref = await get(`/mockups/check-ref?ref_id=${encodeURIComponent(refId)}`); } catch (e) { return err(String((e as Error).message), "NOT_FOUND"); }
+    try { ref = await get(`/mockups/check-ref?ref_id=${encodeURIComponent(refId)}`); } catch (e) { return err(String((e as Error).message), (e as { code?: string }).code ?? "NOT_FOUND"); }
     const token = String(d.json.token); const html = String(d.json.html ?? "");
     if (a.org_name) { checkOrg.set(token, a.org_name); if (checkOrg.size > 2000) checkOrg.delete(checkOrg.keys().next().value as string); }
     const want = a.org_name ?? checkOrg.get(token) ?? "";
@@ -760,16 +828,16 @@ function buildServer(key: string | null): McpServer {
   const sectionCodes = taxonomy.assembly.section_codes.map((x) => x.code) as [string, ...string[]];
   server.registerTool("mock_assemble_screen", {
     title: "디자인 조립 명세(Assembly Spec)",
-    description: "예: '공지 목록 화면을 React 코드로 줘' → screen_type=LIST(게시판 목록), keyword=공지 로 부른다(code 는 기본 켜짐) — 코드를 직접 짜지 말고 이 도구의 code(React·Vue 페이지·theme.css)를 쓴다. 고객 키워드로 관공서 화면을 재조립한 명세(JSON)를 만든다 — 복제가 아니라 여러 기관의 검증된 섹션을 근거로 한 재배치(docs/11). ① 조건에 맞는 게시 화면(기관당 1장, 최대 60)을 가중 점수+키워드로 고르고 ② 섹션을 조립 코드(GNB·NOTICE_LIST·QUICK_MENU…)로 묶어 ③ 채택률·영역·칸 수·항목 수·밀도 최빈값(PatternSummary)을 내고 ④ 컴포넌트·KRDS 컴포넌트를 정한 뒤 ⑤ 슬롯을 배치한다. 모든 슬롯에 ref(원본 section_id)·rationale(근거), 같은 기관 섹션은 2개 이하, 테마는 KRDS 기본(또는 theme=CUSTOM + primary). quality 에 게이트 7종 결과. sections 로 넣을 코드를 직접 지정할 수 있다. 이미지는 싣지 않는다. code 에 명세로 만든 Vue·React 페이지(홈박스 키트 = KRDS 부품)·theme.css·부품 대응표(섹션 코드 → 키트 컴포넌트·import·props)가 함께 온다 — 그대로 쓰거나 대응표를 보고 고쳐 쓴다.",
+    description: "[화면 코드를 직접 짜기 전에 이 도구를 먼저 부른다] 예: '공지 목록 화면을 React 코드로 줘' → screen_type=LIST(게시판 목록), keyword=공지 로 부른다(code 는 기본 켜짐) — 코드를 직접 짜지 말고 이 도구의 code(React·Vue 페이지·theme.css)를 쓴다. 고객 키워드로 관공서 화면을 재조립한 명세(JSON)를 만든다 — 복제가 아니라 여러 기관의 검증된 섹션을 근거로 한 재배치(docs/11). ① 조건에 맞는 게시 화면(기관당 1장, 최대 60)을 가중 점수+키워드로 고르고 ② 섹션을 조립 코드(GNB·NOTICE_LIST·QUICK_MENU…)로 묶어 ③ 채택률·영역·칸 수·항목 수·밀도 최빈값(PatternSummary)을 내고 ④ 컴포넌트·KRDS 컴포넌트를 정한 뒤 ⑤ 슬롯을 배치한다. 모든 슬롯에 ref(원본 section_id)·rationale(근거), 같은 기관 섹션은 2개 이하, 테마는 KRDS 기본(또는 theme=CUSTOM + primary). quality 에 게이트 7종 결과. sections 로 넣을 코드를 직접 지정할 수 있다. 이미지는 싣지 않는다. code 에 명세로 만든 Vue·React 페이지(홈박스 키트 = KRDS 부품)·theme.css·부품 대응표(섹션 코드 → 키트 컴포넌트·import·props)가 함께 온다 — 그대로 쓰거나 대응표를 보고 고쳐 쓴다.",
     inputSchema: {
       keyword: z.string().max(40).optional().describe("예: 민원, 관광, 복지 — 사이트명·화면 제목·본문에 맞으면 가점"),
-      screen_type: z.enum(screenTypes).optional().describe("기본 MAIN"),
-      org_type: listOf(z.enum(orgTypes)).optional(),
-      sections: listOf(z.enum(sectionCodes)).optional().describe("넣을 섹션 코드. 생략하면 채택률 50%+(전역 계열 30%+)로 자동"),
-      theme: z.enum(["KRDS", "CUSTOM"]).optional(),
+      screen_type: z.enum(screenTypes).optional().describe(`화면 종류, 기본 MAIN. 허용값: ${screenTypes.join("·")}`),
+      org_type: listOf(z.enum(orgTypes)).optional().describe(orgTypeDesc),
+      sections: listOf(z.enum(sectionCodes)).optional().describe(`넣을 섹션 코드(쉼표). 생략하면 채택률 50%+(전역 계열 30%+)로 자동. 허용값: ${sectionCodes.join("·")}`),
+      theme: z.enum(["KRDS", "CUSTOM"]).optional().describe("KRDS(기본) 또는 CUSTOM(primary 로 고객 주색)"),
       primary: z.string().regex(/^#[0-9A-Fa-f]{6}$/).optional().describe("theme=CUSTOM 일 때 고객 주색"),
       font: z.string().max(60).optional(),
-      device: z.enum(["pc", "mobile"]).optional(),
+      device: z.enum(["pc", "mobile"]).optional().describe(deviceDesc),
       project: z.string().max(80).optional(),
       code: z.boolean().optional().describe("기본 true — 명세로 만든 Vue·React 페이지 코드(홈박스 키트 부품)·theme.css·부품 대응표를 함께 준다. 명세만 필요하면 false"),
     },
@@ -802,7 +870,7 @@ function buildServer(key: string | null): McpServer {
 
   server.registerTool("mock_get_pattern_stats", {
     title: "디자인 패턴 통계(단일 지표)", description: "게시된 사이트를 집계한 채택률: header_type(메가/2뎁스/햄버거)·lnb_position·tone·container_px·font_body·wa_certified. 지표 하나만 빠르게 볼 때. 설계 전체 근거는 mock_get_design_brief 가 한 번에 준다.",
-    inputSchema: { metric: z.enum(["header_type", "lnb_position", "tone", "container_px", "font_body", "wa_certified"]), org_type: listOf(z.enum(orgTypes)).optional(), renewal_year_from: z.number().int().optional() },
+    inputSchema: { metric: z.enum(["header_type", "lnb_position", "tone", "container_px", "font_body", "wa_certified"]).describe("허용값: header_type·lnb_position·tone·container_px·font_body·wa_certified"), org_type: listOf(z.enum(orgTypes)).optional().describe(orgTypeDesc), renewal_year_from: z.number().int().optional() },
   }, async (a) => {
     const g = await guard("mock_get_pattern_stats"); if (g) return g;
     const all: Array<Record<string, unknown>> = [];
@@ -819,6 +887,7 @@ function buildServer(key: string | null): McpServer {
     return text({ metric: a.metric, n: all.length, confidence, buckets: [...counts].sort((x, y) => y[1] - x[1]).map(([key, count]) => ({ key, count, pct: Number(((count / n) * 100).toFixed(1)) })), note: `게시된 사이트 ${all.length}곳 기준${a.renewal_year_from ? ` · ${a.renewal_year_from}년 이후 개편` : ""}${confidence === "low" ? " · 표본이 적어 참고만" : ""}`, attribution: ATTRIBUTION });
   });
 
+  // ================================================================ [guide] guide_krds (나머지 guide_* 는 tools/guide.ts)
   server.registerTool("guide_krds", {
     title: "KRDS 컴포넌트 가이드", description: "KRDS(대한민국 디지털 정부 디자인시스템) 컴포넌트 55종의 이름·분류·공식 가이드 링크(krds.go.kr 실제 문서)·홈박스 섹션 매핑·대응 부품(kit_id). component·category 로 5개 이하로 좁히면 사용·접근성·상호작용·개발 지침 글과 관리자 메모(note)도 준다.",
     inputSchema: { component: z.string().optional().describe("krds_components.id (예: tab, breadcrumb, pagination). 없으면 전체 목록"), category: z.string().optional().describe("identity·navigation·layout·action·selection·feedback·help·input·settings·content·mobile") },
@@ -847,11 +916,12 @@ function buildServer(key: string | null): McpServer {
         return { ...c, guide_url: `${base}${(c as { guide_file?: string }).guide_file ?? "component_summary.html"}`, sections: Object.entries(map).filter(([, v]) => v.includes(c.id)).map(([k]) => k), ...guide };
       }),
       hint: full ? undefined : "지침 글(사용·접근성·상호작용·개발)은 component 나 category 로 좁히거나 guide_search_rules 로 찾는다",
-      attribution: ATTRIBUTION,
+      // 목업 레퍼런스 출처 문구(ATTRIBUTION)가 아니라 KRDS 출처 — 2026-10-15 guide 점검
+      attribution: "출처: 행정안전부 KRDS(범정부 UI/UX 디자인 시스템) 공식 가이드. guide_url 이 원문이고, 지침 요약은 powerGuide 가 정리한 것입니다.",
     });
   });
 
-  // ---------------------------------------------------------------- powerAssets (파워플러스 옛 PHP MCP 도구 7종 → 새 플랫폼 /api/v1/assets)
+  // ================================================================ [assets] powerAssets (파워플러스 옛 PHP MCP 도구 7종 → 새 플랫폼 /api/v1/assets)
   // 출처: powerPlus server/src/McpServer.php(search_assets·get_asset·similar_assets·style_set·list_categories·list_topics·suggest_keywords).
   // 권한(공개 등급)은 새 플랫폼 PHP(Access::whereVisible)가 키 소유자 기준으로 거른다 — MCP 는 거르지 않는다.
   const absUrls = (v: unknown): unknown => {
@@ -859,22 +929,26 @@ function buildServer(key: string | null): McpServer {
     if (v && typeof v === "object") return Object.fromEntries(Object.entries(v as Record<string, unknown>).map(([k, x]) => [k, typeof x === "string" && x.startsWith("/api/v1/") ? `${PP_PUBLIC}${x}` : absUrls(x)]));
     return v;
   };
-  const assets = async (p: string) => {
+  /** emptyHint — 결과가 0건이면 이유·다음 할 일을 hint 로 붙인다(MC-25, 서버가 hint 를 주면 그것을 둔다) */
+  const assets = async (p: string, emptyHint?: string) => {
     const r = await pp<unknown>(p, key);
-    if (!r.ok) return err(ppMsg(r, "자산 API 오류"), r.status === 404 ? "NOT_FOUND" : r.status === 403 ? "FORBIDDEN" : r.status === 400 ? "INVALID_ARGS" : "ERROR");
+    if (!r.ok) return err(ppMsg(r, "자산 API 오류"), ppCode(r));
     const { data, ...rest } = (r.body ?? {}) as Record<string, unknown>;
-    return text(absUrls({ ...rest, data }));
+    const empty = emptyHint && rest.hint === undefined && Array.isArray(data) && data.length === 0;
+    return text(absUrls({ ...rest, data, ...(empty ? { hint: emptyHint } : {}) }));
   };
   const assetCats = ["icon", "photo", "illust", "diagram", "ppt", "logo", "mockup_sample"] as const;
+  const assetCatDesc = `자산 분류. 허용값: ${assetCats.join("·")}`;
 
   server.registerTool("assets_search", {
     title: "자산 검색",
     description: "powerAssets 자산(아이콘·사진·일러스트·다이어그램·장표·로고) 검색. 검색어는 이름·태그(국문·영문)에 낱말별로 일치. 결과의 thumb_url 은 미리보기, 원본은 assets_get. 키 소유자 플랜·등급에서 볼 수 있는 것만 나온다(meta.hidden = 등급 때문에 가려진 수).",
-    inputSchema: { query: z.string().optional().describe("검색어(예: '파랑 행정', 'handshake')"), category: z.enum(assetCats).optional(), set: z.string().optional().describe("세트 id(assets_style_set 결과)"), topic: z.string().optional().describe("assets_list_topics 의 주제 낱말 — 검색어에 더해진다"), sort: z.enum(["newest", "popular", "name"]).optional(), limit: z.number().int().min(1).max(60).optional(), page: z.number().int().min(1).optional() },
+    inputSchema: { query: z.string().optional().describe("검색어(예: '파랑 행정', 'handshake')"), category: z.enum(assetCats).optional().describe(assetCatDesc), set: z.string().optional().describe("세트 id(assets_style_set 결과)"), topic: z.string().optional().describe("assets_list_topics 의 주제 낱말 — 검색어에 더해진다"), sort: z.enum(["newest", "popular", "name"]).optional().describe("허용값: newest·popular·name"), limit: z.number().int().min(1).max(60).optional(), page: z.number().int().min(1).optional() },
   }, async (a) => {
     const g = await guard("assets_search"); if (g) return g;
     const q = [a.query, a.topic].filter(Boolean).join(" ");
-    return assets(`/assets/items?${qs({ q, category: a.category, set: a.set, sort: a.sort, limit: a.limit ?? 24, page: a.page, channel: "mcp" })}`);
+    return assets(`/assets/items?${qs({ q, category: a.category, set: a.set, sort: a.sort, limit: a.limit ?? 24, page: a.page, channel: "mcp" })}`,
+      "0건입니다. 낱말을 줄이거나 assets_suggest_keywords(words=[…]) 로 등록된 다른 표현을 찾아 다시 검색한다. meta.hidden 이 있으면 키 등급 때문에 가려진 것이다.");
   });
 
   server.registerTool("assets_get", {
@@ -896,7 +970,7 @@ function buildServer(key: string | null): McpServer {
       return text({ items, total: items.length, locked: items.filter((x) => (x as { locked?: boolean }).locked).length });
     }
     const r = await pp<Record<string, unknown>>(`/assets/items/${encodeURIComponent(one)}`, key);
-    if (!r.ok || !r.data) return err(ppMsg(r, "자산 API 오류"), r.status === 404 ? "NOT_FOUND" : "ERROR");
+    if (!r.ok || !r.data) return err(ppMsg(r, "자산 API 오류"), r.ok ? "ERROR" : ppCode(r));
     const body = text(absUrls(r.data));
     if (!a.preview) return body;
     try {
@@ -924,7 +998,7 @@ function buildServer(key: string | null): McpServer {
     let set = a.set_id;
     if (!set && a.id) {
       const r = await pp<{ set?: { id: string } | null }>(`/assets/items/${encodeURIComponent(a.id)}`, key);
-      if (!r.ok) return err(ppMsg(r, "자산 API 오류"), r.status === 404 ? "NOT_FOUND" : "ERROR");
+      if (!r.ok) return err(ppMsg(r, "자산 API 오류"), ppCode(r));
       set = r.data?.set?.id;
       if (!set) return err("이 자산은 세트에 속하지 않습니다.", "NOT_FOUND");
     }
@@ -941,7 +1015,7 @@ function buildServer(key: string | null): McpServer {
 
   server.registerTool("assets_list_topics", {
     title: "자산 주제", description: "카테고리 안에서 많이 쓰인 주제 낱말(태그)과 세트. assets_search 의 topic 으로 쓴다.",
-    inputSchema: { category: z.enum(assetCats).optional(), query: z.string().optional().describe("주제 낱말(예: '기후', '환경') — 주면 그 말이 붙은 에셋의 관련 주제를 돌려준다") },
+    inputSchema: { category: z.enum(assetCats).optional().describe(assetCatDesc), query: z.string().optional().describe("주제 낱말(예: '기후', '환경') — 주면 그 말이 붙은 에셋의 관련 주제를 돌려준다") },
   }, async (a) => {
     const g = await guard("assets_list_topics"); if (g) return g;
     return assets(`/assets/topics?${qs({ category: a.category, q: a.query })}`);
@@ -961,7 +1035,7 @@ function buildServer(key: string | null): McpServer {
     return text({ by_word });
   });
 
-  // ---------------------------------------------------------------- powerGuide · powerDeck (최소)
+  // ================================================================ [guide] guide_tokens · [deck] deck_jobs
   server.registerTool("guide_tokens", {
     title: "디자인 토큰 파일", description: "powerGuide 가 배포하는 디자인 토큰 산출물(CSS·SCSS·JS·TS·Java·Tailwind·Figma 등). file 없이 부르면 목록, file 을 주면 그 파일 내용(텍스트, 최대 200KB).",
     inputSchema: { file: z.string().optional().describe("목록의 name(예: solideo-tokens.css)") },
@@ -989,6 +1063,7 @@ function buildServer(key: string | null): McpServer {
     return assets(`/deck/jobs`);
   });
 
+  // ================================================================ 모듈 파일 — [guide]·[powerplus]·assets_pick / [deck] kit·판정 / [mock 와이어]
   registerGuideTools(server, { guard, pp, key, text, err, ppMsg });
   registerDeckKitTools(server, { guard, pp, key, text, err, ppMsg });
   registerMockWireTools(server, { guard, pp, key, text, err, ppMsg });
@@ -997,6 +1072,7 @@ function buildServer(key: string | null): McpServer {
 }
 buildServer(null); // 도구 수를 헬스 응답에 싣기 위해 한 번 만들어 센다
 
+// ---------------------------------------------------------------- [HTTP 서버]
 /** 옛 도구 이름 별칭 — tools/call 의 params.name 을 새 이름으로 바꿔 넘긴다(묶음 요청 포함). tools/list 에는 새 이름만 나온다. */
 function aliasCalls(body: unknown): unknown {
   const fix = (m: unknown) => {

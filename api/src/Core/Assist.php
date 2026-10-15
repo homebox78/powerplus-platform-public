@@ -17,6 +17,8 @@ final class Assist
         'assets' => ['/assets', 'powerAssets 둘러보기'], 'deck_make' => ['/deck', 'powerDeck 시작하기'], 'deck_polish' => ['/deck', 'powerDeck 시작하기'], 'deck_status' => ['/deck/jobs', '내 장표 작업 보기'],
         'mock_page' => ['/mock', 'powerMock 시작하기'], 'mock_wire' => ['/mock', 'powerMock 시작하기'], 'mock_ref' => ['/powermcp', 'powerMCP 도구 보기'],
         'guide_tokens' => ['/guide/tokens', '토큰 받기'], 'guide_parts' => ['/guide/components', '부품 보기'],
+        // Triage 의 코드 판정·지침 검색(2026-10-15 O-02) — 바로가기가 없으면 도우미가 "답을 찾지 못했다"로 끝난다
+        'guide_check' => ['/guide/a11y', '접근성 판정 보기'], 'guide_rules' => ['/guide/krds', 'KRDS 지침 보기'],
     ];
 
     /** 서비스 기능이 아닌 질문 — 갈 곳이 정해져 있다 */
@@ -31,6 +33,8 @@ final class Assist
         'mcp' => '/mcp|엠씨피|claude|클로드|커서|cursor|chatgpt|연결|api ?키/iu',
         'mock_wire' => '/와이어|화면 구성|레이아웃|섹션 배치|사이트맵/u',
         'mock_page' => '/목업|시안|홈페이지|웹사이트|사이트|메인 화면|서브 화면|랜딩|웹 ?디자인/u',
+        'guide_check' => '/(내|이|우리) ?(코드|html|마크업|화면).*(검사|판정|점검|확인)|접근성 ?(검사|판정|점검)/iu',
+        'guide_rules' => '/krds ?(지침|규칙|기준)|지침|가이드라인|꼭 넣어야|필수(인가|야)|체크리스트/iu',
         'guide_parts' => '/부품|컴포넌트|react|vue|리액트|뷰|krds|접근성/iu',
         'guide_tokens' => '/토큰|디자인 ?시스템|색상표|팔레트|글꼴|폰트/u',
         'deck_polish' => '/초안|다듬|정리된 디자인|ppt.*(고쳐|바꿔)/iu',

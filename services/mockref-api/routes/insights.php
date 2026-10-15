@@ -18,7 +18,6 @@ use Homebox\Design;
 use Homebox\Http\Response;
 use Homebox\Plan;
 use Homebox\SectionShape;
-use Homebox\Signer;
 
 $W = ['rating' => 0.35, 'krds' => 0.25, 'recency' => 0.20, 'wa' => 0.10, 'views' => 0.10];
 
@@ -168,12 +167,15 @@ $router->get('/api/insights/section', static function () use ($scope, $scoreSql,
         if (isset($used[$r['site_id']]) || count($exemplars) >= 6) { continue; }
         $used[$r['site_id']] = true;
         $ok = Plan::canSee(Plan::allowedScreens((int) $r['site_id'], $plan), (int) $r['screen_id']);
-        $exemplars[] = ['slug' => $r['slug'], 'title' => $r['title'], 'score' => round((float) $r['score'], 3), 'section_id' => (int) $r['id'], 'screen_id' => (int) $r['screen_id'], 'page_type' => $r['page_type_id'], 'variant' => $r['variant'], 'w' => (int) $r['bbox_w'], 'h' => (int) $r['bbox_h'], 'structure' => SectionShape::structure($r['structure'] ?? null), 'locked' => !$ok, 'crop_url' => $ok ? Plan::kurl((int) $r['site_id'], $r['crop_asset_id']) : null];
+        $exemplars[] = ['slug' => $r['slug'], 'title' => $r['title'], 'score' => round((float) $r['score'], 3), 'section_id' => (int) $r['id'], 'screen_id' => (int) $r['screen_id'], 'page_type' => $r['page_type_id'], 'variant' => $r['variant'], 'w' => (int) $r['bbox_w'], 'h' => (int) $r['bbox_h'], 'structure' => SectionShape::structure($r['structure'] ?? null), 'locked' => !$ok, 'crop_url' => $ok ? Plan::kurl((int) $r['site_id'], $r['crop_asset_id']) : null]
+            + (($why = Plan::koglWithheld((int) $r['site_id'], $plan)) !== null ? ['image_withheld' => $why] : []); // 공공누리 2~4유형이면 이유(O-04)
     }
     $conf = $sitesN >= 30 ? 'high' : ($sitesN >= 10 ? 'medium' : 'low');
     Response::json([ 'scope_note' => $GLOBALS['hb_scope_note'] ?? null,
         'section_type' => $type, 'device' => $device, 'n_sections' => $n, 'n_sites' => $sitesN, 'confidence' => $conf,
-        'note' => $conf === 'low' ? "표본 {$sitesN}곳 — 분포는 참고만." : "{$sitesN}곳 · 섹션 {$n}개 합성",
+        // 0곳이면 이유와 다음 행동을 말한다(MC-25)
+        'note' => $sitesN === 0 ? '이 조건(section_type·org_type·tone·개편 연도·기기)에 맞는 섹션이 없습니다. org_type·tone·renewal_from 을 빼거나 device 를 바꿔 다시 부르세요.'
+            : ($conf === 'low' ? "표본 {$sitesN}곳 — 분포는 참고만." : "{$sitesN}곳 · 섹션 {$n}개 합성"),
         'variants' => $dist($rows, 'variant'),
         'height_px' => ['median' => $median($hs), 'p25' => $hs ? $median(array_slice((static function (array $a): array { sort($a); return $a; })($hs), 0, max(1, intdiv(count($hs), 2)))) : null, 'p75' => $hs ? $median(array_slice((static function (array $a): array { sort($a); return $a; })($hs), intdiv(count($hs), 2))) : null],
         'position_ratio' => ['median' => $median($ys), 'note' => '0=페이지 최상단, 1=최하단 (full_h 대비 bbox_y)'],

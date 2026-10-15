@@ -20,7 +20,10 @@ final class Triage
         'mock_wire'    => 'powerMock: 홈페이지 화면 구성(와이어프레임)과 섹션 배치를 기획한다',
         'mock_ref'     => 'powerMock: 실제 기관 사이트의 디자인 패턴·섹션 구성·디자인 데이터를 참고 자료로 본다',
         'guide_tokens' => 'powerGuide: 색·글꼴·간격 디자인 토큰과 디자인 시스템 규칙을 내려받는다',
-        'guide_parts'  => 'powerGuide: KRDS 기반 React·Vue 부품 코드와 접근성·KRDS 지침을 본다',
+        'guide_parts'  => 'powerGuide: KRDS 기반 React·Vue 부품 코드(버튼·탭·모달·헤더 등 77종)를 받아 쓴다',
+        // 2026-10-10 MCP 시험: "내 HTML 접근성 검사해줘"·"KRDS 공식 배너 꼭 넣어야 해?"가 none·false 로 나왔다 — 고를 기능이 없었다
+        'guide_check'  => 'powerGuide: 사용자가 만든 HTML·CSS 코드를 접근성(대비·대체 텍스트·레이블·제목 순서·lang·표)과 디자인 토큰 기준으로 자동 판정해 점수와 고칠 곳을 준다(guide_check_code)',
+        'guide_rules'  => 'powerGuide: KRDS(디지털 정부 디자인 시스템)·웹 접근성(KWCAG) 지침과 검증 체크리스트에서 근거를 찾아 답한다 — 무엇이 필수인지·기준이 몇인지 같은 질문(guide_search_rules·guide_get_checklist)',
         'none'         => '위 어디에도 맞지 않는다(예: 일반 코딩·번역·법률 상담·영상 제작·서버 운영)',
     ];
 
@@ -211,6 +214,18 @@ final class Triage
         if (preg_match('/(내|제|우리|맡긴|진행 ?중인).{0,12}(장표|작업|제안서)/u', $r) && preg_match('/상태|진행|어디까지|됐|끝났|결과|확인|현황/u', $r)) {
             return $mk('deck_status', true, 0.9);
         }
+        // 만든 코드 판정 — "내 HTML 접근성 검사해줘"(2026-10-10 MCP 시험: none 0.73)
+        $makeWord = '/만들|제작|생성|짜\s*줘|그려|시안|목업/u';
+        if (preg_match('/html|css|코드|마크업|소스|페이지|화면/u', $r) && preg_match('/접근성|a11y|kwcag|wcag|krds|대비|alt|레이블|라벨|토큰/u', $r)
+            && preg_match('/검사|점검|판정|체크|검수|확인|진단|봐\s*줘|맞는지|지켰는지|통과/u', $r) && !preg_match($makeWord, $r)) {
+            return $mk('guide_check', true, 0.9);
+        }
+        // KRDS·접근성 지침 질문 — "KRDS 공식 배너 꼭 넣어야 해?"(같은 시험: false 0.29)
+        if (preg_match('/krds|kwcag|wcag|웹 ?접근성|접근성 ?지침|디지털 ?정부|공식 ?배너|전자정부/u', $r)
+            && preg_match('/필수|꼭|해야|되나|돼\?|되요|되나요|맞아|기준|규정|지침|가이드라인|규칙|몇|최소|최대|권장|의무|안 ?되|금지|체크리스트|점검표/u', $r)
+            && !preg_match($makeWord, $r)) {
+            return $mk('guide_rules', true, 0.85);
+        }
         $core = preg_replace('/[\s.!?~,]+|이거|그거|이것|그것|저거|좀|그냥|빨리|제발|부탁|해\s*줘|해\s*주세요|해\s*줄래|도와\s*줘|만들어\s*줘|알아서|뭐든/u', '', $r);
         if (mb_strlen((string) $core) < 2) {
             $s = $mk('none', false, 0.2);
@@ -222,10 +237,77 @@ final class Triage
 
     public static function scope(string $request): ?array
     {
-        $rule = self::scopeRules($request);
-        if ($rule !== null) {
-            return $rule;
+        $s = self::scopeRules($request) ?? self::scopeByModel($request);
+        if ($s === null) {
+            return null;
         }
+        $s = self::checkParts($request, $s);
+        // 바로 부를 MCP 도구(시작 주소가 없는 기능도 AI 가 다음 걸음을 알게)
+        $tools = ['guide_check' => 'guide_check_code', 'guide_rules' => 'guide_search_rules', 'guide_parts' => 'guide_get_component', 'guide_tokens' => 'guide_tokens'];
+        if (isset($tools[$s['capability']]) && !empty($s['supported'])) {
+            $s['mcp_tool'] = $tools[$s['capability']];
+        }
+        return $s;
+    }
+
+    /**
+     * 부품 요청이면 실제 부품 목록에서 찾아 근거를 붙인다 — 없는 부품을 지원한다고 약속하지 않는다
+     * (2026-10-10 MCP 시험: "비밀번호 강도 표시 부품" → guide_parts 0.91 supported, 실제 목록 0건).
+     * 요청 낱말(부품·코드·있어 같은 말 뺀 것)을 모두 담은 부품이 하나도 없으면 supported=false, part_missing 에 찾은 말.
+     */
+    public static function checkParts(string $request, array $s): array
+    {
+        $r = mb_strtolower($request);
+        if (($s['capability'] ?? '') !== 'guide_parts') {
+            return $s;
+        }
+        $stop = '/^(부품|부품들|컴포넌트|component|components|코드|소스|react|vue|리액트|뷰|krds|kit|키트|ui|html|css|있어|있어요|있나|있나요|있니|있는지|있을까|있으면|줘|주세요|줄래|좀|만들어|만들|필요해|필요|쓸|쓸수|쓰는|사용|하나|기반|공식|화면|우리|내|제|무슨|어떤|뭐|뭐가|어떻게|받아|받을|가져와|보여|보여줘|알려|알려줘|찾아|찾아줘|목록|전체|종류|용|같은|비슷한|해줘|powerguide|파워가이드|에서|으로|로)$/u';
+        $words = [];
+        foreach (preg_split('/[^\p{L}\p{N}\-]+/u', $r) ?: [] as $w) {
+            if ($w === '' || preg_match($stop, $w)) continue;
+            $base = preg_replace('/(으로|에서|을|를|은|는|이|가|의|로)$/u', '', $w) ?? $w;
+            if ($base === '' || preg_match($stop, $base)) continue;
+            $words[] = [$w, mb_strlen($base) >= 1 && $base !== $w ? $base : null];
+        }
+        if ($words === []) {
+            return $s; // 어떤 부품인지 말하지 않은 요청("React 부품 코드 줘")
+        }
+        try {
+            $metas = \Pp\Guide\Data::registry()['metas'] ?? [];
+            $found = [];
+            foreach ($metas as $m) {
+                $id = (string) $m['id'];
+                $krds = implode(' ', array_map(static fn (array $c): string => $c['ko'] . ' ' . $c['en'], \Pp\Guide\Data::krdsFor($id)));
+                $hay = mb_strtolower($id . ' ' . ($m['title'] ?? '') . ' ' . ($m['note'] ?? '') . ' ' . \Pp\Guide\Data::docSummary($id) . ' ' . $krds);
+                $all = true;
+                foreach ($words as [$w, $base]) {
+                    $alts = array_merge(\Pp\Guide\Data::searchTerms($w), $base !== null ? \Pp\Guide\Data::searchTerms($base) : []);
+                    $one = false;
+                    foreach ($alts as $alt) {
+                        if ($alt !== '' && str_contains($hay, $alt)) { $one = true; break; }
+                    }
+                    if (!$one) { $all = false; break; }
+                }
+                if ($all) $found[] = $id;
+            }
+        } catch (\Throwable) {
+            return $s; // 부품 자료를 못 읽으면 판정은 그대로
+        }
+        $asked = implode(' ', array_column($words, 0));
+        if ($found === []) {
+            $s['capability'] = 'guide_parts';
+            $s['description'] = self::CAPABILITIES['guide_parts'];
+            $s['supported'] = false;
+            $s['part_missing'] = $asked;
+            $s['note'] = "부품 목록(77종)에 '{$asked}' 에 맞는 부품이 없습니다. 비슷한 부품을 조합하거나 KRDS 지침을 근거로 직접 만들어야 합니다.";
+        } else {
+            $s['parts'] = array_slice($found, 0, 5);
+        }
+        return $s;
+    }
+
+    private static function scopeByModel(string $request): ?array
+    {
         $a = Jev::ask('mcp_scope', '사용자 요청: ' . self::scrub($request, 2000), [
             'cap' => ['type' => 'choice', 'instructions' => '이 요청을 처리할 수 있는 기능', 'criteria' => self::CAPABILITIES],
         ]);
@@ -254,7 +336,9 @@ final class Triage
         'mock_wire'    => '홈페이지 화면 구성(와이어프레임)부터 기획하시나요?',
         'mock_ref'     => '실제 기관 사이트의 디자인을 참고 자료로 보시나요?',
         'guide_tokens' => '색·글꼴·간격 같은 디자인 토큰이 필요하신가요?',
-        'guide_parts'  => 'React·Vue 부품 코드나 접근성 지침이 필요하신가요?',
+        'guide_parts'  => 'React·Vue 부품 코드가 필요하신가요?',
+        'guide_check'  => '이미 만든 HTML·CSS 코드의 접근성·토큰 준수를 판정받으시나요?',
+        'guide_rules'  => 'KRDS·웹 접근성 지침에서 무엇이 필수인지·기준이 몇인지 찾으시나요?',
     ];
 
     /**
@@ -296,6 +380,9 @@ final class Triage
         $r = mb_strtolower($request);
         $out = [];
         $has = static fn (string $re): bool => preg_match($re, $r) === 1;
+        if ($has('/부품|컴포넌트|component/u')) {
+            $out[] = ['what' => '비슷한 부품 조합과 KRDS 지침', 'how' => '키트 77종에서 가까운 부품을 찾아(MCP: guide_list_components) 조합하고, KRDS 지침(MCP: guide_search_rules)을 근거로 직접 만든 뒤 코드 판정(MCP: guide_check_code)으로 확인합니다.', 'start' => 'https://powerplus.hom2box.com/guide/components'];
+        }
         if ($has('/영상|동영상|비디오|video|유튜브|애니메이션|mp4/u')) {
             $out[] = ['what' => '영상 대신 장표와 장별 이미지', 'how' => 'powerDeck 으로 장표를 만든 뒤 산출물 묶음(zip: 완성 PPTX·장별 렌더 PNG)을 받아 영상 편집 도구에 넣습니다. PDF 는 PowerPoint 에서 내보냅니다.', 'start' => 'https://powerplus.hom2box.com/deck'];
             $out[] = ['what' => '발표 대본', 'how' => 'powerDeck 대본 단계에서 장마다 읽을 원고를 받아 내레이션 원고로 씁니다(MCP: deck_get_script_kit).', 'start' => 'https://powerplus.hom2box.com/deck'];

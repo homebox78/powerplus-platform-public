@@ -92,7 +92,8 @@ $router->get('/api/sections/{id}/code', static function (array $p): void {
         'tokens' => $tok, 'primary_note' => $prim['note'] ?? null,
         'html' => $code['html'], 'css' => $code['css'], 'notes' => $code['notes'],
         'sample_images' => $samples, // 사진 자리에 넣은 샘플 — 다른 컷이 필요하면 get_sample_images 로 바꿔 끼운다
-        'crop_url' => Plan::kurl((int) (Db::row('SELECT site_id FROM screens WHERE id = ?', [(int) $x['screen_id']])['site_id'] ?? 0), $x['crop_asset_id'], $plan),
+        'crop_url' => Plan::kurl((int) $x['site_id'], $x['crop_asset_id'], $plan),
+        'image_withheld' => Plan::koglWithheld((int) $x['site_id'], $plan), // 공공누리로 원본 크롭을 뺐으면 이유, 아니면 null (O-04)
         'usage' => '문구·메뉴 이름은 원 기관 것이다 — 목업에서는 자리표시([ ])와 함께 내 기관 내용으로 바꿔 쓴다. 사진 자리에는 홈박스 샘플 이미지(가상 인물·풍경)를 넣었다 — 실서비스 전 실제 사진으로 교체.',
         'attribution' => '구성 출처: ' . $x['org_name'] . ' (' . $x['url'] . '). 홈박스는 저작권을 주장하지 않으며 참고용입니다.',
     ], 200, ['Cache-Control' => 'private, no-store']);

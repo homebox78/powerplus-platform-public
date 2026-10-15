@@ -1,3 +1,4 @@
+// 에셋 카드 격자 — 썸네일·삽입·유사·세트 버튼과 빈 상태 안내. 출처: powerPlus addin/src/taskpane/components/AssetGrid.tsx.
 import * as React from "react";
 import type { Asset } from "../data/mockAssets";
 import AuthImg from "./AuthImg";

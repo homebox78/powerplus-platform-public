@@ -17,7 +17,9 @@ case "$SCOPE" in
   web) PATHS=(api apps packages db/migrations); PHPDIRS=(api) ;;
   mockref) PATHS=(services/mockref-api); PHPDIRS=(services/mockref-api) ;;
   engine) PATHS=(engine); PHPDIRS=() ;;
-  *) echo "범위는 web|mockref|engine"; exit 2 ;;
+  # powerMCP 도 작업 트리를 싣는다 — 다른 세션의 미커밋 index.ts·deck-kit 이 같이 올라간 사고(2026-10-15, R39)
+  mcp) PATHS=(packages/mcp packages/shared apps/web/public/guide-files); PHPDIRS=() ;;
+  *) echo "범위는 web|mockref|engine|mcp"; exit 2 ;;
 esac
 FAIL=0
 bad() { echo "❌ $*"; FAIL=1; }

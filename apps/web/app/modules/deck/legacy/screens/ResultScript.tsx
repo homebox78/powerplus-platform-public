@@ -1,3 +1,4 @@
+// 발표 대본 탭(문서 보기) — 출처: powerDeck web/src/screens/ResultScript.tsx (옛 화면 그대로 이식, eslint.config.js legacy 구역).
 import { useEffect, useState } from "react";
 import { api, jobUrl, type Job } from "../api";
 import { cn, Ms, useToastOn, ask } from "../ui";

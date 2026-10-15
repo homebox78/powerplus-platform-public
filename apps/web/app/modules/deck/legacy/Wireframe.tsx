@@ -1,3 +1,4 @@
+// 와이어프레임 — 배치 틀 고르기·상자 편집(16:9 본문 좌표) — 출처: powerDeck web/src/Wireframe.tsx (옛 화면 그대로 이식, eslint.config.js legacy 구역).
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { api, type WireBlock, type WireKind } from "./api";
 import { cn, Modal, Ms, Select, toast, ask } from "./ui";

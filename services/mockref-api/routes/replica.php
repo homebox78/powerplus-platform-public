@@ -77,6 +77,9 @@ $router->get('/api/mockups/replica', static function (): void {
             foreach ($mix['pieces'] as &$pc) {
                 $caps[$pc['screen_id']] ??= Db::row('SELECT public_asset_id, site_id FROM screens WHERE id = ?', [$pc['screen_id']]) ?? [];
                 $pc['capture_url'] = Plan::kurl((int) ($caps[$pc['screen_id']]['site_id'] ?? 0), $caps[$pc['screen_id']]['public_asset_id'] ?? null);
+                // 공공누리 2~4유형 조각은 참고 이미지 없이 좌표로만 — 이유를 조각에 싣는다(O-04, MCP images_missing 이 이 값을 읽을 수 있게)
+                $why = Plan::koglWithheld((int) ($caps[$pc['screen_id']]['site_id'] ?? 0));
+                if ($why !== null) { $pc['image_withheld'] = $why; }
             }
             unset($pc);
         }

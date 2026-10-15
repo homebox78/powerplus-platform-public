@@ -92,7 +92,9 @@ async function measure(p, ref) {
         const painted = (el) => { const s = getComputedStyle(el); return (s.backgroundColor !== "rgba(0, 0, 0, 0)" && s.backgroundColor !== "transparent") || s.backgroundImage !== "none" || parseFloat(s.borderLeftWidth) > 0 || parseFloat(s.borderRightWidth) > 0 || s.boxShadow !== "none"; };
         const inBand = inBand0.filter((b) => painted(b.el) || !inBand0.some((o) => o !== b && b.el.contains(o.el)));
         // 칸 상자가 보이지 않는 틀(div.mm-wrap 등)이면 안쪽 여백을 빼고 잰다 — 틀의 padding 24 때문에 210~1710 으로 어긋나 보였다(2026-10-12)
-        const inner = (c) => { if (!c.el || painted(c.el)) return c; const s = getComputedStyle(c.el); const pl = parseFloat(s.paddingLeft) || 0, pr = parseFloat(s.paddingRight) || 0; return { ...c, x: c.x + pl, w: Math.max(1, c.w - pl - pr) }; };
+        // 칠한 카드 안의 요소면 그 카드 끝선으로 잰다 — 카드가 띠보다 키가 커서 빠지고 안쪽 글만 재어, 카드 안쪽 여백(22~28px)을 '줄마다 본문 폭이 다름' 치명으로 잡던 오탐(일괄 수정 배치1·4·7)
+        const cardOf = (el) => { for (let a = el.parentElement, d = 0; a && a !== document.body && d < 6; a = a.parentElement, d++) { const q = a.getBoundingClientRect(); if (q.width > W * 0.92) return null; if (painted(a)) return { el: a, x: q.left, w: q.width }; } return null; };
+        const inner = (c) => { if (!c.el || painted(c.el)) return c; const card = cardOf(c.el); if (card) return { ...c, x: card.x, w: card.w }; const s = getComputedStyle(c.el); const pl = parseFloat(s.paddingLeft) || 0, pr = parseFloat(s.paddingRight) || 0; return { ...c, x: c.x + pl, w: Math.max(1, c.w - pl - pr) }; };
         const span = [...inBand, ...cs].map(inner); // 높이가 달라 줄 자리가 조금 밀린 시안에서는 칸 상자가 띠 밖에 걸친다 — 둘 다 본다
         const L = Math.round(Math.min(...span.map((c) => c.x))), R = Math.round(Math.max(...span.map((c) => c.x + c.w)));
         const big = cs.filter((c) => c.w >= W * 0.15); // 좁은 조각(세로 탭 띠·단추)은 칸으로 세지 않는다
@@ -314,7 +316,9 @@ async function doCheck({ html, ref, refImage, launch, sharp, width = 1920, peers
           const q = h.getBoundingClientRect(); const cx = q.left + Math.min(q.width, 200) / 2; let next = null;
           for (let y = q.bottom + 6; y < Math.min(q.bottom + 220, innerHeight - 2); y += 8) {
             const el = document.elementFromPoint(cx, y); if (!el || el === h || h.contains(el)) continue;
-            const t = el.closest("a, button, img, li, p, table, input, figure, [data-hb], article") || (el.children.length === 0 && (el.textContent || "").trim() ? el : null);
+            // 칠한 상자(사진 배너·카드 면)의 윗변도 첫 내용이다 — 그 안쪽 첫 글까지 재서 제목~내용 간격을 부풀리던 오탐(일괄 수정 배치9·10)
+            const box = (() => { for (let a = el; a && a !== document.body; a = a.parentElement) { if (a.contains(h)) return null; const s = getComputedStyle(a); if ((s.backgroundColor !== "rgba(0, 0, 0, 0)" && s.backgroundColor !== "transparent") || s.backgroundImage !== "none" || parseFloat(s.borderTopWidth) > 0) { const outer = (() => { let o = a; for (let b2 = a.parentElement; b2 && b2 !== document.body && !b2.contains(h); b2 = b2.parentElement) { const s2 = getComputedStyle(b2); if ((s2.backgroundColor !== "rgba(0, 0, 0, 0)" && s2.backgroundColor !== "transparent") || s2.backgroundImage !== "none" || parseFloat(s2.borderTopWidth) > 0) o = b2; } return o; })(); return outer; } } return null; })();
+            const t = box || el.closest("a, button, img, li, p, table, input, figure, [data-hb], article") || (el.children.length === 0 && (el.textContent || "").trim() ? el : null);
             if (t && !heads.includes(t)) { next = { gap: Math.round(t.getBoundingClientRect().top - q.bottom), el: t }; break; }
           }
           if (!next || next.gap < 0) continue; // 음수 = 같은 줄 옆 요소(탭·더보기)나 더 높은 사진이 먼저 잡힌 것 — 제목과 내용이 떨어진 게 아니다

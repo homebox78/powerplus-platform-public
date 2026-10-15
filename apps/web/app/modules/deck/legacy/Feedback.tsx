@@ -1,3 +1,4 @@
+// 장표 의견 패널(의견 상태: 검토 대기 → 반영 예정 → 반영됨/안 함) — 출처: powerDeck web/src/Feedback.tsx (옛 화면 그대로 이식, eslint.config.js legacy 구역).
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { api, unwrapList, type Job, type PinComment } from "./api";
 import { Avatar, avatarColor, cn, Ms, parseTs, useToastOn, ask } from "./ui";

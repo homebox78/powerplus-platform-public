@@ -1,3 +1,4 @@
+// 올리기 진행 창 — 출처: powerDeck web/src/screens/UploadModal.tsx (옛 화면 그대로 이식, eslint.config.js legacy 구역).
 import { fmtSize, type UploadProgress } from "../api";
 import { cn, fmtDur, Ms } from "../ui";
 

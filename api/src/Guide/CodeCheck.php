@@ -13,7 +13,8 @@ namespace Pp\Guide;
  *  img_alt  alt 속성이 없는 <img>                                           — 개마다 -5, 최대 -20 (오류)
  *  name     이름이 없는 버튼·링크(글자·aria-label·aria-labelledby·title·alt 모두 없음) — -5, 최대 -25 (오류)
  *  label    label·aria-label 이 없는 입력칸(placeholder 만으로는 이름이 아니다)  — -5, 최대 -20 (오류)
- *  heading  h1 없음 -5 / h1 여러 개 -3 / 단계 건너뜀(h2→h4) -3, 최대 -10 (경고)
+ *  heading  h1 없음 -5 / h1 여러 개 -3 / 단계 건너뜀(h2→h4) -3 / h1 앞에 다른 제목(h3→h1) -3, 최대 -10 (경고)
+ *  table    th 없는 데이터 표(2줄·2칸 이상, role=presentation 제외) — 표마다 -4, 최대 -12 (경고)
  *  contrast 계산 가능한 글자·배경 쌍의 대비 미달(본문 4.5:1, 큰 글자 3:1)     — -5, 최대 -20 (오류)
  *           인라인 style 과 단순 선택자(태그·.클래스·#id, 자손·>) 둘 다, 고칠 점에 글자색·면색 토큰
  *  font_size 글자 14px 미만 경고 -2 / 12px 미만 오류 -5, 최대 -10 · 첫 제목이 h3 이하 경고 -3
@@ -81,6 +82,7 @@ final class CodeCheck
         $this->checkFakeButtons($xp, $stats);
         $this->checkLabels($xp, $stats);
         $this->checkHeadings($xp, $stats, stripos($html, "<body") !== false || stripos($html, "<html") !== false);
+        $this->checkTables($xp);
         $this->checkContrast($rules, $xp, $stats);
         $this->checkFontSize($rules, $xp, $stats);
         $this->checkFocus($rules);
@@ -92,12 +94,13 @@ final class CodeCheck
         }
         $htmlEl = $xp->query('//html')->item(0);
         if (!$htmlEl instanceof \DOMElement || trim($htmlEl->getAttribute('lang')) === '') {
-            if (stripos($html, '<html') !== false) {
+            // 전체 문서(<html>·<body>·doctype 이 있는 것)만 본다 — 조각(부품 하나)은 lang 을 붙일 자리가 없다
+            if (preg_match('/<(html|body|!doctype)\b/i', $html)) {
                 $this->add('lang', 'warn', 'html', '<html> 에 lang 이 없습니다.', '<html lang="ko"> 처럼 문서 언어를 적으세요.', 2);
             }
         }
 
-        $caps = ['colors' => 24, 'img_alt' => 20, 'name' => 25, 'label' => 20, 'heading' => 10, 'contrast' => 20, 'lang' => 2, 'fake_button' => 20, 'font_size' => 10, 'focus' => 15, 'button_color' => 9, 'parse' => 100];
+        $caps = ['colors' => 24, 'img_alt' => 20, 'name' => 25, 'label' => 20, 'heading' => 10, 'contrast' => 20, 'lang' => 2, 'fake_button' => 20, 'table' => 12, 'font_size' => 10, 'focus' => 15, 'button_color' => 9, 'parse' => 100];
         $score = 100;
         foreach ($this->deduct as $rule => $n) {
             $score -= min($caps[$rule] ?? 10, $n);
@@ -281,7 +284,6 @@ final class CodeCheck
         };
     }
 
-    /** 토큰 이름이 쓰임과 맞는가 — 글자 자리에 bg-/fill- 이름, 면 자리에 text-/border- 이름을 내지 않는다. */
     /**
      * 제안할 수 있는 토큰 — 배포 토큰 파일(solideo-tokens.css)에 있는 이름과 브랜드(--pp-…)만.
      * 키트 내부 이름(--krds-…·--hb-…)은 판정에선 정본으로 인정하지만, 받는 쪽 프로젝트엔 없으므로 제안하지 않는다.
@@ -291,6 +293,7 @@ final class CodeCheck
         return !str_starts_with($name, '--krds-') && !str_starts_with($name, '--hb-') && !str_contains(substr($name, 2), '--');
     }
 
+    /** 토큰 이름이 쓰임과 맞는가 — 글자 자리에 bg-/fill- 이름, 면 자리에 text-/border- 이름을 내지 않는다. */
     private static function roleOk(string $role, string $name): bool
     {
         $n = ltrim($name, '-');
@@ -732,6 +735,9 @@ final class CodeCheck
             }
             if ($prev === 0 && $lv > 2) {
                 $this->add('heading', 'warn', self::path($el), "첫 제목이 h{$lv} 입니다 — 위 단계(h1·h2) 없이 시작합니다.", '화면 첫 제목은 h1(조각이면 h2)부터 쓰고, 크기는 CSS 로 조정하세요.', 3, $el->getLineNo());
+            } elseif ($lv === 1 && $h1 === 1 && $prev > 1) {
+                // h1 이 다른 제목 뒤에 나온다(h3 → h1) — 화면 낭독기 제목 탐색이 거꾸로 읽힌다(2026-10-10 MCP 시험 결함 16)
+                $this->add('heading', 'warn', self::path($el), "h1 앞에 h{$prev} 가 있습니다 — 화면 제목(h1)이 문서 첫 제목이어야 합니다.", 'h1 을 앞 제목들보다 위로 옮기거나, 앞 제목의 단계를 h1 아래로 맞추세요(크기는 CSS 로).', 3, $el->getLineNo());
             } elseif ($prev > 0 && $lv > $prev + 1) {
                 $this->add('heading', 'warn', self::path($el), "제목 단계를 건너뛰었습니다(h{$prev} 다음 h{$lv}).", "h" . ($prev + 1) . " 을 쓰거나 크기는 CSS 로 조정하세요.", 3, $el->getLineNo());
             }
@@ -760,6 +766,7 @@ final class CodeCheck
                 $this->add('contrast', 'error', $where, "글자 대비 {$ratio}:1 — 기준 {$need}:1 미달({$fg} / {$bg}){$assume}.", $this->contrastFix($fg, $bg, $need), 5, $line);
             }
         };
+        // 정리 필요: self::isLarge() 와 거의 같다(이쪽은 em 을 안 읽는다). 합치면 em 글자의 대비 기준이 바뀌므로 판정 재측정과 함께 할 것.
         $isLarge = static function (array $d): bool {
             $fs = $d['font-size'] ?? '';
             $px = preg_match('/^([\d.]+)px$/', $fs, $m) ? (float) $m[1] : (preg_match('/^([\d.]+)rem$/', $fs, $m) ? (float) $m[1] * 16 : 0.0);
@@ -1045,6 +1052,29 @@ final class CodeCheck
             if (!in_array($role, ['button', 'link', 'tab', 'menuitem'], true) && $this->accName($el, $xp) === '') {
                 $this->add('name', 'error', $where, '이름이 없는 버튼입니다(아이콘만 있거나 비어 있음).', '보이는 글자를 넣거나 aria-label="하는 일" 을 붙이세요.', 5, $el->getLineNo());
             }
+        }
+    }
+
+    /**
+     * 제목 셀(th)이 없는 데이터 표 — 화면 낭독기가 칸마다 머리를 읽어 주지 못한다(KWCAG 5.3.1 표의 구성, 2026-10-10 MCP 시험 결함 17).
+     * 배치용 표(role=presentation|none)와 한 줄·한 칸 표는 보지 않는다.
+     */
+    private function checkTables(\DOMXPath $xp): void
+    {
+        foreach ($xp->query('//table') as $t) {
+            /** @var \DOMElement $t */
+            if (in_array(strtolower(trim($t->getAttribute('role'))), ['presentation', 'none'], true)) {
+                continue;
+            }
+            $rows = $xp->query('.//tr', $t)->length;
+            $maxCells = 0;
+            foreach ($xp->query('.//tr', $t) as $tr) {
+                $maxCells = max($maxCells, $xp->query('./td|./th', $tr)->length);
+            }
+            if ($rows < 2 || $maxCells < 2 || $xp->query('.//th', $t)->length > 0) {
+                continue;
+            }
+            $this->add('table', 'warn', self::path($t), "제목 셀(th)이 없는 표입니다({$rows}줄 × {$maxCells}칸) — 화면 낭독기가 칸의 머리를 읽어 주지 못합니다.", '머리 줄·칸을 <th scope="col">(가로 머리)·<th scope="row">(세로 머리)로 바꾸고 <caption> 으로 표 제목을 붙이세요. 배치용 표면 role="presentation".', 4, $t->getLineNo());
         }
     }
 

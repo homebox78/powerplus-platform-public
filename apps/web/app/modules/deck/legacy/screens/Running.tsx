@@ -1,3 +1,4 @@
+// 진행 중 화면(단계·기획 미리 보기) — 출처: powerDeck web/src/screens/Running.tsx (옛 화면 그대로 이식, eslint.config.js legacy 구역).
 import { pdGo } from "../nav";
 import { useEffect, useRef, useState } from "react";
 import { LiveDot } from "@/components/hb/live-status";

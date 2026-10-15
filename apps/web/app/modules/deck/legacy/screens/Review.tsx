@@ -1,3 +1,4 @@
+// 겹쳐서 보기(원본·시안 비교 손잡이) — 출처: powerDeck web/src/screens/Review.tsx (옛 화면 그대로 이식, eslint.config.js legacy 구역).
 import { useRef, useState } from "react";
 import { api, fileUrl, fmtSize, type Job } from "../api";
 import { cn, JobHeader, Ms, ask, useToastOn } from "../ui";

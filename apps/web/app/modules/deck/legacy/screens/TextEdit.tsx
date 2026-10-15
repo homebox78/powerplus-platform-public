@@ -1,3 +1,4 @@
+// 글 고치기(장 목록 | 가운데 | 오른쪽 패널) — 출처: powerDeck web/src/screens/TextEdit.tsx (옛 화면 그대로 이식, eslint.config.js legacy 구역).
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { api, fileUrl, isEditing, type Job } from "../api";
 import { cn, Ms, useToastOn } from "../ui";

@@ -1,3 +1,4 @@
+// 결과 산출물 파일 묶음 — 출처: powerDeck web/src/screens/ResultFiles.tsx (옛 화면 그대로 이식, eslint.config.js legacy 구역).
 import { fileUrl, fmtSize, jobUrl, type Job } from "../api";
 import { Ms } from "../ui";
 

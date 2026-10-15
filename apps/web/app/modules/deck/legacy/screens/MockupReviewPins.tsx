@@ -1,3 +1,4 @@
+// 시안 검토의 핀 의견 — 출처: powerDeck web/src/screens/MockupReviewPins.tsx (옛 화면 그대로 이식, eslint.config.js legacy 구역).
 import { useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import type { PinComment } from "../api";
 import { Avatar, avatarColor, cn, Ms, parseTs } from "../ui";

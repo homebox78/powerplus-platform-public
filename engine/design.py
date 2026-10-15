@@ -2212,7 +2212,7 @@ def wire_text(s):
 
 # 메타 문구(만드는 사람을 위한 설명이 장표 글로 새는 것) · 과장 표현 · 워터마크
 META = re.compile(r"(도식화하면|도식화 하면|이 장표는|이 슬라이드|여기에 (?:넣|들어)|예시 이미지|화살표가 중요|하면 딱|placeholder|lorem|TBD|TODO|\[(?:이미지|그림|사진|표) ?(?:삽입|자리)\])", re.I)
-VAGUE = re.compile(r"(체계적(으로|인)|효율적(으로|인)|최선을 다|적극적(으로|인)|원활(하게|한)|안정적(으로|인) 수행|만전을 기|다양한 방안|최적의|성공적(으로|인) 수행|극대화)")
+VAGUE = re.compile(r"(체계적(으로|인)|효율적(으로|인)|최선을 다|적극적(으로|인)|원활(하게|한)|안정적(으로|인) 수행|만전을 기|차질\s*없|다양한 방안|최적의|성공적(으로|인) 수행|극대화)")
 # 장 끝을 평가 항목 되받기로 닫는 꼬리("…평가에 답합니다") — 위원에게 남는 정보가 없다. 산출물·수치·기한으로 끝낸다
 ECHO_TAIL = re.compile(r"(평가\s*(?:항목|요소|기준)?\s*(?:에|을)\s*(?:답|응답|부응)(?:합니다|하겠습니다|한다|드립니다)|요구(?:사항)?에\s*답(?:합니다|하겠습니다))\s*[.!]?\s*$", re.M)
 HYPE = ["최초", "유일", "최고", "혁신적", "혁명", "패러다임", "완벽", "압도적", "세계 최", "국내 1호", "No.1", "넘버원"]
@@ -2225,6 +2225,13 @@ NUM = re.compile(r"\d[\d,]*(?:\.\d+)?(?:" + _U + r"(?=" + _P + r"?(?![가-힣]))
 
 def _norm_num(t):
     return re.sub(r"[\s,*]", "", t)
+
+
+def _glued(text, m):
+    """글자에 붙은 숫자(소상공인24·정부24·제2)이고 붙은 단위가 없으면 이름·번호다 — api Kit::nums 와 같은 규칙(O-17, 2026-10-15)"""
+    raw = m.group(0).strip()
+    pre = text[m.start() - 1:m.start()] if m.start() > 0 else ""
+    return bool(re.match(r"[가-힣A-Za-z]", pre)) and (not re.search(r"\D$", raw) or bool(re.match(r"\d[\d,]*(?:\.\d+)?\s", raw)))
 
 
 def present_minutes(src):
@@ -2333,7 +2340,7 @@ def deck_check(plan, sources):
     src_keys = set()
     for m in NUM.finditer(sources):
         raw = m.group(0).strip()
-        if re.search(r"\D$", raw):   # 단위 있는 수치만
+        if re.search(r"\D$", raw) and not _glued(sources, m):   # 단위 있는 수치만(소상공인24 위 같은 이름 빼고)
             src_keys.add(_norm_num(raw))
     s0 = slides[0]
     have = {_norm_num(m.group(0).strip()) for m in NUM.finditer("\n".join(str(s0.get(k) or "") for k in ("title", "message", "content")))} & src_keys
@@ -2360,6 +2367,8 @@ def fact_check(plan, sources):
                 if len(_norm_num(core)) < 2 and not raw.endswith("%"):   # 한 자리 수(1단계·3개 등)는 넘어간다
                     continue
                 if re.match(r"0\d", core):   # 01·02 — 기획이 붙인 연번·단계 표기(앞자리 0)는 근거가 아니라 번호다
+                    continue
+                if _glued(txt, m):
                     continue
                 if raw in seen or _norm_num(raw) in src or (_norm_num(core) in src and not raw.endswith("%")):
                     continue

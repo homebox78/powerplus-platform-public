@@ -53,6 +53,11 @@ const FLOWS: Record<string, { asks: [string, string]; returns: string }> = {
 // 표의 한 줄 설명 — 첫 문장만, 앞의 [안내] 꼬리표는 뗀다.
 const brief = (d: string) => splitSentences(d.replace(/^\[[^\]]*\]\s*/, ""))[0] ?? "";
 
+// 안내 문구에는 함수 이름(mock_get_wireframe 등) 대신 도구의 한글 이름을 쓴다(MC-13). 괄호 꼬리("(가중 합성)")는 뗀다.
+// 함수 이름 자체는 아래 도구 표에서만 보여 준다.
+const TITLE = new Map(TOOLS.map((t) => [t.name, t.title.replace(/\s*\([^)]*\)\s*$/, "")]));
+const label = (name: string) => TITLE.get(name) ?? name;
+
 export default function PowerMcpPage() {
   const { me } = useMe();
   const [client, setClient] = useState<AiClientId>("claude-code");
@@ -106,7 +111,7 @@ export default function PowerMcpPage() {
                   {flow.asks.map((a) => <li key={a} className="rounded-field bg-ground-2 px-4 py-3 text-md">“{a}”</li>)}
                 </ul>
                 <p className="mt-5 flex items-center gap-1.5 text-sm font-semibold text-ink-4"><ArrowRight className="size-4" aria-hidden />이 도구가</p>
-                <div className="mt-2 flex flex-wrap gap-1.5">{names.map((n) => <Tag key={n} tone="line" className="[overflow-wrap:anywhere]">{n}</Tag>)}</div>
+                <div className="mt-2 flex flex-wrap gap-1.5">{names.map((n) => <Tag key={n} tone="line" className="[overflow-wrap:anywhere]">{label(n)}</Tag>)}</div>
                 <p className="mt-5 flex items-center gap-1.5 text-sm font-semibold text-ink-4"><ArrowRight className="size-4" aria-hidden />이렇게 돌려줍니다</p>
                 <Copy className="mt-2 text-md leading-[1.7] text-ink-3" text={flow.returns} />
               </article>
@@ -138,7 +143,7 @@ export default function PowerMcpPage() {
           {g.items.map((e) => (
             <li key={e.q} className="flex min-w-0 flex-col rounded-card border border-line p-5">
               <p className="text-md font-semibold leading-[1.6]">“{e.q}”</p>
-              <div className="mt-3 flex flex-wrap gap-1.5">{e.tools.map((n) => <Tag key={n} tone="line" className="[overflow-wrap:anywhere]">{n}</Tag>)}</div>
+              <div className="mt-3 flex flex-wrap gap-1.5">{e.tools.map((n) => <Tag key={n} tone="line" className="[overflow-wrap:anywhere]">{label(n)}</Tag>)}</div>
               <p className="mt-3 flex items-start gap-1.5 text-sm leading-[1.6] text-ink-3"><ArrowRight className="mt-[3px] size-4 shrink-0" aria-hidden />{e.result}</p>
             </li>
           ))}

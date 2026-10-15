@@ -87,7 +87,9 @@ export function MainChat({ variant = "full", onClose }: { variant?: "full" | "do
   const [text, setText] = useState(() => { try { const d = sessionStorage.getItem(DRAFT); if (d) sessionStorage.removeItem(DRAFT); return d ?? ""; } catch { return ""; } });
   const [busy, setBusy] = useState(false);
   const [mode, setModeState] = useState<Mode>("auto");
-  useEffect(() => { setModeState(modeStore.get()); }, []);   // 브라우저에서만 읽는다(서버 렌더와 첫 화면을 맞춘다)
+  // 브라우저에서만 읽는다(서버 렌더와 첫 화면을 맞춘다) — 첫 렌더 뒤 한 번 맞추는 의도된 setState
+  // eslint-disable-next-line react-hooks/set-state-in-effect
+  useEffect(() => { setModeState(modeStore.get()); }, []);
   const setMode = (v: Mode) => { setModeState(v); modeStore.set(v); };
   const [anon, setAnon] = useState<AnonTurn[]>(() => (typeof window === "undefined" ? [] : anonStore.get()));   // 로그인 전 대화 — 탭을 닫으면 사라진다
   const [notice, setNotice] = useState<{ text: string; upgrade?: boolean; link?: string | null } | null>(null);

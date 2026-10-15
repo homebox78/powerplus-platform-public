@@ -1,5 +1,5 @@
 /* global Office, document */
-import * as React from "react";
+// 작업창 진입점 — 출처: powerPlus addin/src/taskpane/index.tsx. (jsx: react-jsx 라 React 를 따로 들이지 않는다)
 import { createRoot } from "react-dom/client";
 import App from "./App";
 import "./styles.css";

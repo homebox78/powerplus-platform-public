@@ -77,6 +77,8 @@ T;
     /** 읽는 속도(초당 글자, 공백·** 제외)와 쉼 — 연습 화면(script_player.html)과 같은 값 */
     private const CPS = 5.5, GAP = 0.45, REST = 1.0, SGAP = 1.2;
 
+    /* ───────── 예상 질문(Q&A) ───────── */
+
     public static function qaPath(string $id): string
     {
         return Jobs::dir($id, 'mockup') . '/qa.json';
@@ -152,8 +154,10 @@ T;
         return ['ok' => true, 'script' => self::info($id, $j)];
     }
 
+    /* ───────── 줄 정리 · 읽는 시간 · 보관 ───────── */
+
     /**
-     * 줄 정리 — 빈 줄("")은 쉼(숨 고르는 자리)이다. 맨 앞·맨 뒤·연달은 빈 줄은 없앤다.
+     * 줄 정리 —빈 줄("")은 쉼(숨 고르는 자리)이다. 맨 앞·맨 뒤·연달은 빈 줄은 없앤다.
      * 쉼이 하나도 없는 대본이면(auto) 세 문장마다 쉼을 넣는다 — 줄줄이 붙어 랩처럼 읽히지 않게.
      */
     public static function paused(array $lines, bool $auto = true): array
@@ -230,6 +234,8 @@ T;
         if (!$name) return '';
         return "\n\n# 제작 언어 = {$name}\n발표 대본·예상 질문·답변·제목은 모두 {$name}로 쓴다. 한국어 문장을 섞지 않는다. JSON 키와 형식은 위 지시 그대로.";
     }
+
+    /* ───────── 대본 만들기 · 문서 앞뒤 ───────── */
 
     /**
      * 대본 만들기. only(쪽 번호 배열)를 주면 그 장만 만들어 기존 대본에 합친다 — 최대 BATCH 장.
@@ -387,6 +393,8 @@ T;
         $s = (int) round($s);
         return intdiv($s, 60) . ':' . str_pad((string) ($s % 60), 2, '0', STR_PAD_LEFT);
     }
+
+    /* ───────── 고친 대본 저장 · 내보내기(문서·연습 화면) ───────── */
 
     /** 사용자가 고친 대본 저장 — 읽을 말과 남길 문장 */
     public static function save(array $j, array $b): array

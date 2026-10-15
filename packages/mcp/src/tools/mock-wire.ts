@@ -3,20 +3,17 @@
 // 이 파일은 /api/v1/mock/wire/generate · /mock/wire/check 를 MCP 도구로 감싼다.
 import { z } from "zod";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import type { DeckKitCtx } from "./deck-kit.ts";
+import { codeOf, type DeckKitCtx } from "./deck-kit.ts";
 
 const SCREENS = ["main", "board_list", "board_gallery", "board_view", "form", "content", "greeting", "org_chart", "location", "history", "vision", "procedure", "faq", "search", "sitemap", "info_disclosure"] as const;
 const ORGS = ["all", "local", "central", "public", "education", "university", "civic", "private"] as const;
 const STYLES = ["auto", "standard", "reference", "portal", "llm", "landing", "campus", "magazine", "minimal"] as const;
 
-const codeOf = (status: number) =>
-  status === 401 ? "UNAUTHORIZED" : status === 403 ? "FORBIDDEN" : status === 429 ? "RATE_LIMITED" : status === 400 || status === 422 ? "INVALID" : status === 404 ? "NOT_FOUND" : "ERROR";
-
 export function registerMockWireTools(server: McpServer, ctx: DeckKitCtx): void {
   const call = async (tool: string, p: string, init?: { method?: string; body?: unknown }) => {
     if (!ctx.key) { const g = await ctx.guard(tool); if (g) return g; }
     const r = await ctx.pp(p, ctx.key, init);
-    if (!r.ok || !r.body) return ctx.err(ctx.ppMsg(r, "powerMock API 오류"), codeOf(r.status));
+    if (!r.ok || !r.body) return ctx.err(ctx.ppMsg(r, "powerMock API 오류"), r.ok ? "ERROR" : codeOf(r));
     const { data, ...rest } = r.body;
     return ctx.text({ ...rest, data });
   };
@@ -27,7 +24,7 @@ export function registerMockWireTools(server: McpServer, ctx: DeckKitCtx): void 
     inputSchema: {
       screen: z.enum(SCREENS).describe("화면 종류 — main(메인)·board_list(게시판 목록)·board_gallery(사진 게시판)·board_view(게시글)·form(신청 폼)·content(일반 안내)·greeting(인사말)·org_chart(조직도)·location(찾아오시는 길)·history(연혁)·vision(비전)·procedure(절차 안내)·faq·search(검색 결과)·sitemap·info_disclosure(정보공개)"),
       org: z.enum(ORGS).optional().describe("기관 묶음 — local(지자체)·central(중앙부처)·public(공공기관)·education(교육청·학교)·university(대학)·civic(단체·협회·복지)·private(일반 기업·민간)·all(기본)"),
-      style: z.enum(STYLES).optional().describe("짜임 스타일(기본 auto). 원형(portal·llm·landing·campus·magazine·minimal)은 메인 화면용, 서브 화면은 reference 로 바뀐다"),
+      style: z.enum(STYLES).optional().describe("짜임 스타일(기본 auto). 허용값: auto·standard·reference·portal·llm·landing·campus·magazine·minimal. 원형(portal·llm·landing·campus·magazine·minimal)은 메인 화면용, 서브 화면은 reference 로 바뀐다"),
       variant: z.number().int().min(0).max(50).optional().describe("변형 번호(0부터) — reference 는 다른 레퍼런스 화면, 원형은 줄 순서·좌우 바꿈"),
       request: z.string().max(800).optional().describe("요청 글(넣을 것·뺄 것·강조할 것)"),
       title: z.string().max(120).optional().describe("와이어 제목"),
@@ -45,7 +42,7 @@ export function registerMockWireTools(server: McpServer, ctx: DeckKitCtx): void 
         title: z.string().optional(),
         lnb: z.boolean().optional(),
         rows: z.array(z.object({
-          zone: z.enum(["top", "body", "bottom"]).optional(),
+          zone: z.enum(["top", "body", "bottom"]).optional().describe("top·body·bottom"),
           cols: z.array(z.object({ span: z.number().int().min(1).max(12), k: z.string(), t: z.string().optional(), h: z.number().optional() })),
         })),
       }).passthrough().describe("mock_get_wireframe 의 wire 형식"),

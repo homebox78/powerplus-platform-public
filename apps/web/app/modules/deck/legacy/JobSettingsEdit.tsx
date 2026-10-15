@@ -1,3 +1,4 @@
+// 작업 설정 고치기(강조색 등) — 출처: powerDeck web/src/JobSettingsEdit.tsx (옛 화면 그대로 이식, eslint.config.js legacy 구역).
 import { useState } from "react";
 import { api, type Job } from "./api";
 import { cn, Modal, Ms, SecTitle, toast } from "./ui";

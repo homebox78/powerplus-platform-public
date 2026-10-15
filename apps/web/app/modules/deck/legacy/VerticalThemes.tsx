@@ -1,3 +1,4 @@
+// 세로 제안서 디자인 고르기(스타일 × 톤) — 출처: powerDeck web/src/VerticalThemes.tsx (옛 화면 그대로 이식, eslint.config.js legacy 구역).
 import { useState } from "react";
 import { cn, Modal, Ms } from "./ui";
 

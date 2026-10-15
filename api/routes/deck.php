@@ -15,7 +15,6 @@ declare(strict_types=1);
 
 use Pp\Core\Actor;
 use Pp\Core\HttpError;
-use Pp\Core\Keys;
 use Pp\Core\Response;
 use Pp\Core\Router;
 use Pp\Deck\AiKeys;
@@ -32,9 +31,7 @@ return static function (Router $r): void {
         if ($a->user === null || $a->kind === 'worker') {
             throw HttpError::unauthorized();
         }
-        if ($a->via === 'key' && !Keys::allows($a, 'deck')) {
-            throw HttpError::forbidden('이 키는 powerDeck 범위가 없습니다.');
-        }
+        // 키 범위(deck)는 Router 가 먼저 본다(403 FORBIDDEN_SCOPE, O-01·O-10).
         return [(string) $a->user['email'], $a->isAdmin()];
     };
     /** 엔진 — 옛 Auth::worker() + heartbeat */

@@ -372,8 +372,7 @@ return static function (Router $r): void {
         $tool = (string) preg_replace('/[^A-Za-z0-9_.-]/', '', (string) ($in['tool'] ?? 'mcp'));
         $scope = (string) ($in['scope'] ?? 'all');
         if (in_array($scope, Keys::SCOPES, true) && $scope !== 'all' && !Keys::allows($a, $scope)) {
-            // 코드를 따로 둔다 — "권한이 없습니다"·"키가 유효하지 않음"과 섞이면 사용자가 키를 재발급하러 간다(2026-10-09 시험)
-            throw new HttpError('FORBIDDEN_SCOPE', "이 키는 {$scope} 범위가 없습니다.", 403, '마이페이지 → API·MCP 키에서 범위를 확인하세요.');
+            throw HttpError::forbiddenScope($scope);
         }
         Keys::hit($a, $tool !== '' ? $tool : 'mcp', true);
         Response::json([

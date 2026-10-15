@@ -3,7 +3,8 @@ import tseslint from "typescript-eslint";
 import reactHooks from "eslint-plugin-react-hooks";
 
 export default tseslint.config(
-  { ignores: ["build/", ".react-router/", "node_modules/", "app/components/ui/"] },
+  // public/ 은 빌드된 키트 미리보기·배포 파일(압축 번들) — 소스가 아니라 검사하지 않는다(7천여 건이 lint 를 실패시켰다)
+  { ignores: ["build/", ".react-router/", "node_modules/", "app/components/ui/", "public/"] },
   js.configs.recommended,
   ...tseslint.configs.recommended,
   {

@@ -18,8 +18,10 @@ export type DeckKitCtx = {
 
 const ORDER = "순서: deck_get_plan_kit → 기획 작성 → deck_check_plan(통과까지) → deck_get_wire_kit → 와이어프레임 작성 → deck_check_wireframe(통과까지) → deck_get_script_kit → 대본 작성 → deck_check_script(통과까지).";
 
-const codeOf = (status: number) =>
-  status === 401 ? "UNAUTHORIZED" : status === 403 ? "FORBIDDEN" : status === 429 ? "RATE_LIMITED" : status === 400 || status === 422 ? "INVALID" : status === 404 ? "NOT_FOUND" : "ERROR";
+/** 오류 코드 — 서버가 준 code(FORBIDDEN_SCOPE 등)를 먼저, 없으면 HTTP 상태로. 잘못된 인자는 index.ts 검증 오류와 같은 INVALID_ARGS(MC-21) */
+export const codeOf = (r: PpRes) =>
+  (typeof r.body?.code === "string" && r.body.code) ? r.body.code
+    : r.status === 401 ? "UNAUTHORIZED" : r.status === 403 ? "FORBIDDEN" : r.status === 429 ? "RATE_LIMITED" : r.status === 400 || r.status === 422 ? "INVALID_ARGS" : r.status === 404 ? "NOT_FOUND" : "ERROR";
 
 const anyArr = z.array(z.record(z.string(), z.unknown()));
 const anyObj = z.record(z.string(), z.unknown());
@@ -28,7 +30,7 @@ export function registerDeckKitTools(server: McpServer, ctx: DeckKitCtx): void {
   const call = async (tool: string, p: string, init?: { method?: string; body?: unknown }) => {
     if (!ctx.key) { const g = await ctx.guard(tool); if (g) return g; } // 키 없음 안내만(사용량 집계 없음)
     const r = await ctx.pp(p, ctx.key, init);
-    if (!r.ok || !r.body) return ctx.err(ctx.ppMsg(r, "powerDeck API 오류"), codeOf(r.status));
+    if (!r.ok || !r.body) return ctx.err(ctx.ppMsg(r, "powerDeck API 오류"), r.ok ? "ERROR" : codeOf(r));
     const { data, ...rest } = r.body;
     return ctx.text({ ...rest, data });
   };

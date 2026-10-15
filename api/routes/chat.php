@@ -51,6 +51,7 @@ const CHAT_FREE_MB = 30;
 const CHAT_FREE_REDO = 2;
 
 return static function (Router $r): void {
+    // ---------------------------------------------------------------- 도우미(문구·사용량·프로젝트 저장·의도 고르기)
     $msg = static function (string $k): string {
         static $cache = null;
         if ($cache === null) {
@@ -306,6 +307,7 @@ return static function (Router $r): void {
         return $pub;
     };
 
+    // ---------------------------------------------------------------- 라우트(첫 말·비로그인·자료 올리기·말 보내기·버튼)
     // 첫 말 — powerLLM 이 무엇인지 고른다. 제안서 만들기면 powerDeck 작업까지, 그 밖(에셋·목업·가이드·질문)은 같은 대화에서 답한다(2026-10-08 사용자 "일도 시키고 궁금한 것도 묻고").
     $r->post('/chat/projects', static function (array $p, Actor $a) use ($need, $add, $view, $sync, $proj, $startDeck): void {
         [$uid, $email] = $need($a);

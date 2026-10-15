@@ -243,9 +243,13 @@ return static function (Router $r): void {
 
         $own = null;
         if ($token !== '') {
-            $own = Db::row('SELECT * FROM mock_mockups WHERE token = ? AND owner_user_id = ? AND deleted_at IS NULL', [$token, $uid]);
+            $own = Db::row('SELECT * FROM mock_mockups WHERE token = ? AND deleted_at IS NULL', [$token]);
             if ($own === null) {
-                Response::error('NOT_FOUND', '시안 token 을 찾을 수 없습니다(만료됐거나 다른 계정의 것).', 404, 'html 을 보내 새로 판정하세요.');
+                Response::error('NOT_FOUND', '시안 token 을 찾을 수 없습니다(만료됐거나 지워졌습니다).', 404, 'html 을 보내 새로 판정하세요.');
+            }
+            // O-32: 남의 시안은 404 가 아니라 403 — "없음"으로 읽혀 같은 token 으로 계속 고치려 들던 것
+            if ((int) $own['owner_user_id'] !== $uid) {
+                throw HttpError::forbidden('다른 계정이 만든 시안은 고칠 수 없습니다. html 을 보내 새로 판정하세요.');
             }
         }
 
@@ -323,9 +327,12 @@ return static function (Router $r): void {
     $r->post('/mock/mockups/{token}/check', static function (array $p, Actor $a) use ($tokenOf, $galleryStore): void {
         $u = Auth::requireUser($a);
         $token = $tokenOf($p['token']);
-        $m = Db::row('SELECT * FROM mock_mockups WHERE token = ? AND owner_user_id = ? AND deleted_at IS NULL', [$token, (int) $u['id']]);
+        $m = Db::row('SELECT * FROM mock_mockups WHERE token = ? AND deleted_at IS NULL', [$token]);
         if ($m === null) {
             throw HttpError::notFound('시안');
+        }
+        if ((int) $m['owner_user_id'] !== (int) $u['id']) {
+            throw HttpError::forbidden('다른 계정이 만든 시안의 판정은 기록할 수 없습니다.');   // O-32
         }
         $b = Response::input();
         $score = max(0, min(100, (int) ($b['score'] ?? 0)));
@@ -334,6 +341,10 @@ return static function (Router $r): void {
         // 서명 = HMAC-SHA256(공유 비밀, "token|score|pass"), 비밀은 config mock.judge_secret(없으면 worker.key) = powerMCP 의 PP_JUDGE_SECRET.
         $secret = (string) (Config::get('mock.judge_secret', '') ?: Config::get('worker.key', ''));
         $sig = (string) ($_SERVER['HTTP_X_PP_JUDGE'] ?? '');
+        if ($secret === '') {
+            // R11·MC-34: 비밀이 비면 모든 판정이 거부된다 — 조용히 넘기지 말고 서버 로그에 남긴다.
+            error_log('[mock] 판정 서명 비밀(mock.judge_secret·worker.key)이 비어 판정 기록을 거부함');
+        }
         if ($secret === '' || $sig === '' || !hash_equals(hash_hmac('sha256', $token . '|' . $score . '|' . $pass, $secret), $sig)) {
             throw new HttpError('JUDGE_REQUIRED', '판정은 powerMCP 의 mock_check_mockup 으로만 기록됩니다.', 403, 'AI 도구에서 mock_check_mockup 을 불러 주세요.');
         }
@@ -487,7 +498,7 @@ return static function (Router $r): void {
 
     // ---------------------------------------------------------------- 갤러리·포인트
     $gItem = static function (int $id): array {
-        $g = Db::row('SELECT g.*, m.token, m.public_id AS mockup_public_id, u.name AS owner_name, u.avatar_url AS owner_avatar FROM mock_gallery g JOIN mock_mockups m ON m.id = g.mockup_id LEFT JOIN core_users u ON u.id = g.owner_user_id WHERE g.id = ?', [$id]);
+        $g = Db::row('SELECT g.*, m.token, m.public_id AS mockup_public_id, m.base_token AS m_base, m.page AS m_page, u.name AS owner_name, u.avatar_url AS owner_avatar FROM mock_gallery g JOIN mock_mockups m ON m.id = g.mockup_id LEFT JOIN core_users u ON u.id = g.owner_user_id WHERE g.id = ?', [$id]);
         if ($g === null) {
             throw HttpError::notFound('시안');
         }
@@ -504,12 +515,20 @@ return static function (Router $r): void {
         return Db::row('SELECT 1 AS x FROM mock_gallery_unlocks WHERE gallery_id = ? AND user_id = ?', [(int) $g['id'], $a->id()]) !== null;
     };
     $badge = static fn (int $shared): ?array => $shared >= 15 ? ['id' => 'master', 'name' => '명장'] : ($shared >= 5 ? ['id' => 'expert', 'name' => '장인'] : ($shared >= 1 ? ['id' => 'sprout', 'name' => '새싹'] : null));
-    $gCard = static function (array $g, Actor $a, array $sharedBy, array $liked, array $unlocked) use ($badge): array {
+    // 세트 = 메인 + 그 메인을 기준(base_token)으로 만든 서브. 세트 열쇠는 메인 token(사용자 2026-10-15 "같은 이름 셋트로 만든거면 셋트로 다같이")
+    $gSub = "(COALESCE(g.ref_id, '') NOT LIKE 'mix1:%' AND (COALESCE(m.base_token, '') <> '' OR COALESCE(m.page, '') NOT IN ('', 'main')))";
+    $gCard = static function (array $g, Actor $a, array $sharedBy, array $liked, array $unlocked, array $setSize = []) use ($badge): array {
         $mine = $a->id() !== null && (int) $g['owner_user_id'] === $a->id();
         $ref = (string) ($g['ref_id'] ?? '');
+        $base = (string) ($g['m_base'] ?? '');
+        $pg = (string) ($g['m_page'] ?? '');
+        $isSub = !str_starts_with($ref, 'mix1:') && ($base !== '' || ($pg !== '' && $pg !== 'main'));
+        $set = $base !== '' ? $base : (string) ($g['token'] ?? '');
         return [
             'id' => (int) $g['id'], 'title' => (string) $g['title'] ?: '제목 없는 시안', 'score' => (int) $g['score'], 'device' => $g['device'],
             'kind' => str_starts_with($ref, 'mix1:') ? 'mix' : 'single',
+            'role' => $isSub ? 'sub' : 'main', 'page' => $isSub ? ($pg !== '' && $pg !== 'main' ? $pg : null) : 'main',
+            'set' => $set, 'set_size' => (int) ($setSize[$set] ?? 1),
             'thumb_url' => '/api/v1/mock/gallery/' . $g['id'] . '/thumb?v=' . strtotime((string) $g['updated_at']),
             'status' => $g['status'], 'likes' => (int) $g['likes'], 'views' => (int) $g['views'], 'unlocks' => (int) $g['unlocks'], 'note' => $g['note'],
             'owner' => ['name' => trim((string) ($g['owner_name'] ?? '')) ?: '회원', 'avatar' => $g['owner_avatar'] ?: null, 'badge' => $badge((int) ($sharedBy[(int) $g['owner_user_id']] ?? 0))],
@@ -518,7 +537,7 @@ return static function (Router $r): void {
         ];
     };
 
-    $r->get('/mock/gallery', static function (array $p, Actor $a) use ($gCard): void {
+    $r->get('/mock/gallery', static function (array $p, Actor $a) use ($gCard, $gSub): void {
         $view = ($_GET['view'] ?? 'shared') === 'mine' ? 'mine' : 'shared';
         if ($view === 'mine' && $a->id() === null) {
             throw HttpError::unauthorized('로그인하면 내가 만든 시안을 볼 수 있습니다.');
@@ -536,8 +555,29 @@ return static function (Router $r): void {
         if ($view === 'mine' && $a->isAdmin() && ($_GET['all'] ?? '') === '1') {
             [$where, $args] = ['1 = 1', []];
         }
-        $rows = Db::rows("SELECT g.*, u.name AS owner_name, u.avatar_url AS owner_avatar FROM mock_gallery g LEFT JOIN core_users u ON u.id = g.owner_user_id WHERE {$where} ORDER BY {$order} LIMIT {$limit} OFFSET {$offset}", $args);
-        $total = (int) Db::val("SELECT COUNT(*) FROM mock_gallery g WHERE {$where}", $args);
+        // 세트 크기는 보이는 범위(공유·내 것) 안에서 센다 — 구분·세트 거르기 전 조건
+        [$seeWhere, $seeArgs] = [$where, $args];
+        $type = (string) ($_GET['type'] ?? '');
+        if ($type === 'main' || $type === 'sub') {
+            $where .= $type === 'sub' ? " AND {$gSub}" : " AND NOT {$gSub}";
+        }
+        $set = preg_replace('/[^A-Za-z0-9_-]/', '', (string) ($_GET['set'] ?? ''));
+        if ($set !== '') {
+            $where .= ' AND (m.token = ? OR m.base_token = ?)';
+            $args = array_merge($args, [$set, $set]);
+            $order = "(m.token = '{$set}') DESC, m.created_at ASC, g.id ASC";   // 메인 먼저, 서브는 만든 순서
+        }
+        $from = 'mock_gallery g JOIN mock_mockups m ON m.id = g.mockup_id';
+        $rows = Db::rows("SELECT g.*, m.token, m.base_token AS m_base, m.page AS m_page, u.name AS owner_name, u.avatar_url AS owner_avatar FROM {$from} LEFT JOIN core_users u ON u.id = g.owner_user_id WHERE {$where} ORDER BY {$order} LIMIT {$limit} OFFSET {$offset}", $args);
+        $total = (int) Db::val("SELECT COUNT(*) FROM {$from} WHERE {$where}", $args);
+        $setSize = [];
+        $keys = array_values(array_unique(array_map(static fn ($x) => (string) ($x['m_base'] ?: $x['token']), $rows)));
+        if ($keys) {
+            $in = implode(',', array_fill(0, count($keys), '?'));
+            foreach (Db::rows("SELECT COALESCE(NULLIF(m.base_token, ''), m.token) AS k, COUNT(*) AS n FROM {$from} WHERE {$seeWhere} AND (m.token IN ({$in}) OR m.base_token IN ({$in})) GROUP BY k", array_merge($seeArgs, $keys, $keys)) as $s) {
+                $setSize[(string) $s['k']] = (int) $s['n'];
+            }
+        }
         $sharedBy = [];
         foreach (Db::rows("SELECT owner_user_id, COUNT(*) AS n FROM mock_gallery WHERE status = 'shared' AND owner_user_id IS NOT NULL GROUP BY owner_user_id") as $s) {
             $sharedBy[(int) $s['owner_user_id']] = (int) $s['n'];
@@ -553,7 +593,7 @@ return static function (Router $r): void {
                 $unlocked[(int) $x['gallery_id']] = true;
             }
         }
-        Response::list(array_map(static fn ($g) => $gCard($g, $a, $sharedBy, $liked, $unlocked), $rows), $total, $page, $limit, [
+        Response::list(array_map(static fn ($g) => $gCard($g, $a, $sharedBy, $liked, $unlocked, $setSize), $rows), $total, $page, $limit, [
             'points' => $a->id() === null ? null : Points::balance($a->id()), 'unlock_cost' => Points::cost('use_mockup_open'), 'cut' => MOCK_GALLERY_CUT,
         ]);
     });

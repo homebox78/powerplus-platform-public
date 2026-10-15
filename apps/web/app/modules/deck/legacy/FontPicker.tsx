@@ -1,3 +1,4 @@
+// 장표 서체 고르기(제목·본문 샘플) — 출처: powerDeck web/src/FontPicker.tsx (옛 화면 그대로 이식, eslint.config.js legacy 구역).
 import list from "./data/fonts.json";
 import { cn, SecTitle } from "./ui";
 

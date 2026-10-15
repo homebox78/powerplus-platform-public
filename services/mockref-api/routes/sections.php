@@ -13,7 +13,6 @@ declare(strict_types=1);
 use Homebox\Db;
 use Homebox\Http\Response;
 use Homebox\Plan;
-use Homebox\Signer;
 
 $router->get('/api/sites/{slug}/sections', static function (array $p): void {
     $slug = (string) $p['slug'];
@@ -84,6 +83,7 @@ $router->get('/api/sites/{slug}/sections', static function (array $p): void {
             'structure' => Homebox\SectionShape::structure($x['structure'] ?? null),
             'x' => (int) ($x['bbox_x'] ?? 0), 'y' => (int) ($x['bbox_y'] ?? 0),
             'crop_url' => $ok ? Plan::kurl($siteId, $x['crop_asset_id']) : null,
+            'image_withheld' => Plan::koglWithheld($siteId), // 공공누리 2~4유형이면 원본 크롭을 뺀 이유(O-04), 아니면 null
         ];
     }, $rows);
     Response::json([

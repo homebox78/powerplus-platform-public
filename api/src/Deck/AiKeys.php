@@ -33,6 +33,8 @@ final class AiKeys
     public const DEFAULT_EFFORT = 'xhigh';
     private const EFFORTS = ['minimal', 'low', 'medium', 'high', 'xhigh'];
 
+    /* ───────── 설정 조회 · 모델 고르기 ───────── */
+
     /** 화면용 설정 — 키 원문은 절대 넣지 않는다 */
     public static function settings(string $email, bool $admin): array
     {
@@ -246,6 +248,8 @@ final class AiKeys
         return $b;
     }
 
+    /* ───────── 키 · 모델 저장 ───────── */
+
     /** 개인 키 저장 — OpenRouter 로 확인하고 맞을 때만 */
     public static function savePersonal(string $email, string $key): array
     {
@@ -333,10 +337,8 @@ final class AiKeys
         return ['ok' => true, 'info' => $info];
     }
 
-    /**
-     * 그림(시안) 비용을 쓸 단계 전에 OpenRouter 에 쓸 돈이 남았는지 — 모자라면 바로 알린다(대기열에서 기다리다 실패하지 않게).
-     * 둘 중 작은 쪽: 계정 잔액(크레딧 − 사용액) · 키 한도의 남은 금액. 1분 캐시. 확인 자체가 실패하면 막지 않는다.
-     */
+    /* ───────── Higgsfield 키 · 그림 만드는 곳 ───────── */
+
     /** 설정 화면에서 넣은 Higgsfield 키('id:secret') — 엔진에만 넘긴다. 개인 키 방식이면 그 사용자의 키, 회사 키 방식이면 회사 키 */
     public static function hfKey(?string $email = null): string
     {
@@ -400,6 +402,12 @@ final class AiKeys
         return is_array($s) ? $s : ['state' => 'unknown'];
     }
 
+    /* ───────── 잔액 · 예산 ───────── */
+
+    /**
+     * 그림(시안) 비용을 쓸 단계 전에 OpenRouter 에 쓸 돈이 남았는지 — 모자라면 바로 알린다(대기열에서 기다리다 실패하지 않게).
+     * 둘 중 작은 쪽: 계정 잔액(크레딧 − 사용액) · 키 한도의 남은 금액. 1분 캐시. 확인 자체가 실패하면 막지 않는다.
+     */
     public static function creditCheck(string $email, float $need = 0.5): void
     {
         if (self::imageProviderFor($email) === 'higgsfield') {
@@ -493,6 +501,8 @@ final class AiKeys
         return $d !== null && (float) $d > 0 ? (float) $d : null;
     }
 
+    /* ───────── AI 호출 — 엔진 대신 부르기 · 작업 대기열 · 채팅 ───────── */
+
     /**
      * 엔진(작업자)이 작업 주인의 키로 OpenRouter 를 부른다. 비용은 작업(spent_usd)과 사용 기록(ai_usage)에 적립.
      * 작업 한도(budget_usd)·월 상한을 넘으면 402 로 거절한다 — 엔진은 그 자리에서 멈춘다.
@@ -550,6 +560,7 @@ final class AiKeys
      * 20초 안에 아무 엔진도 안 가져가면(꺼짐·과부하) 거두고 null — 부르는 쪽이 OpenRouter 로 간다.
      * 가져갔는데 4분 안에 끝나지 않거나 실패해도 null.
      */
+    // 정리 필요: 이 파일 안팎 어디서도 부르지 않는다(2026-10-15 확인) — chatForJob 에서 연결이 끊긴 것인지 일부러 끈 것인지 확인 후 연결하거나 지운다
     private static function viaEngine(array $job, string $kind, array $b): ?array
     {
         if (self::textEngine() !== 'cli') return null;

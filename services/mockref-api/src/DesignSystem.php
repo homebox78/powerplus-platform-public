@@ -92,6 +92,121 @@ final class DesignSystem
         return implode("\n", $lines) . "\n";
     }
 
+    /**
+     * powerGuide 토큰 형식(O-16, 2026-10-15) — powerGuide 원본 tokens.json(apps/web/app/modules/guide/data/tokens.json)과 같은
+     * DTCG 모양({$value,$type})·같은 묶음 이름(primitive·semantic·font·line-height·radius·shadow·layout·breakpoint·component)으로 낸다.
+     * 계획된 공통 스키마(packages/shared/tokens.schema.json)는 아직 저장소에 없어 tokens.json 의 실제 구조를 기준으로 삼았다.
+     * powerGuide 에 없는 이름(text.heading·text.link·bg.header·font.size.label 등)은 같은 묶음 안에 덧붙인다. 값이 없으면 키를 뺀다(지어내지 않음).
+     * @param array<string,mixed> $doc @return array<string,mixed>
+     */
+    public static function powerGuide(array $doc): array
+    {
+        $tok = static fn (mixed $v, string $type, ?string $desc = null): array => ['$value' => $v, '$type' => $type] + ($desc !== null ? ['$description' => $desc] : []);
+        $px = static fn (mixed $v): ?string => is_numeric($v) ? ((int) $v) . 'px' : null;
+        $c = $doc['color'];
+        $r = $c['roles'];
+        $out = [
+            '$description' => "{$doc['site']['name']} — powerMock 실측 디자인 시스템을 powerGuide 토큰 형식으로 옮긴 것. 원본: {$doc['site']['url']}",
+            '$version' => $doc['version'],
+        ];
+        // 원색 — 주색 단계(5~95)는 파생 값. 50 = 실측 주색
+        $brand = [];
+        foreach ((array) $c['primary_scale'] as $step => $hex) {
+            $brand[(string) $step] = $tok($hex, 'color', (string) $step === '50' ? '실측 주색' : '파생(주색을 흰색·검정과 섞음)');
+        }
+        if ($brand !== []) {
+            $out['primitive'] = ['brand' => $brand];
+        }
+        // 의미 색 — powerGuide 이름에 맞추고, 주색 계열은 원색 단계를 참조한다
+        $sem = [];
+        if ($r['text.body']) { $sem['text']['primary'] = $tok($r['text.body'], 'color', '실측 본문 글자색'); }
+        if ($r['text.heading']) { $sem['text']['heading'] = $tok($r['text.heading'], 'color', '실측 제목 글자색'); }
+        if ($r['text.link']) { $sem['text']['link'] = $tok($r['text.link'], 'color', '실측 링크 글자색'); }
+        if ($brand !== []) {
+            $sem['text']['accent'] = $tok('{primitive.brand.60}', 'color');
+            $sem['fill']['accent'] = $tok('{primitive.brand.50}', 'color');
+            $sem['fill']['accent-hover'] = $tok('{primitive.brand.60}', 'color');
+            $sem['fill']['accent-pressed'] = $tok('{primitive.brand.70}', 'color');
+            $sem['fill']['accent-subtle'] = $tok('{primitive.brand.5}', 'color');
+            $sem['border']['accent'] = $tok('{primitive.brand.50}', 'color');
+            $sem['icon']['accent'] = $tok('{primitive.brand.50}', 'color');
+            $sem['accent']['primary'] = $tok('{primitive.brand.50}', 'color');
+        }
+        if ($r['surface.header']) { $sem['bg']['header'] = $tok($r['surface.header'], 'color', '실측 머리 배경'); }
+        if ($r['surface.footer']) { $sem['bg']['footer'] = $tok($r['surface.footer'], 'color', '실측 바닥 배경'); }
+        if ($sem !== []) {
+            $out['semantic'] = $sem;
+        }
+        // 글자 — KRDS 이름(display·heading-*·body-*·detail) → powerGuide 이름(display·h1~h3·body-lg·body·sm·xs)
+        $sizeName = ['display' => 'display', 'heading-large' => 'h1', 'heading-medium' => 'h2', 'heading-small' => 'h3', 'body-large' => 'body-lg', 'body-medium' => 'body', 'body-small' => 'sm', 'detail' => 'xs', 'label' => 'label'];
+        $font = [];
+        foreach ($sizeName as $from => $to) {
+            $v = $doc['typography']['scale'][$from] ?? null;
+            if (is_array($v) && $px($v['size'] ?? null) !== null) {
+                $font['size'][$to] = $tok($px($v['size']), 'dimension', "실측 {$from}" . (isset($v['from']) ? " ({$v['from']})" : ''));
+                if (isset($v['weight'])) { $font['weight'][$to] = $tok((int) $v['weight'], 'fontWeight'); }
+            }
+        }
+        if (!empty($doc['typography']['family']['primary'])) {
+            $font['family']['sans'] = $tok('"' . $doc['typography']['family']['primary'] . '", sans-serif', 'fontFamily');
+        }
+        if ($font !== []) {
+            $out['font'] = $font;
+        }
+        $lh = [];
+        foreach (['body' => 'body-medium', 'heading' => 'heading-large'] as $to => $from) {
+            $v = $doc['typography']['scale'][$from]['line_height'] ?? null;
+            if (is_numeric($v)) { $lh[$to] = $tok((float) $v, 'number', "실측 {$from} 행간(배수)"); }
+        }
+        if ($lh !== []) {
+            $out['line-height'] = $lh;
+        }
+        // 모서리 — base·small·large 를 md·sm·lg 로, 알약형이면 full
+        $rad = [];
+        foreach (['small' => 'sm', 'base' => 'md', 'large' => 'lg'] as $from => $to) {
+            $v = $doc['shape']['radius'][$from] ?? null;
+            if (is_int($v)) { $rad[$to] = $tok($v . 'px', 'dimension', $from === 'base' ? '실측(가장 많이 쓰인 반경)' : '파생'); }
+        }
+        if (!empty($doc['shape']['radius']['pill'])) { $rad['full'] = $tok('999px', 'dimension'); }
+        if ($rad !== []) {
+            $out['radius'] = $rad;
+        }
+        $sh = [];
+        foreach (['sm' => '1', 'md' => '2'] as $from => $to) {
+            if (isset($doc['elevation']['levels'][$from])) { $sh[$to] = $tok($doc['elevation']['levels'][$from], 'shadow', 'KRDS 권장치(사이트 실측 아님)'); }
+        }
+        if ($sh !== []) {
+            $out['shadow'] = $sh;
+        }
+        $lay = [];
+        if ($px($doc['layout']['container']) !== null) { $lay['max'] = $tok($px($doc['layout']['container']), 'dimension', '실측 본문 폭'); }
+        if ($px($doc['layout']['gutter']) !== null) { $lay['gutter'] = $tok($px($doc['layout']['gutter']), 'dimension', '실측 칸 간격'); }
+        if ($px($doc['layout']['section_gap']) !== null) { $lay['section-gap'] = $tok($px($doc['layout']['section_gap']), 'dimension', '실측 섹션 간격'); }
+        if ($lay !== []) {
+            $out['layout'] = $lay;
+        }
+        $bp = [];
+        foreach ((array) $doc['layout']['breakpoints'] as $k => $v) {
+            if ($px($v) !== null) { $bp[$k] = $tok($px($v), 'dimension', '실측 미디어쿼리 중 그 구간 최댓값'); }
+        }
+        if ($bp !== []) {
+            $out['breakpoint'] = $bp;
+        }
+        $ctl = [];
+        if ($px($doc['shape']['control_heights']['input'] ?? null) !== null) { $ctl['height-md'] = $tok($px($doc['shape']['control_heights']['input']), 'dimension', '실측 입력칸 높이'); }
+        if (isset($rad['sm'])) { $ctl['radius'] = $tok('{radius.sm}', 'dimension'); }
+        if ($r['action.button-bg'] && $r['action.button-text']) {
+            $ctl['button-bg'] = $tok($r['action.button-bg'], 'color', '실측 버튼 배경');
+            $ctl['button-text'] = $tok($r['action.button-text'], 'color', '실측 버튼 글자');
+        }
+        if ($ctl !== []) {
+            $out['component'] = ['control' => $ctl];
+        }
+        $out['$extensions'] = ['hb' => ['site' => $doc['site']['slug'], 'source' => $doc['source'], 'coverage' => $doc['coverage'], 'notes' => $doc['notes'],
+            'schema' => 'powerGuide tokens.json 구조(DTCG). 공통 스키마 packages/shared/tokens.schema.json 은 아직 없음']];
+        return $out;
+    }
+
     // ── 색상 ────────────────────────────────────────────────
     /** @param list<array<string,mixed>> $palette @param array<string,mixed>|null $c @return array<string,mixed> */
     private static function color(?string $primary, array $palette, ?array $c): array

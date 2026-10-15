@@ -1,3 +1,4 @@
+// 디자인 타입 고르기(스타일 샘플 썸네일) — 출처: powerDeck web/src/DesignTypes.tsx (옛 화면 그대로 이식, eslint.config.js legacy 구역).
 import { useState } from "react";
 import data from "./data/styles.json";
 import { cn, Modal, Ms } from "./ui";

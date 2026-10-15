@@ -36,7 +36,9 @@ export async function gates(p) {
       if (!bordered) return false;
       const hasImg = el.querySelector("img, svg, video, iframe, table");
       const t = txt(el);
-      return !hasImg && t.length < 25 && el.children.length <= 3;
+      // 글 줄이 3개 이상이면(조직도 국 상자 = 국 이름 + 과 3개) 짧아도 빈 카드가 아니다(일괄 수정 배치10 오탐)
+      const lines = [...el.querySelectorAll("*")].filter((x) => [...x.childNodes].some((n) => n.nodeType === 3 && n.textContent.trim())).length;
+      return !hasImg && t.length < 25 && el.children.length <= 3 && lines < 3;
     }).length;
     // 글자 잘림(C3): 말줄임된 요소 수 — 목록 제목 외에도 잘리면 문제
     out.clipped = [...document.querySelectorAll("*")].filter(vis).filter((el) => {

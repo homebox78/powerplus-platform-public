@@ -36,6 +36,15 @@ final class HttpError extends \RuntimeException
         return new self('FORBIDDEN', '권한이 없습니다.', 403, $hint);
     }
 
+    /**
+     * 키 범위(scope) 밖 — "권한이 없습니다"·"키가 유효하지 않음"과 코드를 따로 둔다.
+     * 섞이면 사용자가 키를 재발급하러 간다(2026-10-09 시험, MCK-002·O-01·O-10).
+     */
+    public static function forbiddenScope(string $scope): self
+    {
+        return new self('FORBIDDEN_SCOPE', "이 키는 {$scope} 범위가 없습니다.", 403, '마이페이지 → API·MCP 키에서 범위를 확인하세요.');
+    }
+
     public static function unauthorized(?string $hint = null): self
     {
         return new self('UNAUTHORIZED', '로그인이 필요합니다.', 401, $hint);

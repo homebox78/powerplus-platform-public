@@ -1,3 +1,4 @@
+// powerAssets 로고 검색·고르기 — 출처: powerDeck web/src/LogoSearch.tsx (옛 화면 그대로 이식, eslint.config.js legacy 구역).
 import { useEffect, useRef, useState } from "react";
 import { API } from "./api";
 import { Arrow, cn, Ms, useToastOn } from "./ui";

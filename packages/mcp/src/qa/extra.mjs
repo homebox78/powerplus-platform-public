@@ -26,6 +26,9 @@ export async function collectOverlayText(p) {
       const cx = box.x + box.w / 2, cy = box.y + box.h / 2;
       const onPic = pics.some((q) => cx > q.x && cx < q.x + q.w && cy > q.y && cy < q.y + q.h) || bgEl(el);
       if (!onPic) continue;
+      // 사진 위에 뜬 불투명 카드 안 글은 카드 색이 바탕이다 — 사진 픽셀로 재서 대비 2~3 으로 잡던 오탐(일괄 수정 배치1·9: 흰 카드 위 진파랑 날짜)
+      { let card = false; for (let a = el; a && a !== document.body; a = a.parentElement) { const c = getComputedStyle(a).backgroundColor; const v = (c.match(/[\d.]+/g) || []).map(Number); const al = c.startsWith("rgba") ? (v[3] ?? 1) : (v.length >= 3 ? 1 : 0);
+          if (v.length >= 3 && al >= 0.9 && getComputedStyle(a).backgroundImage === "none") { if (!a.querySelector("img,video,picture,canvas")) card = true; break; } } if (card) continue; }
       const fs = parseFloat(cs.fontSize) || 14, fw = parseInt(cs.fontWeight, 10) || 400;
       out.push({ t: t.slice(0, 24), ...box, color: cs.color, fs, fw, tag: el.tagName.toLowerCase(), h1: !!el.closest("h1") });
     }

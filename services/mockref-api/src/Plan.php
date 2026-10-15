@@ -248,6 +248,18 @@ final class Plan
         ];
     }
 
+    /**
+     * 원본 이미지를 공공누리로 뺐을 때 그 이유 한 줄 — 열려 있으면 null (O-04, 2026-10-15).
+     * 이미지 URL 이 null 인 이유가 잠금(플랜)인지 공공누리인지 응답만 보고 알 수 있게 항목마다 image_withheld 로 싣는다(MC-25 빈 결과 이유).
+     */
+    public static function koglWithheld(int $siteId, ?array $plan = null): ?string
+    {
+        if (self::koglOpen($siteId, $plan)) {
+            return null;
+        }
+        return '공공누리 ' . (int) self::koglType($siteId) . '유형(상업 이용·변경 제한) 기관이라 원본 이미지는 제공하지 않습니다. 좌표·구성 데이터와 출처만 참고하세요.';
+    }
+
     /** 프론트가 배너·자물쇠를 그릴 때 쓰는 요약 */
     public static function info(array $plan, ?array $allowed, int $totalScreens, ?int $siteId = null): array
     {

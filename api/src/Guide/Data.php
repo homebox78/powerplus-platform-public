@@ -76,9 +76,23 @@ final class Data
         return is_file(self::webRoot() . "/kit-files/r/{$id}.json");
     }
 
+    /**
+     * KRDS 컴포넌트 55종 — 항목마다 키트 부품 id(kit_id·kit_ids)와 온전한 영문 이름(en)을 붙여 준다.
+     * id 는 KRDS 대응표 원래 id(krds_id 와 같음)로 둔다 — 키트 id 와 다르다(헤더=top-navigation 등). 밖으로 낼 때는 kit_id 를 쓴다.
+     */
     public static function krdsComponents(): array
     {
-        return Overrides::applyItems(self::dataFile('krds-components.json'), 'krds');
+        $k = Overrides::applyItems(self::dataFile('krds-components.json'), 'krds');
+        $k['items'] = array_map(static function (array $c): array {
+            $ko = (string) ($c['ko'] ?? '');
+            $kits = self::KRDS_KIT[$ko] ?? [];
+            $c['krds_id'] = (string) ($c['id'] ?? '');
+            $c['kit_id'] = $kits[0] ?? null;
+            $c['kit_ids'] = $kits;
+            $c['en'] = self::KRDS_EN[$ko] ?? (string) ($c['en'] ?? '');
+            return $c;
+        }, (array) ($k['items'] ?? []));
+        return $k;
     }
 
     public static function krdsPatterns(): array
@@ -86,43 +100,62 @@ final class Data
         return Overrides::applyItems(self::dataFile('krds-patterns.json'), 'patterns');
     }
 
+    /**
+     * 검증 체크리스트 — 원천(krds-report.json)이 PDF 에서 뽑혀 문장 끝에 다음 표 머리('P F E N/A 5) 검색 – … □ □ □ □ …')가
+     * 붙은 행이 있다(2026-10-10 MCP 시험 207·241행). 읽을 때 그 꼬리를 뗀다. 원천 정리는 apps/web 쪽 일.
+     */
     public static function checklist(): array
     {
-        return Overrides::applyChecklist(self::dataFile('checklist.json'));
+        $c = Overrides::applyChecklist(self::dataFile('checklist.json'));
+        foreach ($c['rows'] ?? [] as $i => $row) {
+            $t = (string) ($row['text'] ?? '');
+            $cut = preg_replace('/\s*P\s+F\s+E\s+N\/A\b.*$/su', '', $t) ?? $t;
+            $cut = trim(preg_replace('/(\s*□)+.*$/su', '', $cut) ?? $cut);
+            if ($cut !== $t && $cut !== '') {
+                $c['rows'][$i]['text'] = $cut;
+            }
+        }
+        return $c;
     }
 
-    /** 키트 부품 id → KRDS 지침 항목들(대응표 id 가 다른 것은 aliases). */
+    /** 키트 부품 id → KRDS 지침 항목들(KRDS_KIT 대응표 하나로 찾는다). */
     public static function krdsFor(string $kitId): array
     {
-        $k = self::krdsComponents();
-        $keys = array_merge([$kitId], $k['aliases'][$kitId] ?? []);
-        $names = self::KRDS_BY_NAME[$kitId] ?? [];
-        return array_values(array_filter($k['items'] ?? [], static fn (array $c): bool =>
-            ($c['id'] !== '' && in_array($c['id'], $keys, true)) || in_array((string) ($c['ko'] ?? ''), $names, true)));
+        return array_values(array_filter(self::krdsComponents()['items'] ?? [], static fn (array $c): bool => in_array($kitId, $c['kit_ids'], true)));
     }
 
     /**
-     * 키트 부품 → KRDS 컴포넌트 한글 이름(데이터 id 로 묶이지 않은 것). 2026-10-12 MCP 시험: date-input 의 krds 가 빈 배열이었다
-     * — KRDS 「날짜 입력 필드」는 데이터에서 date-picker 로 묶여 있었고, 캐러셀·코치마크처럼 id 가 비어 있는 항목도 있었다.
+     * KRDS 컴포넌트(한글 이름) → 키트 부품 id. 첫째가 대표(지침 검색 결과의 kit_id), 나머지도 같은 지침을 받는다.
+     * 이름 체계를 하나로 — 예전엔 KRDS 대응표 id(gov-banner·top-navigation·modal·tab·text-field)·aliases·이름 표 셋으로 찾아
+     * 헤더 등 KRDS 출신 부품 13개의 지침이 0개였고, 지침 검색 결과의 kit_id 로 부품을 부르면 NOT_FOUND 였다(2026-10-10 MCP 시험 결함 2·3).
+     * 빈 배열 = 대응하는 키트 부품이 없음. 열쇠는 관리자 덮어쓰기(Overrides 'krds')와 같은 한글 이름.
      */
-    private const KRDS_BY_NAME = [
-        'date-input' => ['날짜 입력 필드'],
-        'calendar' => ['달력'],
-        'alert-dialog' => ['모달'],
-        'carousel' => ['캐러셀'],
-        'coach-mark' => ['코치마크'],
-        'contextual-help' => ['맥락적 도움말'],
-        'tutorial-panel' => ['따라하기 패널'],
-        'header' => ['헤더'],
-        'mobile-menu' => ['메인 메뉴'],
-        'data-table' => ['표'],
-        'combobox' => ['셀렉트'],
-        'language-switcher' => ['언어 변경'],
-        'resize' => ['화면 크기 조정'],
-        'tts' => ['음성지원'],
-        'slider' => ['범위슬라이드'],
-        'chip' => ['태그'],
-        'sidebar' => ['사이드 메뉴'],
+    private const KRDS_KIT = [
+        '공식 배너' => ['masthead'], '운영기관 식별자' => ['identifier'], '헤더' => ['header'], '푸터' => ['footer'],
+        '건너뛰기 링크' => ['skip-link'], '메인 메뉴' => ['navigation-menu', 'mobile-menu'], '브레드크럼' => ['breadcrumb'],
+        '사이드 메뉴' => ['side-navigation', 'sidebar'], '콘텐츠 내 탐색' => ['in-page-navigation'], '페이지네이션' => ['pagination'],
+        '구조화 목록' => ['structured-list'], '긴급 공지' => ['alert'], '달력' => ['calendar', 'date-picker'], '디스클로저' => ['collapsible'],
+        '모달' => ['dialog', 'alert-dialog'], '배지' => ['badge'], '아코디언' => ['accordion'], '이미지' => [], '캐러셀' => ['carousel'],
+        '탭' => ['tabs'], '표' => ['table', 'data-table'], '텍스트 목록' => ['text-list'], '파비콘' => [],
+        '링크' => ['link'], '버튼' => ['button'], '플로팅 버튼' => [],
+        '라디오 버튼' => ['radio-group'], '체크박스' => ['checkbox'], '셀렉트' => ['select', 'combobox'], '태그' => ['tag', 'chip'], '토글 스위치' => ['switch'],
+        '단계 표시기' => ['step-indicator'], '스피너' => ['spinner'],
+        '도움 패널' => ['help-panel'], '따라하기 패널' => ['tutorial-panel'], '맥락적 도움말' => ['contextual-help'], '코치마크' => ['coach-mark'], '툴팁' => ['tooltip'], '음성지원' => ['tts'],
+        '날짜 입력 필드' => ['date-input', 'date-picker'], '텍스트 영역 (Textarea)' => ['textarea'], '텍스트 입력 필드' => ['input', 'field'], '파일 업로드' => ['file-upload'],
+        '언어 변경' => ['language-switcher'], '화면 크기 조정' => ['resize'], '접근 가능한 미디어' => [], '숨긴 콘텐츠' => [],
+        '범위슬라이드' => ['slider'], '뒤로가기 버튼' => [], '바텀시트' => ['drawer'], '수량 토글' => [], '토스트' => ['toast'], '스낵바' => ['toast'],
+        '탭바' => ['tabs'], '스플래시 스크린' => [],
+    ];
+
+    /** KRDS 컴포넌트 영문 이름 — 원천(krds.ts)이 첫 낱말만 갖고 있어('Skip'·'Main'·'Side') 온전한 이름으로 바꾼다(MCP 시험 결함 4). */
+    private const KRDS_EN = [
+        '건너뛰기 링크' => 'Skip link', '메인 메뉴' => 'Main menu', '사이드 메뉴' => 'Side navigation', '콘텐츠 내 탐색' => 'In-page navigation',
+        '구조화 목록' => 'Structured list', '긴급 공지' => 'Critical alert', '텍스트 목록' => 'Text list', '플로팅 버튼' => 'Floating action button',
+        '라디오 버튼' => 'Radio button', '토글 스위치' => 'Toggle switch', '단계 표시기' => 'Step indicator', '도움 패널' => 'Help panel',
+        '따라하기 패널' => 'Tutorial panel', '맥락적 도움말' => 'Contextual help', '코치마크' => 'Coach mark', '음성지원' => 'Text to speech',
+        '날짜 입력 필드' => 'Date input', '텍스트 입력 필드' => 'Text input', '파일 업로드' => 'File upload', '언어 변경' => 'Language switcher',
+        '접근 가능한 미디어' => 'Accessible media', '숨긴 콘텐츠' => 'Visually hidden', '범위슬라이드' => 'Range slider', '뒤로가기 버튼' => 'Back button',
+        '바텀시트' => 'Bottom sheet', '수량 토글' => 'Quantity toggle', '탭바' => 'Tab bar', '스플래시 스크린' => 'Splash screen',
     ];
 
     /** 흔히 부르는 이름(띄어쓰기 없앤 소문자) → 부품 id. 키트 title·KRDS 이름으로 안 풀리는 것만. */
@@ -139,6 +172,19 @@ final class Data
     private const SEARCH_SYN = [
         '모달' => ['모달', '대화상자', 'dialog', 'drawer'],
         '대화상자' => ['대화상자', '모달', 'dialog'],
+        // 영어로 찾는 말(2026-10-10 MCP 시험: modal 0건 · date 에서 calendar 빠짐)
+        'modal' => ['modal', 'dialog', '모달', '대화상자'],
+        'dialog' => ['dialog', 'modal', '대화상자', '모달'],
+        'popup' => ['popup', 'popover', 'dialog', '팝업', '대화상자'],
+        'date' => ['date', 'calendar', '날짜', '달력'],
+        'calendar' => ['calendar', 'date', '달력', '날짜'],
+        '날짜' => ['날짜', '달력', 'date', 'calendar'],
+        '달력' => ['달력', '날짜', 'calendar', 'date'],
+        'toggle' => ['toggle', 'switch', '토글', '스위치'],
+        'table' => ['table', '표', '테이블'],
+        'select' => ['select', 'combobox', '선택 상자', '셀렉트'],
+        '검색창' => ['검색창', '검색', 'search'], '검색' => ['검색', 'search'], 'search' => ['search', '검색'],        'nav' => ['nav', 'navigation', '메뉴', '탐색'],
+        'navigation' => ['navigation', 'nav', '메뉴', '탐색'],
         '드롭다운' => ['드롭다운', 'dropdown', '셀렉트', 'select', '콤보'],
         '팝업' => ['팝업', '팝오버', 'popover', '대화상자', 'dialog'],
         '토글' => ['토글', '스위치', 'switch'],
@@ -184,17 +230,15 @@ final class Data
         // 흔히 부르는 이름(2026-10-12 MCP 시험: '드롭다운' 이 dropdown-menu 로 안 풀렸다)
         $alias = self::COMMON_NAMES[$nq] ?? null;
         if ($alias !== null && in_array($alias, array_column($metas, 'id'), true)) return ['id' => $alias, 'candidates' => []];
-        // KRDS 한글 이름(예: '날짜 입력 필드' → date-input)
-        // 데이터 id 로 묶인 부품을 먼저(모달 → dialog), 이름으로만 이어 둔 부품은 그다음(모달 → alert-dialog)
-        $aliases = self::krdsComponents()['aliases'] ?? [];
-        foreach ([true, false] as $direct) {
-            foreach ($metas as $m) {
-                $mid = (string) $m['id'];
-                $keys = array_merge([$mid], $aliases[$mid] ?? []);
-                foreach (self::krdsFor($mid) as $c) {
-                    if ($direct !== in_array($c['id'], $keys, true)) continue;
-                    if ($norm((string) ($c['ko'] ?? '')) === $nq || $norm((string) ($c['en'] ?? '')) === $nq) return ['id' => $mid, 'candidates' => []];
-                }
+        // KRDS 이름·대응표 id(예: '날짜 입력 필드'·'Date input'·gov-banner·top-navigation) → 대표 키트 부품(모달 → dialog)
+        // 지침 검색·guide_krds 가 예전에 주던 KRDS id 로 불러도 부품이 나오게(2026-10-10 MCP 시험: gov-banner NOT_FOUND)
+        $metaIds = array_column($metas, 'id');
+        foreach (self::krdsComponents()['items'] ?? [] as $c) {
+            $kit = $c['kit_id'];
+            if ($kit === null || !in_array($kit, $metaIds, true)) continue;
+            $ko = $norm(preg_replace('/\s*\(.*?\)/u', '', (string) ($c['ko'] ?? '')) ?? '');
+            if ($ko === $nq || $norm((string) ($c['en'] ?? '')) === $nq || ($c['krds_id'] !== '' && $norm($c['krds_id']) === $nq)) {
+                return ['id' => $kit, 'candidates' => []];
             }
         }
         // 못 찾음 — 이름이 서로 포함되거나 글자가 가까운 것을 후보로
@@ -217,10 +261,6 @@ final class Data
         return ['id' => null, 'candidates' => array_map(static fn ($x) => $x[1], array_slice($scored, 0, 5))];
     }
 
-    /**
-     * 정본 색 — ['names' => [--이름 => #rrggbb], 'values' => [#rrggbb => 이름]].
-     * powerGuide 토큰(flat) + 키트 kit.css 의 사용자 속성(KRDS 팔레트). 한 단계 var() 참조는 풀어 둔다.
-     */
     /** 브랜드 색 — powerDeck 강조색 9가지(Upload.tsx ACCENTS) + 사이트 포인트 주황·글자용 주황 */
     public const BRAND = [
         '--pp-accent-blue' => '#1866da', '--pp-accent-sky' => '#2e9bd6', '--pp-accent-teal' => '#0e9f8e',
@@ -229,6 +269,10 @@ final class Data
         '--pp-point' => '#e46b37', '--pp-point-ink' => '#e46b37',
     ];
 
+    /**
+     * 정본 색 — ['names' => [--이름 => #rrggbb], 'values' => [#rrggbb => 이름]].
+     * powerGuide 토큰(flat) + 키트 kit.css 의 사용자 속성(KRDS 팔레트) + 브랜드 색. 한 단계 var() 참조는 풀어 둔다.
+     */
     public static function palette(): array
     {
         if (isset(self::$cache['palette'])) {

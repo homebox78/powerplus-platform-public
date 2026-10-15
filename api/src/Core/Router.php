@@ -5,6 +5,7 @@ namespace Pp\Core;
 
 /**
  * 경로 라우터: {name} 한 단, {name+} 여러 단. 핸들러 시그니처 fn(array $params, Actor $actor).
+ * 핸들러 앞에서 한 번에 본다: 로그인·동의·역할 → 키 범위(scopeOf) → 키 일 한도(Keys::hit).
  * 출처: homebox-handoff api/src/Http/Router.php (접두를 /api/v1 로, Actor 전달·auth/role 옵션 추가)
  */
 final class Router
@@ -25,6 +26,13 @@ final class Router
         }
         $p = rtrim($p, '/');
         return $p === '' ? '/' : $p;
+    }
+
+    /** 경로 → 키 범위(Keys::SCOPES). 모듈 경로가 아니면 null(공용). powerMCP 도구 접두(assets_·deck_·mock_·guide_)와 같은 이름. */
+    public static function scopeOf(string $path): ?string
+    {
+        $first = explode('/', ltrim($path, '/'), 2)[0];
+        return in_array($first, ['assets', 'deck', 'mock', 'guide'], true) ? $first : null;
     }
 
     public function add(string $method, string $pattern, callable $handler, array $opt = []): self
@@ -76,6 +84,14 @@ final class Router
                 }
                 if (!empty($r['opt']['role']) && !$actor->hasRole((string) $r['opt']['role'])) {
                     throw HttpError::forbidden();
+                }
+                // O-01: 키 호출은 경로 첫 단으로 모듈 범위를 본다 — 한도 집계 전에 막는다(/keys/verify 와 같은 순서).
+                // 공용 경로(/keys·/me·/reports·/search·/p 등)와 /admin 은 범위가 없다(관리자 경로는 역할로 막는다).
+                if ($actor->via === 'key') {
+                    $scope = self::scopeOf($path);
+                    if ($scope !== null && !Keys::allows($actor, $scope)) {
+                        throw HttpError::forbiddenScope($scope);
+                    }
                 }
                 // MCP-006: 키로 REST 를 직접 부르면 여기서 한 번 센다 → 일 한도 넘으면 429.
                 // /keys/verify 는 자기가 센다(powerMCP 경유), powerMCP 를 거친 REST 는 Keys::hit 이 건너뛴다.

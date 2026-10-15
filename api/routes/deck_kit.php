@@ -22,10 +22,9 @@ return static function (Router $r): void {
         if ($a->user === null || $a->kind === 'worker') {
             throw HttpError::unauthorized();
         }
+        // 키 범위(deck)는 Router 가 먼저 본다(403 FORBIDDEN_SCOPE, O-01·O-10).
+        // 한도 집계도 Router 가 요청마다 한 번 하므로 아래 hit 은 보통 건너뛴다(Keys::$counted).
         if ($a->via === 'key') {
-            if (!Keys::allows($a, 'deck')) {
-                throw HttpError::forbidden('이 키는 powerDeck 범위가 없습니다.');
-            }
             Keys::hit($a, $tool);
         }
     };

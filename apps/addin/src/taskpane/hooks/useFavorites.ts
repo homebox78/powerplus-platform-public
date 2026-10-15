@@ -1,3 +1,4 @@
+// 즐겨찾기 훅 — 출처: powerPlus addin/src/taskpane/hooks/useFavorites.ts.
 import { useCallback, useEffect, useState } from "react";
 import { fetchFavorites, addFavoriteServer, removeFavoriteServer } from "../api/prefs";
 

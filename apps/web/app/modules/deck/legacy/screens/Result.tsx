@@ -1,3 +1,4 @@
+// 결과 화면(원본·시안과 결과를 장별로 짝지어 보기) — 출처: powerDeck web/src/screens/Result.tsx (옛 화면 그대로 이식, eslint.config.js legacy 구역).
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { REVIEW_COLS, TextEdit, Thumbs } from "./TextEdit";
 import { isEditing, api, fileUrl, fmtSize, isDesign, usd, type Job, type JobFile, type PlanSlide } from "../api";

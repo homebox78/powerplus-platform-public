@@ -1,3 +1,4 @@
+// 새 변환 올리기(파일·언어·디자인 고르기) — 출처: powerDeck web/src/screens/Upload.tsx (옛 화면 그대로 이식, eslint.config.js legacy 구역).
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { API, api, fmtSize, uploadDoc, uploadFile, usd, type Engine, type Job, type JobKind, type MockupMode, type UploadProgress } from "../api";
 import { LiveDot } from "@/components/hb/live-status";

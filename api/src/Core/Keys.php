@@ -26,6 +26,10 @@ final class Keys
         $secret = (string) (Config::get('mock.judge_secret', '') ?: Config::get('worker.key', ''));
         $auth = (string) ($_SERVER['HTTP_AUTHORIZATION'] ?? $_SERVER['REDIRECT_HTTP_AUTHORIZATION'] ?? '');
         $sig = (string) ($_SERVER['HTTP_X_PP_MCP'] ?? '');
+        if ($secret === '') {
+            // R11·MC-34: 비밀이 비면 powerMCP 경유 호출이 전부 REST 직접 호출로 이중 집계된다 — 로그로 알린다.
+            error_log('[keys] powerMCP 서명 비밀(mock.judge_secret·worker.key)이 비어 경유 판정 불가');
+        }
         if ($secret === '' || $sig === '' || !str_starts_with($auth, 'Bearer ')) {
             return false;
         }

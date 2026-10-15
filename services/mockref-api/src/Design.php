@@ -9,8 +9,9 @@ namespace Homebox;
  *
  *  - 폰트 패밀리 표기 통일: "Noto Sans Kr" / "NotoSansKR" / "noto sans kr" → "Noto Sans KR" (통계 버킷이 갈리던 원인)
  *  - 타이포 스케일 이상치: size < 8px 또는 > 96px 인 역할은 null (수원시 h2=3px 오탐)
- *  - 역할별 색 이상치: heading 이 흰색(≈#FFF)이면 히어로 위 표본 → h3·h4·body 색으로 대체
- *  - section_gap 0 은 "측정 실패"이므로 null
+ *  - 역할별 색 이상치: 흰 배경 대비 1.5 미만 글자색은 어두운 배경 위 표본 → 버리거나 다음 후보로 대체(heading 은 h3·h4·body)
+ *  - 행간: px 이면 배수로, 범위 밖·메뉴·버튼(칸 높이)은 버림
+ *  - section_gap 0 은 "측정 실패", 거터·섹션 간격 4px 미만은 구분선 → null
  */
 final class Design
 {
@@ -26,13 +27,16 @@ final class Design
         'sans-serif' => 'sans-serif', 'dotum' => 'Dotum', '돋움' => 'Dotum', 'gulim' => 'Gulim', '굴림' => 'Gulim',
     ];
 
-    /** 본문 계열 역할 — 흰 글자 표본·행간 1.2~2.2 규칙을 거는 대상 */
+    /** 본문 계열 역할 — 행간 1.2~2.2 규칙을 거는 대상(흰 글자 표본은 모든 역할에 onDark 로 건다) */
     public const TEXT_ROLES = ['body', 'link', 'caption', 'footer', 'subtitle'];
 
-    /** 휘도 0.85+ = 거의 흰색(#FFFFFF·#F5F5F5…) */
-    public static function nearWhite(mixed $hex): bool
+    /** 줄 높이가 칸 높이인 역할 — 행간을 재지 않는다 (O-15) */
+    public const BOX_ROLES = ['nav', 'button'];
+
+    /** 흰 배경 대비 1.5 미만 = 흰 배경에선 안 읽히는 글자색 → 어두운 배경 위 표본 (O-15) */
+    public static function onDark(mixed $hex): bool
     {
-        return is_string($hex) && preg_match('/^#[0-9A-F]{6}$/i', $hex) === 1 && self::lum($hex) > 0.85;
+        return is_string($hex) && preg_match('/^#[0-9A-F]{6}$/i', $hex) === 1 && self::contrast($hex, '#FFFFFF') < 1.5;
     }
 
     /** 두 색의 대비 비 (WCAG) */
@@ -98,6 +102,12 @@ final class Design
                 // 행간 (2026-10-12 MCP 품질시험 3차): px 값이면 글자 크기 비율로 바꾼 뒤 판정.
                 // 메뉴·버튼은 줄 높이 = 칸 높이라 2.86·3 같은 값이 잡힌다 → 2.2 넘으면 버림. 본문 계열은 1.2 미만(1.0)도 측정 오류로 본다.
                 $lh = $s['line_height'] ?? null;
+                // 행간은 글 덩어리(본문 계열·제목)에서만 잰다 — 메뉴·버튼은 줄 높이가 칸 높이라 1.5 처럼 범위 안 값도 행간이 아니다 (O-15, 2026-10-15)
+                if (is_numeric($lh) && in_array($role, self::BOX_ROLES, true)) {
+                    $t['scale'][$role]['line_height'] = null;
+                    $notes[] = "{$role} 행간 {$lh} 은 메뉴·버튼 칸 높이라 행간으로 쓰지 않음";
+                    $lh = null;
+                }
                 if (is_numeric($lh)) {
                     $lh = (float) $lh;
                     if ($lh > 4) {
@@ -110,10 +120,12 @@ final class Design
                         $notes[] = "{$role} 행간 {$lh} 은 범위({$lo}~{$hi}) 밖이라 버림 — 메뉴·버튼 줄 높이가 잡힌 것으로 의심";
                     }
                 }
-                // 본문 계열 글자색이 흰색이면 어두운 배경(히어로·띠) 위 표본 — 본문색으로 쓰지 않는다
-                if (in_array($role, self::TEXT_ROLES, true) && self::nearWhite($s['color'] ?? null)) {
+                // 글자색이 흰 배경 대비 1.5 미만(흰색·아주 옅은 회색)이면 어두운 배경(히어로·띠·바닥) 위 표본 — 역할 색으로 쓰지 않는다.
+                // 전엔 본문 계열 + 거의 흰색(휘도 0.85+)만 걸러 서울시 h3 #FFFFFF 가 제목 색으로 남았다 (O-15, 2026-10-15)
+                // 메뉴·버튼은 자기 칸 배경 위 글자라 흰 글자가 정상일 수 있다 — 버튼은 DesignSystem 이 글자/배경 짝 대비로 따로 본다
+                if (!in_array($role, self::BOX_ROLES, true) && self::onDark($s['color'] ?? null)) {
                     $t['scale'][$role]['color'] = null;
-                    $notes[] = "{$role} 글자색 {$s['color']} 는 어두운 배경 위 표본이라 버림";
+                    $notes[] = "{$role} 글자색 {$s['color']} 는 흰 배경 대비 " . number_format(self::contrast((string) $s['color'], '#FFFFFF'), 2) . ':1 이라 어두운 배경 위 표본으로 보고 버림(측정 오류 의심)';
                 }
             }
             // 제목(h1~h4) 크기가 본문보다 작으면 측정 오류 — 본문과 같거나 작은 제목은 버린다
@@ -139,7 +151,7 @@ final class Design
         if ($c === null) {
             return null;
         }
-        $isWhite = static fn (?string $hex): bool => is_string($hex) && preg_match('/^#[0-9A-F]{6}$/i', $hex) === 1 && self::lum($hex) > 0.85; // 휘도 0.85+ = 거의 흰색(#FFFFFF·#F5F5F5…)
+        $isWhite = static fn (?string $hex): bool => self::onDark($hex); // 흰 배경 대비 1.5 미만 = 어두운 배경 위 표본(O-15 — 전엔 휘도 0.85+ 만)
         if ($isWhite($c['heading'] ?? null)) {
             // 히어로(배경 사진 위 흰 제목) 표본 → 본문 영역 제목 색으로 대체
             $alt = null;

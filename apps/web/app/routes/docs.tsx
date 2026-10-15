@@ -334,13 +334,21 @@ const LIMIT_BLOCKS: DocBlock[] = [
     "키로 REST 를 직접 부르면 요청마다 1회로 셉니다.",
     "브라우저에서 로그인해 쓰는 화면 요청은 세지 않습니다.",
     "한 사람이 여러 키를 써도 한도는 키마다 따로 셉니다.",
+    "키 범위 밖 모듈을 부르면 세지 않고 403 FORBIDDEN_SCOPE 로 막습니다.",
   ] },
-  { id: "reset", title: "초기화", paras: ["한도는 매일 자정(한국 시간)에 풀립니다. 오늘 쓴 양은 마이페이지 › API · MCP 키에서 키별로 봅니다."] },
-  { id: "over", title: "한도를 넘으면", paras: ["429 상태와 RATE_LIMITED 코드로 응답합니다. hint 에 그 키의 하루 한도가 들어 있습니다."] },
+  { id: "remain", title: "남은 횟수", paras: [
+    "powerMCP 도구 응답에는 meta.quota 가 붙습니다. limit(하루 한도), used(오늘 쓴 양), remaining(남은 횟수), reset(다음 초기화 시각) 네 칸입니다.",
+    "REST 를 직접 부른 응답에는 meta.quota 가 붙지 않습니다. 오늘 쓴 양은 마이페이지 › API · MCP 키에서 키별로 봅니다.",
+  ] },
+  { id: "reset", title: "초기화", paras: ["한도는 매일 자정(한국 시간)에 풀립니다."] },
+  { id: "over", title: "한도를 넘으면", paras: ["429 상태와 RATE_LIMITED 코드로 응답합니다. hint 에 그 키의 하루 한도(예: 일 한도 100건)가 들어 있습니다.", "powerMCP 는 다음 초기화 시각도 함께 알려 줍니다."] },
   { id: "other", title: "그 밖의 제한", table: { head: ["대상", "제한"], rows: [
     ["목록 한 번에", "최대 200건(기본 50건)"],
     ["로그인 코드 메일", "같은 주소로 1분에 한 번"],
     ["시안 보관", "한 장 2MB 까지"],
+    ["새 시안", "하루 60건(임직원 기본 300건)"],
+    ["보고서", "하루 50건"],
+    ["와이어프레임 저장", "하루 100개"],
   ], center: true } },
 ];
 
@@ -385,8 +393,11 @@ const ERROR_BLOCKS: DocBlock[] = [
   ] },
   { id: "auth-errors", title: "인증·권한", table: { head: ["코드", "상태", "뜻"], rows: [
     ["UNAUTHORIZED", "401", "로그인 또는 키가 필요합니다. 키가 폐기됐거나 만료돼도 같습니다."],
-    ["FORBIDDEN", "403", "권한이 없습니다."],
-    ["FORBIDDEN_SCOPE", "403", "키에 그 모듈 범위가 없습니다. 마이페이지 → API·MCP 키에서 범위를 확인하세요."],
+    ["LOGIN_REQUIRED", "401", "로그인한 회원만 쓸 수 있는 기능입니다(내려받기·회원 글 보기)."],
+    ["FORBIDDEN", "403", "권한이 없습니다. 다른 계정이 만든 시안을 고치려 할 때도 같습니다."],
+    ["FORBIDDEN_SCOPE", "403", "키에 그 모듈(assets·deck·mock·guide) 범위가 없습니다. REST·powerMCP 같습니다. 마이페이지 › API·MCP 키에서 범위를 확인하세요."],
+    ["JUDGE_REQUIRED", "403", "시안 판정은 powerMCP 의 mock_check_mockup 으로만 기록됩니다."],
+    ["TEST_READ_ONLY", "403", "테스트 계정은 읽기 전용입니다."],
     ["CONSENT_REQUIRED", "428", "필수 약관 동의 전입니다. 웹에 로그인해 동의 화면에서 동의하세요."],
     ["CSRF_BLOCKED", "403", "상태를 바꾸는 요청에 X-Requested-With·JSON 본문·키가 없습니다."],
     ["BLOCKED", "403", "이용이 정지된 계정입니다."],
@@ -395,7 +406,7 @@ const ERROR_BLOCKS: DocBlock[] = [
   ] } },
   { id: "input-errors", title: "요청·입력", table: { head: ["코드", "상태", "뜻"], rows: [
     ["INVALID", "400·422", "입력값이 맞지 않습니다. hint 에 고칠 필드 이름이 들어 있습니다."],
-    ["VALIDATION", "422", "필수 값이 비었습니다. message 에 빠진 필드가 있습니다."],
+    ["VALIDATION", "422", "레퍼런스 삭제요청 양식의 값이 맞지 않습니다. 필드별 이유가 details 에 옵니다."],
     ["NOT_FOUND", "404", "주소나 대상을 찾을 수 없습니다."],
     ["METHOD_NOT_ALLOWED", "405", "그 주소에서 받지 않는 메서드입니다."],
     ["TOO_LARGE", "413", "본문이 너무 큽니다."],
@@ -408,8 +419,8 @@ const ERROR_BLOCKS: DocBlock[] = [
     ["NOT_SHARED", "409", "공유하지 않은 항목입니다."],
   ] } },
   { id: "limit-errors", title: "한도", table: { head: ["코드", "상태", "뜻"], rows: [
-    ["RATE_LIMITED", "429", "키의 오늘 호출 한도를 넘었습니다. 자정(한국 시간)에 풀립니다."],
-    ["RATE_LIMIT", "429", "기능별 하루 상한(보고서 하루 50건 등)을 넘었습니다."],
+    ["RATE_LIMITED", "429", "키의 오늘 호출 한도를 넘었습니다. hint 에 하루 한도가 있고, 자정(한국 시간)에 풀립니다. 새 시안·글쓰기처럼 너무 잦은 요청도 같은 코드입니다."],
+    ["RATE_LIMIT", "429", "기능별 하루 상한(보고서 50건·와이어프레임 100개)을 넘었습니다."],
     ["TOO_SOON", "429", "같은 요청을 너무 빨리 다시 보냈습니다."],
   ] } },
   { id: "server-errors", title: "서버", table: { head: ["코드", "상태", "뜻"], rows: [

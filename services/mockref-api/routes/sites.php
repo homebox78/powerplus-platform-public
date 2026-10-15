@@ -70,6 +70,7 @@ $router->get('/api/sites/{slug}', static function (array $p): void {
  * 기관별 디자인 시스템 (Pro, 2026-09-24): KRDS 스타일 가이드 분류로 정리한 한 장 문서 + 토큰 내보내기.
  *   GET /api/sites/{slug}/design-system            → JSON 문서 (hb-ds/1)
  *   GET /api/sites/{slug}/design-system?format=css|tailwind|tokens → 붙여 쓸 수 있는 토큰
+ *   GET /api/sites/{slug}/design-system?format=powerguide → powerGuide tokens.json 과 같은 DTCG 구조({$value,$type})
  * Free 는 402 + 어떤 카테고리가 채워져 있는지(coverage)만 — 값은 Pro. MCP get_design_system 이 같은 엔드포인트를 쓴다.
  */
 $router->get('/api/sites/{slug}/design-system', static function (array $p): void {
@@ -100,6 +101,9 @@ $router->get('/api/sites/{slug}/design-system', static function (array $p): void
     }
     if ($fmt === 'tokens') {
         Response::json(['site' => $doc['site']['slug'], 'version' => $doc['version'], 'tokens' => $doc['tokens']], 200, ['Cache-Control' => 'private, no-store']);
+    }
+    if ($fmt === 'powerguide') { // powerGuide tokens.json 과 같은 DTCG 구조(O-16) — 기존 형식은 그대로 둔다
+        Response::json(Homebox\DesignSystem::powerGuide($doc), 200, ['Cache-Control' => 'private, no-store']);
     }
     Response::json($doc, 200, ['Cache-Control' => 'private, no-store']);
 });

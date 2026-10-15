@@ -1,3 +1,4 @@
+// AI 사용량·비용(관리자)과 작업 내역(내 작업은 비용 칸 제외) — 출처: powerDeck web/src/screens/Admin.tsx (옛 화면 그대로 이식, eslint.config.js legacy 구역).
 import { useEffect, useState, type ReactNode } from "react";
 import { api, unwrapList, usd, type Job } from "../api";
 import { Arrow, cn, Seg, Select, StatusPill, parseTs, useToastOn, Ms } from "../ui";

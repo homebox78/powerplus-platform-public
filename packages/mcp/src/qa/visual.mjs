@@ -63,7 +63,8 @@ export async function measureVisual(p) {
     }
     // D2 h1 · D10 가짜 링크
     // display:contents 인 h1 은 자기 상자가 없다 — 글자가 보이면 센다(일괄 수정 배치1: 'h1 이 없다' 오탐)
-    const shown = (e) => { if (vis(e)) return true; if (getComputedStyle(e).display !== "contents") return false; const rg = document.createRange(); rg.selectNodeContents(e); const q = rg.getBoundingClientRect(); return q.width > 2 && q.height > 2; };
+    // 안쪽 로고 링크가 position:absolute 라 h1 상자가 0 이어도 글·그림이 보이면 센다(2차 배치2·6: 'h1 없음' 오탐)
+    const shown = (e) => { if (vis(e)) return true; const cs = getComputedStyle(e); if (cs.display === "none" || cs.visibility === "hidden") return false; if ([...e.querySelectorAll("*")].some((k) => vis(k) && getComputedStyle(k).position === "absolute")) return true; if (cs.display !== "contents") return false; const rg = document.createRange(); rg.selectNodeContents(e); const q = rg.getBoundingClientRect(); return q.width > 2 && q.height > 2; };
     out.h1 = [...document.querySelectorAll("h1")].filter(shown).length;
     { const as = [...document.querySelectorAll("a")].filter(vis); out.hash.all = as.length; out.hash.n = as.filter((a) => { const h = (a.getAttribute("href") || "").trim(); return h === "" || h === "#" || /^javascript:/i.test(h); }).length; }
     // D12·D19 잘림: 높이가 정해진 상자에서 글·단추가 4px 넘게 잘림(캐러셀 트랙·줄 수 제한·화면 낭독용은 뺀다)

@@ -46,34 +46,21 @@ final class MockSamples
     ];
 
     /**
-     * 목업 재료인 행 — 'kind' 태그가 있거나, 공개 등급이고 SET_KIND 세트·아이콘 세트에 든 것. 엠바고 자산은 뺀다. i = asset_items, s = asset_sets(LEFT JOIN).
-     * 목록·파일 제공이 모두 이 한 곳을 지난다(샘플 파일 주소도 엠바고 자산이면 404).
+     * 목업 재료인 행 — 'kind' 태그가 있거나, 공개 등급이고 SET_KIND 세트·아이콘 세트에 든 것. i = asset_items, s = asset_sets(LEFT JOIN).
+     * 목록·파일 제공이 모두 이 한 곳을 지난다.
+     * 엠바고(식약처 제안 건)는 이미지 샘플을 거르지 않는다 — 대상은 "프로젝트명이 글자로 박힌 장표·파일이 로그인 없이 외부에 노출되는 것"뿐(사용자 2026-10-15).
      */
     private static function sampleWhere(): string
     {
-        return '(' . self::poolWhere() . ' AND ' . self::embargoFree() . ')';
+        return '(' . self::poolWhere() . ')';
     }
 
-    /** 샘플 묶음 조건(엠바고 거름 전) */
+    /** 샘플 묶음 조건 */
     private static function poolWhere(): string
     {
         $sets = implode(', ', array_map(static fn ($n) => "'" . $n . "'", array_keys(self::SET_KIND)));
         return "(EXISTS (SELECT 1 FROM asset_tags t WHERE t.item_id = i.id AND t.axis = 'kind')"
             . " OR (i.visibility = 'public' AND i.w > 0 AND (s.name IN ({$sets}) OR (i.category = 'icon' AND s.name LIKE 'icon-%'))))";
-    }
-
-    /**
-     * 엠바고(사용자 2026-10-14 "식약처 제안 건 엠바고 — 공개 샘플·기본 양식·공개본엔 가상 프로젝트만", 2026-10-15 샘플 묶음 적용).
-     * 그 사업용으로 만든 묶음(legacy_key 접두) + 그 사업을 가리키는 낱말이 설명·이름·태그에 든 자산.
-     * 낱말은 좁게 — '위생'·'의약품'·'급식' 은 일반 아이콘(손 씻기·알약·청소차)·학교 사진에도 붙어 있어 넣지 않는다.
-     */
-    private static function embargoFree(): string
-    {
-        $series = implode(' AND ', array_map(static fn ($x) => "COALESCE(i.legacy_key, '') NOT LIKE '" . $x . "%'", self::EMBARGO_SERIES));
-        $words = "'" . self::EMBARGO_WORDS . "'";
-        return "({$series}"
-            . " AND NOT (COALESCE(i.alt, '') REGEXP {$words} OR COALESCE(i.name, '') REGEXP {$words})"
-            . " AND NOT EXISTS (SELECT 1 FROM asset_tags et WHERE et.item_id = i.id AND et.tag REGEXP {$words}))";
     }
 
     private const CACHE_TTL = 300;
@@ -84,17 +71,12 @@ final class MockSamples
      * 자체 제작 = source own·homebox. 라이선스 미확인(unverified)·옛 powerPlus 사진(powerplus)은 넣지 않는다. 공개(public) 등급만.
      */
     private const PRO_SOURCES = ['own', 'homebox'];
-    /** 엠바고(식약처 제안 건) — 그 사업용으로 만든 배경 묶음(legacy_key 접두)과 그 낱말이 든 자산은 공개 샘플에 쓰지 않는다 */
-    private const EMBARGO_SERIES = ['docphoto:PD1', 'docphoto:FS', 'docphoto:SC2', 'docphoto:VP1', 'docphoto:VP3'];
-    private const EMBARGO_WORDS = '식약처|식의약|식품의약품|식품안전|식품정보시스템|식중독';
-
-    /** Pro 사진 후보 행(기본 샘플 묶음 조건에 든 것은 뺀다 — 엠바고로 빠진 것이 여기로 새지 않게 거름 전 조건으로). i = asset_items, s = asset_sets */
+    /** Pro 사진 후보 행(기본 샘플 묶음 조건에 든 것은 뺀다). i = asset_items, s = asset_sets */
     private static function proWhere(): string
     {
         $src = implode(', ', array_map(static fn ($x) => "'" . $x . "'", self::PRO_SOURCES));
         return "i.category = 'photo' AND i.visibility = 'public' AND i.source IN ({$src}) AND i.w > 0 AND i.h > 0"
-            . " AND NOT " . self::poolWhere()
-            . " AND " . self::embargoFree();
+            . " AND NOT " . self::poolWhere();
     }
 
     /** Pro 사진 파일 서명(app.secret). 비밀이 비거나 짧으면 null — 그때는 Pro 사진을 아예 내지 않는다(닫힌 쪽으로). */

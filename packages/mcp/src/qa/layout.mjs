@@ -98,9 +98,13 @@ export async function layoutChecks(p, o = {}) {
     if (ft) { const H = document.documentElement.scrollHeight; let last = 0; for (const z of leaves) if (z.el !== ft && ft.contains(z.el) && z.b - z.t < 160 && z.b > last) last = z.b; /* 바닥글 면 자체·큰 감싸개는 빼고 글·그림 조각만 */ const fb = ft.getBoundingClientRect().bottom + scrollY;
       if (last && H - last > 96) out.footTail.push(`바닥글 마지막 글(y ${Math.round(last)}) 아래가 문서 끝(${H})까지 ${Math.round(H - last)}px 비어 있음 — 바닥글 padding-bottom·min-height 를 줄인다(48~80px)`); void fb;
       // 바닥글 안 줄 사이가 너무 벌어짐(사용자 지적: 주소 묶음과 정책 링크 사이 90px) — 글·그림 조각을 위아래로 묶어 묶음 사이 빈 간격이 56px 를 넘으면
-      { const parts = leaves.filter((z) => z.el !== ft && ft.contains(z.el) && z.b - z.t < 120 && z.r - z.l < innerWidth * 0.95).sort((a, b) => a.t - b.t); const gaps = []; let bot = null;
-        for (const z of parts) { if (bot !== null && z.t - bot > 56) gaps.push(Math.round(z.t - bot)); bot = bot === null ? z.b : Math.max(bot, z.b); }
-        if (gaps.length) out.footGap = [`바닥글 안 묶음 사이 ${gaps.join("·")}px — 줄 사이는 24~48px(기관 정보·정책 링크·저작권을 붙여 쓴다, 큰 margin·padding·고정 높이를 줄인다)`]; } }
+      // fixed·sticky·absolute 조각(바닥글 안 '맨 위로' 단추)은 흐름 밖이라 뺀다 — 637·4669px 로 잡던 오탐(2차 배치5·10)
+      const floats = (el) => { for (let a = el; a && a !== ft; a = a.parentElement) if (/fixed|sticky|absolute/.test(getComputedStyle(a).position)) return true; return false; };
+      // 바탕색이 다른 띠(흰 안내 띠 → 어두운 판)를 건너는 간격은 띠 padding 이라 줄 사이가 아니다 — 청주 81px 약한 오탐(2차 배치5)
+      const band = (el) => { for (let a = el; a && a !== ft.parentElement; a = a.parentElement) { const s = getComputedStyle(a); if (!transparent(s.backgroundColor) || s.backgroundImage !== "none") return a; } return ft; };
+      { const parts = leaves.filter((z) => z.el !== ft && ft.contains(z.el) && z.b - z.t < 120 && z.r - z.l < innerWidth * 0.95 && !floats(z.el)).sort((a, b) => a.t - b.t); const gaps = []; let bot = null, bd = null;
+        for (const z of parts) { const nb = band(z.el); if (bd !== null && nb !== bd && !bd.contains(nb) && !nb.contains(bd)) bot = null; bd = nb; if (bot !== null && z.t - bot > 56) gaps.push(Math.round(z.t - bot)); bot = bot === null ? z.b : Math.max(bot, z.b); }
+        if (gaps.length) out.footGap = [`바닥글 안 묶음 사이 ${gaps.join("·")}px — 줄 사이는 24~48px(기관 정보·정책 링크·저작권을 붙여 쓴다, 큰 margin·padding·gap·row-gap·고정 높이를 줄인다 — KRDS kit 의 #krds-footer .inner gap 40px 도 확인)`]; } }
     out.footGap = out.footGap ?? [];
     // ③ 같은 메인에 게시판 목록 두 번: 글 제목만 4줄 이상인 목록이 서로 다른 구역에 둘 이상(탭으로 묶을 것)
     const lists = []; if (!isSub) {
@@ -124,7 +128,7 @@ export async function layoutChecks(p, o = {}) {
     { const lum = (c) => { const v = (c.match(/[\d.]+/g) || []).map(Number); const f = (x) => { x /= 255; return x <= 0.03928 ? x / 12.92 : ((x + 0.055) / 1.055) ** 2.4; }; return 0.2126 * f(v[0]) + 0.7152 * f(v[1]) + 0.0722 * f(v[2]); };
       let same = 0, n = 0; const ex = [];
       for (const it of document.querySelectorAll("main li, main article, main [class*=card], main [class*=item]")) { if (!vis(it) || it.closest("nav, header, footer, [data-hb=menu]")) continue;
-        const ts = [...it.querySelectorAll("*")].filter((e) => vis(e) && [...e.childNodes].some((x) => x.nodeType === 3 && x.textContent.trim().length > 1));
+        const ts = [...it.querySelectorAll("*")].filter((e) => vis(e) && !/material|icon/i.test(getComputedStyle(e).fontFamily) && [...e.childNodes].some((x) => x.nodeType === 3 && x.textContent.trim().length > 1)); // 아이콘 글꼴 글자(account_tree)를 제목으로 세던 오탐(2차 배치8)
         if (ts.length < 2) continue; const big = ts.reduce((a, e) => (parseFloat(getComputedStyle(e).fontSize) > parseFloat(getComputedStyle(a).fontSize) ? e : a));
         const meta = ts.filter((e) => e !== big && !big.contains(e) && (/^\s*20\d\d[.\-/]\s?\d{1,2}[.\-/]\s?\d{1,2}/.test(e.textContent) || parseFloat(getComputedStyle(e).fontSize) < parseFloat(getComputedStyle(big).fontSize) - 1));
         for (const m of meta.slice(0, 2)) { n++; const a = getComputedStyle(big), b = getComputedStyle(m); const dl = Math.abs(lum(a.color) - lum(b.color));
@@ -137,6 +141,26 @@ export async function layoutChecks(p, o = {}) {
         if (hb0.width > 120 || hb0.height > 120 || Math.abs(hb0.width - hb0.height) > 6 || transparent(hs.backgroundColor)) continue;
         const ic = rgb(getComputedStyle(sv).color), bg = rgb(hs.backgroundColor); if ((bg[3] ?? 1) < 0.5) continue; const fillA = sv.getAttribute("fill"); if (fillA && fillA !== "currentColor") continue;
         const a = L(ic), b = L(bg); const c = (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05); if (c < 3) out.iconLow.push(`${host.getAttribute("aria-label") || nm(host)} y${Y(hb0)} 아이콘 대 바탕 ${c.toFixed(1)}:1`); } }
+    // 칠한 단추·띠 위 글자 대비(사용자 지적 2026-10-15 '글자 안 보임': 초록 단추 위 짙은 글자 '1234-5678 전화 걸기').
+    // 글자 뒤 첫 불투명 면을 바탕으로 — 단추(a·button)가 제 바탕을 칠했으면 4.5:1, 그 밖 글은 3:1. 사진·그라데이션 위 글은 extra.mjs 가 캡처로 잰다.
+    out.textLow = [];
+    { const rgb = (c) => { const v = (c.match(/[\d.]+/g) || []).map(Number); return c.startsWith("color(") ? [v[0] * 255, v[1] * 255, v[2] * 255, v[3] ?? 1] : v; }; const L = (v) => { const f = (x) => { x /= 255; return x <= 0.03928 ? x / 12.92 : ((x + 0.055) / 1.055) ** 2.4; }; return 0.2126 * f(v[0]) + 0.7152 * f(v[1]) + 0.0722 * f(v[2]); };
+      const bgOf = (el) => { for (let n = el; n; n = n.parentElement) { const s = getComputedStyle(n); if (s.backgroundImage !== "none") return null; for (const ps of ["::before", "::after"]) { const p = getComputedStyle(n, ps); if (p.content && p.content !== "none" && p.position === "absolute" && (p.backgroundImage !== "none" || !transparent(p.backgroundColor))) return null; } const c = rgb(s.backgroundColor); if (c.length >= 3 && (c[3] ?? 1) > 0.5) return { c, n }; } return { c: [255, 255, 255], n: document.body }; };
+      const seen = new Set();
+      for (const el of document.querySelectorAll("body *")) { if (out.textLow.length >= 6 || /^(SCRIPT|STYLE|svg|OPTION)$/i.test(el.tagName)) continue;
+        const t = [...el.childNodes].filter((x) => x.nodeType === 3).map((x) => x.textContent).join("").trim(); if (t.length < 2 || !vis(el)) continue;
+        { let off = false; for (let a = el; a && a !== document.body; a = a.parentElement) { const cs = getComputedStyle(a); if (+cs.opacity < 0.1 || cs.visibility === "hidden" || a.hasAttribute("hidden") || a.getAttribute("aria-hidden") === "true" || cs.clip !== "auto") { off = true; break; } } if (off) continue; }
+        const q = el.getBoundingClientRect(); if (q.width < 4 || q.height < 4) continue;
+        // 아이콘 글꼴(chevron_right)·연하게 깐 장식 숫자('01')·꺼진 단추(이전)는 읽을 글이 아니다 — 표본 40장 음성 대조에서 나온 오탐
+        if (/material|icon/i.test(getComputedStyle(el).fontFamily) || (!/[가-힣A-Za-z]/.test(t) && t.length <= 3) || el.closest("[disabled], [aria-disabled=true]")) continue;
+        if ([...document.querySelectorAll("img, video, iframe")].some((im) => { if (el.contains(im)) return false; const z = im.getBoundingClientRect(); const cx = q.left + q.width / 2, cy = q.top + q.height / 2; return cx >= z.left && cx <= z.right && cy >= z.top && cy <= z.bottom; })) continue; // 사진 위 글
+        const bg = bgOf(el); if (!bg) continue; const s = getComputedStyle(el); const fc = rgb(s.color); if ((fc[3] ?? 1) < 0.3) continue;
+        const a = L(fc), b = L(bg.c); const c = (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05);
+        const ctl = el.closest("a, button, [role=button]"); const painted = ctl && (bg.n === ctl || ctl.contains(bg.n)) && ctl.getBoundingClientRect().height <= 64; // 카드 전체가 링크인 큰 상자의 날짜는 일반 글(3:1)
+        const big = parseFloat(s.fontSize) >= 24 || (parseFloat(s.fontSize) >= 18.6 && +s.fontWeight >= 700);
+        const need = painted && !big ? 4.5 : 3; if (c >= need - 0.3) continue; // 4.47 같은 반올림 경계의 연한 꼬리표는 넘긴다
+        const k = t.slice(0, 16); if (seen.has(k)) continue; seen.add(k);
+        out.textLow.push(`'${k}' y${Y(q)} ${painted ? "칠한 단추" : "글"} 대비 ${c.toFixed(1)}:1(필요 ${need}) 글 ${s.color} / 바탕 ${getComputedStyle(bg.n).backgroundColor}`); } }
     // 아이콘을 너무 크게 씀(지적: 카드마다 3D 아이콘이 300px — 아이콘은 24~120px, 큰 자리는 사진·일러스트)
     out.bigIcon = []; { const ik = new Set(iconKeys || []); for (const im of document.images) { if (!vis(im)) continue; const q = im.getBoundingClientRect(); const kk = key(im.currentSrc || im.src); if ((ik.has(kk) || /icon/i.test(im.className + " " + (im.parentElement?.className || ""))) && Math.max(q.width, q.height) > 140) out.bigIcon.push(`${kk} ${Math.round(q.width)}×${Math.round(q.height)}`); } out.bigIcon = out.bigIcon.slice(0, 5); }
     // 주제에 안 맞는 어두운 띠: 학교·복지관·도서관·어린이 기관에 거의 검은 폭 가득 구역(지적: 고등학교에 블랙 배경)
@@ -168,6 +192,7 @@ export async function layoutChecks(p, o = {}) {
   chk(!r.popupZone.length, "팝업존이 굴러가지 않음", r.popupZone);
   chk(!r.typeFlat.length, "글자 강약 없음", r.typeFlat);
   chk(!r.iconLow.length, "꾸밈 아이콘이 바탕과 구분 안 됨", r.iconLow);
+  chk(!r.textLow.length, "글자가 바탕과 구분 안 됨(단추 글은 4.5:1, 그 밖 3:1 — 칠한 단추 글은 흰색이나 아주 짙은 색)", r.textLow);
   chk(!r.darkBand.length, "기관 주제에 안 맞는 어두운 배경", r.darkBand);
   chk(!r.bigIcon.length, "아이콘을 너무 크게 씀(140px 넘음 — 큰 자리는 사진·일러스트)", r.bigIcon);
   return { r, fails };
@@ -252,7 +277,7 @@ export async function deviceChecks(p, w, pcFont = null, textKeys = []) {
   if (r.popOut.length) fails.push(`${tag} 열린 판이 화면 밖: ${r.popOut.join(" | ")} — 오른쪽 맞춤(right:0)·폭 100% 이하`);
   if (r.overflow > 2) fails.push(`${tag} 가로 넘침: ${r.overflow}px`);
   if (r.pair.length) fails.push(`${tag} 입력·선택·단추 짝 안 맞음: ${r.pair.join(" | ")}`);
-  if (r.input.length) fails.push(`${tag} 입력칸 작음: ${r.input.join(" | ")}`);
+  if (r.input.length) fails.push(`${tag} 입력칸 작음(입력칸 44px·여러 줄 textarea 88px·글자 16px 이상): ${r.input.join(" | ")}`);
   if (r.tabsCut.length) fails.push(`${tag} 탭 줄 잘림: ${r.tabsCut.join(" | ")}`);
   if (r.tap.length) fails.push(`${tag} ${r.tap[0]}`);
   if (r.textCrop.length) fails.push(`${tag} 글자 든 그림 잘림: ${r.textCrop.join(" | ")} — 칸에 aspect-ratio 를 그림 비율로 주거나 object-fit:contain`);

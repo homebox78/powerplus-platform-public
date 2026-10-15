@@ -303,6 +303,10 @@ return static function (Router $r): void {
                 [Ids::publicId(), $uid, $a->orgId, $token, $bt !== '' ? $bt : null, $a->key['id'] ?? null, $title, $refId !== '' ? $refId : null, $device, $html, $bytes]);
             $id = (int) Db::lastId();
         }
+        // 페이지 종류가 아직 없으면 마크업으로 미리 채운다 — 판정을 안 거친 시안(가져오기)이 갤러리 '메인'에 섞이던 것(R41).
+        // 기본 CSS 에 같은 클래스 이름이 다 들어 있으니 CSS 가 아니라 class="…"·aria-label 속성으로 본다. 판정하면 레퍼런스 page_type 으로 덮인다.
+        $subMark = (bool) preg_match('/class="[^"]*\b(hb-subvisual|sub-visual|subvisual|sub_visual|hb-lnb|lnb|snb|sub-nav|subnav|hb-path|breadcrumb)\b[^"]*"|aria-label="(경로|현재 위치|breadcrumb)"/u', $html);
+        Db::exec("UPDATE mock_mockups SET page = ? WHERE id = ? AND COALESCE(page, '') = ''", [$subMark || $bt !== '' ? 'content' : 'main', $id]);
         // 같은 묶음(메인 + 그 메인을 기준으로 만든 서브)의 판정 기록 — 서브 틀이 장마다 같은지 MCP 가 대조한다
         $peers = [];
         if ($bt !== '' && $bt !== $token) {

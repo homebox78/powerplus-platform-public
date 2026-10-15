@@ -130,6 +130,7 @@
 | MC-84 | 만들어 두고 안 쓰는 판정 도우미가 있는지 본다(정의만 있고 호출 0) | flat()·has() 미연결로 "53 퍼센트=53%" 오탐·"19일 속 9일" 미탐(349bd7e) | `grep -n 'function 이름'` 과 호출 수 대조 |
 | MC-85 | 예시 인자 값은 실제 허용값 목록(taxonomy)에 있는지 대조한다 | description 예시 `org_type=univ` 가 taxonomy 에 없어 예시대로 부르면 INVALID_ARGS(bc2324a) | 예시 문구 그대로 호출 |
 | MC-86 | 요청 판정(Triage) capability 를 더하면 MCP 설명·사이트 도우미 바로가기(Assist CAP_LINKS)·낱말 규칙을 같은 이름으로 함께 | 판정은 됐는데 도우미가 "답을 찾지 못했다"(0740c1f) | /assist/scope 의 start 가 null 이 아닌지 |
+| MC-87 | 판정 검사를 더하면 운영 시안 표본 40장으로 음성 대조 후 배포 | 글자 대비 검사 첫 판은 아이콘 글꼴(chevron_right)·장식 숫자('01')·카드 링크 날짜를 잡았다 — 표본으로 걸러 7/40 실제 대비 부족만 남김 | scratchpad lt.mjs 식 로컬 렌더 + layoutChecks |
 
 ---
 

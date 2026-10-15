@@ -134,6 +134,20 @@ comm_posts ─< comm_comments · comm_likes
 | `guide_downloads` | user_id/key_id, format, version, created_at(파티션) |
 | `comm_posts` / `comm_comments` / `comm_likes` | 홈박스 community_* 이관, content 6열(public) |
 
+## 6.1 개선 체크리스트 (솔루션마다 하나 + 통합 검수) — 2026-10-15
+사용자 지시: "각 솔루션마다 개선 체크리스트가 있고, 이것들이 취합 체크리스트로 전체가 하나의 검수 프로세스로 자가 개선".
+
+| 솔루션 | 표 | 비고 |
+|---|---|---|
+| powerDeck | `deck_checklist` | 엔진 되먹임(lessons) — 그대로 |
+| powerMock | `mock_checklist` | 판정기 되먹임 — 그대로 |
+| 사이트 공통 | `site_checklist` | 공통 화면·탐색·보안 등. area ast·gde·mcp 줄은 아래 `qa_checklist` 로 옮김 |
+| powerAssets · powerGuide · powerMCP | **`qa_checklist`**(module 열) | 0040 새로. 모양은 site_checklist 와 같고 `module` 열과 UNIQUE(module, slug) 만 다르다 |
+
+- 상태 다섯 가지(open·fixing·fixed·watch·wontfix)와 '다시 걸리면 다시 연다(regressed)' 규칙은 여섯 표가 같다 → 통합 검수 화면(/admin/qa)이 한 줄 형식으로 모아 본다.
+- 표를 하나로 합치지 않은 이유: deck·mock 표는 엔진·판정기가 쓰는 중이고(다른 세션 작업 중), 출처(origin) 종류가 솔루션마다 다르다. 통합은 읽기·상태 변경 API 층에서 한다.
+- 자동 수집: powerAssets = 검색 결과 0건 검색어(api/bin/qa-feed.php, 매일). powerMCP = docs/MCP-개선-체크리스트.md 의 규칙(MC-, watch)·남은 일(O-) 가져오기.
+
 ## 7. 이관 매핑 요약 (db/migrate-legacy/)
 | 옛 | 새 | 규칙 |
 |---|---|---|

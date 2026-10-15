@@ -27,6 +27,11 @@ final class Checklist
      */
     public static function record(string $slug, string $area, string $title, ?string $detail, string $origin, array $ev = []): array
     {
+        // 솔루션 항목(ast·gde·mcp)은 그 솔루션 체크리스트로 — 같은 결함이 사이트·솔루션 두 곳에 세어지지 않게(0040, 2026-10-15)
+        $to = ['ast' => 'assets', 'gde' => 'guide', 'mcp' => 'mcp'][$area] ?? null;
+        if ($to !== null) {
+            return \Pp\Qa\Checklist::record($to, $slug, 'site', $title, $detail, in_array($origin, ['audit', 'test', 'user'], true) ? $origin : 'manual', $ev);
+        }
         $slug = mb_substr(trim($slug), 0, 160);
         $area = isset(self::AREAS[$area]) ? $area : 'misc';
         $origin = in_array($origin, self::ORIGINS, true) ? $origin : 'manual';

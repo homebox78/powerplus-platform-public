@@ -40,6 +40,8 @@ export default [
     route("admin/mock/checklist", "./routes/admin-mock-checklist.tsx"),
     route("admin/deck/checklist", "./routes/admin-deck-checklist.tsx"),
     route("admin/site/checklist", "./routes/admin-site-checklist.tsx"),
+    route("admin/qa", "./routes/admin-qa.tsx"),
+    route("admin/qa/:module", "./routes/admin-qa-checklist.tsx"),
     route("admin/community", "./routes/admin-community.tsx"),
     route("admin/help", "./routes/admin-help.tsx"),
     route("admin/changelog", "./routes/admin-changelog.tsx"),

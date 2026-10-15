@@ -1158,7 +1158,17 @@ def main():
     once = "--once" in sys.argv
     slots = 1 if once else max(1, int(CFG.get("slots", 1)))
     heavy_slots = max(1, min(slots, int(CFG.get("heavy_slots", 1))))
-    is_heavy = lambda j: not (j.get("kind") == "design" and (j.get("phase") or "plan") in ("plan", "edit"))
+    def is_heavy(j):
+        # 세로 제안서(제출용)는 기획 단계에서 표지~본문 제작·결과까지 끝내는 무거운 작업 — 가벼운 자리로 세면 무거운 작업이 한도를 넘어 함께 돈다(2026-10-15)
+        o = j.get("opts")
+        if isinstance(o, str):
+            try:
+                o = json.loads(o)
+            except Exception:
+                o = None
+        if isinstance(o, dict) and str(o.get("purpose") or "") == "submit" and j.get("source_kind") != "pptx":
+            return True
+        return not (j.get("kind") == "design" and (j.get("phase") or "plan") in ("plan", "edit"))
     log(f"powerDeck 엔진 '{NAME}' 시작 — {API} (동시 {slots}개, 그중 장표 제작 {heavy_slots}개)")
     def hf_retry():   # 크레딧 소진 표시는 30분마다 풀어 다시 시도한다(충전했으면 다시 Higgsfield 로)
         while True:

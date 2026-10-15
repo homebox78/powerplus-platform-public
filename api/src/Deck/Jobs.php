@@ -1096,7 +1096,9 @@ final class Jobs
             self::event($s['id'], 'warn', "엔진({$s['worker']})과 연결이 끊겨 대기열로 되돌렸습니다.");
         }
         for ($try = 0; $try < 3; $try++) {
-            $id = $pdo->query("SELECT id FROM deck_jobs WHERE status = 'queued'" . ($lightOnly ? " AND kind = 'design' AND phase IN ('plan', 'edit')" : '') . "
+            // 세로 제안서(제출용)는 기획 단계에서 결과까지 만드는 무거운 작업이라 가벼운 자리에 주지 않는다(엔진 is_heavy 와 같은 판정, 2026-10-15)
+            $id = $pdo->query("SELECT id FROM deck_jobs WHERE status = 'queued'" . ($lightOnly ? " AND kind = 'design' AND phase IN ('plan', 'edit')
+                               AND NOT (COALESCE(JSON_UNQUOTE(JSON_EXTRACT(opts, '$.purpose')), '') = 'submit' AND COALESCE(source_kind, '') <> 'pptx')" : '') . "
                                ORDER BY (SELECT COUNT(*) FROM deck_jobs r WHERE r.email = deck_jobs.email AND r.status = 'running'), created_at LIMIT 1")->fetchColumn();
             if ($id === false) return null;
             $st = $pdo->prepare("UPDATE deck_jobs SET status = 'running', worker = :w, claimed_at = NOW(), heartbeat_at = NOW(),

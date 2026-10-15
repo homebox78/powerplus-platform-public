@@ -9,7 +9,7 @@
   3) 제작: templates/vertical/base.pptx(표지·목차·간지·본문 마스터 + 견본 4장)로
      표지 1 · 목차(장마다) · 간지(장마다) · 본문을 만든다. 쪽 번호는 장별(Ⅱ - 3), 목차 쪽 번호는 실제 쪽.
   기본 양식의 출처: design/제안서템플릿(사내 표준 세로 템플릿)을 2026-10-14 세션에서 정비한 것."""
-import copy, io, json, math, os, re, time, urllib.parse, urllib.request
+import contextvars, copy, io, json, math, os, re, time, urllib.parse, urllib.request
 from concurrent.futures import ThreadPoolExecutor
 from PIL import Image, ImageDraw, ImageFont
 from lxml import etree
@@ -138,7 +138,49 @@ _FL = json.load(open(os.path.join(HERE, "fonts", "fonts.json"), encoding="utf-8"
 VBODY = {x["id"]: (x["name"], tuple(x["faces"]), tuple(x["files"])) for x in _FL["body"]}
 VBODY_DEFAULT = _FL["body"][0]["id"]
 TITLE0 = ("G마켓 산스", "G마켓 산스 TTF Bold", "GmarketSansTTFBold.ttf")
-FONT = {"title": TITLE0, "body": VBODY[VBODY_DEFAULT]}
+
+# 작업마다 따로인 값(서체·크기 보정·줄 높이) — 엔진 한 프로세스가 세로 제안서 여러 건을 스레드로 함께 돌리면
+# 모듈 변수 하나를 같이 써서 한 작업의 서체가 다른 작업에 섞였다(2026-10-15 동시 작업 점검). run() 이 새 상태로 시작하고,
+# 안쪽 ThreadPoolExecutor 는 _carry() 로 감싼 함수에 같은 상태를 넘긴다. 서체 파일·잉크 캐시(_FONTS·_INK)는 키에 서체가 들어 있어 같이 써도 된다.
+_STATE = contextvars.ContextVar("vertical_state", default=None)
+
+
+class _PerJob:
+    """작업(문맥)마다 따로 만들어지는 dict·list 대리자 — 읽기·쓰기 문법은 원래 dict·list 그대로"""
+
+    def __init__(self, name, make):
+        self._n, self._m = name, make
+
+    def _v(self):
+        st = _STATE.get()
+        if st is None:
+            st = {}
+            _STATE.set(st)
+        if self._n not in st:
+            st[self._n] = self._m()
+        return st[self._n]
+
+    def __getitem__(self, k):
+        return self._v()[k]
+
+    def __setitem__(self, k, x):
+        self._v()[k] = x
+
+
+def _carry(fn):
+    """지금 작업의 상태를 ThreadPoolExecutor 안쪽 스레드로 넘긴다(새 스레드는 빈 문맥으로 시작한다)"""
+    st = _STATE.get()
+    if st is None:
+        st = {}
+        _STATE.set(st)
+
+    def w(*a, **k):
+        _STATE.set(st)
+        return fn(*a, **k)
+    return w
+
+
+FONT = _PerJob("font", lambda: {"title": TITLE0, "body": VBODY[VBODY_DEFAULT]})
 
 
 def use_fonts(title=None, body=None):
@@ -156,13 +198,12 @@ def use_fonts(title=None, body=None):
         except Exception:
             pass
     FONT["title"], FONT["body"] = t, VBODY.get(str(body or ""), VBODY[VBODY_DEFAULT])
-    global LH, BL_LH
     try:
         import fontset
         BODY_SCALE[0] = fontset.BODY_SCALE.get(str(body or ""), fontset.BODY_SCALE.get(VBODY_DEFAULT, 1.0))
     except Exception:
         BODY_SCALE[0] = 1.0
-    LH, BL_LH = 0.38 * BODY_SCALE[0], 0.42 * BODY_SCALE[0]
+    LH[0], BL_LH[0] = 0.38 * BODY_SCALE[0], 0.42 * BODY_SCALE[0]
     _FONTS.clear()
 
 
@@ -237,10 +278,10 @@ except Exception:
     TITLE_TRACK = -0.015
 
 
-TITLE_IS_BOLD = [False]   # use_fonts 가 정한다
-TITLE_SCALE = [1.0]       # 제목 서체 크기 보정(fonts.json title.scale) — 저장 직전 제목 글자 크기에 곱한다
-BODY_SCALE = [1.0]        # 본문 서체 크기 보정(fonts.json body.scale) — 글 폭·줄 높이 계산과 저장 직전 본문 글자 크기에 곱한다
-BL_LH = 0.42              # 본문 글머리(9pt) 한 줄 높이(cm) — use_fonts 가 보정만큼 바꾼다
+TITLE_IS_BOLD = _PerJob("title_bold", lambda: [False])   # use_fonts 가 정한다
+TITLE_SCALE = _PerJob("title_scale", lambda: [1.0])      # 제목 서체 크기 보정(fonts.json title.scale) — 저장 직전 제목 글자 크기에 곱한다
+BODY_SCALE = _PerJob("body_scale", lambda: [1.0])        # 본문 서체 크기 보정(fonts.json body.scale) — 글 폭·줄 높이 계산과 저장 직전 본문 글자 크기에 곱한다
+BL_LH = _PerJob("bl_lh", lambda: [0.42])                 # [0] = 본문 글머리(9pt) 한 줄 높이(cm) — use_fonts 가 보정만큼 바꾼다
 
 
 def track_title(prs):
@@ -690,7 +731,7 @@ def resolve_assets(job, chapters_pages, kind="photo"):
     with ThreadPoolExecutor(max_workers=6) as ex:
         for j in [j for j in jobs if j[0] == "photo"]:   # 사진은 순서대로 — 앞에서 쓴 사진을 뒤에서 제외해야 겹치지 않는다
             one(j)
-        list(ex.map(one, [j for j in jobs if j[0] == "icon"]))
+        list(ex.map(_carry(one), [j for j in jobs if j[0] == "icon"]))
     seen = set()
     for kind, target, _, _ in jobs:   # 같은 사진이 두 쪽에 붙었으면 뒤엣것은 자리 상자로
         if kind == "photo" and target.get("_id"):
@@ -761,7 +802,7 @@ def backgrounds(job, o, kind="photo"):
             out[key] = blob
             log.append(f"{key}: {src}")
     with ThreadPoolExecutor(max_workers=max(1, int(design.W["CFG"].get("image_parallel", 3)))) as ex:
-        futs = {ex.submit(make_bg, job, art, field): key for key, art in gen}
+        futs = {ex.submit(_carry(make_bg), job, art, field): key for key, art in gen}
         for f in futs:
             try:
                 out[futs[f]] = f.result()
@@ -1645,7 +1686,7 @@ class Build:
                 has_tb = isinstance(tb, dict) and tb.get("cols") and tb.get("rows")
                 if bullets:
                     put_bullets(sh, bullets)
-                    sh.height = Cm(bullet_lines(bullets) * BL_LH + 0.1)
+                    sh.height = Cm(bullet_lines(bullets) * BL_LH[0] + 0.1)
                     top = sh.top + sh.height + Cm(0.25)
                 else:   # 글머리 없이 표만 — 빈 글 상자를 빼고 그 자리에 표
                     top = sh.top
@@ -1707,7 +1748,7 @@ class Build:
                 sh = s.shapes[-1]
                 put_bullets(sh, bullets)
                 sh.top = Cm(after_bar + fig_height(fd[0], fd[1], W) + 0.35)
-                sh.height = Cm(bullet_lines(bullets) * BL_LH * (FW / W if W else 1) + 0.1)
+                sh.height = Cm(bullet_lines(bullets) * BL_LH[0] * (FW / W if W else 1) + 0.1)
                 if W:
                     sh.left, sh.width = Cm(BODY_T + dx), Cm(W)
 
@@ -2009,7 +2050,7 @@ def block_height(blk, W=None):
         h = 0.91 + (0.64 if str(blk.get("small") or "").strip() else 0) + (0.96 if str(blk.get("bar") or "").strip() else 0)
         h += fig_height(fd[0], fd[1], W) + 0.2
         bl = [str(b) for b in (blk.get("bullets") or []) if str(b).strip()]
-        return h + (0.15 + bullet_lines(bl) * BL_LH * (FW / W if W else 1) + 0.1 if bl else 0)
+        return h + (0.15 + bullet_lines(bl) * BL_LH[0] * (FW / W if W else 1) + 0.1 if bl else 0)
     if W:   # 2단 표 — 소제목 + 표(칸이 좁아 줄바꿈이 는다)
         tb = blk.get("table")
         return 0.91 + (table_height(tb, W) if isinstance(tb, dict) and tb.get("rows") else 0)
@@ -2017,7 +2058,7 @@ def block_height(blk, W=None):
     bl = [str(b) for b in (blk.get("bullets") or []) if str(b).strip()]
     tb = blk.get("table")
     has_tb = isinstance(tb, dict) and tb.get("rows")
-    h += (bullet_lines(bl) * BL_LH + 0.1 + (0.25 if has_tb else 0)) if bl else 0
+    h += (bullet_lines(bl) * BL_LH[0] + 0.1 + (0.25 if has_tb else 0)) if bl else 0
     if has_tb:
         h += table_height(tb, 14.9)
     return h
@@ -2259,7 +2300,7 @@ FIG_KINDS = ("concept", "hub", "photo", "compare", "process", "cards", "rows", "
 FIG_NAMES = {"개선", "개선 내용", "곁 조직", "구분", "기간", "기대효과 내용", "기대효과 바탕", "기대효과 이름", "기둥 내용", "기둥 머리", "내용", "단계", "단계 설명", "단계 원", "단계 제목", "마일스톤", "마일스톤 이름", "막대", "목표", "바탕", "사진", "사진 글", "사진 바탕", "사진 설명", "사진 자리", "아이콘", "요소", "일정 머리", "전략 내용", "전략 바탕", "전략 번호", "지표", "총괄", "층 바탕", "층 이름", "카드 내용", "카드 머리", "칸", "팀", "팀 역할", "허브 노드", "허브 중심", "허브 테", "현재", "현재 내용", "화살표", "활동"}   # 도식이 그리는 도형 이름(정렬 검사에서 안쪽 칸을 가려낸다)
 FW = BODY_G + 15.0 - BODY_T   # 도식 폭(블록 안 글 시작선 T ~ 오른쪽 끝)
 LINE = "D3D7DE"
-LH = 0.38                     # 8.5~9pt 한 줄 높이(cm) — use_fonts 가 본문 서체 크기 보정만큼 바꾼다
+LH = _PerJob("lh", lambda: [0.38])   # [0] = 8.5~9pt 한 줄 높이(cm) — use_fonts 가 본문 서체 크기 보정만큼 바꾼다(작업마다 따로)
 
 
 def _esc(t):
@@ -2320,7 +2361,7 @@ def _items(v, n=6):
 
 
 def _list_h(items, w, pt=8.5):
-    return sum(_lines(t, pt, w - 0.75) for t in items) * LH + 0.3 if items else 0   # 안쪽 여백 0.36 + 글머리 들여쓰기 0.32
+    return sum(_lines(t, pt, w - 0.75) for t in items) * LH[0] + 0.3 if items else 0   # 안쪽 여백 0.36 + 글머리 들여쓰기 0.32
 
 
 def fig_data(blk):
@@ -2390,7 +2431,7 @@ def fig_height(k, f, W=None):
     if k == "kpi":
         return 1.9
     if k == "strategy":
-        return sum(max(0.95, 0.3 + 0.45 + _lines(s.get("desc"), 8.5, W - 3.0) * LH) for s in (f.get("items") or [])[:5]) + 0.15 * (len((f.get("items") or [])[:5]) - 1)
+        return sum(max(0.95, 0.3 + 0.45 + _lines(s.get("desc"), 8.5, W - 3.0) * LH[0]) for s in (f.get("items") or [])[:5]) + 0.15 * (len((f.get("items") or [])[:5]) - 1)
     if k == "effect":
         return max(0.9, _list_h(_items(f.get("items"), 4), W - 2.6) + 0.1)
     return 0
@@ -2619,7 +2660,7 @@ def draw_fig(tree, k, f, x, y, th, W=None, pic=None):
     elif k == "strategy":   # 전략 01 · 제목 · 한 줄
         yy = y
         for i, s in enumerate((f.get("items") or [])[:5]):
-            h = max(0.95, 0.3 + 0.45 + _lines(s.get("desc"), 8.5, W - 3.0) * LH)
+            h = max(0.95, 0.3 + 0.45 + _lines(s.get("desc"), 8.5, W - 3.0) * LH[0])
             _box(tree, "전략 바탕", x, yy, W, h, soft, None, ins=(0, 0, 0, 0))
             _box(tree, "전략 번호", x, yy, 2.4, h, calm, None, paras=[(s.get("tag") or f"전략 {i + 1:02d}", 9.5, "FFFFFF", "a시월구일4")], algn="ctr", anchor="ctr", ins=(0.05, 0, 0.05, 0))
             if s.get("_icon"):
@@ -2652,6 +2693,7 @@ def client_logo(o):
 
 # ───────────────────────── 실행
 def run(job, j, opts, brief, note):
+    _STATE.set({})   # 이 작업만의 서체·줄 높이 — 같은 엔진에서 함께 도는 다른 세로 제안서와 섞이지 않게
     req, put_file = design.W["req"], design.W["put_file"]
     pages = int(opts.get("slides") or 0) or DEFAULT_PAGES
     job.push("기획", 4)
@@ -2670,7 +2712,7 @@ def run(job, j, opts, brief, note):
     body = [(i, c) for i, c in enumerate(o["chapters"]) if c["no"] != "※"]
     chapters_pages = {}
     with ThreadPoolExecutor(max_workers=design.par(job, 2, 4)) as ex:
-        futs = {ex.submit(chapter_pages, job, o, c, ctx, raw): i for i, c in body}
+        futs = {ex.submit(_carry(chapter_pages), job, o, c, ctx, raw): i for i, c in body}
         for f in futs:
             i = futs[f]
             try:

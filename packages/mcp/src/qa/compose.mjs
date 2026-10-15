@@ -43,7 +43,14 @@ function measure({ primary }) {
 
   // ② 주색과 부딪히는 고채도 면 — CSS 로 칠한 면(단추·띠·카드)과 큰 그림(배너·포스터)의 평균 색
   // CSS 로 칠한 면은 여기서 색을 읽고, 그림(배너·포스터)은 다른 출처라 페이지에서 픽셀을 못 읽으니 자리만 넘겨 캡처 픽셀로 잰다(MC-60)
-  out.primary = hsl(rgb(primary || getComputedStyle(document.documentElement).getPropertyValue("--hb-primary") || "rgb(36,104,255)"));
+  // 주색 — 넘겨받은 값 → 시안이 선언한 변수(--hb-primary·--primary·--p 등) → 칠한 단추·띠의 가장 넓은 고채도 색 순.
+  // 예전엔 --hb-primary 만 보고 없으면 기본 파랑과 견줘, 주색을 --p 로만 쓴 시안(72·57)의 자기 주색을 '원색'으로 잡았다(2026-10-15 일괄 수정 표본)
+  const root = getComputedStyle(document.documentElement);
+  let pc = primary || ["--hb-primary", "--primary", "--color-primary", "--brand", "--main", "--p"].map((v) => root.getPropertyValue(v).trim()).find((v) => /^(#|rgb)/i.test(v)) || "";
+  if (!pc) { const area = new Map();
+    for (const e of document.querySelectorAll("a, button, [class*=btn], header *, nav *")) { if (!vis(e)) continue; const c = getComputedStyle(e).backgroundColor; if (transparent(c)) continue; const [, s, l] = hsl(rgb(c)); if (s < 0.4 || l < 0.15 || l > 0.85) continue; const q = e.getBoundingClientRect(); area.set(c, (area.get(c) || 0) + q.width * q.height); }
+    pc = [...area.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] || "rgb(36,104,255)"; }
+  out.primary = hsl(rgb(pc)); out.primarySrc = pc;
   out.page = W * Math.max(document.documentElement.scrollHeight, 1);
   out.cssFaces = []; out.imgBoxes = [];
   for (const e of document.querySelectorAll("body *")) { if (!vis(e) || e.closest("footer")) continue; const c = getComputedStyle(e).backgroundColor; if (transparent(c)) continue; const q = e.getBoundingClientRect(); if (q.width * q.height < 1500) continue;

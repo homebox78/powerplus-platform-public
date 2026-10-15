@@ -103,6 +103,13 @@ export async function layoutChecks(p, o = {}) {
       const lines = it.filter((li) => !li.querySelector("img, svg") && !/^\s*[\d.,]+/.test(li.innerText || "") && (li.innerText || "").trim().length >= 12 && li.getBoundingClientRect().height < 110).length; if (lines < 4) continue;
       const sec = ul.closest("section, article, [class*=sec], [class*=row]") || ul.parentElement; if (lists.some((l) => l.sec === sec || l.sec.contains(ul) || sec.contains(l.ul))) continue; lists.push({ ul, sec, y: Y(ul.getBoundingClientRect()) }); }
     } if (lists.length >= 2) out.dupList.push(`글 제목 목록 ${lists.length}곳(y ${lists.map((l) => l.y).join("·")}) — 같은 형식 게시판은 한 구역의 탭으로 묶는다`);
+    // 이미지 배너 자리에 글자 없는 그냥 사진(지적: '이미지 배너' 줄에 건물·설경 사진) — 글자 든 배너 그림이거나 사진 위에 글이 얹혀야 배너다
+    out.bannerPlain = [];
+    for (const h of document.querySelectorAll("h2, h3, strong")) { if (!vis(h) || !/배너/.test(h.textContent || "") || /팝업/.test(h.textContent || "")) continue;
+      const sec = h.closest("section, article, [class*=banner], [class*=bn]") || h.parentElement; const imgs = [...sec.querySelectorAll("img")].filter(vis).filter((im) => im.getBoundingClientRect().width >= 160);
+      if (!imgs.length) continue;
+      const plain = imgs.filter((im) => { if (tk.has(key(im.currentSrc || im.src))) return false; const box = im.closest("a, li, figure, div") || im.parentElement; const t = (box.innerText || "").trim(); return t.length < 4; });
+      if (plain.length && plain.length === imgs.length) out.bannerPlain.push(`'${(h.textContent || "").trim().slice(0, 10)}' y${Y(h.getBoundingClientRect())} — 글자 없는 사진 ${plain.length}장(배너 샘플 banner·strip-banner 를 쓰거나 사진 위에 제목·단추를 얹는다)`); }
     // 팝업존은 한 장씩 굴러가는 캐러셀(이전·다음·정지)이어야 한다 — 사진 갤러리 3칸을 팝업존이라 부르지 않는다
     for (const h of document.querySelectorAll("h2, h3, strong")) { if (!vis(h) || !/팝업\s?존|popup\s?zone/i.test(h.textContent || "")) continue;
       const sec = h.closest("section, article, [class*=popup], [class*=pop]") || h.parentElement; const car = sec.querySelector("[data-hb=carousel], [data-hb-next], [data-hb-prev], [data-carousel], [aria-roledescription=carousel]") || [...sec.querySelectorAll("button, a")].find((b) => /이전|다음|prev|next/i.test((b.getAttribute("aria-label") || "") + " " + (typeof b.className === "string" ? b.className : ""))); /* 자체 캐러셀(넘김 단추 있음)도 인정 — data-hb 만 보던 오탐(배치7·8) */
@@ -151,6 +158,7 @@ export async function layoutChecks(p, o = {}) {
   chk(!r.hero.length, "첫 화면에 히어로가 다 안 들어옴", r.hero);
   chk(!r.footTail.length, "바닥글 아래 빈 띠", r.footTail);
   chk(!r.dupList.length, "같은 형식 게시판 목록 중복", r.dupList);
+  chk(!r.bannerPlain.length, "이미지 배너 자리에 글자 없는 사진", r.bannerPlain);
   chk(!r.popupZone.length, "팝업존이 굴러가지 않음", r.popupZone);
   chk(!r.typeFlat.length, "글자 강약 없음", r.typeFlat);
   chk(!r.iconLow.length, "꾸밈 아이콘이 바탕과 구분 안 됨", r.iconLow);

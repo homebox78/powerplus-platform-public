@@ -339,8 +339,10 @@ return static function (Router $r): void {
         }
         $res = is_array($b['result'] ?? null) ? $b['result'] : [];
         $refId = mb_substr(trim((string) ($b['ref_id'] ?? '')), 0, 255);
-        Db::exec('UPDATE mock_mockups SET score = ?, passed = ?, check_count = check_count + 1, check_json = ?, ref_id = IF(? = \'\', ref_id, ?), checked_at = NOW(3) WHERE id = ?',
-            [$score, $pass, json_encode($res, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), $refId, $refId, (int) $m['id']]);
+        // 어떤 페이지인지(레퍼런스 화면의 page_type) — 게시본끼리 링크에 쓴다
+        $page = (string) preg_replace('/[^a-z_]/', '', (string) ($b['page'] ?? ''));
+        Db::exec('UPDATE mock_mockups SET score = ?, passed = ?, check_count = check_count + 1, check_json = ?, ref_id = IF(? = \'\', ref_id, ?), page = IF(? = \'\', page, ?), checked_at = NOW(3) WHERE id = ?',
+            [$score, $pass, json_encode($res, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), $refId, $refId, $page, $page, (int) $m['id']]);
         $m = Db::row('SELECT * FROM mock_mockups WHERE id = ?', [(int) $m['id']]);
         $galleryStore($m, $score, isset($b['thumb']) ? (string) $b['thumb'] : null, (string) ($b['device'] ?? $m['device']), $pass === 1);
         // 개선 체크리스트 누적 — 실패해도 판정 기록은 막지 않는다
@@ -444,7 +446,7 @@ return static function (Router $r): void {
     // 게시된 시안 — powerplus.hom2box.com/p/{token} (Apache 가 /api/v1/p 로 넘긴다)
     $r->get('/p/{token}', static function (array $p) use ($tokenOf): void {
         $token = $tokenOf($p['token']);
-        $row = $token === '' ? null : Db::row('SELECT id, html, published_at FROM mock_mockups WHERE token = ? AND deleted_at IS NULL AND expires_at > NOW(3)', [$token]);
+        $row = $token === '' ? null : Db::row('SELECT id, token, base_token, owner_user_id, html, published_at FROM mock_mockups WHERE token = ? AND deleted_at IS NULL AND expires_at > NOW(3)', [$token]);
         header('X-Robots-Tag: noindex, nofollow, noarchive');
         header('Referrer-Policy: no-referrer');
         if ($row === null || $row['published_at'] === null) {
@@ -462,6 +464,23 @@ return static function (Router $r): void {
         header('X-AI-Generated: true'); // LEGAL-003: AI 생성 산출물 표시
         // 샘플 원본 주소는 웹 사본으로 — 예전 묶음(url_template …/original)으로 만든 시안도 가볍게 연다
         $html = (string) preg_replace('#(/api/v1/assets/samples/[a-z0-9]{8,32})/original\b#', '$1/web', (string) $row['html']);
+        // 게시본끼리 링크: 같은 묶음(메인 + 그 메인을 기준으로 만든 서브)에서 main.html·greeting.html 같은 파일 이름을 게시 주소로
+        // (2026-10-15 시험: 메뉴의 greeting.html 이 /api/v1/p/greeting.html 404 — 메인에서 서브로 못 넘어감)
+        $root = (string) ($row['base_token'] ?: $row['token']);
+        $sib = Db::rows('SELECT token, base_token, page FROM mock_mockups WHERE owner_user_id = ? AND (token = ? OR base_token = ?) AND deleted_at IS NULL AND published_at IS NOT NULL AND expires_at > NOW(3) ORDER BY checked_at DESC', [(int) $row['owner_user_id'], $root, $root]);
+        $map = [];
+        foreach ($sib as $s) {
+            $pg = $s['token'] === $root ? 'main' : (string) ($s['page'] ?? '');
+            if ($pg !== '' && !isset($map[$pg])) {
+                $map[$pg] = '/api/v1/p/' . $s['token'];
+            }
+        }
+        if (isset($map['main'])) {
+            $map['index'] = $map['main'];
+        }
+        if ($map) {
+            $html = (string) preg_replace_callback('/\bhref="(?:\.\/)?([a-z_]+)\.html(#[^"]*)?"/', static fn (array $mm) => isset($map[$mm[1]]) ? 'href="' . $map[$mm[1]] . ($mm[2] ?? '') . '"' : $mm[0], $html);
+        }
         echo \Pp\Mock\FrameHeight::inject($html);
         exit;
     });

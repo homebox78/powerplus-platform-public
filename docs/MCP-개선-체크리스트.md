@@ -1,0 +1,331 @@
+# powerMCP 개선 체크리스트 (통합본)
+
+> MCP 를 고치거나 시험하기 전에 이 파일부터 훑는다.
+> 흩어진 MCP 문서·시험 보고서·재발 방지 표·프로젝트 기록을 한 곳에 모았다. 중복은 하나로 합쳤다(2026-10-15).
+> 원자료는 지우지 않았다. 날짜별 증거는 §7 출처를 본다.
+
+- **1부(§1~§3)** = 고칠 때마다 쓰는 체크리스트.
+- **2부(§4~§6)** = 영역별 이력과 남은 일.
+- 새 결함을 잡으면 §2 표에 `MC-` 번호를 하나 더한다(지우지 않는다). 남은 일 §5 는 고치면 줄을 긋고 커밋을 적는다.
+- 관리자 개선 체크리스트(mock/deck/site_checklist)와 함께 쓴다. DB 적재는 slug 로(§1 ⑤).
+
+---
+
+## 1. 한 바퀴 절차 (시험 → 보고 → 수정 → 재발 방지 → 재시험)
+
+| 단계 | 할 일 | 도구·명령 |
+|:---:|---|---|
+| ① 준비 | staff 시험 키를 만든다. deploy 키는 하루 100건이라 여러 에이전트 시험에 못 쓴다. 띄우기 전에 `에이전트 수 × 장 수 × 판정 횟수`를 한도와 맞춰 본다 | 서버 `sudo php8.4 api/bin/mcp-test-key.php issue <파일>` (하루 5000). 키 파일 길이 48자 확인 |
+| ② 시험 | 도구·카테고리·요청을 매번 다르게 고른다. 음성 대조(빈 입력·치명 입력·과다 입력)도 넣는다. 안내 페이지 예시 문구는 **그대로** 친다 | 로컬 powerMCP 또는 claude.ai 커넥터(운영 키). 로컬 재료(캡처)가 운영과 같은지 먼저 본다 |
+| ③ 보고 | 결과를 `docs/MCP-<주제>-<날짜>.md` 로 남긴다. 표 = 증상 · 원인 · 수정 · 확인 · 상태 | — |
+| ④ 수정 | 원인을 고친다. 증상만 막지 않는다. 판정을 바꾸면 기준 시안 3곳을 같은 날 다시 잰다 | §2 체크리스트 |
+| ⑤ 적재 | 관리자 개선 체크리스트에 slug 로 쌓는다(재발 = hits+1, 고친 뒤 다시 걸리면 regressed) | 운영 `api/bin/mock-checklist-import.php` / 로컬 `node scripts/mcp-loop-import.mjs <items.json>` |
+| ⑥ 배포 | powerMCP·mockref·api 는 배포 스크립트가 각각이다 | `deploy-mcp.sh` · `deploy-mockref.sh` · `deploy.sh` (R05). 기본 CSS·동작 스크립트를 고쳤으면 `api/bin/mock-refresh.php` 까지 |
+| ⑦ 재시험 | 같은 질문을 다시 돌려 고친 것을 확인한다 | 1차·고친 뒤를 나란히 표로 |
+| ⑧ 정리 | 시험 산출물은 deploy "내 시안"으로 옮긴다. 시험 키는 폐기한다 | `mcp-test-key.php revoke`(옮기고 폐기) · `transfer`(옮기기만) · `lend <token…>`(관리자 시안 잠깐 빌리기) |
+
+---
+
+## 2. 고칠 때 체크리스트
+
+번호는 이 파일 고유(MC-). 괄호 안은 원래 번호(R = 오류-재발방지-체크리스트, D = 판정 규칙, MCP-/MCK- = 사이트-품질-체크리스트, G = 홈박스 기록).
+
+### 2.1 지침 문구 · 도구 설명 · 안내 페이지
+
+| 번호 | 확인할 것 | 왜 (실제 사례) | 확인 방법 |
+|:---:|---|---|---|
+| MC-01 | 기본 경로를 바꾸면 instructions·모든 description 을 grep 해 옛 기본 문구를 지운다 | "시안은 get_replica_kit 기본"과 "홈페이지는 build_homepage 하나로"가 함께 있어 claude.ai 가 초안 도구를 골랐다 | `grep -n build_homepage packages/mcp/src` |
+| MC-02 | "빠른 초안 전용" 같은 꼬리표는 description **맨 앞**에 둔다 | 뒤에 두면 무시된다 | tools/list 응답 첫 줄 |
+| MC-03 | 일반 지식으로 답할 만한 질문(접근성·KRDS·디자인 선호·아이콘·"할 수 있어?")은 "powerplus 도구 먼저"를 instructions 와 description 첫 줄에 쓴다 | 3차 시험에서 예시 6개가 도구를 안 불렀다(check_request·get_checklist·design_preferences·assemble_screen·design_brief·assets_pick) | claude.ai 새 대화에서 예시 문구 그대로 |
+| MC-04 | 안내 예시 질문은 운영에서 직접 쳐 보고 나서 적는다. 실제 도구가 하는 일 안에서만 약속한다 (R24, MCP-002) | "파란 톤 보안 아이콘" 예시에 무전기·반도체가 나왔다 | mcp-examples.ts 예시를 운영 키로 재실행 |
+| MC-05 | 도구 표·도구 수는 손으로 쓰지 않고 registerTool 목록에서 빌드 때 만든다 (MCP-001·010) | 안내문 7곳이 실제 도구와 어긋났다 | `packages/mcp/scripts/gen-tools.mjs` 산출물과 tools/list 수 대조 |
+| MC-06 | enum 인자는 description 에 허용값을 적는다. 틀리면 허용값 목록을 돌려준다 (MCK-004) | `kind:"hero"` 첫 호출이 -32602 로 실패 | 일부러 틀린 값 |
+| MC-07 | kit 지시를 더하기 전에 같은 낱말로 procedure·acceptance·variation·base.rule 을 grep 해 충돌부터 지운다 (R34) | 구역 간격 지시가 세 군데서 달라 편차 50~140px | grep 결과 한 값만 남았는지 |
+| MC-08 | 지시와 채점이 반대 방향인지 본다 | "본문 늘리지 말라"인데 높이 차 6% 를 치명으로 채점 → AI 가 min-height 로 늘리고 검사를 피함 | 지시 문장과 판정 규칙을 나란히 |
+| MC-09 | 서버가 채우는 것(hb:use header·꺾쇠·바닥글 여백·동작 스크립트)은 kit 이 명시한다 | 안 알려서 서브 h1 2개·꺾쇠 2번 | 서브 시안 판정 감점 0 |
+| MC-10 | 외부 이미지가 막힌 곳(claude.ai 아티팩트)용으로 게시 주소를 같이 안내한다. SVG 로 그림을 대신 그리지 말라고 쓴다 | 아티팩트에서 AI 가 만화 같은 그림을 지어냄 | 지침 문구 확인 |
+| MC-11 | "통과할 때까지 고쳐 다시 판정, 미통과는 결과로 남지 않는다"를 지침에 둔다 (R20) | 미통과 시안이 그대로 남았다 | 지침 문구 |
+| MC-12 | kit 문구 강조는 큰따옴표나 「」. 작은따옴표 금지 | PHP 문자열이 끊겼다 | `php -l` |
+| MC-13 | 사용자 화면에 함수 이름(mock_get_wireframe 등)을 그대로 쓰지 않는다 | 평가 리포트 권고 | /powermcp 문구 |
+
+### 2.2 인자 · 응답 · 오류 형식
+
+| 번호 | 확인할 것 | 왜 | 확인 방법 |
+|:---:|---|---|---|
+| MC-20 | 모르는 인자를 조용히 버리지 않는다. 별칭(q→query·count→limit·site→slug) + `ignored_args` 로 알린다 | 기본값으로 답해 엉뚱한 결과 | 별칭 인자로 호출 |
+| MC-21 | 처리기 오류는 전부 `{error:{code,message}}`. 범위 밖 = 403 `FORBIDDEN_SCOPE`, 키 없음 = UNAUTHORIZED, 잘못된 인자 = -32602, 없는 것 = NOT_FOUND (MCK-002·MCP-004) | SDK 가 일반 글로 바꿨다. 범위 밖이 "키가 유효하지 않습니다"로 나왔다 | 경계 호출 4종 |
+| MC-22 | 결과는 `content`(text JSON) + `structuredContent` 둘 다. 실패는 `isError:true`. 이미지는 base64 image 블록. 401 에는 `WWW-Authenticate` | claude.ai 는 서명 URL 을 못 연다 | `npx @modelcontextprotocol/inspector --cli` |
+| MC-23 | 응답 크기를 잰다. 기본은 요약, 원문·좌표는 `full`·`detail:true` 일 때만 | 재현 묶음 600KB, 와이어 판정 58KB | 응답 글자 수 표 |
+| MC-24 | 여러 건은 한 번에 받게 한다(assets_get ids≤20, suggest_keywords words[]). 모든 응답에 `meta.quota`(남은 횟수·초기화 시각) | 아이콘 8개에 상세 8번, 검색어 추천 10번 → 하루 100건 소진 | 호출 수 세기 |
+| MC-25 | 빈 결과는 이유를 말한다(`images_missing`, 0건 힌트, 시작 안내) | 참고 이미지 0장을 말없이 줌, deck_jobs 빈 배열만 | 빈 입력 호출 |
+| MC-26 | 외부로 나가는 id 는 `public_id`. 숫자 PK·실제 기관 글을 싣지 않는다 | — | 응답 grep |
+| MC-27 | 헬스의 버전·도구 수는 코드에서 계산한다 | 손으로 적어 재배포 뒤에도 옛 값 | `/mcp/health` 와 tools/list 수 |
+
+### 2.3 키 · 권한 · 한도 · 유출
+
+| 번호 | 확인할 것 | 왜 | 확인 방법 |
+|:---:|---|---|---|
+| MC-30 | 프록시형 MCP 는 키가 곧 신원이다. 검증한 플랜을 뒤 API 까지 넘긴다(X-Pp-Plan, 서비스 키가 유효할 때만 믿음) | Pro 키로 Free 응답. staff 가 재현 묶음에서 "Pro 이상" 거부 | 같은 호출을 무키·free·staff 키로 세 번 |
+| MC-31 | 권한 판정은 `Access::can()` 하나. MCP 응답·검색·컬렉션·공유 링크 모든 출구가 지난다 (G30) | 상세만 잠그고 검색 출구는 원본 URL | 출시 전 외부 Free 계정 `leak-audit`(MCP 도구 포함) internal/pro 0건 |
+| MC-32 | REST 를 키로 직접 불러도 MCP 와 같은 일 한도·범위를 적용한다 (MCP-006) | REST 직접 호출은 한도 200 통과였다(→ Router 에서 집계로 고침). **범위는 assets REST 에 아직 없음(§5)** | mock 전용 키로 `/api/v1/assets/items` |
+| MC-33 | powerMCP 경유 이중 집계 건너뛰기는 HMAC 헤더(X-Pp-Mcp)로만 인정 | 헤더만으로 흉내 낼 수 있었다 | 헤더 위조 호출 |
+| MC-34 | 판정 결과는 서버가 만든 서명(HMAC `token|score|pass`, PP_JUDGE_SECRET)이 있을 때만 받는다. 비밀이 비면 로그를 남긴다 (MCK-007, R11) | 클라이언트가 보낸 `{score:95,pass:true}`로 게시까지 됐다. 비밀이 빠지면 점수가 조용히 NULL | 위조 점수 POST → 거부 |
+| MC-35 | 시험 산출물 소유자를 확인한다. 끝에 deploy 로 옮기고 시험 키 폐기 (R13) | 시험 시안 11건이 임시 계정에 남아 안 보였다 | `mock_mockups.owner` |
+| MC-36 | 커넥터 키는 헤더 어디에 있든(값만·X-API-Key·Bearer) 인정. 로컬 127.0.0.1 주소는 커넥터에 넣지 않는다(https 필수) | 헤더 칸이 없어 전부 UNAUTHORIZED | 3형식 호출 |
+| MC-37 | 목업 샘플(mockup_sample)은 웹 목록 제외, 키 호출이면 권한 판정 | MCP 키로도 늘 막혔다 | free·staff 키로 샘플 검색 |
+
+### 2.4 재료(kit) · 가상화
+
+| 번호 | 확인할 것 | 왜 | 확인 방법 |
+|:---:|---|---|---|
+| MC-40 | 원문이 들어갈 수 있는 필드(sections·title·name·메뉴·본문·섹션 코드)를 **한 번에 전부** 훑어 실명·전화·기관장·게시물 제목을 지운다 | 고칠 때마다 새 필드에서 실명이 나왔다(강릉·강원, 기관장 이름) | 응답에서 레퍼런스 기관명 grep 0건 |
+| MC-41 | 고객 기관명(org_name)·종류를 그대로 쓴다. 비면 org_name 으로 짐작하되 요청 종류 먼저 | OO시 요청에 '푸른구', 도서관을 미술관으로 | org_name 이 title·로고·h1 에 있는지(D5) |
+| MC-42 | 배치는 레퍼런스의 행·열·폭을 따른다. 통계는 빠진 블록 보충에만 | 고정 틀 하나라 레퍼런스를 바꿔도 같은 시안 | 레퍼런스 3개 결과 나란히 |
+| MC-43 | 좌표는 0~화면 폭으로 자르고 절반 넘게 밖이면 뺀다 | 음수·폭 초과 좌표 | 응답 좌표 범위 |
+| MC-44 | 이미지는 web 판(긴 변 1920, mozjpeg 72), 섞기 합계 380KB 상한, 조각당 1장 보장 | 15MB 원본, 750KB 묶음 | 응답 크기 |
+| MC-45 | 샘플은 대상(gov·corp·edu)·아이콘 스타일 하나·시안 간 반복 없음. 샘플 id 를 계산하지 않는다 | 초록 사이트에 파랑 아이콘, 번호가 밀려 참조 깨짐 | 시안 이미지 목록 |
+| MC-46 | 폴더·주소를 옮기기 전에 DB 의 보관 HTML 을 grep 한다 | /homebox 삭제로 옛 시안 샘플 404 | 보관본 주소 200 |
+| MC-47 | 기본 CSS·동작 스크립트를 고치면 보관 시안도 갱신한다 (R37) | 이미 만든 시안에 옛 판이 박혀 있었다 | `mock-refresh.php` 후 보관본 grep |
+| MC-48 | CssPrune 은 괄호 안(`:not(:has(.x))`) 선택자를 필수로 세지 않는다 (R18) | 높이 상한 규칙이 통째로 버려졌다 | 생성 HTML grep |
+
+### 2.5 판정기 (mock_check_mockup · deck_check_* · guide_check_code)
+
+| 번호 | 확인할 것 | 왜 | 확인 방법 |
+|:---:|---|---|---|
+| MC-50 | 판정을 고치면 음성 대조 3종(빈 입력·치명 입력·과다 입력)이 실패하는지 본다 (R16) | 빈 기획·시간 2배 대본·오류 섞인 HTML 이 통과했다 | 음성 입력 3개 |
+| MC-51 | 0 이 나오면 "통과"가 아니라 측정기가 동작했는지부터 본다 (R14) | 키를 잘못 읽어 0건 | 일부러 걸리는 입력 |
+| MC-52 | 치명 1개 이상이면 최대 84점(통과선 85 아래) | 치명이 있어도 85 넘으면 통과 | 치명 입력 점수 |
+| MC-53 | 판정 규칙을 바꾸면 기준 3곳(청운시청·새솔군청·대학)과 자동 초안을 같은 날 다시 잰다. 운영은 /tmp/pp-stage 에서 통과 후 설치 (R23) | 엄격화 뒤 build_homepage 100→52 | 기준 점수 표 |
+| MC-54 | 통과 시안을 사람 눈 C 등급과 대조한다. C 는 걸리고 A·공사 재현본은 통과해야 한다 (R21·R35) | 85~100점 통과 중 C 등급 18건, 20장이 엉성 | 58건 재판정 |
+| MC-55 | 지적받은 화면은 계측부터 만들고 → 판정으로 옮기고 → 기존 시안 전부에 다시 돌린다 | 새 시안만 막으면 옛 시안은 그대로 | slug `ux-1015-*` 0 |
+| MC-56 | 오탐도 품질 결함이다. 오탐을 피하려 디자인을 망치게 된다 | 회색 카드를 투명으로, 카드 제거 | 6묶음 시험 오탐 수 |
+| MC-57 | 점수가 흔들리면 두 번 재고 고정 감점만 고친다 | 조립 재료가 실행마다 바뀜 | 2회 점수 |
+| MC-58 | 판정기 JS·PHP 정규식은 Edit 도구로만 고친다(R02·R38). preflight 6번이 깨진 정규식을 찾는다 | 역슬래시가 빠져 검사 3개가 배포 내내 안 돌았다 | `scripts/preflight.sh web` + 일부러 깨뜨린 줄 |
+| MC-59 | 가로 넘침은 W 와 W-17(스크롤바) 둘 다. 1920·1440·1280·390 넘침은 치명 | 헤드리스엔 스크롤바 자리가 없어 통과 | 4폭 렌더 |
+| MC-60 | 색·밝기는 DOM 이 아니라 캡처 픽셀로 잰다 | DOM 배경색으로 3% | 캡처 대조 |
+| MC-61 | 통과 뒤에도 캡처를 연다 | 100점인데 405px 어두운 상자가 윗줄을 덮음 | 캡처 확인 |
+| MC-62 | 판정 브라우저는 사설·루프백·메타데이터 주소와 웹소켓을 막는다 (SEC-007, G28) | iframe 으로 서버 내부가 샜다 | netguard.mjs 시험 |
+| MC-63 | 수치 판정은 같은 수치를 한 번만 센다(500억/500). 번호 뒤 마침표·규격 이름·단어 첫 글자를 단위로 읽지 않는다 | "2. 개", "ISO 27001", "24 위", 치명 6건 중 실제 2종 | 오탐 문장 묶음 |
+| MC-64 | 토큰 대체 제안은 대비 기준을 다시 재서 만족하고 용도가 맞는 것만 | #4A90E2 에 primary-40 제안(바꿔도 대비 미달), 버튼에 information 색 | 제안 토큰 대비 재측정 |
+| MC-65 | 원본(정본) 데이터는 한 곳에서 읽는다. 관리자 덮어쓰기가 모든 도구에 반영되는지 본다 | guide_krds 만 taxonomy 를 따로 읽음 | 숨긴 항목 음성 대조 |
+
+### 2.6 배포 · 운영
+
+| 번호 | 확인할 것 | 왜 | 확인 방법 |
+|:---:|---|---|---|
+| MC-70 | powerMCP·mockref 는 deploy.sh 에 실리지 않는다. 각자 스크립트 (R05) | 운영이 옛 판으로 남았다 | preflight ℹ️ 줄 |
+| MC-71 | 남의 미커밋 파일이 배포 범위에 있으면 배포하지 않고 알린다 (R04) | Session.php 때문에 mockref 보류 반복 | `git status` |
+| MC-72 | deploy-mcp 는 health 를 최대 20초 재시도, 교체는 포트 기준 종료 | 재시작 2초 뒤 연결 실패, 옛 프로세스가 포트를 쥠 | 배포 로그 |
+| MC-73 | api 배포는 옆 폴더 → 권한 → 이름 바꾸기(무중단) | 배포 중 config.php 를 못 읽어 publish 500 | 배포 중 호출 500 0회 |
+| MC-74 | 시험 도중 api 를 고치지 않는다 | 결과가 섞인다 | — |
+| MC-75 | MCP 효과는 렌더 캡처로 본다. 200·스키마 통과는 증거가 아니다 | assemble_screen 이 200 인데 렌더하니 와이어프레임 | 렌더 캡처 |
+| MC-76 | 사용자 눈 지적은 판정 검사로 옮기고 **기존 시안 전부** 다시 판정·수정·같은 주소 재게시 | 10-15 판정 87~100 통과 시안이 눈으로는 엉성(20여 건). 새 시안만 막으면 내 시안 87장이 그대로 | packages/mcp/src/qa/layout.mjs · R35 |
+| MC-77 | 판정 정규식은 Edit 도구로만, 새 검사는 일부러 걸리는 입력으로 먼저 | 셸 편집으로 역슬래시가 빠져 검사 3개가 배포 내내 0건 | preflight.sh 6번 · R38 |
+| MC-78 | 여러 에이전트 일괄 작업은 staff 시험 키 + lend/transfer | deploy 플랜 한도 100/일 몇 분 만에 소진 | mcp-test-key.php lend·transfer·revoke |
+| MC-79 | 기본 CSS·동작 스크립트를 고치면 보관 시안까지 | 판정 때 박힌 판이라 이미 만든 시안엔 안 들어감 | api/bin/mock-refresh.php · R37 |
+| MC-80 | 샘플 그림 판별은 주소 열쇠로(id 아님) | id=banner-03-…·주소=2i8u… 라 글자 그림 잘림을 하나도 못 잡음 | index.ts textSampleKeys |
+| MC-81 | 배포 범위에 남의 미커밋 파일이 있으면 커밋된 코드만 깨끗한 작업 트리(git worktree)에서 배포 | R04 를 지키면서 내 배포를 막지 않는다 | git worktree add --detach … HEAD |
+
+---
+
+## 3. 시작 전 30초 점검
+
+1. 이번에 고칠 도구의 영역 표(§2.x)를 훑었나.
+2. 같은 증상이 §4 이력에 있나 → 있으면 재발이다. 관리자 체크리스트에 regressed 로 남는다.
+3. 시험 키·한도·산출물 소유자 계획이 있나(§1 ①⑧).
+4. 고친 뒤 음성 대조와 기준 3곳 재측정을 할 계획인가(MC-50·53).
+5. 배포 스크립트가 무엇인가(MC-70).
+
+---
+
+# 2부 · 이력과 남은 일
+
+## 4. 영역별 이력 (고친 것)
+
+중복을 합쳤다. "확인"은 재시험·코드로 확인한 근거.
+
+### 4.1 공통 · 키 · 한도
+| 결함 | 수정 | 확인 |
+|---|---|---|
+| 키 검증만 하고 데이터는 익명 호출 → Pro 키에 Free 응답 | `Plan::keyPlan()`, 키를 뒤 API 까지 전달 | 무키·Pro 비교 |
+| staff 키가 재현 묶음에서 Pro 거부 | X-Pp-Plan 전달 + mockref Plan.php staff→pro (ae4f71e) | 10-12 재호출, 코드 Plan.php:75-84 |
+| 범위 밖 키 오류가 "키가 유효하지 않습니다" | 403 FORBIDDEN_SCOPE + hint | 10-10 재측정 |
+| 옛 이름(get_replica_kit 등) Tool not found | 별칭 31개, tools/list 에는 숨김 | 10-10 재측정 |
+| 모르는 인자 조용히 버림 | 별칭 + ignored_args | 10-12 반복 시험 |
+| 처리기 오류가 일반 글 | `{error:{code,message}}` | 10-10 |
+| REST 직접 호출은 일 한도 미적용 | Router 에서 `Keys::hit` | 코드 Router.php:80-84 |
+| 이중 집계 건너뛰기를 헤더로 흉내 | X-Pp-Mcp HMAC | deck kit 각 1회 = 1 |
+| 하루 100건이 상세·추천 반복으로 소진 | assets_get ids≤20, suggest_keywords words[], meta.quota·초기화 시각 | 10-12 |
+| 커넥터 헤더 칸 없음 → UNAUTHORIZED | `?key=`, 헤더 어디든 인정 | 3형식 |
+| 키 끝자리가 sha256 앞 4자리 | key_last4, key_enc 다시 보기 | — |
+| 헬스 버전·도구 수 하드코딩 | 등록 도구 수 계산 | — |
+
+### 4.2 지침 · 안내
+| 결함 | 수정 |
+|---|---|
+| 기본 경로 충돌(replica_kit vs build_homepage) | 초안 도구는 "사용자가 직접 요청할 때만" |
+| 예시 질문 6개가 도구를 안 부름 | instructions 첫 줄 "powerplus 도구 먼저" + 질문 유형별 도구 예 |
+| 안내문 7곳 어긋남 | gen-tools 로 도구 표 생성 |
+| enum 미기재 | 허용값 명시·오류에 목록 |
+| 애매한 요청에 확신 낮은 답 하나 | 확신 0.7 미만·차이 0.3 미만이면 needs_clarification |
+| 지시 충돌(이미지 그대로 vs 통일, row_gap vs 높이 6%, 간격 3곳) | 한 값·한 문구로 통일 (cbcab61) |
+| 주색 면 허용으로 화면이 한 색 | theme.color_use·neutral |
+| /powermcp 모바일 11,769px | 접기, 4,034px |
+
+### 4.3 assets
+| 결함 | 수정 |
+|---|---|
+| "데이터 베이스" → "케이스" 오교정 | 붙인 말 먼저 합치기(glue) |
+| 최신순뿐(기관 로고 1위 엉뚱) | 관련도 점수 |
+| 한 글자 검색 수천 건 | 정확 일치 먼저 |
+| 주제 목록에 흔한 낱말 상위 | 20% 넘게 붙은 태그 제외 |
+| 목업 샘플이 MCP 키로도 막힘 | 키 호출이면 권한 판정 |
+| 새 키비주얼·업무 사진이 MCP 에 안 보임 | MockSamples::SET_KIND (3,075→4,708) |
+| assets_pick 401(auth 라우터) | 회원·키·엔진 모두 |
+| mcp·og 파생본 0 | prewarm 크론 03:30 |
+| "제안서 보안 아이콘"에 무전기 | 쓰임새 말을 검색어에서 뺌(부분 해결, §5) |
+
+### 4.4 mock 재료 · 조립 · 와이어
+| 결함 | 수정 |
+|---|---|
+| 재현 묶음 600KB | 종류별 샘플 상한 + 380KB 상한 |
+| 실명·기관장·전화 잔존(여러 필드) | 개수·길이만, scrub_names |
+| "한빛시시장" | persona.head() |
+| 고정 틀 배치 | 레퍼런스 행·열 따름, mixPlan(A+B·C) |
+| 76KB HTML 두 번 작성(18분) | token + edits, publish 는 token 만 |
+| 머리·바닥·동작 매 장 재작성 | base_token + `<!--hb:use-->`, `data-hb-behavior` 서버 채움 (서브 -70%) |
+| edits CRLF·공백 실패 | 허용, 못 찾으면 보관본 일부 반환 |
+| hb:use header 가 레이어 누락·h1 2개 | 로고 h1 강등·재동기화·masthead 포함 |
+| 페이지 패턴 예시 미분류·중복 | 미분류 절반 이상 제외·서명 중복 제거 |
+| 선호 규칙 정확·부분 일치 섞임 | 구분 + match_note |
+| 좌표 화면 밖 | 자르기·제외 |
+| 미사용 CSS 그대로 | CssPrune + 괄호 안 선택자 예외 (R18) |
+| 주 메뉴에 유틸·가족 사이트 | 제외 |
+| 서브 검색·전체메뉴 버튼 무동작 | 실제 레이어 |
+| build_homepage 메인 33~54점 | D7 작업 98점, 비관공서는 통과 레퍼런스 우선(대학 91·복지관 92) |
+| 와이어 원형 감점·LLM 원형에 메인 비주얼 | 원형별 예외, main_search 면 비주얼 제외 |
+| assemble_screen 200 인데 와이어프레임 | 키워드·칸·이미지·폭 수정 |
+| KRDS 링크 55개 404 | name_en 정확 일치 매핑 |
+| 미리보기 바닥글 아래 흰 띠 | FrameHeight (R36) |
+
+### 4.5 판정 · 게시
+| 결함 | 수정 |
+|---|---|
+| 판정 위조 점수로 게시 | HMAC 서명 검사 (코드 mock.php:334-337) |
+| 판정 비밀 누락 시 NULL 침묵 | 로그 (R11) |
+| 미통과 시안 잔존 | 84 이하 즉시 폐기·하루 뒤 삭제, 목록은 passed=1 (R20) |
+| 통과 시안 사람 눈 C 18건·20장 엉성 | visual·extra·behavior·layout.mjs (D1~D39, 구성 16~18종·반응형 8~10종), 기존 87장 재판정 |
+| 정규식 역슬래시 누락으로 검사 3개 무동작 | Edit 도구 + preflight 6번 (R38) |
+| 표준 속성(aria-expanded) 조작을 "동작 없음" 감점 | 감점 안 함 |
+| 칠하지 않은 칸 안쪽 여백까지 끝선 | 여백 빼고 잼 |
+| 오탐 4종(제목만 띠·rowspan·지도·::before) | cbcab61, 새 게이트 '화면 끝 글자' |
+| SSRF | netguard.mjs |
+| 판정 notes 미표시 | 내 시안·갤러리 상세에 표시 |
+| 보고서 공개 API noindex 없음 | X-Robots-Tag (코드 reports.php:142) |
+
+### 4.6 deck
+| 결함 | 수정 |
+|---|---|
+| 빈 기획 점수, 치명 있어도 통과, 대본 2배 통과 | 0점, 상한 84, 시간 치명 |
+| 15분에 7분 대본 통과 | 60% 미만 치명·80% 미만 경고, seconds_per_slide |
+| 원자료·다른 장 수치를 지어낸 수치로 | 기획 전체+원자료 대조, 다른 장이면 경고 |
+| "2. 개"·"ISO 27001" 수치 오판 | 예외 |
+| 모르는 상자 종류 통과 | 경고 |
+| 배점 상위 항목 뒤쪽 몰림 통과 | stat.priority 경고 |
+| 짧은 원자료에 "얇은 장" | 분량 비례 기준 |
+| 와이어 재료 중복·판정 58KB | full·detail 옵션 |
+| 수치 중복 집계·위치 쪽 단위뿐 | 수정 (P:841) |
+
+### 4.7 guide
+| 결함 | 수정 |
+|---|---|
+| 오류 섞인 HTML 81점 | 오류 1개 이상이면 상한 84 |
+| 한글 KRDS 분류·tokens.css·"포커스/로그인" 0건 | 대응·끝 일치·동의어·힌트 |
+| 한 줄 HTML 줄 번호 1 | 요소 경로 |
+| var() 폴백 hex 를 정본 밖 색으로 | 폴백 제거 후 판정 |
+| onclick div 버튼 미검출 | fake_button 감점 |
+| Tailwind v4 토큰 파일 없음 | solideo-tailwind.theme.css |
+| guide_krds 원본 따로 읽음 | 공용 분류표 (10-14) |
+| 대체 토큰 대비 미달 제안 | 대비·용도 맞는 것만, 13px 표시 (P:841 — 재측정 기록 없음, §5 참고) |
+
+---
+
+## 5. 남은 일 (2026-10-15 기준)
+
+코드로 확인한 것은 "코드 확인"이라 적었다. 나머지는 문서상 해결 기록이 없는 것.
+
+### 높음
+| 번호 | 내용 | 위치·근거 |
+|:---:|---|---|
+| O-01 | **REST 범위 검사 없음** — mock 전용 키로 `/api/v1/assets/items` 200. `Keys::allows` 는 deck·core 에만 | 코드 확인: api/routes/deck.php:35·deck_kit.php:26·core.php:374 뿐 |
+| O-02 | powerplus_check_request 가 코드 판정·지침 검색 capability 를 모름("내 HTML 접근성 검사"에 지원 안 함). 없는 부품을 supported 로 약속 | packages/mcp/src/index.ts capability, api/src/Core/Triage.php |
+| O-03 | KRDS 출신 부품 13개 지침 0, id 체계 셋(키트·krds-components·guide_krds) → search_rules 결과 id 로 get_component 하면 NOT_FOUND | api/data/guide/krds-components.json, Guide/Data.php krdsFor() |
+| O-04 | 레퍼런스 참고 이미지가 공공누리 유형 제한·인물 마스킹·로고 제외 없이 MCP Pro 응답으로 나감(staff 는 Plan::koglOpen 처리 있음) | services/mockref-api/routes/screens.php |
+| O-05 | 게시본끼리 링크 404 (main.html → /api/v1/p/main.html). 서브의 page 를 보관하지 않음 | /p 응답 token 주소 치환 필요 |
+| O-06 | mockref 재현 묶음 7-11 규칙·간격 한 값·library 종류 운영 미배포 — 다른 세션 미커밋 Session.php (R04) | git status |
+
+### 중간
+| 번호 | 내용 | 위치 |
+|:---:|---|---|
+| O-10 | deck_kit 범위 오류가 FORBIDDEN(FORBIDDEN_SCOPE 아님) | 코드 확인: api/routes/deck_kit.php:27 |
+| O-11 | guide_get_component 설치 주소가 옛 `homebox-kit-krds.zip` | 코드 확인: api/routes/guide.php:164 |
+| O-12 | guide 토큰 체계 둘(SOLIDEO 크림슨 vs kit --krds-*) — 정본 결정 필요(사용자) | — |
+| O-13 | guide_check_code: 후손 선택자 대비 거짓 통과, 대체 색 대비 재측정 여부 재확인, 제목 순서·lang·th 없는 표 미검출 | mcp-test-1010/guide/REPORT.md |
+| O-14 | 영어 동의어(modal↔dialog, contrast, date↔calendar), KRDS en 이름 첫 단어 잘림 | 같은 곳 |
+| O-15 | 실측 디자인 시스템 값 오류(흰 본문색, 1px 간격, 행간 2.86, `24 px` 띄어쓰기) — 어두운 배경 글자 제외·대비 1.5 미만 "측정 오류 의심" | mock_get_design_system |
+| O-16 | mock_get_design_system 토큰 형식을 powerGuide(tokens.schema.json)와 통일(B2) | PLAN §22 |
+| O-17 | Kit::checkPlan 단위 오탐('24 위'·'2019 건'·(2024)·**191**), 금지어 누락("차질 없"·"…답합니다"·최적의), 발표 시간 대비 장 수 경고 없음 (DCK-104·107·108) | api/src/Deck/Kit.php:21,25,107-123 |
+| O-18 | checkScript 에 PM 1인칭·"저희 제안사"(블라인드)·예상 질문 검사 없음 | Kit.php:464 |
+| O-19 | `/docs/errors` 표에 FORBIDDEN_SCOPE·VALIDATION(422) 없음, `/docs/limits` 설명과 실제 다름 (MCP-009) | apps/web/app/routes/docs.tsx:380-415 |
+| O-20 | 판정 남은 것: D4·D36, 이미지 배너 자리 자동 검사, 높이 비율 축소 본문 폭 오탐(s02), 엉성한 빈칸·꼬리 한 줄 미탐, 모바일 표 | 홈페이지-10곳-시험 |
+| O-21 | 깨진 레퍼런스 캡처 3장(14081·51911·52105) 운영 DB 처리, `published → review` 변경 — 사용자 승인 대기 | — |
+| O-22 | 사진 부족(엉뚱한 사진 33곳), 일반 사진 워터마크라 시안 불가 — 쓸지 결정 필요. 아이콘 스타일 선택지 없음 | — |
+| O-23 | 검색 넓히기 "가장 많이 남는 낱말" 기준 잔존 → 긴 문장 질의에 재발 가능 (R24) | Concierge::query |
+
+### 낮음
+| 번호 | 내용 |
+|:---:|---|
+| O-30 | 키 없는 tools/list 200 (도구 목록 공개) — 의도 확인 |
+| O-31 | Free 차단 코드 API 402 / MCP 403 불일치 — 의도 확인 |
+| O-32 | 남의 시안 고치기가 403 이 아니라 404 |
+| O-33 | 렌더 판정(check_mockup·check_code) 크레딧 차감 미구현(§23 과금) |
+| O-34 | 판정 브라우저 `--no-sandbox` (사용자 판단) |
+| O-35 | 커넥터 OAuth 인증 |
+| O-36 | deck 렌더 계열(extract_text·render_pptx·render_mockup·check_deck·get_design_kit) 미구현 |
+| O-37 | guide_check_code 결과 기록 표(자주 걸리는 규칙) — db-design 먼저 |
+| O-38 | guide 데이터 잡일: 요약 빈 부품 6개, 체크리스트 PDF 찌꺼기(207·241행), 지침 117개 마침표 없음, kit.css 경로 불일치, modal NOT_FOUND 에 dialog 안내 없음, 로그인 패턴·터치 영역 기준 없음, guide_krds 출처 문구 |
+| O-39 | Tailwind v3 프리셋에 green·blue·amber·red·글자 크기·화면 폭 누락 |
+| O-40 | assets: "환경" 검색에 IT 일러스트, 스마트시티 태그 5갈래, 설명 빈 자산(e7z9fh2fmn7gheh6) |
+| O-41 | deck_jobs 실패 원인 없음, 보건소 분류 없음, 보고서 링크 공개(팀 전용 옵션) |
+| O-42 | 섞기에서 B·C 비중 60% 넘는 묶음 3개, 비전 등 일부 화면 종류 레퍼런스 부족 |
+| O-43 | 판정 대기열이 MCP 프로세스 안 단일 직렬 큐(키별 큐·별도 워커 아님) |
+
+---
+
+## 6. 문서끼리 어긋난 것 (정리 대상)
+
+| 항목 | 문서별 값 | 현행 |
+|---|---|---|
+| 통과·폐기 점수 | 사이트-품질-체크리스트 MCK-007 "80 이하 폐기", ARCHITECTURE "갤러리 81+" | **85 이상·치명 0 통과, 84 이하 폐기** (R20) |
+| 도구 수 | PLAN 10-07 "31개", README "47개" | tools/list 기준(gen-tools 산출물) |
+| 도구 이름 | ARCHITECTURE §3.1 `assets_pick_for_mockup`·`deck_convert`·`guide_parts`·`me_quota`·`mock_check_status`·`mock_get_rules` | 현재 이름(`assets_pick`·`deck_get_plan_kit` 등). ARCHITECTURE 가 옛 설계 |
+| REST 한도 | 사이트-품질-판정 10-10 "REST 직접 호출 한도 미적용" | 고쳐짐(Router.php) — 판정 문서는 당시 기록 |
+| 판정 위조 | 사이트-품질-판정 10-10 MCK-007 미흡 | 고쳐짐(HMAC) |
+
+---
+
+## 7. 출처
+
+| 문서 | 내용 |
+|---|---|
+| docs/MCP-실호출-테스트보고서-2026-10-10.md | 99문항, D-01~D-15 |
+| docs/MCP-반복시험-2026-10-12.md | 1차 반복 시험 19건 |
+| docs/MCP-예시검증-2026-10-12.md | /powermcp 예시 실호출 |
+| docs/MCP-품질시험-3차-2026-10-12.md | claude.ai 실사용 26문항, 도구 미호출 6건 |
+| docs/mcp-materials-research.md | 재료형 설계·과금·deck 도구 제안 |
+| docs/오류-재발방지-체크리스트.md | R04·R05·R11·R13·R14·R16·R18~R24·R34~R38 |
+| docs/사이트-품질-체크리스트.md · 사이트-품질-판정-2026-10-10.md | MCP-001~010, MCK-001~008 |
+| docs/홈페이지-10곳-시험-2026-10-15.md · 내시안-디자인·프론트-점검-2026-10-13.md | 판정 D1~D39, kit 7-9~7-11 |
+| docs/남은작업-체크리스트-2026-10-12.md · ARCHITECTURE.md · PLAN.md · README.md · db-design.md | 구조·결정 |
+| storage/mcp-test-1010/guide/REPORT.md · storage/qa-20261010 · storage/qc-20261010 · storage/test-20261009 | 모듈별 시험 원자료 |
+| (비공개 작업 기록) · PATTERNS.md · PROJECTS/2026-solideo-platform.md · 2026-homebox.md · 2026-powerplus-addin.md | 교훈·응답 규약·이력 |

@@ -2961,6 +2961,7 @@ def make_front_mockup(job, f, plan, accent, feedback=""):
     if k == "cover":
         big = f.get("project") or f.get("title") or plan.get("title") or ""   # 표지 큰 글 = 사업명(작업 이름은 파일 이름인 경우가 많다). 사람이 넣은 줄바꿈은 그대로
         slogan = f.get("slogan") or cover_slogan(job, plan, big)   # 사업명 바로 위 작은 키메시지 — A~F 모든 타입(2026-10-15 사용자)
+        f["slogan"] = slogan   # 장표 AI 가 plan.front 에서 읽는 표지 키메시지
         draw = {"title": big, "small": slogan,
                 "tail": f.get("tail") or "제안설명회", "date": f.get("date") or datetime.date.today().strftime("%Y. %m.")}
         detail = ((f'Small key message line right above the title (one line, about 40% of the title size, regular weight, dark color): "{slogan}"\n' if slogan else "")
@@ -2990,6 +2991,7 @@ def make_front_mockup(job, f, plan, accent, feedback=""):
             line = divider_short(job, plan, f, line) or line
         name = re.sub(r"^[ⅠⅡⅢⅣⅤⅥⅦⅧⅨⅩIVX0-9]+[.．]\s*", "", f["name"]) or f["name"]
         draw = {"no": f["no"], "name": name, "line": line, "tag": plan.get("title") or ""}
+        f["line"] = line   # 장표 AI(prompt_design_part)가 plan.front 에서 읽는 간지 한 줄 — **핵심어** 표시 그대로
         detail = ((f'Closing page of the deck ({"thank-you page" if f.get("closing") == "end" else "questions and answers page"}) — NO chapter number, NO "PART". Only the big title "{name}" in the largest bold type.\n') if f.get("no") is None else
                   f'Chapter divider page. Chapter number "PART {f["no"]}" (or "{f["no"]:02d}" / a Roman numeral, as the rules say) and the chapter title "{name}" in the largest bold type.\n'
                   + (f'Under the title, about half the title size, with its key words emphasised — write it COMPLETELY, exactly as given, with the line break where shown (never cut it, never add "..." or "…"):\n"{line}"\n' if line else "")
@@ -3076,7 +3078,8 @@ def make_front_mockup(job, f, plan, accent, feedback=""):
                       {"left": "\nComposition: keep the LEFT 45% of the picture calm, even and low in detail (large text is laid there later); put the subject in the RIGHT 55%. Keep the top-left and bottom-left corners plain.\n",
                        "right": "\nComposition: keep the RIGHT 48% of the picture calm, even and low in detail (large text is laid there later); put the subject in the LEFT half. Keep the top-left and bottom-left corners plain.\n",
                        "center": "\nComposition: keep the TOP HALF of the picture calm, even and low in detail (large centered text is laid there later); put the subject in the LOWER HALF, centered. Keep the corners plain.\n"}[__import__("frontdraw").layout_of(st, k)])
-                   + "Every object sits fully inside the frame with a comfortable margin — nothing is cut off at the edges.\n")
+                   + "Every object sits fully inside the frame with a comfortable margin — nothing is cut off at the edges. "
+                   "Do NOT fade, wash out or white-out the bottom of the picture and add no white or pale band along the bottom edge — the scene ends naturally, not cut by a gradient (logos are placed on top later).\n")
             if k == "cover":   # 글꼴 설명(Typography …)은 넘기지 않는다 — 넘기면 그림 모델이 제목을 그려 넣는다
                 bgp += str(st.get("front") or "").split("Typography")[0].replace("{accent}", deck_blue(st))
             else:   # 목차·간지 — 표지와 같은 화풍·색, 그러나 다른 장면(표지 설명을 그대로 넘기면 같은 그림이 나온다)
@@ -3109,8 +3112,11 @@ def make_front_mockup(job, f, plan, accent, feedback=""):
                 with open(bp, "wb") as fp:
                     fp.write(bg)
             import frontdraw
-            return frontdraw.compose(k, open(bp, "rb").read(), draw, st, accent, getattr(job, "font_title", None), getattr(job, "font_body", None),
-                                     front_logo_zones(st, k))
+            raw_png = open(bp, "rb").read()
+            import shutil
+            shutil.copyfile(bp, bp.replace("_bg.png", "_bg_raw.png"))   # 그림 모델 원본은 따로 남기고, _bg.png 는 손본 배경으로 바꾼다(장표가 그것을 쓴다)
+            return frontdraw.compose(k, raw_png, draw, st, accent, getattr(job, "font_title", None), getattr(job, "font_body", None),
+                                     front_logo_zones(st, k), save_bg=bp)
             b64 = None
             if b64:
                 prompt += ("\nTHE FIRST REFERENCE IMAGE IS THE FINISHED BACKGROUND PICTURE OF THIS PAGE. Use it as it is — same picture, same framing, same colors; do not redraw, replace or crop it. "
@@ -3200,7 +3206,7 @@ def save_front(job, fid, png, kind):
             lg = lg.resize((max(1, int(lg.width * r)), max(1, int(lg.height * r))), Image.LANCZOS)
             if lg.width > 640:
                 lg = lg.resize((640, max(1, int(lg.height * 640 / lg.width))), Image.LANCZOS)
-            mx = F["pad"]   # 로고도 좌우 가이드(본문 틀 여백 56px)에 맞춘다 — 앞장 글 시작선과 같다
+            mx = F["pad"] * 3   # 로고도 앞장 좌우 가이드(본문 틀 여백의 3배, 168px)에 맞춘다 — 글 시작선과 같다
             x0 = F["w"] - mx - lg.width if pos.endswith("r") else mx
             y0 = 70 if pos.startswith("t") else F["h"] - lg.height - 70
             box = (x0, y0, x0 + lg.width, y0 + lg.height)

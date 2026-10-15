@@ -49,7 +49,10 @@
         "toc": "gpt",
         "div": "gpt"
       },
-      "front_set": "flat"
+      "front_set": "flat",
+      "front_draw": {
+        "badge": "pill"
+      }
     },
     {
       "id": "b",
@@ -116,7 +119,8 @@
         "layout": {
           "toc": "left",
           "div": "left"
-        }
+        },
+        "badge": "tab"
       },
       "front_accent": false
     },
@@ -181,7 +185,8 @@
         "layout": {
           "toc": "right",
           "div": "left"
-        }
+        },
+        "badge": "outline"
       }
     },
     {
@@ -250,7 +255,8 @@
         "card": {
           "toc": true,
           "div": true
-        }
+        },
+        "badge": "text"
       }
     },
     {
@@ -317,7 +323,8 @@
         "layout": {
           "toc": "center",
           "div": "left"
-        }
+        },
+        "badge": "pill"
       },
       "front_accent": false
     },
@@ -373,7 +380,10 @@
       "front_set": "navy",
       "body_point": "본문 그림·인물·아이콘을 표지·간지·목차와 같은 **가는 선의 플랫 벡터 일러스트**로(얇은 외곽선, 제한된 색 2~3가지 — 강조색·남색·옅은 하늘). 3D 클레이·사진을 쓰지 않는다. 결론 띠와 강조 카드 한 곳은 짙은 단색(강조색).",
       "body_point_en": "draw every picture, person and icon as a THIN-OUTLINE FLAT VECTOR ILLUSTRATION, exactly the style of the deck's cover and dividers (thin dark outlines, limited palette of 2-3 colors: the accent, navy and pale sky blue, small figures at work); no 3D clay, no photographs. Fill the conclusion bar and one highlighted card with the deep solid accent color.",
-      "body_render": "line_flat"
+      "body_render": "line_flat",
+      "front_draw": {
+        "badge": "text"
+      }
     }
   ],
   "nb2_model": "google/gemini-3.1-flash-image"

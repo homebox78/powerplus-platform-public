@@ -7,7 +7,7 @@ from PIL import Image, ImageDraw, ImageFilter, ImageFont, ImageStat
 import fontset
 
 W, H = 2400, 1600
-X0 = 56   # 좌우 가이드 = 본문 장표 틀 여백(design.FRAME pad 56px, 2400 폭) — 앞장·본문이 같은 선에 서게(10-15 사용자)
+X0 = 168   # 표지·목차·간지 좌우 가이드 = 본문 틀 여백(56px)의 3배, 여섯 타입 공통(10-15 사용자 "컨텐츠보다 3배 정도, 모든 테마 통일")
 
 
 def _hex(c, a=255):
@@ -242,6 +242,29 @@ def _soften_seams(im):
     return im
 
 
+def _sink(bg, lay, low=0.84, to=0.92):
+    """그림이 위에 떠 있으면(그림 쪽 내용의 아래 끝이 low 보다 위) 아래 끝이 to 에 오도록 배경째 내린다. 안 내리면 None.
+    위에 생긴 빈 곳은 맨 위 줄 바탕색을 늘여 잇는다(10-15 사용자 "이미지들이 아래쪽으로 더 내려와야")"""
+    if lay == "center":
+        return None
+    m = _busy(bg, "right" if lay == "right" else "left")
+    x0, x1 = (0, int(m.width * 0.5)) if lay == "right" else (int(m.width * 0.45), m.width)
+    px = m.load()
+    rows = [y for y in range(m.height) if sum(1 for x in range(x0, x1) if px[x, y]) > (x1 - x0) * 0.08]   # 옅은 점 무늬 줄은 빼고 그림 덩어리만
+    if not rows:
+        return None
+    bottom = (rows[-1] + 1) * 8
+    if bottom >= H * low:
+        return None
+    dy = int(min(H * to - bottom, rows[0] * 8 - H * 0.04))   # 내용 위 끝이 화면 밖으로 나가지 않게
+    if dy < H * 0.03:
+        return None
+    out = Image.new("RGB", (W, H))
+    out.paste(bg.convert("RGB").crop((0, 0, W, 1)).resize((W, dy)), (0, 0))
+    out.paste(bg.convert("RGB").crop((0, 0, W, H - dy)), (0, dy))
+    return out
+
+
 def logo_boxes(logo_pos, kind):
     """앞장 로고가 놓이는 대략의 자리(2400×1600 기준) — design.make_front_mockup 이 로고를 붙이는 자리와 같은 모서리.
     그림을 밀어낼 때 글과 함께 비워 둘 곳"""
@@ -343,7 +366,7 @@ def layout_of(st, kind):
     return (fd.get("layout") or {}).get(kind, "left")
 
 
-def compose(kind, bg_png, texts, st, accent, title_font=None, body_font=None, logo_pos=("tl", "bl")):
+def compose(kind, bg_png, texts, st, accent, title_font=None, body_font=None, logo_pos=("tl", "bl"), save_bg=None):
     """kind: cover|toc|div. texts: cover {title, small, tail, date} / toc {label, rows:[(no,name)], tag} / div {no, name, line, tag}.
     st = 디자인 타입(styles.json) — front_draw 로 색·판(panel)·배치(layout)·젖빛 카드(card)를 정한다. 반환: PNG 바이트(2400×1600)"""
     fd = (st or {}).get("front_draw") or {}
@@ -422,10 +445,19 @@ def compose(kind, bg_png, texts, st, accent, title_font=None, body_font=None, lo
             ib = f_tail.getbbox(tail)   # 잉크 상자 — 뱃지 여백은 글자 칸이 아니라 잉크로 잰다(R29·R30)
             ink_w, ink_h = ib[2] - ib[0], ib[3] - ib[1]
             pv = ink_h * 0.55   # 상하 여백
-            ph = pv * 3.0   # 좌우 = 상하 × 3 — 뱃지는 좌우를 넉넉히(사용자 반복 지적, A~F 공통)
+            ph = pv * 4.5   # 좌우 = 상하 × 4.5 — 뱃지는 좌우를 넉넉히(R30 과 같은 비율, 사용자 반복 지적)
             bh = ink_h + pv * 2
-            d.rounded_rectangle([X, y, X + ink_w + ph * 2, y + bh], radius=bh / 2, fill=acc)
-            d.text((X + ph - ib[0], y + pv - ib[1]), tail, font=f_tail, fill=(255, 255, 255, 255))
+            bstyle = fd.get("badge", "pill")   # 타입마다 다르게(10-15 사용자 "다 똑같이 하지 말고") — pill 알약 · tab 각진 탭 · outline 테두리 · text 뱃지 없이 글자만
+            if bstyle == "text":   # 뱃지 없이 — 강조색 굵은 글자 + 앞에 짧은 세로 막대
+                bar = max(4, int(ink_h * 0.16))
+                d.rectangle([X, y + pv * 0.5, X + bar, y + bh - pv * 0.5], fill=acc)
+                d.text((X + bar + ink_h * 0.55 - ib[0], y + pv - ib[1]), tail, font=f_tail, fill=title_c)   # 글자는 제목 색(어두운 바탕이면 흰색), 막대만 강조색
+            elif bstyle == "outline":
+                d.rounded_rectangle([X, y, X + ink_w + ph * 2, y + bh], radius=bh / 2, outline=acc, width=max(3, int(ink_h * 0.09)))
+                d.text((X + ph - ib[0], y + pv - ib[1]), tail, font=f_tail, fill=acc)
+            else:
+                d.rounded_rectangle([X, y, X + ink_w + ph * 2, y + bh], radius=(bh / 2 if bstyle == "pill" else max(4, int(bh * 0.12))), fill=acc)
+                d.text((X + ph - ib[0], y + pv - ib[1]), tail, font=f_tail, fill=(255, 255, 255, 255))
             y += bh + H * 0.03
             d.text((X, y), texts.get("date", ""), font=f_date, fill=sub_c)
             y += H * 0.04
@@ -519,12 +551,12 @@ def compose(kind, bg_png, texts, st, accent, title_font=None, body_font=None, lo
         probe = Image.new("RGBA", (W, H))
         pd = ImageDraw.Draw(probe)
         body(pd)
-        logo_l = Image.new("L", (W, H), 0)
-        for lb in logo_boxes(logo_pos, kind):   # 로고 자리도 비운다 — 그림이 붐비면 예전엔 페이지 폭 띠로 덮어 그림 아래가 잘렸다(10-15 F 표지)
-            pd.rectangle(lb, fill=(0, 0, 0, 255))
-            ImageDraw.Draw(logo_l).rectangle(lb, fill=255)
+        # 로고 자리는 비키지 않는다 — 로고는 그림 위에 그대로 올린다(사용자 10-15). 로고를 피하느라 그림을 위로 올리면 그림이 떠 보였다
         if probe.getbbox():
-            moved = _clear_text(bg, probe.split()[3], lay, logo_alpha=logo_l)
+            moved = _clear_text(bg, probe.split()[3], lay)
+            sunk = _sink(moved if moved is not None else bg, lay)
+            if sunk is not None:
+                moved = sunk
             if moved is not None:
                 im, dark = prep(moved)
                 im = im.convert("RGBA")   # 띠 없이 — 로고는 그대로 올린다
@@ -536,13 +568,16 @@ def compose(kind, bg_png, texts, st, accent, title_font=None, body_font=None, lo
         yt, yb = body(ImageDraw.Draw(Image.new("RGBA", (W, H))))
         cx0, cx1 = int(X - W * 0.035), int(min(X + textw + W * 0.03, max(RIGHT[0], X + W * 0.18) + W * 0.035))
         cy0, cy1 = int(max(H * 0.04, yt - H * 0.06)), int(min(H * 0.96, yb + H * 0.05))
-        blur = im.crop((cx0, cy0, cx1, cy1)).filter(ImageFilter.GaussianBlur(28))
+        blur = im.crop((cx0, cy0, cx1, cy1)).filter(ImageFilter.GaussianBlur(46))   # 파랑 유리 — 뒤 그림은 아주 연하게만(10-15 사용자)
         m = Image.new("L", blur.size, 0)
         ImageDraw.Draw(m).rounded_rectangle([0, 0, blur.width - 1, blur.height - 1], radius=int(H * 0.03), fill=255)
         im.paste(blur, (cx0, cy0), m)
         ov = Image.new("RGBA", im.size, (0, 0, 0, 0))
-        ImageDraw.Draw(ov).rounded_rectangle([cx0, cy0, cx1, cy1], radius=int(H * 0.03), fill=(255, 255, 255, 150), outline=(255, 255, 255, 220), width=3)
+        gl = _hex(fd.get("glass", "#DCE4FA"))[:3]
+        ImageDraw.Draw(ov).rounded_rectangle([cx0, cy0, cx1, cy1], radius=int(H * 0.03), fill=gl + (205,), outline=(255, 255, 255, 230), width=3)
         im.alpha_composite(ov)
+    if save_bg:   # 글만 빠진 손본 배경(그림 비키기·경계 녹이기·덮개 반영) — 최종 장표가 이것을 깔고 글을 얹는다(원본을 깔면 글이 그림과 다시 겹친다)
+        im.convert("RGB").save(save_bg)
     d = ImageDraw.Draw(im)
     body(d)
 

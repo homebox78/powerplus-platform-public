@@ -1035,10 +1035,20 @@ def slide_html(d, n, total, ctone="blue", ctheme="a"):
     elif ctheme in LIGHT_GLOW and tone == "light":
         body = body.replace(GLOW_LIGHT, LIGHT_GLOW[ctheme], 1)
     d["_tone"] = tone
-    if d.get("_bg"):   # 테마 배경 그림(cp-bg-theme) — 바탕 전면에 깔고, 글 쪽(왼쪽)만 바탕색으로 살짝 덮어 글이 읽히게. 장식은 더하지 않는다
+    if d.get("_bg"):   # 테마 배경 그림(cp-bg-theme) — 바탕 전면에 깔고, 글 쪽(왼쪽)만 덮어 글이 읽히게. 장식은 더하지 않는다
+        # 글자색은 배경 밝기로(사용자 2026-10-16 "글씨가 잘 안 보임" — 밝은 배경 위 흰 글자): 글 자리(왼쪽 절반) 평균 밝기 ≥150 이면 먹색 글자 + 흰 덮개
+        light_bg = d.get("_bg_light")
+        if light_bg and tone in ("dark", "blue"):
+            body = body.replace("rgba(255,255,255,", "rgba(11,19,36,").replace("color:#fff", "color:var(--ink)")
+            for x, y in (("color:rgba(11,19,36,.45)", "color:var(--blue2)"), ("color:var(--blue2)", "color:var(--blue)")):
+                body = body.replace(x, y)
+            # 연락처 사업장 카드(흰 반투명 면)는 밝은 배경에서 묻힌다 → 흰 카드 + 톤 옅은 테두리
+            body = body.replace("background:rgba(11,19,36,.06);border:2px solid rgba(11,19,36,.14)", "background:#fff;border:2px solid var(--line)")
+            tone = "light"
+            d["_tone"] = tone   # 로고 흰색판·꼬리표·쪽번호도 밝은 바탕용으로
         veil = ("linear-gradient(90deg,rgba(5,11,36,.55) 0%,rgba(5,11,36,.25) 45%,rgba(5,11,36,0) 70%)" if tone == "dark"
                 else "linear-gradient(90deg,rgba(31,79,255,.35) 0%,rgba(31,79,255,.1) 45%,rgba(31,79,255,0) 70%)" if tone == "blue"
-                else "linear-gradient(90deg,rgba(255,255,255,.7) 0%,rgba(255,255,255,.35) 45%,rgba(255,255,255,0) 70%)")
+                else "linear-gradient(90deg,rgba(255,255,255,.72) 0%,rgba(255,255,255,.4) 45%,rgba(255,255,255,0) 70%)")
         bgimg = (f"<div class='deco' style=\"background:url('{html.escape(d['_bg'])}') center/cover no-repeat\"></div>"
                  f"<div class='deco' style=\"background:{veil}\"></div>")
         for g in (GLOW_DARK, GLOW_LIGHT, GLOW_BLUE, GLOW_B, GLOW_C, GLOW_C_LIGHT, GLOW_D):
@@ -1325,6 +1335,16 @@ BG_ROLE_WORD = {"cover": "표지", "section": "간지", "vision": "마무리", "
 BG_SECTION_WORDS = [["회사소개", "회사", "소개", "우리"], ["기술", "역량", "서비스", "데이터", "AI"], ["성장", "성과", "사업", "연혁", "수상", "고객"]]
 
 
+def bg_is_light(path):
+    """배경 그림의 글 자리(왼쪽 절반) 평균 밝기가 150 이상이면 밝은 배경 — 글자를 먹색으로"""
+    from PIL import Image, ImageStat
+    try:
+        im = Image.open(path).convert("L")
+        return ImageStat.Stat(im.crop((0, 0, im.width // 2, im.height))).mean[0] >= 150
+    except Exception:
+        return False
+
+
 def _bg_file(job, theme, kind, title, k, used, d):
     """테마·역할·장 이름으로 배경 한 장 — 이름에 '테마 — 역할' 이 있어 그걸 먼저 거르고, 간지는 장 이름 낱말로 회사/기술/성장 중 고른다"""
     import vertical
@@ -1420,6 +1440,7 @@ def attach_assets(job, deck, d, log=print, ctone="blue", ctheme="a"):
         if logo:
             s["_logo"], s["_logo_dark"] = "file:///" + logo.replace("\\", "/"), ("file:///" + logo_dark.replace("\\", "/")) if logo_dark else None
         if s.get("_bg"):
+            s["_bg_light"] = bg_is_light(s["_bg"])
             s["_bg"] = "file:///" + tint_icon(s["_bg"], s["_bg"][:-4] + f"_{ctone}.png", ctone).replace("\\", "/")
         if s.get("_img"):
             s["_img"] = "file:///" + tint_icon(s["_img"], s["_img"][:-4] + f"_{ctone}.png", ctone).replace("\\", "/")

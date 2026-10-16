@@ -1166,7 +1166,7 @@ def main():
                 o = json.loads(o)
             except Exception:
                 o = None
-        if isinstance(o, dict) and str(o.get("purpose") or "") in ("submit", "company") and j.get("source_kind") != "pptx":   # 회사소개서(타입 G)도 렌더·PPT 까지 한 번에
+        if isinstance(o, dict) and str(o.get("purpose") or "") in ("submit", "company") and j.get("source_kind") != "pptx":   # 회사소개서(테마 A·B)도 렌더·PPT 까지 한 번에
             return True
         return not (j.get("kind") == "design" and (j.get("phase") or "plan") in ("plan", "edit"))
     log(f"powerDeck 엔진 '{NAME}' 시작 — {API} (동시 {slots}개, 그중 장표 제작 {heavy_slots}개)")

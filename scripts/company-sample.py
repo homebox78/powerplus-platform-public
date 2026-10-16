@@ -1,9 +1,9 @@
-# 타입 G(회사소개서) 견본 — engine/templates/company/sample-solideo.json 을 엔진 렌더(company.render → to_pptx)로 그대로 만든다.
+# 회사소개서(용도 회사소개용, 테마 A·B) 견본 — engine/templates/company/sample-solideo.json 을 엔진 렌더(company.render → to_pptx)로 그대로 만든다.
 # 그림은 powerAssets 원본(storage/legacy-powerplus/uploads/icon/<icon>), 로고는 로컬 작업의 vendor.png 에서 심볼 부분만 자른다.
-# AI 호출·운영 작업 생성 없음.
-#   python scripts/company-sample.py [출력 폴더]   → <출력>/결과.pptx · <출력>/html/sNN.png
-#   썸네일: apps/web/public/cstyles/g/N.jpg(전 쪽, 960×540) — 바꾸면 CompanyThemes.tsx 의 THUMB_V 를 올린다
-import json, os, sys
+# 테마(company.COMPANY_THEMES: a·b) × 톤(company.TONES)마다 한 벌씩. AI 호출·운영 작업 생성 없음.
+#   python scripts/company-sample.py [테마/톤 …]   → storage/tmp/company-sample/<테마>/<톤>/결과.pptx · html/sNN.png   (예: a/blue b/teal, 비우면 전부)
+#   썸네일: apps/web/public/cstyles/<테마>/<톤>/N.jpg(전 쪽, 960×540) — 바꾸면 CompanyThemes.tsx 의 THUMB_V 를 올린다
+import copy, json, os, sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(ROOT, "engine"))
@@ -12,33 +12,42 @@ from PIL import Image  # noqa: E402
 
 ICONS = os.path.join(ROOT, "storage", "legacy-powerplus", "uploads", "icon")   # 운영 platform_data/legacy-powerplus/uploads/icon 에서 견본에 쓰는 것만 받아 둔다
 LOGO = os.path.join(ROOT, "storage", "deck", "jobs", "05eb7dd4f868eb37", "brand", "vendor.png")   # 'solideo S. 솔리데오 컨소시엄' — 앞 심볼만
-THUMBS = os.path.join(ROOT, "apps", "web", "public", "cstyles", "g")
+THUMBS = os.path.join(ROOT, "apps", "web", "public", "cstyles")
+OUT = os.path.join(ROOT, "storage", "tmp", "company-sample")
 
 
-def main():
-    out = os.path.abspath(sys.argv[1] if len(sys.argv) > 1 else os.path.join(ROOT, "storage", "tmp", "company-sample"))
+def one(theme, tone, src):
+    out = os.path.join(OUT, theme, tone)
     os.makedirs(out, exist_ok=True)
-    deck = json.load(open(os.path.join(ROOT, "engine", "templates", "company", "sample-solideo.json"), encoding="utf-8"))
+    deck = copy.deepcopy(src)
     url = lambda p: "file:///" + p.replace("\\", "/")
     logo = os.path.join(out, "logo.png")
     im = Image.open(LOGO).convert("RGBA")
     im.crop((0, 0, 222, im.height)).save(logo)   # 'solideo S.' 까지(뒤 '솔리데오 컨소시엄' 글자 떼기)
     white = company._white_logo(logo, os.path.join(out, "logo_white.png"))
+    icon = lambda f: url(company.tint_icon(os.path.join(ICONS, f), os.path.join(out, f[:-4] + f"_{tone}.png"), tone))
     comp = deck["company"]
     for s in deck["slides"]:
         s["_company"], s["_short"] = comp["name"], comp["short"]
         s["_logo"], s["_logo_dark"] = url(logo), url(white) if white else None
         if s.get("icon"):
-            s["_img"] = url(os.path.join(ICONS, s["icon"]))
+            s["_img"] = icon(s["icon"])
         for it in s.get("items") or []:
             if isinstance(it, dict) and it.get("icon"):
-                it["_img"] = url(os.path.join(ICONS, it["icon"]))
-    r = company.render(deck["slides"], os.path.join(out, "html"))
+                it["_img"] = icon(it["icon"])
+    r = company.render(deck["slides"], os.path.join(out, "html"), log=lambda m: None, ctone=tone, ctheme=theme)
     n = company.to_pptx(r, os.path.join(out, "결과.pptx"))
-    os.makedirs(THUMBS, exist_ok=True)
+    td = os.path.join(THUMBS, theme, tone)
+    os.makedirs(td, exist_ok=True)
     for i, x in enumerate(r, 1):
-        Image.open(x["preview"]).convert("RGB").resize((960, 540), Image.LANCZOS).save(os.path.join(THUMBS, f"{i}.jpg"), quality=86)
-    print(f"{n}장 → {out}\\결과.pptx · 썸네일 {THUMBS}")
+        Image.open(x["preview"]).convert("RGB").resize((960, 540), Image.LANCZOS).save(os.path.join(td, f"{i}.jpg"), quality=86)
+    print(f"{theme}/{tone}: {n}장 → {out}\\결과.pptx · 썸네일 {td}")
+
+
+def main():
+    src = json.load(open(os.path.join(ROOT, "engine", "templates", "company", "sample-solideo.json"), encoding="utf-8"))
+    for tt in sys.argv[1:] or [f"{a}/{b}" for a in company.COMPANY_THEMES for b in company.TONES]:
+        one(*tt.split("/"), src)
 
 
 if __name__ == "__main__":

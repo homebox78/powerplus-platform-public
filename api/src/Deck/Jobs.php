@@ -326,9 +326,11 @@ final class Jobs
             'project' => mb_substr(trim((string) ($b['project'] ?? '')), 0, 80), 'front' => self::front($b['front'] ?? null),
             'event' => mb_substr(trim((string) ($b['event'] ?? '')), 0, 30), 'date' => mb_substr(trim((string) ($b['date'] ?? '')), 0, 20),   // 표지 꼬리 글·날짜(비우면 엔진이 '제안설명회'·작성 날짜)
             'style' => preg_match('/^[a-z]{1,2}$/', (string) ($b['style'] ?? '')) ? $b['style'] : 'a',
-            'purpose' => in_array($b['purpose'] ?? '', ['submit', 'company'], true) ? $b['purpose'] : 'present',   // company = 회사소개서(타입 G, engine/company.py)
+            'purpose' => in_array($b['purpose'] ?? '', ['submit', 'company'], true) ? $b['purpose'] : 'present',   // company = 회사소개서(테마 A·B, engine/company.py)
             'vstyle' => in_array($b['vstyle'] ?? '', ['band', 'tab', 'side', 'split', 'pill', 'line'], true) ? $b['vstyle'] : 'band',   // 세로 제안서 디자인 스타일(모양) — engine/vertical.py STYLES
             'vtone' => in_array($b['vtone'] ?? ($b['vtheme'] ?? ''), ['navy', 'blue', 'deep', 'teal', 'gray', 'glass'], true) ? ($b['vtone'] ?? $b['vtheme']) : 'navy',   // 톤(색) — TONES(옛 vtheme 도 받는다)
+            'ctheme' => in_array($b['ctheme'] ?? '', ['a', 'b'], true) ? $b['ctheme'] : 'a',   // 회사소개서 테마 — A 다크 임팩트 · B 라이트 에디토리얼(engine/company.py COMPANY_THEMES)
+            'ctone' => in_array($b['ctone'] ?? '', ['blue', 'teal', 'violet', 'crimson', 'orange'], true) ? $b['ctone'] : 'blue',   // 회사소개서 톤 — engine/company.py TONES
             'lang' => in_array($b['lang'] ?? '', self::LANGS, true) ? $b['lang'] : 'ko',   // 제작 언어 — 장표 글·시안·대본
             'font_title' => preg_match('/^[a-z0-9]{2,16}$/', (string) ($b['font_title'] ?? '')) ? $b['font_title'] : '',
             'font_body' => preg_match('/^[a-z0-9]{2,16}$/', (string) ($b['font_body'] ?? '')) ? $b['font_body'] : ''], JSON_UNESCAPED_UNICODE);   // 서체 — worker/fonts/fonts.json 의 id(모르면 엔진이 기본)

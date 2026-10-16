@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""타입 G — 회사소개서 덱(16:9). 제안서 발표 장표가 아니라 회사를 소개하는 덱 — 글·숫자를 크고 과감하게 쓴다(사용자 2026-10-16).
+"""회사소개서 덱(16:9, 용도 '회사소개용') — 테마 A 다크 임팩트 · B 라이트 에디토리얼 × 톤 5종. 제안서 발표 장표가 아니라 회사를 소개하는 덱 — 글·숫자를 크고 과감하게 쓴다(사용자 2026-10-16).
 흐름: 자료 → AI 가 정해진 레이아웃 카탈로그(LAYOUTS)에 글만 채운다 → 코드로 짠 HTML(1920×1080)로 렌더 → 같은 DOM 을 재서 PPTX 로 옮긴다.
   - 글(data-x=t)·카드(data-x=r)·그림(data-x=i)은 PowerPoint 진짜 글상자·도형·그림으로 — 받은 사람이 고칠 수 있다.
     글은 브라우저가 줄을 바꾼 자리에서 그대로 줄을 나눠 넣는다(줄바꿈이 PowerPoint 에서 달라지지 않게).
@@ -22,6 +22,58 @@ ICON_SET = "icon-flat-blue-glass"   # 세로 제안서 본문과 같은 세트 �
 # ───────────────────────── 테마(파랑 기업 덱) — 색은 여기 한 곳
 THEME = {"blue": "#1F4FFF", "blue2": "#3D7BFF", "sky": "#DCE6FF", "navy": "#050B24", "navy2": "#0B1A4A",
          "ink": "#0B1324", "body": "#3E4A60", "muted": "#7A8499", "line": "#E2E7F1", "paper": "#F3F6FC"}
+
+# 톤 — 세로 제안서처럼 색만 고른다(opts.ctone, 사용자 2026-10-16 "세로제안서처럼 톤을 선택할 수 있게").
+# 디자인은 파랑(blue)으로 짜 두고, 그 색 값들을 톤 색으로 바꿔 끼운다(BLUE_KEYS 순서 = 각 톤 값 순서).
+#   a 주색 · a2 밝은 주색 · sky 옅은 면 · navy 어두운 바탕 · navy2 · dk1·dk2 어두운 그라데이션 끝 · lt 비전 쪽 빛 · deep 비전 쪽 그늘 · vg1·vg2 비전 바탕 · eb·em 어두운 쪽 꼬리표·강조
+BLUE_KEYS = ["#1F4FFF", "#3D7BFF", "#DCE6FF", "#050B24", "#0B1A4A", "#0A1440", "#040817", "#78AAFF", "#051478", "#2A5BFF", "#1436D8", "#BFD0FF", "#9FE0FF"]
+TONES = {
+    "blue":    {"label": "블루", "c": BLUE_KEYS},
+    "teal":    {"label": "틸", "c": ["#0E9F8E", "#22C7B2", "#D3F2EE", "#03191A", "#08332F", "#06302C", "#020F10", "#7FE6D6", "#04463F", "#12B3A0", "#0A7F72", "#B5F0E7", "#FFE27A"]},
+    "violet":  {"label": "바이올렛", "c": ["#6A3BFF", "#8E6BFF", "#E6DEFF", "#0D0727", "#22114F", "#1E0E4A", "#07041A", "#B49CFF", "#2A0C80", "#7B4DFF", "#4F22D8", "#D6C9FF", "#9FE0FF"]},
+    "crimson": {"label": "크림슨", "c": ["#D7263D", "#FF4D61", "#FFE0E4", "#1A0509", "#3A0A13", "#3A0A14", "#0E0205", "#FF9AA6", "#6E0A18", "#E33349", "#B0162B", "#FFC9D0", "#FFE27A"]},
+    "orange":  {"label": "차콜 오렌지", "c": ["#F26A1B", "#FF8A3D", "#FFE7D6", "#121316", "#24262C", "#22242A", "#0B0C0E", "#FFB27F", "#5A2508", "#F47A2E", "#C9500E", "#FFD7BC", "#FFF1A8"]},
+}
+_rgb = lambda h: tuple(int(h[i:i + 2], 16) for i in (1, 3, 5))
+
+
+def toned(s, tone):
+    """파랑으로 짠 HTML·CSS 의 색(#RRGGBB 와 rgba(r,g,b,…))을 톤 색으로"""
+    t = TONES.get(tone or "blue") or TONES["blue"]
+    if t["c"] is BLUE_KEYS:
+        return s
+    for src, dst in zip(BLUE_KEYS, t["c"]):
+        s = re.sub(re.escape(src), dst, s, flags=re.I)
+        (r, g, b), (r2, g2, b2) = _rgb(src), _rgb(dst)
+        s = s.replace(f"rgba({r},{g},{b},", f"rgba({r2},{g2},{b2},")
+    return s
+
+
+def tone_base(tone):
+    """어두운 쪽·주색 쪽 바탕색(글자 알파를 섞을 때)"""
+    c = (TONES.get(tone or "blue") or TONES["blue"])["c"]
+    return {"dark": _rgb(c[3]), "blue": _rgb(c[0])}
+
+
+def tint_icon(src, dst, tone):
+    """파랑 유리 아이콘을 톤 색으로 — 색조만 돌린다(밝기·투명도 그대로). 블루면 그대로"""
+    t = TONES.get(tone or "blue") or TONES["blue"]
+    if t["c"] is BLUE_KEYS:
+        return src
+    import colorsys
+    from PIL import Image
+    im = Image.open(src).convert("RGBA")
+    a = im.split()[3]
+    hsv = im.convert("RGB").convert("HSV")
+    h0 = colorsys.rgb_to_hsv(*[x / 255 for x in _rgb(BLUE_KEYS[0])])[0]
+    h1, s1, _ = colorsys.rgb_to_hsv(*[x / 255 for x in _rgb(t["c"][0])])
+    dh = int(round((h1 - h0) * 255)) % 256
+    h, s, v = hsv.split()
+    h = h.point(lambda x: (x + dh) % 256)
+    out = Image.merge("HSV", (h, s, v)).convert("RGB")
+    out.putalpha(a)
+    out.save(dst)
+    return dst
 
 # ───────────────────────── 레이아웃 카탈로그 — AI 가 고르는 칸(글자 수 한도는 화면에 들어가는 길이)
 LAYOUTS = {
@@ -101,6 +153,17 @@ em{font-style:normal;color:var(--blue)}
 .pg{position:absolute;right:120px;bottom:52px;font-size:19px;font-weight:800;color:var(--muted);letter-spacing:.08em}
 .dark .pg,.blue .pg{color:rgba(255,255,255,.55)}
 """
+# 테마 B — 라이트 에디토리얼(ref_042·058): 표지·간지·연락처도 밝은 바탕, 꼬리표는 검정 알약, 카드는 테두리 없는 옅은 면
+CSS_B = """
+.card{border:0;background:var(--paper);box-shadow:none;border-radius:32px}
+.chip{border:0;background:var(--paper);border-radius:999px}
+.eb{background:var(--ink);color:#fff;padding:7px 18px 6px;border-radius:999px;font-size:18px;letter-spacing:.12em}
+.blue .eb{background:#fff;color:var(--blue)}
+.h{letter-spacing:-0.052em}
+"""
+GLOW_B = ("<div class='deco' style=\"background:radial-gradient(1300px 900px at 105% -10%,rgba(61,123,255,.16),transparent 62%),"
+          "radial-gradient(900px 700px at -5% 110%,rgba(31,79,255,.07),transparent 60%),#F7F9FE\"></div>")
+COMPANY_THEMES = {"a": "다크 임팩트", "b": "라이트 에디토리얼"}
 
 
 def _vars():
@@ -165,6 +228,186 @@ def _bigword(word, dark=False):
     c = "rgba(255,255,255,.06)" if dark else "rgba(31,79,255,.055)"
     return (f"<div class='deco' style=\"top:auto;bottom:-70px;left:90px;font-size:300px;font-weight:900;letter-spacing:-0.05em;line-height:1;color:{c};"
             f"white-space:nowrap\">{html.escape(str(word).upper())}</div>")
+
+
+# ───────────────────────── 장식(SVG) — 빈 자리를 도형·파형·3D 로 채운다(사용자 2026-10-16 "evolve-deck 참조해서 빈 공간에 SVG 도형·파형·3D").
+# evolve 덱의 언어(점 격자 Dots · 외곽선 글자 Ghost · 격자선 Grid · 입자 구 Organism · 나선 Loom)를 정적 SVG 로 옮겼다 — 렌더 때 배경 그림으로 굳어 PPT 에도 그대로.
+# 색은 파랑 값으로 쓰고 toned() 가 톤 색으로 바꾼다. 쪽마다 효과는 하나(PROFILE '조잡하다 = 효과가 겹친다').
+import math
+
+_SVG_N = [0]
+
+
+def _svg(x, y, w, h, body, defs="", op=1.0):
+    return (f"<svg class='deco' xmlns='http://www.w3.org/2000/svg' viewBox='0 0 {w:.0f} {h:.0f}' "
+            f"style='left:{x:.0f}px;top:{y:.0f}px;width:{w:.0f}px;height:{h:.0f}px;right:auto;bottom:auto;opacity:{op};overflow:visible'><defs>{defs}</defs>{body}</svg>")
+
+
+def _gid(p):
+    _SVG_N[0] += 1
+    return f"{p}{_SVG_N[0]}"
+
+
+def D_waves(x, y, w, h, dark=False, n=28, op=1.0):
+    """흐르는 선 다발(ref_042 파형) — 사인 곡선 n 개가 위상·진폭을 조금씩 달리하며 겹친다"""
+    g = _gid("wv")
+    c1, c2 = ("#78AAFF", "#3D7BFF") if dark else ("#3D7BFF", "#1F4FFF")
+    defs = (f"<linearGradient id='{g}' x1='0' x2='1'><stop offset='0' stop-color='{c1}' stop-opacity='0'/>"
+            f"<stop offset='.35' stop-color='{c1}' stop-opacity='.9'/><stop offset='.75' stop-color='{c2}' stop-opacity='.7'/><stop offset='1' stop-color='{c2}' stop-opacity='0'/></linearGradient>")
+    paths = []
+    for i in range(n):
+        t = i / max(1, n - 1)
+        amp = h * (0.18 + 0.22 * math.sin(t * math.pi))
+        ph = t * 2.2
+        pts = []
+        for k in range(121):
+            u = k / 120
+            env = math.sin(u * math.pi) ** 0.8
+            yy = h / 2 + amp * env * math.sin(u * math.pi * 2.3 + ph) + (t - 0.5) * h * 0.35 * (1 - env)
+            pts.append(f"{u * w:.1f},{yy:.1f}")
+        paths.append(f"<polyline points='{' '.join(pts)}' fill='none' stroke='url(#{g})' stroke-width='{1.1 + 0.6 * math.sin(t * math.pi):.2f}' stroke-opacity='{0.25 + 0.55 * math.sin(t * math.pi):.2f}'/>")
+    return _svg(x, y, w, h, "".join(paths), defs, op)
+
+
+def D_sphere(cx, cy, r, dark=True, n=1100, op=1.0):
+    """입자 구(evolve Organism 의 정지판) — 피보나치 구 위 점을 기울여 투영, 앞은 크고 진하게 뒤는 작고 옅게"""
+    pts = []
+    ga = math.pi * (3 - math.sqrt(5))
+    tilt, rot = 0.42, 0.6
+    for i in range(n):
+        yv = 1 - 2 * (i + 0.5) / n
+        rad = math.sqrt(1 - yv * yv)
+        th = ga * i
+        xv, zv = math.cos(th) * rad, math.sin(th) * rad
+        xv, zv = xv * math.cos(rot) - zv * math.sin(rot), xv * math.sin(rot) + zv * math.cos(rot)
+        yv, zv = yv * math.cos(tilt) - zv * math.sin(tilt), yv * math.sin(tilt) + zv * math.cos(tilt)
+        pts.append((zv, xv, yv))
+    pts.sort()
+    c = "#BFD0FF" if dark else "#1F4FFF"
+    body = [f"<circle cx='{r + px * r:.1f}' cy='{r + py * r:.1f}' r='{0.8 + 2.0 * (z + 1) / 2:.2f}' fill='{c}' fill-opacity='{0.12 + 0.78 * ((z + 1) / 2) ** 1.6:.2f}'/>" for z, px, py in pts]
+    g = _gid("sg")
+    glow = (f"<radialGradient id='{g}'><stop offset='0' stop-color='#3D7BFF' stop-opacity='.45'/><stop offset='1' stop-color='#3D7BFF' stop-opacity='0'/></radialGradient>")
+    return _svg(cx - r, cy - r, 2 * r, 2 * r, f"<circle cx='{r}' cy='{r}' r='{r * 1.25}' fill='url(#{g})'/>" + "".join(body), glow, op)
+
+
+def D_globe(cx, cy, r, dark=True, op=1.0):
+    """와이어 구 — 위도 타원 + 경도 타원(기울임). 선만"""
+    c = "#FFFFFF" if dark else "#1F4FFF"
+    a = 0.22 if dark else 0.18
+    body = [f"<circle cx='{r}' cy='{r}' r='{r}' fill='none' stroke='{c}' stroke-opacity='{a * 1.6}' stroke-width='1.4'/>"]
+    for k in range(1, 7):
+        yy = r * math.sin(-math.pi / 2 + k * math.pi / 7)
+        rx = math.sqrt(max(0, r * r - yy * yy))
+        body.append(f"<ellipse cx='{r}' cy='{r + yy:.1f}' rx='{rx:.1f}' ry='{rx * 0.22:.1f}' fill='none' stroke='{c}' stroke-opacity='{a}' stroke-width='1'/>")
+    for k in range(6):
+        body.append(f"<ellipse cx='{r}' cy='{r}' rx='{r * abs(math.cos(k * math.pi / 6)):.1f}' ry='{r}' fill='none' stroke='{c}' stroke-opacity='{a}' stroke-width='1'/>")
+    for k in range(5):   # 궤도 위 빛나는 점
+        t = k * 1.3 + 0.4
+        body.append(f"<circle cx='{r + r * math.cos(t):.1f}' cy='{r + r * 0.22 * math.sin(t) + r * 0.3:.1f}' r='4' fill='#78AAFF'/>")
+    return _svg(cx - r, cy - r, 2 * r, 2 * r, f"<g transform='rotate(-18 {r} {r})'>{''.join(body)}</g>", "", op)
+
+
+def D_orbs(x, y, s, dark=True, op=1.0):
+    """광택 구 셋(ref_025 파랑 유리 덩어리) — 방사 그라데이션으로 입체감, 가는 고리 하나"""
+    g1, g2 = _gid("ob"), _gid("os")
+    defs = (f"<radialGradient id='{g1}' cx='.35' cy='.3' r='.75'><stop offset='0' stop-color='#FFFFFF' stop-opacity='.95'/>"
+            f"<stop offset='.18' stop-color='#BFD0FF'/><stop offset='.55' stop-color='#3D7BFF'/><stop offset='1' stop-color='#051478'/></radialGradient>"
+            f"<radialGradient id='{g2}'><stop offset='0' stop-color='#051478' stop-opacity='.5'/><stop offset='1' stop-color='#051478' stop-opacity='0'/></radialGradient>")
+    balls = [(0.62, 0.42, 0.30), (0.30, 0.68, 0.19), (0.84, 0.80, 0.12)]
+    body = f"<ellipse cx='{s * .55}' cy='{s * .95}' rx='{s * .42}' ry='{s * .06}' fill='url(#{g2})'/>"
+    body += f"<ellipse cx='{s * .55}' cy='{s * .5}' rx='{s * .5}' ry='{s * .16}' fill='none' stroke='#78AAFF' stroke-opacity='.45' stroke-width='2' transform='rotate(-14 {s * .55} {s * .5})'/>"
+    for bx, by, br in balls:
+        body += f"<circle cx='{bx * s:.1f}' cy='{by * s:.1f}' r='{br * s:.1f}' fill='url(#{g1})'/>"
+    return _svg(x, y, s, s, body, defs, op)
+
+
+def D_helix(x, y, w, h, dark=True, op=1.0):
+    """나선 점(evolve Loom 의 스프링) — 앞쪽 점은 크고 진하게"""
+    c = "#BFD0FF" if dark else "#1F4FFF"
+    pts = []
+    for i in range(520):
+        t = i / 520 * math.pi * 2 * 6.5
+        z = math.sin(t)
+        pts.append((z, w / 2 + math.cos(t) * w * 0.42, i / 520 * h))
+    pts.sort()
+    body = "".join(f"<circle cx='{px:.1f}' cy='{py:.1f}' r='{1 + 2.2 * (z + 1) / 2:.2f}' fill='{c}' fill-opacity='{0.15 + 0.75 * (z + 1) / 2:.2f}'/>" for z, px, py in pts)
+    return _svg(x, y, w, h, f"<g transform='rotate(-24 {w / 2} {h / 2})'>{body}</g>", "", op)
+
+
+def D_cubes(x, y, s, dark=False, op=1.0):
+    """아이소메트릭 유리 판 셋(ref_058 IR 덱) — 위·옆면 그라데이션"""
+    gt, gs = _gid("ct"), _gid("cs")
+    defs = (f"<linearGradient id='{gt}' x1='0' y1='0' x2='1' y2='1'><stop offset='0' stop-color='#BFD0FF'/><stop offset='1' stop-color='#3D7BFF'/></linearGradient>"
+            f"<linearGradient id='{gs}' x1='0' y1='0' x2='0' y2='1'><stop offset='0' stop-color='#1F4FFF'/><stop offset='1' stop-color='#051478'/></linearGradient>")
+    body = ""
+    cx, w2, hh, th = s / 2, s * 0.42, s * 0.24, s * 0.07
+    for k in range(3):
+        top = s * 0.62 - k * s * 0.2
+        a = 0.55 + 0.15 * k
+        top_pts = f"{cx},{top - hh} {cx + w2},{top} {cx},{top + hh} {cx - w2},{top}"
+        left = f"{cx - w2},{top} {cx},{top + hh} {cx},{top + hh + th} {cx - w2},{top + th}"
+        right = f"{cx + w2},{top} {cx},{top + hh} {cx},{top + hh + th} {cx + w2},{top + th}"
+        body += (f"<polygon points='{left}' fill='url(#{gs})' fill-opacity='{a}'/><polygon points='{right}' fill='url(#{gs})' fill-opacity='{a * .8}'/>"
+                 f"<polygon points='{top_pts}' fill='url(#{gt})' fill-opacity='{a}' stroke='#FFFFFF' stroke-opacity='.6' stroke-width='1.5'/>")
+    return _svg(x, y, s, s, body, defs, op)
+
+
+def D_rings(cx, cy, r, dark=True, op=1.0):
+    """궤도 고리 — 아이콘 뒤에 깔리는 동심원 + 점선 + 작은 점(간지)"""
+    c = "#FFFFFF" if dark else "#1F4FFF"
+    body = ""
+    for k, (rr, dash, a) in enumerate([(1.0, "", .10), (.78, "4 10", .22), (.56, "", .14)]):
+        body += f"<circle cx='{r}' cy='{r}' r='{r * rr:.1f}' fill='none' stroke='{c}' stroke-opacity='{a}' stroke-width='1.5'" + (f" stroke-dasharray='{dash}'" if dash else "") + "/>"
+    for t, rr in ((0.6, 1.0), (2.4, .78), (4.1, .56), (5.2, 1.0)):
+        body += f"<circle cx='{r + r * rr * math.cos(t):.1f}' cy='{r + r * rr * math.sin(t):.1f}' r='6' fill='#78AAFF'/>"
+    return _svg(cx - r, cy - r, 2 * r, 2 * r, body, "", op)
+
+
+def D_dots(x, y, w, h, dark=False, op=1.0):
+    """점 격자(evolve Dots) — 가운데가 진하고 가장자리로 사라진다"""
+    p, g, m = _gid("dp"), _gid("dg"), _gid("dm")
+    c = "#BFD0FF" if dark else "#1F4FFF"
+    defs = (f"<pattern id='{p}' width='30' height='30' patternUnits='userSpaceOnUse'><circle cx='2' cy='2' r='2' fill='{c}' fill-opacity='{.35 if dark else .22}'/></pattern>"
+            f"<radialGradient id='{g}'><stop offset='0' stop-color='#fff'/><stop offset='1' stop-color='#fff' stop-opacity='0'/></radialGradient>"
+            f"<mask id='{m}'><rect width='{w}' height='{h}' fill='url(#{g})'/></mask>")
+    return _svg(x, y, w, h, f"<rect width='{w}' height='{h}' fill='url(#{p})' mask='url(#{m})'/>", defs, op)
+
+
+def decor(kind, n, has_img=False, theme="a"):
+    """레이아웃마다 비는 자리에 장식 하나 — '밋밋한 데 약간의 조미료'(사용자 2026-10-16). 옅게·작게, 글과 겹치지 않는 자리만.
+    n = 쪽 번호(같은 레이아웃이 반복되면 장식을 바꿔 단조롭지 않게). 바탕 큰 글자(_bigword)가 있는 쪽(선언)은 그것이 조미료라 더하지 않는다.
+    테마 B(밝은 표지·간지)는 표지를 흐르는 선 다발(ref_042)로, 간지·연락처는 밝은 바탕에 맞는 것으로"""
+    alt = n % 3
+    if theme == "b":
+        if kind == "cover":
+            return D_waves(560, 120, 1420, 860, n=34, op=.95)
+        if kind == "section":
+            return D_dots(1260, 160, 620, 760, op=.8) if has_img else [D_cubes(1240, 220, 600, op=.8), D_globe(1520, 540, 300, dark=False, op=.5), D_waves(700, 640, 1220, 380, op=.8)][alt]
+        if kind == "contact":
+            return D_waves(0, 600, 1920, 300, op=.45)
+    if kind == "cover":
+        return D_sphere(1490, 540, 400, op=.5) if has_img else D_orbs(1180, 230, 620, op=.85)
+    if kind == "section":
+        return D_rings(1500, 540, 380, op=.6) if has_img else [D_globe(1500, 520, 300, op=.6), D_helix(1300, 180, 420, 720, op=.5), D_orbs(1180, 260, 580, op=.8)][alt]
+    if kind == "contents":
+        return D_cubes(150, 640, 360, op=.45)
+    if kind == "stats":
+        return D_waves(0, 880, 1920, 200, op=.4)
+    if kind == "pillars":
+        return D_dots(1380, 70, 540, 300, op=.7)
+    if kind == "history":
+        return [D_globe(1690, 250, 150, dark=False, op=.45), D_waves(0, 880, 1920, 200, op=.4), D_cubes(1600, 60, 260, op=.4)][alt]
+    if kind == "showcase":
+        return D_waves(60, 840, 860, 190, op=.35)   # 나선은 이 크기에선 빗금처럼 보였다
+    if kind == "clients":
+        return D_dots(1380, 50, 540, 260, op=.7)
+    if kind == "awards":
+        return D_cubes(1560, 760, 280, op=.4)
+    if kind == "vision":
+        return D_sphere(1540, 460, 300, op=.45)
+    if kind == "contact":
+        return D_globe(1720, 640, 230, op=.5)
+    return ""
 
 
 # 레이아웃 함수 — (톤, 몸통 HTML). 좌표는 1920×1080 기준 절대 위치(넘침은 data-fit 이 줄인다)
@@ -297,9 +540,15 @@ def L_showcase(d):
            + T(d.get("url") or "", "", "left:120px;top:760px;font-size:24px;font-weight:600;color:var(--muted);letter-spacing:.02em", rich=False))
     gap = 28
     cw, chh = (820 - gap) // 2, (640 - gap) // 2
+    # 칸 자리 — 4개면 2×2, 3개면 첫 칸을 왼쪽 세로로 길게 + 오른쪽 둘(빈 칸이 남지 않게, 10-16 시험 작업), 2개 이하면 위아래로
+    if len(items) == 3:
+        slots = [(980, 200, cw, 640), (980 + cw + gap, 200, cw, chh), (980 + cw + gap, 200 + chh + gap, cw, chh)]
+    elif len(items) <= 2:
+        slots = [(980, 200 + k * (chh + gap), 820, chh) for k in range(len(items))]
+    else:
+        slots = [(980 + (k % 2) * (cw + gap), 200 + (k // 2) * (chh + gap), cw, chh) for k in range(len(items))]
     for i, it in enumerate(items):
-        x = 980 + (i % 2) * (cw + gap)
-        y = 200 + (i // 2) * (chh + gap)
+        x, y, cw, chh = slots[i]
         first = i == 0
         out += R(f"left:{x}px;top:{y}px;width:{cw}px;height:{chh}px" + (";background:var(--blue);border-color:var(--blue);box-shadow:0 30px 60px -30px rgba(31,79,255,.6)" if first else ""))
         out += T(f"{i + 1:02d}", "", f"left:{x + 40}px;top:{y + 40}px;font-size:26px;font-weight:900;color:{'#BFD0FF' if first else 'var(--blue)'}", rich=False)
@@ -393,19 +642,32 @@ def clean(d):
     return d
 
 
-def slide_html(d, n, total):
+def slide_html(d, n, total, ctone="blue", ctheme="a"):
     fn = LAYOUT_FN.get(d.get("kind")) or L_statement
+    if ctheme == "b" and d.get("kind") == "cover":   # 테마 B 표지는 큰 아이콘 없이 글과 선 다발로(ref_042)
+        d["_img"] = None
     try:
         tone, body = fn(clean(d))
     except Exception:   # 칸이 크게 어긋난 쪽은 한 문장 선언으로 — 덱 전체를 멈추지 않는다
         d = {**{k: v for k, v in d.items() if k.startswith("_")}, "kind": "statement", "eyebrow": d.get("eyebrow") or "",
              "headline": d.get("headline") or d.get("title") or d.get("name") or "", "sub": d.get("sub") or d.get("desc") or ""}
         tone, body = L_statement(d)
+    if ctheme == "b" and tone == "dark":   # 테마 B — 어두운 쪽(표지·간지·연락처)을 밝은 바탕으로: 흰 글자는 먹색으로
+        body = body.replace(GLOW_DARK, GLOW_B, 1).replace("rgba(255,255,255,", "rgba(11,19,36,").replace("color:#fff", "color:var(--ink)")
+        tone = "light"
     d["_tone"] = tone
+    try:   # 장식은 바탕 빛(GLOW) 바로 위·내용 아래에 — 바탕이 불투명이라 앞에 두면 가려진다
+        dec = decor(d.get("kind"), n, bool(d.get("_img")), ctheme)
+    except Exception:
+        dec = ""
+    for g in (GLOW_DARK, GLOW_LIGHT, GLOW_BLUE, GLOW_B):
+        if dec and body.startswith(g):
+            body = g + dec + body[len(g):]
+            break
     tag = TAGS.get(d.get("kind"), d.get("eyebrow") or "")
     chrome = _chrome(d, n, total, tag) if d.get("kind") != "cover" else _chrome(d, n, total, "")
-    return (f"<!doctype html><html><head><meta charset='utf-8'><style>{_font_css()}{_vars()}{CSS}</style></head>"
-            f"<body><div class='s {tone if tone != 'light' else ''}'>{body}{chrome}</div></body></html>")
+    return (f"<!doctype html><html><head><meta charset='utf-8'><style>{_font_css()}{toned(_vars() + CSS + (CSS_B if ctheme == 'b' else ''), ctone)}</style></head>"
+            f"<body><div class='s {tone if tone != 'light' else ''}'>{toned(body + chrome, ctone)}</div></body></html>")
 
 
 # ───────────────────────── 렌더 + DOM 재기
@@ -462,6 +724,9 @@ MEASURE_JS = r"""
       };
       walk(el);
       for (const l of lines) { const lr = l.runs[l.runs.length - 1]; if (lr) lr.text = lr.text.replace(/\s+$/, ''); }
+      // 안쪽 여백(테마 B 의 알약 꼬리표)은 빼고 글이 놓이는 자리로 — 여백 자리의 바탕은 배경 그림에 남는다
+      const pl = parseFloat(cs.paddingLeft) || 0, pt = parseFloat(cs.paddingTop) || 0, pr = parseFloat(cs.paddingRight) || 0, pb = parseFloat(cs.paddingBottom) || 0;
+      Object.assign(box, { x: b.left + pl, y: b.top + pt, w: b.width - pl - pr, h: b.height - pt - pb });
       Object.assign(box, { lines: lines.filter(l => l.runs.some(r => r.text.trim())).map(l => ({ top: l.top, runs: l.runs })),
         align: cs.textAlign, lh: parseFloat(cs.lineHeight) || parseFloat(cs.fontSize) * 1.2, size: parseFloat(cs.fontSize),
         tt: cs.textTransform });
@@ -476,8 +741,8 @@ BAKE_CSS = """[data-x=t]{color:transparent!important}[data-x=t] *{color:transpar
 [data-x=r]{background:transparent!important;border-color:transparent!important}"""
 
 
-def render(slides, out_dir, log=print):
-    """쪽마다 HTML → (미리보기 PNG, 배경 PNG, 잰 요소). 반환: [{html, preview, bg, boxes}]"""
+def render(slides, out_dir, log=print, ctone="blue", ctheme="a"):
+    """쪽마다 HTML → (미리보기 PNG, 배경 PNG, 잰 요소). 반환: [{html, preview, bg, boxes}]. ctone = 톤(TONES)"""
     from playwright.sync_api import sync_playwright
     os.makedirs(out_dir, exist_ok=True)
     res = []
@@ -487,7 +752,7 @@ def render(slides, out_dir, log=print):
         total = len(slides)
         for i, d in enumerate(slides, 1):
             hp = os.path.join(out_dir, f"s{i:02d}.html")
-            open(hp, "w", encoding="utf-8").write(slide_html(d, i, total))
+            open(hp, "w", encoding="utf-8").write(slide_html(d, i, total, ctone, ctheme))
             pg.goto("file:///" + hp.replace("\\", "/"))
             pg.evaluate("document.fonts.ready")
             pg.wait_for_load_state("networkidle")
@@ -497,7 +762,7 @@ def render(slides, out_dir, log=print):
             pg.add_style_tag(content=BAKE_CSS)
             bg = os.path.join(out_dir, f"s{i:02d}_bg.png")
             pg.screenshot(path=bg)
-            res.append({"html": hp, "preview": prev, "bg": bg, "boxes": boxes, "tone": d.get("_tone")})
+            res.append({"html": hp, "preview": prev, "bg": bg, "boxes": boxes, "tone": d.get("_tone"), "base": tone_base(ctone)})
             log(f"  {i:02d} {d.get('kind')} — 글 {sum(1 for b in boxes if b['k'] == 't')} · 도형 {sum(1 for b in boxes if b['k'] == 'r')} · 그림 {sum(1 for b in boxes if b['k'] == 'i')}")
         br.close()
     return res
@@ -571,7 +836,7 @@ def to_pptx(rendered, out, base_tone=None):
     for r in rendered:
         s = prs.slides.add_slide(blank)
         vertical.set_bg(s, open(r["bg"], "rb").read())
-        base = {"dark": (5, 11, 36), "blue": (31, 79, 255)}.get(r.get("tone"), (255, 255, 255))
+        base = (r.get("base") or tone_base("blue")).get(r.get("tone"), (255, 255, 255))
         for b in r["boxes"]:
             if b["k"] == "r":
                 rad = min(b["rad"], b["w"] / 2, b["h"] / 2)
@@ -686,16 +951,22 @@ def _white_logo(src, dst):
     return dst
 
 
-def attach_assets(job, deck, d, log=print):
-    """그림 칸(_img) 채우기 — 표지·간지 큰 그림, 카드 아이콘. 로고(제안사 = 우리 회사)는 작업에 올린 vendor 로고"""
+def attach_assets(job, deck, d, log=print, ctone="blue"):
+    """그림 칸(_img) 채우기 — 표지·간지 큰 그림, 카드 아이콘(톤 색으로 색조를 돌린다). 로고(제안사 = 우리 회사)는 작업에 올린 vendor 로고"""
     import design
     used = set()
     comp = deck.get("company") or {}
     hero_q = ["데이터", "클라우드", "인공지능", "플랫폼", "네트워크", "보안", "서버"]
     for k, s in enumerate(deck["slides"]):
         if s["kind"] in ("cover", "section"):
-            q = s.get("icon") or (hero_q[k % len(hero_q)] if s["kind"] == "section" else "데이터 플랫폼")
-            s["_img"] = _icon_file(job, q, used, d)
+            # 표지·간지의 큰 그림은 비면 쪽이 허전하다 — AI 검색어로 못 찾으면 기본 낱말을 차례로(10-16 시험 작업에서 표지 그림이 빔)
+            qs = [s.get("icon")] if s.get("icon") else []
+            qs += ["데이터베이스 클라우드", "클라우드 서버"] if s["kind"] == "cover" else []
+            qs += hero_q[k % len(hero_q):] + hero_q[:k % len(hero_q)]
+            for q in [x for x in qs if x]:
+                s["_img"] = _icon_file(job, q, used, d)
+                if s["_img"]:
+                    break
         for it in s.get("items") or []:
             if isinstance(it, dict) and it.get("icon"):
                 it["_img"] = _icon_file(job, it["icon"], used, d)
@@ -710,10 +981,10 @@ def attach_assets(job, deck, d, log=print):
         if logo:
             s["_logo"], s["_logo_dark"] = "file:///" + logo.replace("\\", "/"), ("file:///" + logo_dark.replace("\\", "/")) if logo_dark else None
         if s.get("_img"):
-            s["_img"] = "file:///" + s["_img"].replace("\\", "/")
+            s["_img"] = "file:///" + tint_icon(s["_img"], s["_img"][:-4] + f"_{ctone}.png", ctone).replace("\\", "/")
         for it in s.get("items") or []:
             if isinstance(it, dict) and it.get("_img"):
-                it["_img"] = "file:///" + it["_img"].replace("\\", "/")
+                it["_img"] = "file:///" + tint_icon(it["_img"], it["_img"][:-4] + f"_{ctone}.png", ctone).replace("\\", "/")
 
 
 def run(job, j, opts, brief, note):
@@ -721,7 +992,7 @@ def run(job, j, opts, brief, note):
     req, put_file = design.W["req"], design.W["put_file"]
     pages = int(opts.get("slides") or 0) or 14
     job.push("기획", 4)
-    job.event("회사소개서(타입 G) — 자료를 읽고 레이아웃 카탈로그에 맞춰 쪽을 구성합니다.")
+    job.event("회사소개서 — 자료를 읽고 레이아웃 카탈로그에 맞춰 쪽을 구성합니다.")
     raw = design.load_context(job, 400000) or ""
     ctx = design.digest_context(job, raw) if raw else ""
     deck = plan(job, brief, note, ctx, pages)
@@ -730,7 +1001,12 @@ def run(job, j, opts, brief, note):
     d = os.path.join(job.dir, "_company")
     os.makedirs(d, exist_ok=True)
     job.push("기획", 30)
-    attach_assets(job, deck, d)
+    ctone = str(opts.get("ctone") or "blue")
+    ctheme = str(opts.get("ctheme") or "a")
+    ctheme = ctheme if ctheme in COMPANY_THEMES else "a"
+    ctone = ctone if ctone in TONES else "blue"
+    job.event(f"테마 {ctheme.upper()} {COMPANY_THEMES[ctheme]} · 톤 {TONES[ctone]['label']}")
+    attach_assets(job, deck, d, ctone=ctone)
     json.dump(deck, open(os.path.join(d, "deck.json"), "w", encoding="utf-8"), ensure_ascii=False, indent=1)
     try:
         put_file(job.id, "extra", os.path.join(d, "deck.json"), "회사소개서_구성.json")
@@ -738,7 +1014,7 @@ def run(job, j, opts, brief, note):
         pass
     job.push("시안 생성", 50)
     job.event("HTML 로 쪽을 그리고, 글·도형·그림을 재서 PPT 로 옮깁니다.")
-    rendered = render(deck["slides"], os.path.join(d, "html"), log=lambda m: None)
+    rendered = render(deck["slides"], os.path.join(d, "html"), log=lambda m: None, ctone=ctone, ctheme=ctheme)
     out = os.path.join(job.dir, "결과.pptx")
     n = to_pptx(rendered, out)
     job.event(f"회사소개서 {n}장을 만들었습니다(글·카드는 편집 가능, 빛·그라데이션은 배경 그림).", "done")
@@ -764,7 +1040,7 @@ def run(job, j, opts, brief, note):
         pass
     comp = deck.get("company") or {}
     req("POST", f"/worker/jobs/{job.id}/finish", {"status": "done", "result_name": "결과.pptx", "engine": "company", "report": {
-        "summary": f"{comp.get('name') or '회사'} 회사소개서 {n}장(타입 G)",
+        "summary": f"{comp.get('name') or '회사'} 회사소개서 {n}장(테마 {ctheme.upper()} {COMPANY_THEMES[ctheme]})",
         "stats": [{"label": "전체 장", "value": n}, {"label": "레이아웃", "value": len(set(kinds))}],
         "checklist": [{"slide": 0, "title": "사실 확인", "level": "info", "detail": "숫자·연혁·고객 이름은 자료에서 옮겼습니다. 보내기 전에 최신 값인지 확인해 주세요."}],
         "changes": []}})

@@ -3,10 +3,10 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import { API, api, fmtSize, uploadDoc, uploadFile, usd, type Engine, type Job, type JobKind, type MockupMode, type UploadProgress } from "../api";
 import { LiveDot } from "@/components/hb/live-status";
 import { getAi, type AiSettings } from "../openrouter";
-import { Arrow, cn, Ms, SecTitle, Seg, useToastOn, toast, useContextMenu, type CtxItem, sent } from "../ui";
+import { cn, Ms, SecTitle, Seg, useToastOn, toast, useContextMenu, type CtxItem, sent } from "../ui";
 import { DesignTypePicker, typeName } from "../DesignTypes";
 import { VerticalStylePicker, VerticalTonePicker, verticalStyleName, verticalToneName } from "../VerticalThemes";
-import { COMPANY_THEMES, CompanyThemePicker } from "../CompanyThemes";
+import { CompanyThemePicker, CompanyTonePicker, companyThemeName, companyToneName } from "../CompanyThemes";
 import { BODY_FONTS, FontPicker, TITLE_FONTS, VERTICAL_BODY_FONTS, fontName } from "../FontPicker";
 import { LogoSearch } from "../LogoSearch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -98,7 +98,9 @@ export function Upload({ engine, isAdmin = false, onUploaded, onCancel, onSettin
   const [front, setFront] = useState({ cover: true, toc: true, divider: true });   // 표지·목차·간지 — 제작 직전에도 바꿀 수 있다
   const [style, setStyle] = useState("a");   // 디자인 타입 — reference/styles/styles.json
   const [purpose, setPurpose] = useState<"submit" | "present" | "company">("present");
-  const company = purpose === "company";   // 회사소개용 = 타입 G 회사소개서(engine/company.py) — 시안 없이 PPT 바로, 서체·색은 테마가 정한다
+  const [ctheme, setCtheme] = useState("a");   // 회사소개서 테마 — A 다크 임팩트 · B 라이트 에디토리얼(engine/company.py COMPANY_THEMES)
+  const [ctone, setCtone] = useState("blue");   // 회사소개서 톤(색) — engine/company.py TONES
+  const company = purpose === "company";   // 회사소개용 = 회사소개서(engine/company.py, 테마 A·B) — 시안 없이 PPT 바로, 서체·색은 테마가 정한다
   const direct = purpose !== "present";    // 시안 확인 없이 PPT 를 바로 만드는 용도(제출용·회사소개용)
   const [vstyle, setVstyle] = useState("band");   // 제출용(세로 제안서) 디자인 스타일(모양) — engine/vertical.py STYLES
   const [vtone, setVtone] = useState("navy");     // 톤(색) — engine/vertical.py TONES. 고르면 강조색도 추천 색으로
@@ -164,7 +166,7 @@ export function Upload({ engine, isAdmin = false, onUploaded, onCancel, onSettin
   const slideUnset = !slideN || !(parseInt(slideN) > 0);
   const slideDef = company ? 14 : 5;   // 장 수 미입력 — 회사소개서는 14쪽 안팎(서버 Jobs::opts 와 같다)
   const slides = slideUnset ? slideDef : parseInt(slideN);
-  const planOpts = { slides, mockups, sample: Math.max(1, parseInt(sampleN) || 3), front, style, vstyle, vtone, purpose, lang, font_title: fontTitle, font_body: fontBody, event: event.trim(), date: evDate.trim() };
+  const planOpts = { slides, mockups, sample: Math.max(1, parseInt(sampleN) || 3), front, style, vstyle, vtone, ctheme, ctone, purpose, lang, font_title: fontTitle, font_body: fontBody, event: event.trim(), date: evDate.trim() };
   const aiBlock = design && ai && !ai.ready;
   const working = busy !== null;
 
@@ -288,8 +290,9 @@ export function Upload({ engine, isAdmin = false, onUploaded, onCancel, onSettin
     ["용도", purpose === "present" ? "발표용" : company ? "회사소개용" : "제출용", 1, "purpose"],
     ["언어", DECK_LANGS.find((x) => x[0] === lang)?.[1] ?? "한국어", 1, "lang"],
     ["자료", items.length ? `${hasText ? "글 + " : ""}${items.length}개 · ${fmtSize(totalSize)}` : text.trim() ? "직접 적은 글" : "없음", 1, "files"],
-    ["디자인", company ? `타입 G · ${COMPANY_THEMES[0]!.name}` : purpose === "submit" ? `세로 제안서 · ${verticalStyleName(vstyle)}` : `타입 ${style.toUpperCase()} · ${typeName(style)}`, 2, "design"],
-    ...(purpose === "submit" ? [["톤", verticalToneName(vtone), 3, "vtone"] as [string, ReactNode, Step, string]] : []),
+    ["디자인", company ? `테마 ${ctheme.toUpperCase()} · ${companyThemeName(ctheme)}` : purpose === "submit" ? `세로 제안서 · ${verticalStyleName(vstyle)}` : `타입 ${style.toUpperCase()} · ${typeName(style)}`, 2, "design"],
+    ...(purpose === "submit" ? [["톤", verticalToneName(vtone), 3, "vtone"] as [string, ReactNode, Step, string]]
+      : company ? [["톤", companyToneName(ctone), 3, "ctone"] as [string, ReactNode, Step, string]] : []),
     ["서체", company ? "프리텐다드(고정)" : fontTxt, 2, "font"],
     ["장 수", slideUnset ? `${slideDef}장 (장 수 미입력)` : `${slides}장`, 3, "count"],
     ...(direct ? [] : [["시안", `${MODE_LABEL[mockups]}${mockups === "sample" ? ` ${planOpts.sample}장` : ""}`, 3, "timing"] as [string, ReactNode, Step, string]]),
@@ -456,9 +459,10 @@ export function Upload({ engine, isAdmin = false, onUploaded, onCancel, onSettin
                 <SecTitle icon="target" title="용도" desc="같은 내용이라도 장 구성이 달라집니다" />
                 {/* 태블릿·모바일은 성격 뱃지를 숨기고 카드를 줄여 한 줄 2개(모바일은 쌓기) — 데스크톱(lg)만 뱃지 */}
                 <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 xl:grid-cols-3">
-                  {([["present", "발표용", "짧은 시간에 '왜 우리인가'를 남긴다", "play_arrow", ["한 장 한 메시지", "표 → 도식", "설명은 발표 대본으로", "10분 ≈ 15–20장"]],
-                     ["submit", "제출용", "A4 세로 제안서를 자동으로 만든다", "description", ["RFP 권고 목차대로", "표지 · 목차 · 간지 · 본문", "배경은 powerAssets 우선"]],
-                     ["company", "회사소개용", "회사소개서 덱을 바로 만든다", "apartment", ["큰 숫자 · 굵은 카피", "레이아웃 13종", "글·카드 편집 가능"]]] as const).map(([k, t, d, ic, tags]) => {
+                  {/* 성격 뱃지는 카드마다 두 개 — 한 줄에 들어가게 짧게(사용자 2026-10-16 "한 줄에 깔끔하게") */}
+                  {([["present", "발표용", "짧은 시간에 '왜 우리인가'를 남긴다", "play_arrow", ["한 장 한 메시지", "대본 포함"]],
+                     ["submit", "제출용", "A4 세로 제안서를 자동으로 만든다", "description", ["RFP 목차대로", "A4 세로"]],
+                     ["company", "회사소개용", "회사소개서 덱을 바로 만든다", "apartment", ["굵은 카피", "편집 가능"]]] as const).map(([k, t, d, ic, tags]) => {
                     const on = purpose === k;
                     return (
                       <button key={k} type="button" onClick={() => setPurpose(k)} aria-pressed={on} disabled={working}
@@ -468,8 +472,8 @@ export function Upload({ engine, isAdmin = false, onUploaded, onCancel, onSettin
                         <span className="flex-1 min-w-0 flex flex-col gap-1.5 pr-7">
                           <span className={cn("text-[18px] lg:text-[20px] font-extrabold tracking-[-0.02em] leading-tight", on ? "text-orange-d" : "text-ink")}>{t}</span>
                           <span className="text-[13px] lg:text-[14px] text-ink3 break-keep">{d}</span>
-                          <span className="hidden lg:flex flex-wrap gap-1.5 mt-1.5">
-                            {tags.map((x) => <span key={x} className={cn("whitespace-nowrap text-[13px] font-semibold rounded-full px-[11px] py-1 border", on ? "text-orange-d bg-white border-orange-line" : "text-ink3 bg-[var(--color-ground-3)] border-transparent")}>{x.includes("→") ? <>{x.split("→")[0]!.trim()}<Arrow size={13} />{x.split("→")[1]!.trim()}</> : x}</span>)}
+                          <span className="hidden lg:flex flex-nowrap gap-1 mt-1 overflow-hidden">
+                            {tags.map((x) => <span key={x} className={cn("flex-none whitespace-nowrap text-[12px] font-semibold rounded-full px-2 py-0.5 border", on ? "text-orange-d bg-white border-orange-line" : "text-ink3 bg-[var(--color-ground-3)] border-transparent")}>{x}</span>)}
                           </span>
                         </span>
                         {on && <span className="absolute top-3 right-3 lg:top-[18px] lg:right-[18px] w-6 h-6 lg:w-7 lg:h-7 rounded-full bg-orange text-white grid place-items-center"><Ms name="check" size={19} style={{ fontWeight: 700 }} /></span>}
@@ -529,7 +533,7 @@ export function Upload({ engine, isAdmin = false, onUploaded, onCancel, onSettin
               <Sec id="design" style={hl("design")} className="!gap-2.5">
                 {company ? <>
                   <SecTitle icon="palette" title="회사소개서 테마" desc="표지 · 간지 · 숫자 · 카드 · 연혁 · 연락처까지 레이아웃 13종이 이 테마로 그려집니다" />
-                  <CompanyThemePicker value={COMPANY_THEMES[0]!.id} onChange={() => {}} disabled={working} />
+                  <CompanyThemePicker value={ctheme} onChange={setCtheme} disabled={working} tone={ctone} />
                 </> : purpose === "submit" ? <>
                   <SecTitle icon="palette" title="세로 제안서 디자인 스타일" desc="표지 · 목차 · 간지 · 본문의 모양이 이 스타일로 정해집니다 — 색은 다음 단계에서 톤으로 고릅니다" />
                   <VerticalStylePicker value={vstyle} onChange={setVstyle} disabled={working} />
@@ -604,6 +608,11 @@ export function Upload({ engine, isAdmin = false, onUploaded, onCancel, onSettin
                     })}
                   </div>
                 </Row>}
+                {company && (
+                  <Row id="ctone" style={hl("ctone")} icon="palette" title="톤" sub="표지 · 간지 · 숫자 · 강조 색">
+                    <CompanyTonePicker value={ctone} onChange={setCtone} disabled={working} theme={ctheme} />
+                  </Row>
+                )}
                 {purpose === "submit" && (
                   <Row id="vtone" style={hl("vtone")} icon="palette" title="톤" sub="머리 띠 · 간지 · 표 색">
                     <VerticalTonePicker value={vtone} onChange={(t) => { setVtone(t.id); setAccent(t.accent); }} disabled={working} />

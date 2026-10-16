@@ -3,7 +3,7 @@
 // 레이아웃 라우트 하나가 가드·메뉴, 본문은 <Outlet />. 화면이 없는 메뉴는 넣지 않는다. 노출은 역할 기준 — 서버도 같은 역할로 막는다.
 // 다른 작업자가 메뉴를 더할 땐 GROUPS 의 자기 줄만 추가한다(children 으로 하위 메뉴 가능).
 import { BrandName } from "@/components/hb/brand-name";
-import { BookOpenText, Scale, SwatchBook, ChevronDown, ChevronRight, Coins, Contrast, CreditCard, Globe, Plug, ExternalLink, History, Images, Inbox, LayoutTemplate, ListChecks, LogOut, Mail, MessagesSquare, Moon, Presentation, ShieldCheck, Sparkles, Sun, Trash2, Users } from "lucide-react";
+import { BookOpenText, Scale, SwatchBook, ChevronDown, ChevronRight, ClipboardList, Coins, Contrast, CreditCard, ExternalLink, FileSearch, History, Images, Inbox, LayoutTemplate, ListChecks, LogOut, Mail, MessagesSquare, Moon, Presentation, ShieldCheck, Sparkles, Sun, Trash2, Users } from "lucide-react";
 import { useTheme } from "next-themes";
 import { useEffect } from "react";
 import { Link, NavLink, Outlet, useLocation, useNavigate } from "react-router";
@@ -19,40 +19,40 @@ import { ROLE_KO } from "@/lib/admin";
 import { useLogout, useMe } from "@/lib/auth";
 
 interface Item { to: string; label: string; icon: typeof Users; end?: boolean; role: "admin" | "curator" | "support"; children?: Array<{ to: string; label: string; role?: Item["role"]; end?: boolean }> }
+// 메뉴 정리(사용자 2026-10-16 "중구난방, 성격에 맞게, 순서도 중요도에 맞게") — 묶음 = 성격, 순서 = 중요도:
+//   ① 요청 처리(사용자가 답을 기다리는 일) ② 모듈 운영(솔루션별 일상 관리 화면만) ③ 품질 검수(통합 검수 + 여섯 개선 체크리스트 취합)
+//   ④ 콘텐츠(공개 글·메일 문구) ⑤ 회원·설정(자주 안 바꾸는 규칙·키). 대시보드는 메뉴에 두지 않고 사이드바 로고(사용자 2026-10-10).
 const GROUPS: Array<{ label: string; items: Item[] }> = [
-  // 대시보드는 메뉴에 두지 않고 사이드바 로고를 누르면 간다(사용자 2026-10-10)
-  // 사이트 전체 품질(모듈 하나에 속하지 않는 공통·접근성·SEO·보안 등) 개선 체크리스트(2026-10-10)
-  // 품질 검수 = 솔루션별 개선 체크리스트를 한 절차로(통합 검수) + 어느 솔루션에도 속하지 않는 사이트 공통(사용자 2026-10-15)
-  { label: "품질 검수", items: [{ to: "/admin/qa", label: "통합 검수", icon: ListChecks, role: "curator", end: true }, { to: "/admin/site/checklist", label: "사이트 공통 체크리스트", icon: Globe, role: "curator" }] },
-  { label: "사용자", items: [{ to: "/admin/users", label: "사용자·역할", icon: Users, role: "admin" }, { to: "/admin/point-rules", label: "포인트 규칙", icon: Coins, role: "admin" }, { to: "/admin/billing", label: "구독·결제", icon: CreditCard, role: "admin" }, { to: "/admin/mail", label: "메일 서식", icon: Mail, role: "admin" }] },
-  // AI 설정 = 모든 서비스의 AI(키·모델·Jev) 한 곳 — powerDeck 전용처럼 보이지 않게 독립 메뉴(사용자 지시 2026-10-07)
-  { label: "설정", items: [{ to: "/admin/ai", label: "AI 설정", icon: Sparkles, role: "admin" }] },
-  // 같은 서비스끼리 한 묶음 — 부모를 누르면 펼치고 접힌다. 기본은 펼침(사용자 지시 2026-10-07)
+  { label: "요청 처리", items: [
+    { to: "/admin/contacts", label: "문의", icon: Inbox, role: "support" },
+    { to: "/admin/requests", label: "자료 요청", icon: FileSearch, role: "support" },
+    { to: "/admin/removals", label: "삭제요청", icon: Trash2, role: "support" },
+  ] },
+  // 같은 서비스끼리 한 묶음 — 부모를 누르면 펼치고 접힌다. 기본은 펼침(사용자 지시 2026-10-07). 하위가 하나뿐이면 묶지 않는다.
   { label: "모듈 운영", items: [
-    { to: "/admin/assets", label: "powerAssets", icon: Images, role: "support", children: [
-      { to: "/admin/assets", label: "에셋", role: "curator" },
-      { to: "/admin/requests", label: "자료 요청", role: "support" },
-      { to: "/admin/search", label: "검색 품질", role: "curator" },
-      { to: "/admin/qa/assets", label: "개선 체크리스트", role: "curator" },
+    { to: "/admin/assets", label: "powerAssets", icon: Images, role: "curator", children: [
+      { to: "/admin/assets", label: "에셋" },
+      { to: "/admin/search", label: "검색 통계" },
     ] },
-    { to: "/admin/deck", label: "powerDeck", icon: Presentation, role: "curator", children: [
-      { to: "/admin/deck", label: "장표 작업", role: "admin", end: true },
-      { to: "/admin/deck-settings/bill", label: "이력 · 과금", role: "admin" },
-      { to: "/admin/deck-settings/ref", label: "참조 자료", role: "admin" },
-      { to: "/admin/deck/checklist", label: "개선 체크리스트", role: "curator" },
+    { to: "/admin/deck", label: "powerDeck", icon: Presentation, role: "admin", children: [
+      { to: "/admin/deck", label: "장표 작업", end: true },
+      { to: "/admin/deck-settings/bill", label: "이력 · 과금" },
+      { to: "/admin/deck-settings/ref", label: "참조 자료" },
     ] },
-    { to: "/admin/mockups", label: "powerMock", icon: LayoutTemplate, role: "curator", children: [
-      { to: "/admin/mockups", label: "시안", role: "admin" },
-      { to: "/admin/mock/checklist", label: "개선 체크리스트", role: "curator" },
-    ] },
+    { to: "/admin/mockups", label: "powerMock 시안", icon: LayoutTemplate, role: "admin" },
     // powerGuide 는 코드가 정본이라 편집 없이 현황(자료 상태·구성·MCP 이용)만(사용자 2026-10-14)
-    { to: "/admin/guide", label: "powerGuide", icon: SwatchBook, role: "curator", children: [
-      { to: "/admin/guide", label: "현황", role: "curator" },
-      { to: "/admin/qa/guide", label: "개선 체크리스트", role: "curator" },
-    ] },
-    // powerMCP 는 관리 화면 없이 개선 체크리스트만(키·호출은 사용자 화면) — 솔루션마다 체크리스트(사용자 2026-10-15)
-    { to: "/admin/qa/mcp", label: "powerMCP", icon: Plug, role: "curator", children: [
-      { to: "/admin/qa/mcp", label: "개선 체크리스트", role: "curator" },
+    { to: "/admin/guide", label: "powerGuide 현황", icon: SwatchBook, role: "curator" },
+  ] },
+  // 품질 검수 = 솔루션별 개선 체크리스트를 한 절차로(통합 검수, 사용자 2026-10-15) + 체크리스트 여섯 개를 이 묶음에 모은다(사용자 2026-10-16)
+  { label: "품질 검수", items: [
+    { to: "/admin/qa", label: "통합 검수", icon: ListChecks, role: "curator", end: true },
+    { to: "/admin/site/checklist", label: "개선 체크리스트", icon: ClipboardList, role: "curator", children: [
+      { to: "/admin/site/checklist", label: "사이트 공통" },
+      { to: "/admin/qa/assets", label: "powerAssets" },
+      { to: "/admin/deck/checklist", label: "powerDeck" },
+      { to: "/admin/mock/checklist", label: "powerMock" },
+      { to: "/admin/qa/guide", label: "powerGuide" },
+      { to: "/admin/qa/mcp", label: "powerMCP" },
     ] },
   ] },
   { label: "콘텐츠", items: [
@@ -60,10 +60,14 @@ const GROUPS: Array<{ label: string; items: Item[] }> = [
     { to: "/admin/help", label: "도움말", icon: BookOpenText, role: "admin" },
     { to: "/admin/changelog", label: "변경 이력", icon: History, role: "admin" },
     { to: "/admin/policies", label: "약관·정책", icon: Scale, role: "admin" },
+    { to: "/admin/mail", label: "메일 서식", icon: Mail, role: "admin" },
   ] },
-  { label: "요청·제보", items: [
-    { to: "/admin/contacts", label: "문의", icon: Inbox, role: "support" },
-    { to: "/admin/removals", label: "삭제요청", icon: Trash2, role: "support" },
+  // AI 설정 = 모든 서비스의 AI(키·모델·Jev) 한 곳 — powerDeck 전용처럼 보이지 않게 독립 메뉴(사용자 지시 2026-10-07)
+  { label: "회원·설정", items: [
+    { to: "/admin/users", label: "사용자·역할", icon: Users, role: "admin" },
+    { to: "/admin/point-rules", label: "포인트 규칙", icon: Coins, role: "admin" },
+    { to: "/admin/billing", label: "구독·결제", icon: CreditCard, role: "admin" },
+    { to: "/admin/ai", label: "AI 설정", icon: Sparkles, role: "admin" },
   ] },
 ];
 

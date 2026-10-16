@@ -62,7 +62,8 @@ export default function AdminLoginPage() {
               )}
             </div>
             <div className="relative hidden bg-ground-3 md:block">
-              <img src="/img/home/hero.webp" alt="" className="absolute inset-0 size-full object-cover opacity-80 dark:brightness-[0.3] dark:grayscale" />
+              {/* 홈 히어로(hero.webp)는 왼쪽 42% 가 글자 자리 빈 면이라 세로 칸에선 빈 면·이음선이 보였다 → 그림 부분만 잘라 쓴다(2026-10-16) */}
+              <img src="/img/admin/login-v1.webp" alt="" className="absolute inset-0 size-full object-cover object-[58%_50%] dark:brightness-[0.3] dark:grayscale" />
             </div>
           </CardContent>
         </Card>

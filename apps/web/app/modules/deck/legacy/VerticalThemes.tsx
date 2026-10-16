@@ -27,7 +27,7 @@ export const VERTICAL_TONES: VerticalTone[] = [
 ];
 export const verticalStyleName = (id?: string | null) => VERTICAL_STYLES.find((t) => t.id === (id || "band"))?.name ?? "클래식 밴드";
 export const verticalToneName = (id?: string | null) => VERTICAL_TONES.find((t) => t.id === (id || "navy"))?.name ?? "네이비";
-const THUMB_V = 10;   // 10: 크게 보기에 견본 덱 전 쪽(p/1~37)을 더함(2026-10-16, 같은 렌더에서 뽑음)
+const THUMB_V = 11;   // 11: 목차 점선 가림 구조(R57)·로컬 DB 로 배경 다시 고름 · 10: 크게 보기에 견본 덱 전 쪽(p/1~37)을 더함(2026-10-16, 같은 렌더에서 뽑음)
 const PAGES = ["표지", "목차", "간지", "본문"];
 const thumb = (id: string, n: number) => `${import.meta.env.BASE_URL}vstyles/${id}/${n}.jpg?v=${THUMB_V}`;
 /** 견본 덱 전 쪽(public/vstyles/<id>/p/1~N.jpg) — 여섯 스타일이 같은 기획이라 쪽 구성이 같다. C 표지 · T 목차 · D 간지 · B 본문 */

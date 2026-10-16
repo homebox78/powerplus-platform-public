@@ -18,6 +18,8 @@ const SETS = {
   // 산업·기술 분야 키비주얼(왼쪽 글자 자리, 2752×1536) — 태그 json 에 set:"hero" 로 지정
   hero: { cat: "photo", set: "photo-hero-keyvisual", style: "hero-keyvisual-render", ko: ["키비주얼", "히어로", "배경", "메인비주얼", "AI이미지"], en: ["key visual", "hero", "background"] },
   // 3D 글래스 키비주얼(밝은 바탕·왼쪽 글자 자리·유리 질감 아이소메트릭) — set:"glasskv", 파일·키에 접두(옛 사진 키비주얼과 파일 이름이 같다)
+  // 회사소개서 테마 배경(2026-10-16 힉스필드 나노바나나 2.1, 1376×768 16:9, 파랑 계열 — 엔진이 톤 색조를 돌린다. 글자 없음, 왼쪽 글 자리) — set:"cpbg", 파일 CP1-<테마>-<역할>
+  cpbg: { cat: "illust", prefix: "cpbg-", set: "cp-bg-theme", style: "cp-bg-theme", ko: ["회사소개서", "배경", "장표배경", "키비주얼", "AI이미지"], en: ["company profile", "background", "slide background", "key visual"] },
   glasskv: { cat: "illust", prefix: "glasskv-", set: "illust-keyvisual-glass", style: "keyvisual-3d-glass", ko: ["키비주얼", "히어로", "메인비주얼", "배경", "3D", "글래스", "유리질감", "아이소메트릭", "AI이미지"], en: ["key visual", "hero", "background", "3d render", "glass", "isometric"] },
   // 공공사업 플랫 키비주얼(밝은 파랑 그라데이션·왼쪽 글자 자리·평면 인물 일러스트) — set:"flatkv"
   flatkv: { cat: "illust", prefix: "flatkv-", set: "illust-keyvisual-flat", style: "keyvisual-flat", ko: ["키비주얼", "히어로", "메인비주얼", "배경", "플랫", "평면일러스트", "인물", "공공사업", "제안서", "AI이미지"], en: ["key visual", "hero", "background", "flat illustration", "people", "public project"] },

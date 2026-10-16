@@ -364,13 +364,17 @@ return static function (Router $r): void {
             throw HttpError::invalid('한 번에 200개까지 바꿀 수 있습니다.');
         }
         $ph = implode(',', array_fill(0, count($ids), '?'));
-        $rows = Db::rows("SELECT id, public_id, visibility FROM asset_items WHERE deleted_at IS NULL AND public_id IN ({$ph})", $ids);
+        $rows = Db::rows("SELECT id, public_id, visibility, category FROM asset_items WHERE deleted_at IS NULL AND public_id IN ({$ph})", $ids);
         $changed = 0;
         $skipped = 0;
         $blocked = 0;
         foreach ($rows as $x) {
             if ($x['visibility'] === $to) {
                 $skipped++;
+                continue;
+            }
+            if ($x['category'] === 'ppt' && $to !== 'internal') {   // 장표는 영구 임직원 전용 — 일괄 변경에서도 넓히지 않는다(사용자 2026-10-16)
+                $blocked++;
                 continue;
             }
             // 개인 소유(private)를 internal 로 바꾸면 오히려 넓어진다 — curator 는 손대지 못한다
@@ -1048,6 +1052,9 @@ return static function (Router $r): void {
         if (!$a->isAdmin() && $vis !== 'internal') {
             throw HttpError::forbidden('큐레이터는 사내 전용(internal)으로만 등록할 수 있습니다.');
         }
+        if ($cat === 'ppt' && $vis !== 'internal') {   // 장표(실제 제안서)는 영구 임직원 전용 — 관리자도 못 넓힌다(사용자 2026-10-16)
+            throw HttpError::forbidden('장표(ppt)는 임직원 전용(internal)으로만 둘 수 있습니다.');
+        }
         $f = $_FILES['file'] ?? null;
         if (!$f || ($f['error'] ?? 1) !== UPLOAD_ERR_OK) {
             throw HttpError::invalid('파일(file)을 보내 주세요.', 'file');
@@ -1222,8 +1229,14 @@ return static function (Router $r): void {
                 if (!$a->isAdmin() && ($v !== 'internal' || $x['visibility'] === 'private')) {
                     throw HttpError::forbidden('큐레이터는 사내 전용(internal)으로 올리기만 할 수 있습니다.');
                 }
+                if (($after['category'] ?? $x['category']) === 'ppt' && $v !== 'internal') {   // 장표는 영구 임직원 전용(사용자 2026-10-16)
+                    throw HttpError::forbidden('장표(ppt)는 임직원 전용(internal)으로만 둘 수 있습니다.');
+                }
                 $set[] = 'visibility = ?'; $args[] = $v; $before['visibility'] = $x['visibility']; $after['visibility'] = $v;
             }
+        }
+        if (($after['category'] ?? null) === 'ppt' && ($after['visibility'] ?? $x['visibility']) !== 'internal') {   // 분류를 ppt 로 바꾸면 범위도 internal 로
+            $set[] = 'visibility = ?'; $args[] = 'internal'; $before['visibility'] = $x['visibility']; $after['visibility'] = 'internal';
         }
         if (array_key_exists('ai', $b)) {
             $v = !empty($b['ai']) ? 1 : 0;

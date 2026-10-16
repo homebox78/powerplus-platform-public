@@ -57,7 +57,7 @@
     {
       "id": "b",
       "name": "데이터 실사 합성",
-      "samples": 4,
+      "samples": 6,
       "desc": "밝은 하이키 실사 한 장면에 코발트·시안 데이터 빛을 합성한 표지 — 왼쪽 40% 는 글 자리, 목차·간지도 같은 밝은 실사(배경은 나노바나나, 글은 엔진 서체)",
       "fits": "공공 SI 제안서·제안설명회",
       "bg": "a clean white (or very light blue-white) background",
@@ -127,7 +127,7 @@
     {
       "id": "c",
       "name": "헥사곤 포토",
-      "samples": 4,
+      "samples": 6,
       "desc": "육각형으로 자른 실사 사진 묶음 표지 · 밝은 바탕에 육각 사진과 오른쪽 글의 목차·간지",
       "fits": "공공 SI 제안서·제안설명회",
       "bg": "a clean white (or very light blue-white) background",
@@ -192,7 +192,7 @@
     {
       "id": "d",
       "name": "스튜디오 포토",
-      "samples": 4,
+      "samples": 6,
       "desc": "옅은 페리윙클 스튜디오 실사 — 흰 책상 위 사업 모형·기기와 젖빛 유리 패널, 같은 톤의 목차·간지",
       "fits": "공공 SI 제안서·제안설명회",
       "bg": "a clean white (or very light blue-white) background",
@@ -262,7 +262,7 @@
     {
       "id": "e",
       "name": "아이소메트릭 3D",
-      "samples": 4,
+      "samples": 6,
       "desc": "밝은 회백색 바닥 위 파랑 아크릴·흰 플라스틱 미니어처(주황 점 포인트) — 글자 자리를 비운 라이트 3D 표지 · 같은 재질의 목차·간지·본문 그림",
       "fits": "공공 SI 제안서·제안설명회",
       "bg": "a clean white (or very light blue-white) background",
@@ -331,7 +331,7 @@
     {
       "id": "f",
       "name": "딥 컬러 선화",
-      "samples": 4,
+      "samples": 6,
       "desc": "짙은 코발트 단색 바탕에 가는 선 일러스트 표지 · 차분한 흰 목차·간지",
       "fits": "공공 SI 제안서·제안설명회",
       "bg": "a clean white (or very light blue-white) background",

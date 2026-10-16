@@ -15,7 +15,7 @@ import { useMobileSections } from "@/components/hb/mobile-sections";
 import { cn } from "@/lib/utils";
 import type { Route } from "./+types/admin-search";
 
-export const meta: Route.MetaFunction = () => [{ title: "검색 품질 — powerPlus 관리자" }];
+export const meta: Route.MetaFunction = () => [{ title: "검색 통계 — powerPlus 관리자" }];
 
 const DAYS = [{ id: "7", label: "7일" }, { id: "30", label: "30일" }, { id: "90", label: "90일" }];
 const chartConfig = { zero_rate: { label: "무결과율(%)", color: "var(--color-point, #E46B37)" }, total: { label: "검색 수", color: "var(--color-chart)" } } satisfies ChartConfig;
@@ -34,7 +34,7 @@ export default function AdminSearch() {
   const ms = useMobileSections("보기", [{ value: "daily", label: "일별" }, { value: "top", label: "인기" }, { value: "zero", label: "무결과" }]);
   return (
     <div>
-      <AdminTitle title="검색 품질" desc="사용자가 무엇을 찾고 무엇을 못 찾는지 봅니다. 무결과 검색어가 곧 다음에 만들 에셋 목록입니다." />
+      <AdminTitle title="검색 통계" desc="사용자가 무엇을 찾고 무엇을 못 찾는지 봅니다. 무결과 검색어가 곧 다음에 만들 에셋 목록입니다." />
       <div className="mt-7 flex flex-wrap items-center gap-2">
         <ChoiceButton size="sm" label="기간" value={String(days)} onChange={(v) => set({ days: v === "30" ? "" : v })} options={DAYS} allLabel="30일" />
         {s && <span className="ml-auto text-sm text-ink-4">채널 {Object.entries(s.channels).map(([k, n]) => `${k} ${n.toLocaleString()}`).join(" · ") || "—"}</span>}

@@ -2020,39 +2020,57 @@ class Build:
                 ph._element.getparent().remove(ph._element)
             # 줄마다 상자 하나씩 — 장 이름·쪽번호·점선이 같은 줄 가운데(y)에 선다. 상자 두 개에 문단을 흘려 넣으면
             # 렌더러·서체마다 첫 줄 기준선이 달라 쪽번호·점선이 글과 어긋났다(10-15 사용자 '텍스트랑 우측 페이지랑 수평이 안 맞고 라인도')
-            def put(tmpl_box, p_el, row):
+            # 점선은 글 길이와 상관없이 같은 폭(글 시작 ~ 쪽번호 끝)으로 깔고, 글·쪽번호 상자에 흰 바탕 + 좌우 여백을 줘서
+            # 위에서 가린다 — 사용자가 글만 고쳐도 상자가 글 폭을 따라가(wrap none + spAutoFit) 점선 길이를 다시 맞출 일이 없다(10-16)
+            x_dot0 = vis_left(it_box)
+            x_dot1 = abs_box(pg_box)[0] + abs_box(pg_box)[2] - _lins(pg_box)   # 쪽번호 오른쪽 끝(오른쪽 정렬 기준)
+
+            def put(tmpl_box, p_el, row, txt, right=None):
                 e = copy.deepcopy(tmpl_box._element)
                 body = e.find(".//p:txBody", NS)
                 for x in body.findall("a:p", NS):
                     body.remove(x)
                 _one_line(p_el)
+                p_el.find("a:pPr", NS).set("algn", "r" if right else "l")   # 글이 늘면 점선 쪽(안쪽)으로 자란다
                 body.append(p_el)
                 bp = body.find("a:bodyPr", NS)
                 bp.set("anchor", "ctr"); bp.set("tIns", "0"); bp.set("bIns", "0")
+                bp.set("lIns", str(int(Cm(TOC_PAD)))); bp.set("rIns", str(int(Cm(TOC_PAD if right else TOC_PAD - 0.1)))); bp.set("wrap", "none")   # 글 쪽은 점선 끊김 자리(평균 0.1)만큼 덜어 양쪽 틈을 같게
                 for k in list(bp):
                     if k.tag.endswith("Autofit") or k.tag.endswith("AutoFit"):
                         bp.remove(k)
-                bp.append(bp.makeelement(f"{{{A}}}noAutofit", {}))
+                bp.insert(0, bp.makeelement(f"{{{A}}}spAutoFit", {}))
+                sp = e.find("p:spPr", NS)
+                for f in sp.findall("a:noFill", NS) + sp.findall("a:solidFill", NS):
+                    sp.remove(f)
+                fill = sp.makeelement(f"{{{A}}}solidFill", {})
+                fill.append(fill.makeelement(f"{{{A}}}srgbClr", {"val": "FFFFFF"}))
+                sp.find("a:prstGeom", NS).addnext(fill)
+                # 'Ⅰ' 는 서체에 없어 대체 글꼴로 그려진다 — 라틴 I 로 재고 대체 글꼴 옆 여백(0.15)을 더해야 실제 폭에 맞는다(PowerPoint 실측)
+                w = text_cm(txt.translate(ROMAN_LATIN), 14) + (0.15 if txt != txt.translate(ROMAN_LATIN) else 0) + 2 * TOC_PAD - (0 if right else 0.1)
+                x = (right - TOC_PAD - (w - 2 * TOC_PAD)) if right else (x_dot0 - TOC_PAD)
+                e.find(".//a:off", NS).set("x", str(int(Cm(x))))
                 e.find(".//a:off", NS).set("y", str(int(Cm(TOC_Y0 + row * TOC_PITCH - TOC_PITCH / 2))))
+                e.find(".//a:ext", NS).set("cx", str(int(Cm(w))))
                 e.find(".//a:ext", NS).set("cy", str(int(Cm(TOC_PITCH))))
                 s.shapes._spTree.append(e)
             row = 0
             for gi, (l1, l2s) in enumerate(groups):
                 if gi:
                     row += 1
-                put(it_box, _para(P_L1, [l1[0], l1[1]]), row)
+                put(it_box, _para(P_L1, [l1[0], l1[1]]), row, l1[0] + l1[1])
                 row += 1
                 for t2, pno in l2s:
-                    put(it_box, _para(P_L2, ["    ", t2]), row)
-                    if pno:
-                        put(pg_box, _para(P_PG, [pno]), row)
-                        x1 = vis_left(it_box) + 0.2 + text_cm("    " + t2, 14) + 0.45   # 점선은 글 끝에서(목록 상자 위치를 따라간다) — 서버 캡처(LibreOffice)는 '·' 둘레가 넓어 글이 길게 그려져 0.25 로는 붙었다
+                    if pno:   # 점선을 먼저 깔아 글·쪽번호 상자 밑에 둔다
                         e = copy.deepcopy(line)
-                        e.find(".//a:off", NS).set("x", str(int(Cm(x1))))
-                        e.find(".//a:off", NS).set("y", str(int(Cm(TOC_Y0 + row * TOC_PITCH))))   # 줄 상자 가운데와 같은 y
-                        e.find(".//a:ext", NS).set("cx", str(int(Cm(max(0.3, 15.25 - x1)))))
+                        e.find(".//a:off", NS).set("x", str(int(Cm(x_dot0))))
+                        e.find(".//a:off", NS).set("y", str(int(Cm(TOC_Y0 + row * TOC_PITCH))))   # 줄 상자 가운데와 같은 y(실측: 점선·글·쪽번호 가운데 차 0~0.5px)
+                        e.find(".//a:ext", NS).set("cx", str(int(Cm(x_dot1 - x_dot0))))
                         e.find(".//a:ext", NS).set("cy", "0")
                         s.shapes._spTree.append(e)
+                    put(it_box, _para(P_L2, ["    ", t2]), row, "    " + t2)
+                    if pno:
+                        put(pg_box, _para(P_PG, [pno]), row, pno, right=x_dot1)
                     row += 1
             made.append(s)
         return made
@@ -2151,6 +2169,8 @@ def _para(tmpl, parts):
 
 
 TOC_PITCH = 0.893   # 목차 한 줄 높이(cm) — 점선도 이 간격으로 놓는다
+TOC_PAD = 0.4       # 목차 글·쪽번호 상자 좌우 여백(cm, 약 15px) — 흰 바탕이 점선을 이만큼 더 가려 글과 점선 사이가 뜬다
+ROMAN_LATIN = str.maketrans({"Ⅰ": "I", "Ⅱ": "II", "Ⅲ": "III", "Ⅳ": "IV", "Ⅴ": "V", "Ⅵ": "VI", "Ⅶ": "VII", "Ⅷ": "VIII", "Ⅸ": "IX", "Ⅹ": "X"})
 TOC_Y0 = 5.72       # 첫 줄 가운데 y(cm) — 견본 목록 상자(top 5.16 + 안쪽 여백 0.127)의 첫 줄 가운데. 줄 상자·쪽번호·점선이 모두 이 y 를 쓴다
 
 

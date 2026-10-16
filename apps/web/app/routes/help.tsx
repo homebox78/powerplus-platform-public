@@ -1,9 +1,9 @@
 // 출처: homebox-handoff apps/web/app/routes/help.tsx — 카테고리 아이콘을 powerPlus 분류(시작·에셋·장표·목업·가이드·계정)로, 히어로 #111 을 토큰 bg-dark 로, 문서 카드 흰 바탕에 다크 모드 대응, 제목 powerPlus
-import { MobileCarousel } from "@/components/hb/mobile-carousel";
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useParams } from "react-router";
 import { BookOpenText, Boxes, Bot, ChevronRight, FileSliders, KeyRound, Rocket, Search, ThumbsDown, ThumbsUp } from "lucide-react";
+import { MobileCarousel } from "@/components/hb/mobile-carousel";
 // 카테고리별 아이콘 — 모듈 아이콘(modules.ts)과 같은 모양
 const CAT_ICON: Record<string, typeof Rocket> = { start: Rocket, assets: Boxes, deck: FileSliders, mock: Bot, guide: BookOpenText, account: KeyRound };
 import { toast } from "sonner";

@@ -1,8 +1,8 @@
 // 출처: homebox-handoff apps/web/app/components/hb/app-header.tsx — 주 메뉴를 플랫폼 모듈 4종으로, 계정 메뉴를 §8 마이페이지 구조로
-import { BrandName } from "@/components/hb/brand-name";
 import { FileSliders, KeyRound, LayoutTemplate, PlusCircle, Search, Settings, ShieldCheck } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { Link, NavLink, useLocation, useNavigate } from "react-router";
+import { BrandName } from "@/components/hb/brand-name";
 import { NotificationBell } from "@/components/hb/notification-bell";
 import { ThemeSwitch } from "@/components/hb/theme-switch";
 import { SearchInput } from "@/components/hb/search-input";

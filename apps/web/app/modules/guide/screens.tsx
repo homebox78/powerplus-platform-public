@@ -17,11 +17,10 @@ import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { CHANGELOG_MODULES, fetchChangelog, type ChangelogEntry, type ChangelogModule } from "@/lib/admin";
+import { useMe } from "@/lib/auth";
 import { DOWNLOADS } from "./downloads";
 import { ComponentArt } from "./component-art";
 import { applyChecklist, applyItems, applyMetas, useGuideOverrides } from "./overrides";
-import { useMe } from "@/lib/auth";
-
 import { KRDS_CATEGORIES, KRDS_COMPONENTS, type KrdsComponent } from "./data/krds";
 import { KRDS_PATTERNS } from "./data/krds-patterns";
 import report from "./data/krds-report.json";

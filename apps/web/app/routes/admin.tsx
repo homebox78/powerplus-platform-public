@@ -1,12 +1,12 @@
 // 관리자 대시보드 — 기획 §9.2. 구조는 shadcn blocks dashboard-01(KPI 카드 4 → 추이 카드(기간 토글+AreaChart) → Tabs+DataTable)을 따르고,
 // 지표는 옛 파워플러스 관리자(UsageService::analytics)에서 살아남은 것만: 핵심 3지표·추이·요일×시간·카테고리 실사용·인기 에셋·활발한 사용자·최근 삽입.
 // 데이터 = GET /admin/stats(합계·감사 로그) + GET /admin/analytics(분석, 한 번). 가드는 admin-layout.tsx. 색은 무채색, 주황(point)은 추세 배지 한 곳만.
-import { SegTabs } from "@/components/hb/seg-tabs";
 import { useQuery } from "@tanstack/react-query";
 import { AlertTriangle, ArrowRight, Columns3, MoreHorizontal, TrendingDown, TrendingUp } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Link } from "react-router";
 import { Area, AreaChart, Bar, BarChart, CartesianGrid, Cell, Label, Line, LineChart, Pie, PieChart, XAxis, YAxis } from "recharts";
+import { SegTabs } from "@/components/hb/seg-tabs";
 import { Copy } from "@/components/hb/copy";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";

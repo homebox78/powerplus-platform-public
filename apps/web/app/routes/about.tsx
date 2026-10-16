@@ -1,7 +1,7 @@
 // 출처: homebox-handoff apps/web/app/routes/about.tsx — 관공서 레퍼런스 소개 → powerPlus(SI 실무자의 올인원) 소개로. 수집 규모 숫자는 빼고 모듈 4종(modules.ts)과 원칙·운영 주체(㈜솔리데오)로 다시 썼다.
+import { Link } from "react-router";
 import { MobileCarousel } from "@/components/hb/mobile-carousel";
 import { BrandName } from "@/components/hb/brand-name";
-import { Link } from "react-router";
 import { Copy } from "@/components/hb/copy";
 import { Button } from "@/components/ui/button";
 import { MODULES } from "@/lib/modules";

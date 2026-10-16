@@ -1,12 +1,12 @@
 // 출처: homebox-handoff apps/web/app/routes/account-billing.tsx — 요금제·결제(현재 플랜·다음 결제일·해지 + 플랜 카드 + 청구서)를
 // 플랫폼 /api/v1/billing 으로 옮기고 결제 수단·해지 철회·플랜 변경·크레딧 묶음 구매를 더했다.
 // 노출: billing.visible 플래그(지금은 superadmin 만, 기획 §12.3). 결제 키가 없어도 화면은 다 보이고, 결제 버튼만 "결제 키 미설정"으로 멈춘다.
-import { BrandName } from "@/components/hb/brand-name";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { AlertCircle, CreditCard, ReceiptText, ShieldCheck } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link, useSearchParams } from "react-router";
 import { toast } from "sonner";
+import { BrandName } from "@/components/hb/brand-name";
 import { confirmToast, toastError } from "@/components/hb/confirm";
 import { Copy, MBr } from "@/components/hb/copy";
 import { MobileCarousel } from "@/components/hb/mobile-carousel";

@@ -3,9 +3,9 @@
 //   [로고] / [슬로건]   [소개 | 도움말 | 이용약관 | 개인정보처리방침] / [주소·대표·전화] / [카피라이트]
 // 모바일(768 미만, 사용자 2026-10-10): 로고+짧은 슬로건 한 줄 → 링크 | 구분 한 줄 → 회사·대표·전화 / 주소 두 줄 → © 한 줄
 // 문의·삭제요청은 화면 우측 하단 문의 아이콘(scroll-top.tsx)에서, 모듈·커뮤니티는 헤더 메뉴에서 간다. 통신판매업 등 결제 법정 표기는 billing.visible 공개 결정 뒤(기획 §17.2-③)
+import { Link } from "react-router";
 import { BrandName } from "@/components/hb/brand-name";
 import { MBr } from "@/components/hb/copy";
-import { Link } from "react-router";
 import { OPERATOR } from "@/lib/docs-content";
 
 const LINKS: Array<[string, string]> = [["소개", "/about"], ["도움말", "/help"], ["문서", "/docs"], ["이용약관", "/legal/terms"], ["개인정보처리방침", "/legal/privacy"]];

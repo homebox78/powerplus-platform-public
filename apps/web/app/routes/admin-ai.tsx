@@ -1,10 +1,10 @@
 // 관리자 · AI 설정 — 모든 솔루션의 AI 를 한 곳에서(사용자 지시 2026-10-07: "AI 설정은 따로 설정 메뉴로, 각 솔루션의 AI 를 통합 컨트롤, Jev 도").
 // 새로 씀. 서버: api/routes/admin_ai.php. powerDeck 키·모델·한도는 새로 만들지 않고 기존 장표 설정 화면(DeckSettingsScreen engine)을 그대로 끼운다.
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { LiveStatus } from "@/components/hb/live-status";
 import { useState } from "react";
 import { Link } from "react-router";
 import { toast } from "sonner";
+import { LiveStatus } from "@/components/hb/live-status";
 import { AdminTitle, RowSwitch, SortHead, useSort } from "@/components/admin/admin-ui";
 import { toastError } from "@/components/hb/confirm";
 import { Button } from "@/components/ui/button";

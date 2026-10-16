@@ -1,9 +1,9 @@
 // 겹쳐서 보기(원본·시안 비교 손잡이) — 출처: powerDeck web/src/screens/Review.tsx (옛 화면 그대로 이식, eslint.config.js legacy 구역).
 import { useRef, useState } from "react";
-import { api, fileUrl, fmtSize, type Job } from "../api";
-import { cn, JobHeader, Ms, ask, useToastOn } from "../ui";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { PaneToggle, usePane } from "@/components/hb/work-space";
+import { api, fileUrl, fmtSize, type Job } from "../api";
+import { cn, JobHeader, Ms, ask, useToastOn } from "../ui";
 
 /** 겹쳐서 보기 — 가운데 손잡이를 끌어 원본과 시안을 비교한다. 한쪽만 있으면 그 그림만 */
 function Overlay({ before, after }: { before?: string; after?: string }) {

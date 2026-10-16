@@ -1,6 +1,6 @@
 import { Search } from "lucide-react";
-import { MBr } from "@/components/hb/copy";
 import { Link, useLocation, useNavigate } from "react-router";
+import { MBr } from "@/components/hb/copy";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useMe } from "@/lib/auth";

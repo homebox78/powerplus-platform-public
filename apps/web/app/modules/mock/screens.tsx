@@ -2,13 +2,12 @@
 // 출처: homebox-handoff apps/web/app/routes/gallery.tsx(갤러리 2열 그리드·순위·포인트 안내·공유 창·sandbox iframe) 를 REST v1·module.tsx 틀로.
 // 기획 §20: 수집 레퍼런스 탐색은 공개하지 않는다 — 여기엔 사용자 산출물(시안)만. 제작·판정은 MCP(powerMCP) 가 하고 이 화면은 결과를 본다.
 import { ArrowLeft, Copy as CopyIcon, ExternalLink, Eye, Heart, Layers, Lock, MoreHorizontal, Share2, Trash2, Trophy } from "lucide-react";
-import { MobileCarousel } from "@/components/hb/mobile-carousel";
-import { WireframeScreen } from "./wireframe";
-import { MockupPreview } from "@/components/hb/mockup-preview";
 import { useEffect, useState } from "react";
 import { Link, useSearchParams } from "react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
+import { MobileCarousel } from "@/components/hb/mobile-carousel";
+import { MockupPreview } from "@/components/hb/mockup-preview";
 import { BulkBar, SelectAllCell, SelectCell, useSelection } from "@/components/admin/admin-ui";
 import { ChoiceButton } from "@/components/hb/choice-button";
 import { confirmToast, toastError } from "@/components/hb/confirm";
@@ -34,6 +33,7 @@ import { useMe } from "@/lib/auth";
 import { useIsSaved } from "@/lib/saved";
 import { fmtDate, galleryQuery, leadersQuery, myMockupsQuery, pointsQuery, useGalleryDetail, useMockMutations, type GalleryItem, type MockupCheck, type MockupItem } from "@/lib/mock";
 import { cn } from "@/lib/utils";
+import { WireframeScreen } from "./wireframe";
 
 const SORT_KO = { popular: "인기순", new: "최신순", score: "점수순" } as const;
 const DEVICE_KO = { pc: "PC", mobile: "모바일" } as const;

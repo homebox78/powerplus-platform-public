@@ -2,10 +2,10 @@
 // 짜임: 히어로 → 모듈별 "이렇게 요청하면 → 이 도구가 → 이렇게 돌려줍니다" → 연결 방법(도구 6종 선택) → 도구 표 → 키 안내.
 // 도구 표는 손으로 쓰지 않는다 — packages/mcp/scripts/gen-tools.mjs 가 registerTool 호출에서 만든 data/mcp-tools.json.
 // 연결 문구는 계정 키 화면과 같은 lib/mcp-connect 를 쓴다(출처: routes/account-keys.tsx·docs-mcp.tsx 를 합침).
-import { MobileCarousel } from "@/components/hb/mobile-carousel";
 import { ArrowDown, ArrowRight, KeyRound } from "lucide-react";
 import { useState } from "react";
 import { Link } from "react-router";
+import { MobileCarousel } from "@/components/hb/mobile-carousel";
 import { AI_CLIENTS, AiClientIcon, type AiClientId } from "@/components/hb/ai-client-icons";
 import { BrandName } from "@/components/hb/brand-name";
 import { CodeBlock } from "@/components/hb/code-block";

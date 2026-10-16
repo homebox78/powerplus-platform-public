@@ -24,6 +24,8 @@ const GROUPS = [
   { set: "vp-bg-photo", style: "vp-bg-photo", cat: "photo", like: ["docphoto:VP1-%"], tag: "실사" },
   { set: "vp-bg-3d", style: "vp-bg-3d", cat: "photo", like: ["docphoto:VP2-%"], tag: "3D" },
   { set: "vp-bg-dark", style: "vp-bg-dark", cat: "photo", like: ["docphoto:VP3-%"], tag: "다크" },
+  // 2026-10-16 HV1-* (밝은 바탕 유리 질감 아이소메트릭, 3000×5375) — VP2 하얀 렌더와 화풍이 달라 따로
+  { set: "vp-bg-glass", style: "vp-bg-glass", cat: "illust", like: ["docphoto:glasskv-HV1-%"], tag: "유리" },
 ];
 
 const touched = new Set();
@@ -49,6 +51,6 @@ for (const g of GROUPS) {
     ids.flatMap((id) => [id, g.style, "ko", "style", id, g.tag.toLowerCase(), "ko", "kw"]));
 }
 if (!DRY) for (const sid of touched) await db.query("UPDATE asset_sets SET item_count = (SELECT COUNT(*) FROM asset_items WHERE set_id = ? AND deleted_at IS NULL) WHERE id = ?", [sid, sid]);
-const [cnt] = await db.query("SELECT s.name, s.item_count FROM asset_sets s WHERE s.name IN ('vp-bg-photo','vp-bg-3d','vp-bg-dark','photo-hero-keyvisual','photo-section-keyvisual')");
+const [cnt] = await db.query("SELECT s.name, s.item_count FROM asset_sets s WHERE s.name IN ('vp-bg-photo','vp-bg-3d','vp-bg-dark','vp-bg-glass','illust-keyvisual-glass','photo-hero-keyvisual','photo-section-keyvisual')");
 console.log(DRY ? "[DRY]" : "완료", cnt.map((c) => `${c.name} ${c.item_count}`).join(" · "));
 await db.end();

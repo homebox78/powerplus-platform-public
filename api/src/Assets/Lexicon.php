@@ -130,12 +130,21 @@ final class Lexicon
     /** 오타로 보이는 낱말을 실제 낱말로. 고칠 게 없거나 아는 말이면 null. */
     public static function correct(string $token): ?string
     {
-        // 영문 약어·영문 낱말(PUE·GPU·HTML)은 고치지 않는다 — "PUE"가 "due"로 바뀌어 엉뚱한 결과가 나왔다(2026-10-12 MCP 시험 r1).
-        // 오타 교정은 자모로 재는 한글 낱말에만 의미가 있다.
-        if (preg_match('/^[A-Za-z0-9._+-]+$/', trim($token))) {
-            return null;
-        }
         $t = mb_strtolower(trim($token));
+        // 한/영 전환을 잊고 친 말("qhdks"→보안, "치ㅐㅕㅇ"→cloud) — 바꾼 말이 아는 말과 똑같을 때만(2026-10-16 사용자 "오타로도 검색")
+        $swap = self::keyboardSwap($t);
+        if ($swap !== null) {
+            return $swap;
+        }
+        // 영문은 5자 이상 낱말만 철자 교정(secuirty→security). 약어(PUE·GPU·HTML)는 고치지 않는다 —
+        // "PUE"가 "due"로 바뀌어 엉뚱한 결과가 나왔다(2026-10-12 MCP 시험 r1).
+        if (preg_match('/^[a-z0-9._+-]+$/', $t)) {
+            return preg_match('/^[a-z]{5,}$/', $t) ? self::correctLatin($t) : null;
+        }
+        // 초성만 친 말("ㅂㅇ"→보안) — 같은 글자 수의 아는 말 중 초성이 같고 가장 많이 쓰인 것
+        if (preg_match('/^[ㄱ-ㅎ]{2,6}$/u', $t)) {
+            return self::fromChoseong($t);
+        }
         $len = mb_strlen($t);
         if ($len < 2 || $len > 10 || isset(self::SYNONYMS[$t])) {
             return null;   // 동의어 사전에 있는 말은 아는 말 — "지피유"를 엉뚱한 태그로 고치지 않는다
@@ -172,6 +181,163 @@ final class Lexicon
                 $best = $w;
                 $bestD = $d;
                 $bestN = (int) $n;
+            }
+        }
+        return $best;
+    }
+
+    /** 두벌식 자판: 영문 키 → 한글 자모(소문자로 받으므로 쌍자음·ㅒㅖ 는 shift 없이 못 친다 — 그런 말은 교정이 이어서 본다) */
+    private const KEY_JAMO = [
+        'q' => 'ㅂ', 'w' => 'ㅈ', 'e' => 'ㄷ', 'r' => 'ㄱ', 't' => 'ㅅ', 'y' => 'ㅛ', 'u' => 'ㅕ', 'i' => 'ㅑ', 'o' => 'ㅐ', 'p' => 'ㅔ',
+        'a' => 'ㅁ', 's' => 'ㄴ', 'd' => 'ㅇ', 'f' => 'ㄹ', 'g' => 'ㅎ', 'h' => 'ㅗ', 'j' => 'ㅓ', 'k' => 'ㅏ', 'l' => 'ㅣ',
+        'z' => 'ㅋ', 'x' => 'ㅌ', 'c' => 'ㅊ', 'v' => 'ㅍ', 'b' => 'ㅠ', 'n' => 'ㅜ', 'm' => 'ㅡ',
+    ];
+    /** 겹모음·겹받침 = 자판 두 번 */
+    private const JUNG_PAIR = ['ㅘ' => 'ㅗㅏ', 'ㅙ' => 'ㅗㅐ', 'ㅚ' => 'ㅗㅣ', 'ㅝ' => 'ㅜㅓ', 'ㅞ' => 'ㅜㅔ', 'ㅟ' => 'ㅜㅣ', 'ㅢ' => 'ㅡㅣ'];
+    private const JONG_PAIR = ['ㄳ' => 'ㄱㅅ', 'ㄵ' => 'ㄴㅈ', 'ㄶ' => 'ㄴㅎ', 'ㄺ' => 'ㄹㄱ', 'ㄻ' => 'ㄹㅁ', 'ㄼ' => 'ㄹㅂ', 'ㄽ' => 'ㄹㅅ', 'ㄾ' => 'ㄹㅌ', 'ㄿ' => 'ㄹㅍ', 'ㅀ' => 'ㄹㅎ', 'ㅄ' => 'ㅂㅅ'];
+    /** 쌍자음 = 같은 키 shift — 소문자로 받으니 ㄲ 은 r 로 친다고 본다 */
+    private const DOUBLE_KEY = ['ㄲ' => 'r', 'ㄸ' => 'e', 'ㅃ' => 'q', 'ㅆ' => 't', 'ㅉ' => 'w', 'ㅒ' => 'o', 'ㅖ' => 'p'];
+
+    /**
+     * 한/영 전환을 잊고 친 말을 바꿔 본다. 바꾼 말이 아는 말(태그 사전·동의어)일 때만 돌려준다 — 멀쩡한 영어를 한글로 바꾸지 않게
+     * 원문이 아는 말이면 손대지 않는다. 영문→한글("qhdks"→보안), 한글→영문("치ㅐㅕㅇ"→cloud) 둘 다.
+     */
+    private static function keyboardSwap(string $t): ?string
+    {
+        if (mb_strlen($t) < 2 || self::known($t)) {
+            return null;
+        }
+        if (preg_match('/^[a-z]+$/', $t)) {
+            $jamo = [];
+            foreach (str_split($t) as $ch) {
+                $jamo[] = self::KEY_JAMO[$ch];
+            }
+            $h = self::composeJamo($jamo);
+            return preg_match('/^\p{Hangul}+$/u', $h) && mb_strlen($h) >= 2 && self::known($h) ? $h : null;
+        }
+        if (preg_match('/^[\x{3131}-\x{3163}\x{AC00}-\x{D7A3}]+$/u', $t)) {
+            $keyOf = array_flip(self::KEY_JAMO) + self::DOUBLE_KEY;
+            $out = '';
+            foreach (self::jamo($t) as $j) {
+                $parts = self::JUNG_PAIR[$j] ?? self::JONG_PAIR[$j] ?? $j;
+                foreach (mb_str_split($parts) as $p) {
+                    if (!isset($keyOf[$p])) {
+                        return null;
+                    }
+                    $out .= $keyOf[$p];
+                }
+            }
+            return strlen($out) >= 3 && isset(self::dict()[$out]) ? $out : null;
+        }
+        return null;
+    }
+
+    /** 자모 나열을 두벌식 입력기처럼 음절로 묶는다(ㅂㅗㅇㅏㄴ → 보안, 받침이 다음 모음을 만나면 넘어간다) */
+    private static function composeJamo(array $jamo): string
+    {
+        $isV = static fn(string $j): bool => in_array($j, self::JUNG, true);
+        $jungPair = array_flip(self::JUNG_PAIR);
+        $jongPair = array_flip(self::JONG_PAIR);
+        $out = '';
+        [$cho, $jung, $jong] = ['', '', ''];
+        $flush = static function () use (&$out, &$cho, &$jung, &$jong): void {
+            if ($cho !== '' && $jung !== '') {
+                $out .= mb_chr(0xAC00 + array_search($cho, self::CHO, true) * 588 + array_search($jung, self::JUNG, true) * 28 + (int) array_search($jong, self::JONG, true), 'UTF-8');
+            } else {
+                $out .= $cho . $jung . $jong;
+            }
+            [$cho, $jung, $jong] = ['', '', ''];
+        };
+        foreach ($jamo as $j) {
+            if (!$isV($j)) {
+                if ($jung === '') {
+                    if ($cho !== '') {
+                        $flush();
+                    }
+                    $cho = $j;
+                } elseif ($jong === '' && in_array($j, self::JONG, true) && $cho !== '') {
+                    $jong = $j;
+                } elseif ($jong !== '' && isset($jongPair[$jong . $j])) {
+                    $jong = $jongPair[$jong . $j];
+                } else {
+                    $flush();
+                    $cho = $j;
+                }
+                continue;
+            }
+            if ($jong !== '') {
+                // 받침이 다음 모음의 첫소리로 넘어간다(겹받침이면 뒤 글자만)
+                $pair = self::JONG_PAIR[$jong] ?? null;
+                $next = $pair !== null ? mb_substr($pair, 1, 1) : $jong;
+                $jong = $pair !== null ? mb_substr($pair, 0, 1) : '';
+                $flush();
+                [$cho, $jung] = [$next, $j];
+            } elseif ($jung !== '' && isset($jungPair[$jung . $j])) {
+                $jung = $jungPair[$jung . $j];
+            } elseif ($cho !== '' && $jung === '') {
+                $jung = $j;
+            } else {
+                $flush();
+                $jung = $j;
+            }
+        }
+        $flush();
+        return $out;
+    }
+
+    /** 영문 철자 교정 — 영문 키워드 태그(n≥2)와 글자 편집거리(5~6자 1, 7자 이상 2). 아는 말·아는 말의 조각이면 고치지 않는다. */
+    private static function correctLatin(string $t): ?string
+    {
+        $dict = self::dict();
+        if (isset($dict[$t]) || isset(self::SYNONYMS[$t])) {
+            return null;
+        }
+        $len = strlen($t);
+        $cap = $len <= 6 ? 1 : 2;
+        $tc = str_split($t);
+        $best = null;
+        $bestD = $cap + 1;
+        $bestN = 0;
+        foreach ($dict as $w => $n) {
+            $w = (string) $w;
+            if (!preg_match('/^[a-z]+$/', $w)) {
+                continue;
+            }
+            if (str_contains($w, $t)) {
+                return null;   // 아는 말의 조각(secur ⊂ security)은 부분 일치로 이미 찾는다
+            }
+            if (abs(strlen($w) - $len) > $cap || strlen($w) < 4) {
+                continue;
+            }
+            $d = self::dist($tc, str_split($w), $cap);
+            if ($d <= $cap && ($d < $bestD || ($d === $bestD && $n > $bestN))) {
+                [$best, $bestD, $bestN] = [$w, $d, (int) $n];
+            }
+        }
+        return $best;
+    }
+
+    /** 초성 검색 — 같은 글자 수의 한글 태그 중 초성이 같은 것, 가장 많이 쓰인 것 하나 */
+    private static function fromChoseong(string $t): ?string
+    {
+        $len = mb_strlen($t);
+        $best = null;
+        $bestN = 0;
+        foreach (self::dict() as $w => $n) {
+            $w = (string) $w;
+            if (mb_strlen($w) !== $len || !preg_match('/^\p{Hangul}+$/u', $w) || $n <= $bestN) {
+                continue;
+            }
+            $ini = '';
+            foreach (mb_str_split($w) as $ch) {
+                $code = mb_ord($ch, 'UTF-8');
+                if ($code < 0xAC00 || $code > 0xD7A3) {
+                    continue 2;
+                }
+                $ini .= self::CHO[intdiv($code - 0xAC00, 588)];
+            }
+            if ($ini === $t) {
+                [$best, $bestN] = [$w, (int) $n];
             }
         }
         return $best;
@@ -238,6 +404,18 @@ final class Lexicon
         '경기' => ['경기도'], '제주' => ['제주특별자치도'], '전라북도' => ['전북특별자치도'],
         '한국토지주택공사' => ['lh', '토지주택공사'], 'lh' => ['한국토지주택공사', '토지주택공사'],
         '국토부' => ['국토교통부'], '행안부' => ['행정안전부'], '과기정통부' => ['과학기술정보통신부'], '복지부' => ['보건복지부'], '식약처' => ['식품의약품안전처'],
+        // 줄임말·입말 ↔ 태그 낱말(2026-10-16 사용자 "오타·유사 단어로도 검색" — '피씨' 0건, '컴터' 가 '커터' 로 고쳐짐). 운영 태그에 있는 말로만 잇는다.
+        '피씨' => ['pc', '컴퓨터'], 'pc' => ['컴퓨터', '피씨'], '컴터' => ['컴퓨터'], '컴퓨터' => ['pc'],
+        '핸드폰' => ['휴대폰', '스마트폰'], '휴대폰' => ['스마트폰', '핸드폰'], '스마트폰' => ['휴대폰', '핸드폰'], '폰' => ['스마트폰', '휴대폰'],
+        '노트북' => ['laptop', '랩탑'], '랩탑' => ['노트북'], 'laptop' => ['노트북'], '패드' => ['태블릿'], '아이패드' => ['태블릿'],
+        '노인' => ['어르신', '노년'], '어르신' => ['노인'], '선생님' => ['교사'], '교사' => ['선생님'],
+        '아이' => ['어린이', '아동'], '어린이' => ['아동', '아이'], '아동' => ['어린이'], '애들' => ['어린이', '아이'],
+        '돈' => ['화폐', '현금', '지폐'], '현금' => ['돈', '화폐'], '자동차' => ['차량'], '차량' => ['자동차'],
+        '직장인' => ['회사원'], '회사원' => ['직장인'], '사진기' => ['카메라'],
+        '이메일' => ['메일', 'email'], '메일' => ['이메일'], 'email' => ['이메일'], '와이파이' => ['wifi', '무선인터넷'], 'wifi' => ['와이파이'],
+        '큐알' => ['qr', 'qr코드'], '큐알코드' => ['qr코드'], 'qr' => ['qr코드'], '씨씨티비' => ['cctv'], 'cctv' => ['감시카메라'],
+        '챗봇' => ['chatbot'], 'chatbot' => ['챗봇'], '엑셀' => ['스프레드시트'], '동영상' => ['영상'], '집' => ['주택'], '주택' => ['집', '아파트'],
+        '시민' => ['주민', '국민'], '주민' => ['시민'], '공무원' => ['민원'], '택배' => ['배송'], '배송' => ['택배'],
     ];
 
     /**

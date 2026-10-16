@@ -684,6 +684,182 @@ def L_contact(d):
     return "dark", out
 
 
+# ───────────────────────── 테마별 본문 변형 — 네 테마가 같은 뼈대로 "공장에서 찍어낸 듯" 보이지 않게(사용자 2026-10-16, design/ppt sample 구성 참고:
+# 숫자 타일·세로 타임라인·번호 목록·반쪽 색 면·둥근 알약). 테마 C(매거진)는 편집 디자인, D(프렌들리)는 둥근 파스텔 면, B 는 편집 변형 일부
+def V_stats_tiles(d):
+    """숫자 2×2 타일(오른쪽) + 왼쪽 큰 머리글 — ref_058·IR 덱의 숫자 타일"""
+    items = (d.get("items") or [])[:4]
+    out = GLOW_LIGHT + T(d.get("eyebrow"), "eb", "left:120px;top:200px", rich=False)
+    out += T(d.get("headline"), "h", "left:120px;top:250px;width:700px;height:300px;font-size:72px;line-height:1.16", fit=True)
+    out += T(d.get("sub") or "", "sub", "left:124px;top:600px;width:640px;height:120px", rich=False, fit=True)
+    gap, cw, ch = 24, 388, 300
+    for i, it in enumerate(items):
+        x, y = 980 + (i % 2) * (cw + gap), 200 + (i // 2) * (ch + gap)
+        out += R(f"left:{x}px;top:{y}px;width:{cw}px;height:{ch}px")
+        out += T(it.get("label"), "", f"left:{x + 36}px;top:{y + 36}px;width:{cw - 72}px;font-size:24px;font-weight:700;color:var(--muted)", rich=False)
+        val = html.escape(str(it.get("value") or "")) + (f"<span style='font-size:34px;letter-spacing:-0.02em'> {html.escape(str(it.get('unit')))}</span>" if it.get("unit") else "")
+        out += T(val, "", f"left:{x + 32}px;top:{y + 100}px;width:{cw - 64}px;height:120px;font-size:104px;font-weight:900;line-height:1.1;color:var(--blue);letter-spacing:-0.06em;white-space:nowrap", fit=True, raw=True)
+        out += T(it.get("note"), "", f"left:{x + 36}px;top:{y + ch - 60}px;width:{cw - 72}px;font-size:20px;color:var(--muted);white-space:nowrap", rich=False)
+    return "light", out
+
+
+def V_stats_band(d):
+    """주색 둥근 띠 위 숫자 한 줄 + 위 머리글 — 당근풍"""
+    items = (d.get("items") or [])[:4]
+    n = max(1, len(items))
+    out = GLOW_LIGHT + _head(d, 190)
+    out += T(d.get("sub") or "", "sub", "left:120px;top:330px;width:1200px", rich=False)
+    out += R("left:120px;top:460px;width:1680px;height:440px;background:var(--blue);border:0;border-radius:56px;box-shadow:none")
+    cw = 1680 // n
+    for i, it in enumerate(items):
+        x = 120 + i * cw
+        if i:
+            out += R(f"left:{x}px;top:540px;width:2px;height:280px;background:rgba(255,255,255,.25);border:0;border-radius:0;box-shadow:none")
+        out += T(it.get("label"), "", f"left:{x + 56}px;top:530px;width:{cw - 100}px;font-size:26px;font-weight:700;color:rgba(255,255,255,.8)", rich=False)
+        val = html.escape(str(it.get("value") or "")) + (f"<span style='font-size:40px;letter-spacing:-0.02em'> {html.escape(str(it.get('unit')))}</span>" if it.get("unit") else "")
+        out += T(val, "", f"left:{x + 52}px;top:600px;width:{cw - 90}px;height:150px;font-size:120px;font-weight:900;line-height:1.1;color:#fff;letter-spacing:-0.06em;white-space:nowrap", fit=True, raw=True)
+        out += T(it.get("note"), "", f"left:{x + 56}px;top:790px;width:{cw - 100}px;font-size:21px;color:rgba(255,255,255,.75);white-space:nowrap", rich=False)
+    return "light", out
+
+
+def V_pillars_list(d):
+    """번호 목록(헤어라인) — 편집 디자인: 왼쪽 머리글, 오른쪽 01~04 행마다 제목·설명·아이콘"""
+    items = (d.get("items") or [])[:4]
+    out = GLOW_LIGHT + T(d.get("eyebrow"), "eb", "left:120px;top:200px", rich=False)
+    out += T(d.get("headline"), "h", "left:120px;top:250px;width:620px;height:300px;font-size:68px;line-height:1.18", fit=True)
+    out += T(d.get("sub") or "", "sub", "left:124px;top:600px;width:560px;height:120px", rich=False, fit=True)
+    rh = 170
+    for i, it in enumerate(items):
+        y = 200 + i * rh
+        out += R(f"left:860px;top:{y}px;width:940px;height:1px;background:var(--line);border:0;border-radius:0;box-shadow:none")
+        out += T(f"{i + 1:02d}", "", f"left:860px;top:{y + 30}px;font-size:26px;font-weight:800;color:var(--blue)", rich=False)
+        out += T(it.get("title"), "", f"left:960px;top:{y + 24}px;width:480px;height:80px;font-size:34px;font-weight:800;line-height:1.2;letter-spacing:-0.035em", rich=False, fit=True)
+        out += T(it.get("desc"), "", f"left:960px;top:{y + 100}px;width:560px;height:56px;font-size:21px;line-height:1.5;color:var(--body)", rich=False, fit=True)
+        out += I(it.get("_img"), f"left:1680px;top:{y + 30}px;width:110px;height:110px")
+    out += R(f"left:860px;top:{200 + len(items) * rh}px;width:940px;height:1px;background:var(--line);border:0;border-radius:0;box-shadow:none")
+    return "light", out
+
+
+def V_pillars_blocks(d):
+    """2×2 파스텔 둥근 면, 아이콘 크게 — 당근풍"""
+    items = (d.get("items") or [])[:4]
+    out = GLOW_LIGHT + _head(d, 150)
+    out += T(d.get("sub") or "", "sub", "left:120px;top:290px;width:1500px", rich=False)
+    gap, cw, ch = 24, 828, 270
+    for i, it in enumerate(items):
+        x, y = 120 + (i % 2) * (cw + gap), 390 + (i // 2) * (ch + gap)
+        out += R(f"left:{x}px;top:{y}px;width:{cw}px;height:{ch}px")
+        out += I(it.get("_img"), f"left:{x + 40}px;top:{y + 45}px;width:180px;height:180px")
+        out += T(f"{i + 1:02d}", "", f"left:{x + 270}px;top:{y + 44}px;font-size:22px;font-weight:900;color:var(--blue);letter-spacing:.04em", rich=False)
+        out += T(it.get("title"), "", f"left:{x + 270}px;top:{y + 82}px;width:{cw - 310}px;height:84px;font-size:38px;font-weight:900;line-height:1.15;letter-spacing:-0.04em", rich=False, fit=True)
+        out += T(it.get("desc"), "", f"left:{x + 270}px;top:{y + 172}px;width:{cw - 310}px;height:70px;font-size:22px;line-height:1.5;color:var(--body)", rich=False, fit=True)
+    return "light", out
+
+
+def V_history_vertical(d):
+    """세로 타임라인 두 열 — 편집 디자인(연도 크게, 가는 세로선)"""
+    items = (d.get("items") or [])[:8]
+    out = GLOW_LIGHT + _head(d, 150)
+    half = (len(items) + 1) // 2
+    rh = min(150, 600 // max(1, half))
+    for i, it in enumerate(items):
+        col, row = (0, i) if i < half else (1, i - half)
+        x, y = 120 + col * 860, 330 + row * rh
+        out += R(f"left:{x + 200}px;top:{y}px;width:1px;height:{rh}px;background:var(--line);border:0;border-radius:0;box-shadow:none")
+        out += R(f"left:{x + 194}px;top:{y + 14}px;width:13px;height:13px;background:var(--blue);border:0;border-radius:7px;box-shadow:none")
+        out += T(it.get("year"), "", f"left:{x}px;top:{y}px;width:170px;font-size:40px;font-weight:900;letter-spacing:-0.03em;color:var(--blue);text-align:right", rich=False)
+        out += T(it.get("text"), "", f"left:{x + 240}px;top:{y + 6}px;width:560px;height:90px;font-size:24px;line-height:1.45;color:var(--body)", rich=False, fit=True)
+    return "light", out
+
+
+def V_history_pills(d):
+    """연도 알약 한 줄 + 아래 글 — 당근풍"""
+    items = (d.get("items") or [])[:7]
+    n = max(1, len(items))
+    out = GLOW_LIGHT + _head(d, 170)
+    cw = 1680 // n
+    pw = min(cw - 20, 150)
+    out += R("left:120px;top:520px;width:1680px;height:6px;background:var(--sky);border:0;border-radius:3px;box-shadow:none")
+    for i, it in enumerate(items):
+        x = 120 + i * cw
+        last = i == n - 1
+        out += R(f"left:{x}px;top:470px;width:{pw}px;height:106px;background:{'var(--blue)' if last else 'var(--sky)'};border:0;border-radius:53px;box-shadow:none")
+        out += T(it.get("year"), "", f"left:{x}px;top:496px;width:{pw}px;font-size:40px;font-weight:900;letter-spacing:-0.03em;text-align:center;color:{'#fff' if last else 'var(--blue)'}", rich=False)
+        out += T(it.get("text"), "", f"left:{x + 6}px;top:620px;width:{cw - 30}px;height:200px;font-size:23px;line-height:1.5;color:var(--body)", rich=False, fit=True)
+    return "light", out
+
+
+def V_clients_text(d):
+    """이름 글자만 3열, 헤어라인 — 편집 디자인(칩 없음)"""
+    items = [str(x) for x in (d.get("items") or []) if str(x).strip()][:24]
+    out = GLOW_LIGHT + _head(d, 150) + T(d.get("sub"), "sub", "left:120px;top:290px;width:1500px", rich=False)
+    cols = 3
+    rows = (len(items) + cols - 1) // cols
+    rh = min(72, 600 // max(1, rows))
+    cw = 1680 // cols
+    for i, it in enumerate(items):
+        x, y = 120 + (i % cols) * cw, 400 + (i // cols) * rh
+        out += R(f"left:{x}px;top:{y + rh - 1}px;width:{cw - 40}px;height:1px;background:var(--line);border:0;border-radius:0;box-shadow:none")
+        out += T(it, "", f"left:{x}px;top:{y + rh / 2 - 17}px;width:{cw - 40}px;height:34px;font-size:26px;font-weight:700;letter-spacing:-0.02em;white-space:nowrap", rich=False, fit=True)
+    return "light", out
+
+
+def V_clients_pills(d):
+    """둥근 알약 그리드 — 당근풍(파스텔, 주색 글자)"""
+    items = [str(x) for x in (d.get("items") or []) if str(x).strip()][:24]
+    cols = 6 if len(items) > 12 else 4
+    rows = (len(items) + cols - 1) // cols
+    gap, cw = 16, (1680 - 16 * (cols - 1)) // cols
+    chh = min(96, (560 - gap * (rows - 1)) // max(1, rows))
+    out = GLOW_LIGHT + _head(d, 150) + T(d.get("sub"), "sub", "left:120px;top:290px;width:1500px", rich=False)
+    for i, it in enumerate(items):
+        x, y = 120 + (i % cols) * (cw + gap), 400 + (i // cols) * (chh + gap)
+        out += R(f"left:{x}px;top:{y}px;width:{cw}px;height:{chh}px;border-radius:{chh // 2}px", "chip")
+        out += T(it, "", f"left:{x + 16}px;top:{y + chh / 2 - 18}px;width:{cw - 32}px;height:36px;font-size:26px;font-weight:800;text-align:center;color:var(--blue);letter-spacing:-0.03em;white-space:nowrap", rich=False, fit=True)
+    return "light", out
+
+
+def V_awards_big(d):
+    """연도 크게 한 열 — 편집 디자인"""
+    items = (d.get("items") or [])[:8]
+    out = GLOW_LIGHT + T(d.get("eyebrow"), "eb", "left:120px;top:200px", rich=False)
+    out += T(d.get("headline"), "h", "left:120px;top:250px;width:620px;height:300px;font-size:68px;line-height:1.18", fit=True)
+    rh = min(88, 680 // max(1, len(items)))
+    for i, it in enumerate(items):
+        y = 200 + i * rh
+        out += R(f"left:860px;top:{y + rh - 1}px;width:940px;height:1px;background:var(--line);border:0;border-radius:0;box-shadow:none")
+        out += T(it.get("year"), "", f"left:860px;top:{y + rh / 2 - 24}px;font-size:40px;font-weight:900;color:var(--blue);letter-spacing:-0.03em", rich=False)
+        out += T(it.get("text"), "", f"left:1010px;top:{y + rh / 2 - 17}px;width:790px;height:34px;font-size:25px;font-weight:600;white-space:nowrap", rich=False, fit=True)
+    return "light", out
+
+
+def V_showcase_panel(d):
+    """왼쪽 주색 큰 면(사진 자리 느낌) 안에 이름·태그라인, 오른쪽 번호 목록 — 반쪽 색 면 구성"""
+    items = (d.get("items") or [])[:4]
+    out = GLOW_LIGHT + R("left:120px;top:170px;width:780px;height:760px;background:var(--blue);border:0;border-radius:32px;box-shadow:none")
+    out += T(d.get("eyebrow") or "CORE WORKS", "", "left:180px;top:230px;font-size:20px;font-weight:800;letter-spacing:.16em;color:rgba(255,255,255,.7);text-transform:uppercase", rich=False)
+    out += T(d.get("name"), "", "left:176px;top:300px;width:680px;height:150px;font-size:116px;font-weight:900;line-height:1.1;letter-spacing:-0.06em;color:#fff;white-space:nowrap", rich=False, fit=True)
+    out += T(d.get("tagline"), "", "left:180px;top:480px;width:660px;font-size:34px;font-weight:800;color:rgba(255,255,255,.9);letter-spacing:-0.03em", rich=False)
+    out += T(d.get("desc"), "", "left:180px;top:560px;width:640px;height:200px;font-size:25px;line-height:1.55;color:rgba(255,255,255,.8)", rich=False, fit=True)
+    out += T(d.get("url") or "", "", "left:180px;top:840px;font-size:22px;font-weight:600;color:rgba(255,255,255,.6)", rich=False)
+    rh = min(180, 740 // max(1, len(items)))
+    for i, it in enumerate(items):
+        y = 180 + i * rh
+        out += R(f"left:980px;top:{y + rh - 1}px;width:820px;height:1px;background:var(--line);border:0;border-radius:0;box-shadow:none")
+        out += T(f"{i + 1:02d}", "", f"left:980px;top:{y + 30}px;font-size:26px;font-weight:900;color:var(--blue)", rich=False)
+        out += T(it.get("title"), "", f"left:1070px;top:{y + 24}px;width:700px;height:80px;font-size:36px;font-weight:900;line-height:1.2;letter-spacing:-0.04em", rich=False, fit=True)
+        out += T(it.get("desc"), "", f"left:1070px;top:{y + 106}px;width:700px;height:34px;font-size:22px;color:var(--muted);white-space:nowrap", rich=False, fit=True)
+    return "light", out
+
+
+# 테마 → 레이아웃 변형. 없는 것은 기본(A 뼈대)
+VARIANTS = {
+    "b": {"stats": V_stats_tiles, "history": V_history_vertical, "awards": V_awards_big},
+    "c": {"stats": V_stats_tiles, "pillars": V_pillars_list, "history": V_history_vertical, "clients": V_clients_text, "awards": V_awards_big, "showcase": V_showcase_panel},
+    "d": {"stats": V_stats_band, "pillars": V_pillars_blocks, "history": V_history_pills, "clients": V_clients_pills, "showcase": V_showcase_panel},
+}
+
+
 LAYOUT_FN = {k[2:]: v for k, v in globals().items() if k.startswith("L_")}
 TAGS = {"cover": "", "contents": "CONTENTS", "section": "", "contact": "CONTACT"}
 
@@ -712,7 +888,7 @@ def clean(d):
 
 
 def slide_html(d, n, total, ctone="blue", ctheme="a"):
-    fn = LAYOUT_FN.get(d.get("kind")) or L_statement
+    fn = VARIANTS.get(ctheme, {}).get(d.get("kind")) or LAYOUT_FN.get(d.get("kind")) or L_statement
     if ctheme == "b" and d.get("kind") == "cover":   # 테마 B 표지는 큰 아이콘 없이 글과 선 다발로(ref_042)
         d["_img"] = None
     try:

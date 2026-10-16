@@ -48,8 +48,19 @@ def _trim_letterbox(im, anchor="center"):
     if top[ty] < 30 or bot[by] < 30 or not flat(0, ty) or not flat(by + 1, h):
         return im
     t, b = ty + 1 + 2, by - 2   # 경계 줄의 번짐 2px 도 뺀다
-    cw = min(w, int((b - t) * w / h))   # 원래 비율로 자를 폭
-    x = {"right": w - cw, "left": 0}.get(anchor, (w - cw) // 2)
+    # 띠를 넣은 그림은 글 쪽에 곧은 판(세로 경계)까지 두는 일이 많다 — 그대로 채우면 그 경계가 화면 끝에 '잘린 듯' 남는다(10-16 D 간지2 x=471, 차 29).
+    # 글 쪽 절반에서 세로 경계(열 차 20 이상)를 찾으면 그 너머부터 자르고, 폭이 모자라면 높이를 가운데 기준으로 줄여 비율을 맞춘다
+    x0, x1 = 0, w
+    if anchor in ("right", "left"):
+        xs = range(2, w // 2) if anchor == "right" else range(w // 2, w - 3)
+        col = {x: ImageStat.Stat(ImageChops.difference(g.crop((x, t, x + 1, b)), g.crop((x + 1, t, x + 2, b)))).mean[0] for x in xs}
+        sx = max(col, key=col.get)
+        if col[sx] >= 20:
+            x0, x1 = (sx + 4, w) if anchor == "right" else (0, sx - 3)
+    cw = min(x1 - x0, int((b - t) * w / h))   # 원래 비율로 자를 폭
+    ch = int(cw * h / w)
+    t, b = t + ((b - t) - ch) // 2, t + ((b - t) - ch) // 2 + ch
+    x = {"right": x1 - cw, "left": x0}.get(anchor, x0 + (x1 - x0 - cw) // 2)
     return im.crop((x, t, x + cw, b)).resize((w, h), Image.LANCZOS)
 
 

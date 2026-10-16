@@ -561,52 +561,89 @@ def find_bg(job, text, keywords, used, kind):
 PEOPLE = r"공무원|국민|회의|교육|고민|상담원|사람|조리원|점검원|연구원|어르신|엄마|아이"
 # 세로(9:16) 제안서 전용 배경 세트 — 실사·3D 를 따로 묶었다(db/migrate-legacy/vp-sets.mjs, 사용자 2026-10-14 "세로제안서용 이미지는 따로 분리").
 # 톤에 따라 고른다(사용자 "실사·3D 따로 올렸는데 디자인 테마에 따라 다르게"): 하얀 3D 렌더·파랑 포인트 → 블루·글래스·딥 네이비, 실사 → 네이비·틸·차콜
-VP_SETS = {"photo": "vp-bg-photo", "3d": "vp-bg-3d", "dark": "vp-bg-dark"}
+VP_SETS = {"photo": "vp-bg-photo", "3d": "vp-bg-3d", "dark": "vp-bg-dark", "glass": "vp-bg-glass"}
 # 다크 키비주얼(VP3 125장, 짙은 남색 + 빛나는 물체가 아래) — 스플릿 스타일의 표지·간지 전면 배경(사용자 2026-10-15 "검정으로 크게 배경을 넣지 말고
 # 파워에셋 다크 배경을 활용한 테마로, 지금은 꾸밈도 없고 칙칙해"). 이름에 표지·간지 역할이 없어 역할 대신 장 낱말로만 고른다. 목차·본문엔 쓰지 않는다
-DARK_SET_ID = "pnu3yxvdy5jqzqqx"   # powerAssets 세트 vp-bg-dark 의 공개 id(/assets/items?set= 는 이름이 아니라 id 를 받는다)
+# 유리 아이소메트릭(HV1 87장, 밝은 바탕 + 아래쪽 유리 장면)도 이름에 역할이 없다 — 다크처럼 장 낱말로만
+NOROLE_KINDS = ("dark", "glass")
 DARK_STYLES = ("split",)
-TONE_BG = {"blue": "3d", "glass": "3d", "deep": "3d"}   # 나머지 톤은 실사
+# 배경 세트는 스타일(테마)이 정한다 — 사용자 2026-10-16 "테마마다 배경이 달라야 함, 다크 키비주얼 말고는 배경이미지까지 같다".
+# 예전엔 톤(색)이 실사/3D 를 골라 같은 톤이면 다섯 테마가 같은 그림을 같은 순서로 뽑았다. 톤은 이제 색만.
+#   세트 4개를 테마 6개가 나눠 쓴다 — 같은 세트를 쓰는 둘(인덱스 탭·플로팅 필 = 유리, 사이드 레일·미니멀 라인 = 실사)은
+#   세트를 반으로 갈라(STYLE_HALF) 서로 다른 그림을 뽑고, 쪽에 까는 모양(STYLE_COMPOSE)도 다르다
+STYLE_BG = {"band": "3d", "tab": "glass", "side": "photo", "split": "dark", "pill": "glass", "line": "photo"}
+STYLE_HALF = {"tab": 0, "pill": 1, "side": 0, "line": 1, "band": 0}   # 클래식 밴드는 3D 세트 반 — 나머지 반은 다크 키비주얼 목차(목차만 3D)
+#   fade = 오른쪽 아래에 두고 위·왼쪽을 흰색으로 날림(예전 모양) / full = 쪽 전체 / card = 여백 둔 둥근 카드 / cut = 아래 띠를 또렷하게 자르고 톤 색 가는 선
+STYLE_COMPOSE = {"band": "fade", "tab": "full", "side": "fade", "pill": "card", "line": "cut"}
 
 
-def bg_kind(tone):
-    return TONE_BG.get(str(tone or ""), "photo")
+def bg_kind(style):
+    return STYLE_BG.get(str(style or ""), "3d")
+
+
+def body_kind(style):
+    """본문 사진 세트 — 실사 테마는 실사, 그 밖(3D·유리·다크)은 하얀 3D 렌더(유리 세트는 일러스트 분류라 본문 사진 검색에 안 걸린다)"""
+    return "photo" if bg_kind(style) == "photo" else "3d"
 
 
 def portrait_pool(job):
     """세로 제안서용 세로 배경(세로 전용 세트 VP_SETS · 세로 비율 · 사람 장면 제외) — 2026-10-14 사용자가 VP1 108장을 등록했는데
     의미 검색(확신 0.9)과 장 이름 검색이 거의 맞지 않아 표지·간지를 늘 새로 만들었다(11칸 중 0~1칸만 자산)"""
-    try:
-        d = _api("GET", "/assets/items?" + urllib.parse.urlencode({"q": "세로제안서", "limit": 200}))   # set= 는 세트 id 를 받아 이름이면 404 — 세트는 아래에서 거른다
-        rows = d.get("data") or []
-    except Exception as e:
-        job.event(f"세로 배경 목록을 못 읽었습니다(의미 검색으로 고릅니다): {str(e)[:80]}", "warn")
-        return []
-    try:   # 다크 키비주얼은 '세로제안서' 검색에 걸리지 않을 수 있어 세트로 따로 받는다
-        d2 = _api("GET", "/assets/items?" + urllib.parse.urlencode({"set": DARK_SET_ID, "limit": 200}))
-        seen = {r["id"] for r in rows}
-        rows += [r for r in (d2.get("data") or []) if r.get("id") not in seen]
-    except Exception as e:
-        job.event(f"다크 배경 세트를 못 읽었습니다: {str(e)[:80]}", "warn")
-    sets = set(VP_SETS.values())
-    return [r for r in rows if int(r.get("h") or 0) > int(r.get("w") or 1) and _sg(r) in sets
-            and not re.search(PEOPLE, str(r.get("name") or ""))]
+    # 세트마다 따로, 쪽을 넘겨 끝까지 받는다 — 예전엔 '세로제안서' 검색 limit 200 한 번이었는데 목록 API 는 120 까지만 줘서
+    # 실사 102 + 3D 71 = 173장 중 일부가 늘 빠졌다(2026-10-16). set= 는 세트 공개 id 를 받는데 id 는 로컬·운영이 달라 /assets/sets 에서 이름으로 찾는다
+    ids = {}
+    for cat in ("photo", "illust"):
+        try:
+            d = _api("GET", "/assets/sets?" + urllib.parse.urlencode({"category": cat}))
+            ids.update({s["name"]: s["id"] for s in (d.get("data", d) or []) if isinstance(s, dict) and s.get("name") in VP_SETS.values()})
+        except Exception as e:
+            job.event(f"세로 배경 세트 목록을 못 읽었습니다({cat}): {str(e)[:80]}", "warn")
+    rows = []
+    for name in VP_SETS.values():
+        if name not in ids:
+            job.event(f"세로 배경 세트 {name} 이 powerAssets 에 없습니다 — 그 세트 칸은 다른 세트·생성으로", "warn")
+            continue
+        for page in range(1, 6):
+            try:
+                d = _api("GET", "/assets/items?" + urllib.parse.urlencode({"set": ids[name], "limit": 120, "page": page}))
+            except Exception as e:
+                job.event(f"세로 배경 세트 {name} 를 못 읽었습니다: {str(e)[:80]}", "warn")
+                break
+            got = d.get("data") or []
+            rows += got
+            if len(got) < 120:
+                break
+    seen, out = set(), []
+    for r in rows:
+        if r.get("id") in seen or int(r.get("h") or 0) <= int(r.get("w") or 1) or re.search(PEOPLE, str(r.get("name") or "")):
+            continue
+        seen.add(r.get("id"))
+        out.append(r)
+    out.sort(key=lambda r: str(r.get("name") or "") + str(r.get("id")))   # 반 가르기(STYLE_HALF)가 매번 같은 그림 묶음이 되게 — 순서를 고정
+    return out
 
 
 def _sg(r):
     return (r.get("set") or {}).get("name") or r.get("style_group") or ""
 
 
-def pick_portrait(pool, key, words, used, kind="photo"):
-    """조건문 — 칸 역할(표지·목차·간지)이 이름에 있는 것만, 그중 톤에 맞는 세트(kind = photo|3d)를 먼저, 장 낱말이 가장 많이 겹치는 것.
-    그 세트에 그 역할이 남아 있지 않을 때만 다른 세트에서. 같은 점수면 목록 순서"""
+def pick_portrait(pool, key, words, used, kind="photo", half=None):
+    """조건문 — 칸 역할(표지·목차·간지)이 이름에 있는 것만, 그중 테마에 맞는 세트(kind = photo|3d|glass|dark)를 먼저, 장 낱말이 가장 많이 겹치는 것.
+    그 세트에 그 역할이 남아 있지 않을 때만 다른 밝은 세트에서. 같은 점수면 목록 순서.
+    half = 0|1 이면 그 세트를 반으로 갈라 한쪽만(같은 세트를 쓰는 두 테마가 서로 다른 그림을 뽑게), 그 반이 바닥나면 세트 전체"""
     role = "표지" if key == "cover" else "목차" if key == "toc" else "간지"
-    if kind == "dark":   # 다크 세트는 표지 5·간지 16장만 이름에 역할이 있다 — 역할이 맞는 것 먼저, 다 쓰면 세트 안 나머지(목차·본문 장면 제외)를 장 낱말로
-        dark = [r for r in pool if _sg(r) == VP_SETS["dark"] and r["id"] not in used]
-        cands = [r for r in dark if role in str(r.get("name") or "")] or [r for r in dark if not re.search(r"목차|본문", str(r.get("name") or ""))] or dark
+
+    def halved(rs):
+        if half is None:
+            return rs
+        idx = {r["id"]: k for k, r in enumerate([x for x in pool if _sg(x) == VP_SETS[kind]])}
+        return [r for r in rs if idx.get(r["id"], 0) % 2 == half] or rs
+    if kind in NOROLE_KINDS:   # 다크 세트는 표지 5·간지 16장만 이름에 역할이 있고 유리 세트는 하나도 없다 — 역할이 맞는 것 먼저, 그다음 세트 안 나머지(목차·본문 장면 제외)를 장 낱말로
+        mine = halved([r for r in pool if _sg(r) == VP_SETS[kind] and r["id"] not in used])
+        cands = [r for r in mine if role in str(r.get("name") or "")] or [r for r in mine if not re.search(r"목차|본문", str(r.get("name") or ""))] or mine
     else:
-        cands = [r for r in pool if role in str(r.get("name") or "") and r["id"] not in used and _sg(r) != VP_SETS["dark"]]
-        cands = [r for r in cands if _sg(r) == VP_SETS[kind]] or cands
+        cands = [r for r in pool if role in str(r.get("name") or "") and r["id"] not in used and _sg(r) in (VP_SETS["photo"], VP_SETS["3d"])]
+        cands = halved([r for r in cands if _sg(r) == VP_SETS[kind]]) or cands
     if not cands:
         return None, None
     toks = {t for w in words for t in re.findall(r"[가-힣A-Za-z0-9]{2,}", str(w)) if t not in ("배경", "표지", "목차", "간지")}
@@ -755,13 +792,26 @@ def resolve_assets(job, chapters_pages, kind="photo"):
     return got
 
 
-def make_bg(job, art, field):
-    prompt = (f"A single small object made of clear and frosted glass with a subtle pale-blue glow: {art}. Theme of the project: {field}. "
-              "Placed in the lower right of the frame on a seamless white surface. Minimal high-key product-style 3D render, soft diffused light, "
-              "gentle shadow, bright light tone, white and very pale blue palette, restrained and elegant. The upper half and the left half of the frame "
-              "are empty pure white. No people, no text, no letters, no numbers, no logos.")
+# powerAssets 에 맞는 그림이 없을 때 나노바나나로 만드는 배경 — 그 테마 세트와 같은 화풍으로(세트 그림과 섞여도 튀지 않게)
+BG_LOOK = {
+    "3d": "A single small object made of clear and frosted glass with a subtle pale-blue glow: {art}. Placed in the lower right of the frame on a seamless white surface. "
+          "Minimal high-key product-style 3D render, soft diffused light, gentle shadow, white and very pale blue palette, restrained and elegant. "
+          "The upper half and the left half of the frame are empty pure white.",
+    "glass": "An isometric scene of translucent frosted-glass blocks and platforms with blue accents and thin connecting lines: {art}. "
+             "The scene sits in the lower middle of the frame on a very light grey-blue surface with faint rounded panel outlines. "
+             "Clean 3D isometric render, soft light, white and blue palette. The upper 40% of the frame is empty and calm.",
+    "photo": "A bright, clean real documentary photograph related to: {art}. Natural soft daylight, high-key, white and light blue tones, shallow depth of field. "
+             "The subject sits in the lower part of the frame; the upper half is a calm, nearly empty bright area.",
+    "dark": "A glowing holographic object with neon blue light: {art}. Deep navy to black background, the glowing object in the lower middle, "
+            "cinematic 3D render. The upper half of the frame is dark and empty.",
+}
+
+
+def make_bg(job, art, field, kind="3d"):
+    look = BG_LOOK.get(kind) or BG_LOOK["3d"]
+    prompt = look.format(art=art) + f" Theme of the project: {field}. No people, no text, no letters, no numbers, no logos."
     nb2 = str(design.W["CFG"].get("nb2_model") or design.styles.nb2_model())
-    return design.gen_image(job, prompt, [], "4:3", None, model=nb2, plain=True)
+    return design.gen_image(job, prompt, [], "9:16", None, model=nb2, plain=True)   # 세로 쪽 — 예전 4:3 은 위아래를 많이 잘라 냈다
 
 
 def _ss(t):
@@ -863,6 +913,77 @@ def band_bg(blob, accent="2F5BD3", h_cm=5.2):
     return b.getvalue()
 
 
+def _crop_to(src, w, h, fy=0.5):
+    """src 를 w:h 비율로 자른다 — 가로가 남으면 가운데, 세로가 남으면 fy(0 위 ~ 1 아래) 쪽을 남긴다"""
+    ar = w / h
+    if src.width / src.height >= ar:
+        cw = int(src.height * ar)
+        x0 = (src.width - cw) // 2
+        return src.crop((x0, 0, x0 + cw, src.height)).resize((w, h), Image.LANCZOS)
+    ch = int(src.width / ar)
+    y0 = int((src.height - ch) * fy)
+    return src.crop((0, y0, src.width, y0 + ch)).resize((w, h), Image.LANCZOS)
+
+
+def _jpg(im, q=88):
+    b = io.BytesIO()
+    im.save(b, "JPEG", quality=q)
+    return b.getvalue()
+
+
+def full_light(blob, fy=0.0):
+    """밝은 전면 배경(인덱스 탭 — 유리 아이소메트릭) — 위쪽이 비어 있는 그림이라 막 없이 쪽 전체에.
+    fy = 자를 때 남길 쪽(0 = 원본 위쪽) — 장면(원본 40~90% 높이)이 쪽 아래로 내려가 위쪽 표지 제목·간지 장 목록과 겹치지 않게"""
+    return _jpg(_crop_to(Image.open(io.BytesIO(blob)).convert("RGB"), PW, PH, fy))
+
+
+def card_bg(blob, top=0.45, accent="2F5BD3"):
+    """떠 있는 둥근 카드(플로팅 필) — 흰 쪽 아래쪽에 좌우 여백을 둔 둥근 모서리 카드로 그림을 넣고 옅은 그림자.
+    카드 경계는 또렷하게(흐린 페이드 금지 — 사용자 2026-10-15), 3배로 그려 줄여 모서리를 매끈하게"""
+    from PIL import ImageDraw, ImageFilter
+    S, mx, mb = 3, PW * 1.2 / PAGE_W, PH * 1.6 / PAGE_H
+    x0, y0, x1, y1 = int(mx), int(PH * top), int(PW - mx), int(PH - mb)
+    rad = int(PW * 0.7 / PAGE_W)
+    page = Image.new("RGB", (PW, PH), (255, 255, 255))
+    sh = Image.new("L", (PW, PH), 0)
+    ImageDraw.Draw(sh).rounded_rectangle((x0 + 6, y0 + 14, x1 + 6, y1 + 14), rad, fill=46)
+    page.paste(Image.new("RGB", (PW, PH), (30, 50, 90)), (0, 0), sh.filter(ImageFilter.GaussianBlur(18)))
+    m = Image.new("L", ((x1 - x0) * S, (y1 - y0) * S), 0)
+    ImageDraw.Draw(m).rounded_rectangle((0, 0, (x1 - x0) * S - 1, (y1 - y0) * S - 1), rad * S, fill=255)
+    page.paste(_crop_to(Image.open(io.BytesIO(blob)).convert("RGB"), x1 - x0, y1 - y0, 0.8), (x0, y0), m.resize((x1 - x0, y1 - y0), Image.LANCZOS))
+    line = Image.new("L", ((x1 - x0) * S, (y1 - y0) * S), 0)
+    ImageDraw.Draw(line).rounded_rectangle((0, 0, (x1 - x0) * S - 1, (y1 - y0) * S - 1), rad * S, outline=255, width=3 * S)
+    rgb = tuple(int(accent[i:i + 2], 16) for i in (0, 2, 4))
+    page.paste(Image.new("RGB", (x1 - x0, y1 - y0), _mix_rgb(rgb, (255, 255, 255), 0.55)), (x0, y0), line.resize((x1 - x0, y1 - y0), Image.LANCZOS))
+    return _jpg(page)
+
+
+def cut_bg(blob, top=0.5, accent="2F5BD3"):
+    """아래 띠(미니멀 라인) — 쪽 아래쪽을 가로 직선으로 또렷하게 잘라 그림을 채우고, 경계 위에 톤 색 굵은 줄(위쪽 굵은 줄과 짝)"""
+    y0 = int(PH * top)
+    page = Image.new("RGB", (PW, PH), (255, 255, 255))
+    page.paste(_crop_to(Image.open(io.BytesIO(blob)).convert("RGB"), PW, PH - y0, 0.8), (0, y0))
+    th = max(2, int(PH * 0.12 / PAGE_H))
+    page.paste(Image.new("RGB", (PW, th), tuple(int(accent[i:i + 2], 16) for i in (0, 2, 4))), (0, y0 - th))
+    return _jpg(page)
+
+
+def _mix_rgb(a, b, t):
+    return tuple(int(a[k] * (1 - t) + b[k] * t) for k in range(3))
+
+
+def style_bg(blob, style, role, accent):
+    """표지(role=cover)·간지(div) 배경을 테마 모양대로 — STYLE_COMPOSE. 다크(split)는 따로(full_bg·band_bg)"""
+    how = STYLE_COMPOSE.get(style, "fade")
+    if how == "full":
+        return full_light(blob, 0.0)
+    if how == "card":
+        return card_bg(blob, 0.45 if role == "cover" else 0.52, accent)
+    if how == "cut":
+        return cut_bg(blob, 0.55 if role == "cover" else 0.56, accent)
+    return compose(blob, 1.0, 0.68, 0.82, 0.6, 0.55) if role == "cover" else compose(blob, 1.0, 0.5, 0.72, 0.8, 0.6)
+
+
 def fill_image(owner, el, im):
     """도형(el)의 채움을 그림으로 — 마스터·쪽 어디든(owner 의 그림 부품으로 넣는다)"""
     b = io.BytesIO()
@@ -877,8 +998,10 @@ def fill_image(owner, el, im):
     geom.addnext(blip) if geom is not None else sp.append(blip)
 
 
-def backgrounds(job, o, kind="photo"):
-    """표지·목차·간지(장마다) 배경. 같은 그림을 두 번 쓰지 않는다. kind = 톤에 맞는 세로 배경 세트(photo|3d)"""
+def backgrounds(job, o, style="band"):
+    """표지·목차·간지(장마다) 배경. 같은 그림을 두 번 쓰지 않는다. 세트는 테마(style)가 정한다 — STYLE_BG·STYLE_HALF.
+    ① powerAssets 세로 전용 세트 ② powerAssets 의미 검색 ③ 나노바나나 생성(그 테마 화풍으로)"""
+    kind, half = bg_kind(style), STYLE_HALF.get(style)
     used, out, log = set(), {}, []
     field = str(o.get("field") or o["project"]["name"])
     slots = [("cover", f"{o['project']['name']} 표지 배경", ["표지 배경"] + [o["project"]["name"][:10]], "a glass cube holding simple icons of the project's field"),
@@ -890,7 +1013,7 @@ def backgrounds(job, o, kind="photo"):
     gen = []
     for key, text, kws, art in slots:   # 고르기는 순서대로(같은 그림 두 번 금지), 못 찾은 칸은 모아서 한꺼번에 생성
         k_ = "3d" if kind == "dark" and key == "toc" else kind   # 목차는 흰 바탕 쪽 — 다크 배경은 표지·간지만
-        blob, src = pick_portrait(pool, key, [text] + kws, used, k_)   # ① 세로 배경(역할·장 낱말 조건) ② 의미 검색 ③ 생성
+        blob, src = pick_portrait(pool, key, [text] + kws, used, k_, 1 if k_ != kind else half)   # ① 세로 배경(역할·장 낱말 조건) ② 의미 검색 ③ 생성
         if blob is None:
             blob, src = find_bg(job, text, kws, used, key)
         if blob is None:
@@ -899,7 +1022,7 @@ def backgrounds(job, o, kind="photo"):
             out[key] = blob
             log.append(f"{key}: {src}")
     with ThreadPoolExecutor(max_workers=max(1, int(design.W["CFG"].get("image_parallel", 3)))) as ex:
-        futs = {ex.submit(_carry(make_bg), job, art, field): key for key, art in gen}
+        futs = {ex.submit(_carry(make_bg), job, art, field, "3d" if kind == "dark" and key == "toc" else kind): key for key, art in gen}
         for f in futs:
             try:
                 out[futs[f]] = f.result()
@@ -1573,7 +1696,7 @@ class Build:
         if dc is not None:
             set_text(dc, p["doc"])
         if self.bgs.get("cover"):
-            set_bg(s, full_bg(self.bgs["cover"]) if self.style in DARK_STYLES else compose(self.bgs["cover"], 1.0, 0.68, 0.82, 0.6, 0.55))
+            set_bg(s, full_bg(self.bgs["cover"]) if self.style in DARK_STYLES else style_bg(self.bgs["cover"], self.style, "cover", self.th["point"]))
         guide = vis_left(tt) if tt is not None else 1.92   # 표지 왼쪽 기준선 = 제목 글자의 실제 시작점
         for x_ in (yr, dc):
             if x_ is not None:
@@ -1688,7 +1811,7 @@ class Build:
         b.width = Cm(PAGE_W) - b.left - Cm(1.2)
         # 다크 키비주얼 간지는 흰 바탕 + 위쪽 띠(band_bg) — 목록은 띠 아래라 먹색 그대로(2026-10-15, 예전엔 위쪽 색 블록이라 흰 글씨)
         if self.bgs.get(f"div{i}"):
-            set_bg(s, band_bg(self.bgs[f"div{i}"], self.th["point"]) if self.style in DARK_STYLES else compose(self.bgs[f"div{i}"], 1.0, 0.5, 0.72, 0.8, 0.6))
+            set_bg(s, band_bg(self.bgs[f"div{i}"], self.th["point"]) if self.style in DARK_STYLES else style_bg(self.bgs[f"div{i}"], self.style, "div", self.th["point"]))
         elif self.style in DARK_STYLES:   # 배경을 못 구했으면 짙은 남색 띠라도 — 띠 위 흰 장 제목이 흰 바탕에 묻히지 않게(도형으로 덮으면 레이아웃의 장 제목이 가려진다)
             set_bg(s, band_bg(None, self.th["point"]))
         return s
@@ -2851,19 +2974,19 @@ def run(job, j, opts, brief, note):
     job.event("본문 구성(쪽 첫 블록): " + " · ".join(f"{names.get(k, k)} {n}" for k, n in sorted(mix.items(), key=lambda x: -x[1])), "done")
     style = str(opts.get("vstyle") or "band")
     tone = str(opts.get("vtone") or opts.get("vtheme") or "navy")
-    bgk = bg_kind(tone)
-    cvk = "dark" if style in DARK_STYLES else bgk   # 표지·간지 배경 세트 — 스플릿은 다크 키비주얼 전면 배경
-    job.event(f"배경 그림: 톤 {(TONES.get(tone) or TONES['navy'])['label']} → 세로 전용 {'3D 렌더' if bgk == '3d' else '실사'} 세트({VP_SETS[bgk]})"
-              + (f" · 표지·간지는 다크 키비주얼({VP_SETS['dark']})" if cvk == "dark" else ""))
+    bgk, bdk = bg_kind(style), body_kind(style)   # 배경 세트는 테마가 정한다(톤은 색만) — 사용자 2026-10-16
+    BGN = {"photo": "실사", "3d": "3D 렌더", "glass": "유리 아이소메트릭", "dark": "다크 키비주얼"}
+    job.event(f"배경 그림: 테마 {(STYLES.get(style) or STYLES['band'])['label']} → 표지·간지 {BGN[bgk]}({VP_SETS[bgk]}"
+              + (f", 반쪽 {STYLE_HALF[style] + 1}" if style in STYLE_HALF else "") + f") · 깔기 {STYLE_COMPOSE.get(style, '전면')} · 본문 사진 {BGN[bdk]}")
     try:
-        got = resolve_assets(job, chapters_pages, bgk)
+        got = resolve_assets(job, chapters_pages, bdk)
         if got:
             job.event(f"파워에셋 본문 그림: 사진 {got['photo']} · 아이콘 {got['icon']}(세트 {ICON_SET})" + (f" · 못 찾음 {got['miss']}" if got["miss"] else ""), "done")
     except Exception as e:
         job.event(f"파워에셋 본문 그림 검색 실패(도식만으로 만듭니다): {str(e)[:100]}", "warn")
     job.push("시안 생성", 40)
     job.event("표지·목차·간지 배경 — powerAssets 에서 먼저 찾고, 없으면 나노바나나로 만듭니다.")
-    bgs, bglog = backgrounds(job, o, cvk)
+    bgs, bglog = backgrounds(job, o, style)
     job.event("배경: " + " · ".join(bglog), "done")
     logo = client_logo(o)
     job.push("시안 생성", 70)

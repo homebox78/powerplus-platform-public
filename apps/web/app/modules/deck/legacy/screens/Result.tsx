@@ -119,8 +119,9 @@ export function Result(p: Props) {
 type Tab = "review" | "script" | "files" | "detail";
 type Mode = "side" | "over" | "edit" | "frames" | "grid" | "canvas";
 
-/** 세로 제안서(제출용) — 비교할 시안이 없다(before 없음) */
-const isVertical = (job: Job) => isDesign(job) && job.opts?.purpose === "submit" && !(job.files?.before?.length);
+/** 세로 제안서(제출용)·회사소개서(타입 G) — 비교할 시안이 없다(before 없음). 쪽 보기·캔버스로 연다 */
+const isVertical = (job: Job) => isDesign(job) && (job.opts?.purpose === "submit" || job.opts?.purpose === "company") && !(job.files?.before?.length);
+const isLandscape = (job: Job) => job.opts?.purpose === "company";
 const KIND: Record<string, string> = { cover: "표지", toc: "목차", div: "간지", body: "본문" };
 
 /** 세로 제안서 — 가운데에 장표 3열(사용자 2026-10-14 "센터에 장표가 가로 3개씩"). 장표를 누르면 그 자리에 의견 */
@@ -129,7 +130,7 @@ function VerticalGrid({ job, slides, sel, onSel, fb }: { job: Job; slides: [numb
   const box = useRef<HTMLDivElement>(null);
   useEffect(() => { box.current?.querySelector(`[data-n="${sel}"]`)?.scrollIntoView({ block: "nearest", behavior: "smooth" }); }, [sel]);
   return (
-    <div ref={box} className="grid grid-cols-3 gap-x-4 gap-y-5 items-start">
+    <div ref={box} className={cn("grid gap-x-4 gap-y-5 items-start", isLandscape(job) ? "grid-cols-2" : "grid-cols-3")}>
       {slides.map(([n, p]) => {
         const pg = pages?.find((x) => x.n === n), on = n === sel;
         return (
@@ -162,8 +163,9 @@ function VerticalCanvas({ job, slides, sel, onOpen }: { job: Job; slides: [numbe
   }, [job.report?.pages, slides]);
   const src = useMemo(() => new Map(slides.map(([n, p]) => [n, p.a ? afterUrl(job, p.a) : ""])), [slides, job]);
   return (
-    <OverviewCanvas portrait jobId={job.id} groups={groups} sel={sel} title={(x) => x.title} onOpen={onOpen} badge={() => null}
-      thumb={(x) => src.get(x.n) ? <img src={src.get(x.n)} alt="" draggable={false} className="block w-full aspect-[210/297] object-cover" /> : <div className="aspect-[210/297] bg-panel" />} />
+    <OverviewCanvas portrait={!isLandscape(job)} jobId={job.id} groups={groups} sel={sel} title={(x) => x.title} onOpen={onOpen} badge={() => null}
+      thumb={(x) => src.get(x.n) ? <img src={src.get(x.n)} alt="" draggable={false} className={cn("block w-full object-cover", isLandscape(job) ? "aspect-video" : "aspect-[210/297]")} />
+        : <div className={cn("bg-panel", isLandscape(job) ? "aspect-video" : "aspect-[210/297]")} />} />
   );
 }
 

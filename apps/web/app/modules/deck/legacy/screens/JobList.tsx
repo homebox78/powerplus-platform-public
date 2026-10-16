@@ -35,7 +35,7 @@ function Opts({ job }: { job: Job }) {
   return (
     <div className="flex items-center gap-1.5 min-w-0 overflow-hidden">
       <span className={chip} title={t?.desc}><b className="font-bold text-ink">타입 {id.toUpperCase()}</b>{t?.name}</span>
-      <span className={chip}>{job.opts?.purpose === "submit" ? "제출용" : "발표용"}</span>
+      <span className={chip}>{job.opts?.purpose === "submit" ? "제출용" : job.opts?.purpose === "company" ? "회사소개" : "발표용"}</span>
       {job.theme && <span className={chip} title="강조색"><span className="w-2.5 h-2.5 rounded-full border border-black/10" style={{ background: job.theme.slice(0, 7) }} /><span className="font-mono text-[12px]">{job.theme.slice(0, 7).toUpperCase()}</span></span>}
     </div>
   );

@@ -21,6 +21,9 @@ echo "== 2) 파이썬 환경 ($VENV)"
 python3 -m venv "$VENV"
 "$VENV/bin/pip" install -q --upgrade pip
 "$VENV/bin/pip" install -q python-pptx lxml pillow pypdf python-docx openpyxl olefile
+# 회사소개서(타입 G, company.py) 렌더 — 헤드리스 크로미움. 판은 powerMCP(playwright-core 1.63)와 맞춰 브라우저 파일(~/.cache/ms-playwright)을 함께 쓴다
+"$VENV/bin/pip" install -q "playwright==1.63.0"
+"$VENV/bin/python" -m playwright install chromium-headless-shell
 
 echo "== 3) 서체 (~/.local/share/fonts/powerdeck + fontconfig 별칭)"
 if ls "$HERE"/fonts/private/*.[ot]tf >/dev/null 2>&1; then

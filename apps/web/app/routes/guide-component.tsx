@@ -12,6 +12,7 @@ import { Tag } from "@/components/hb/tag";
 import { cn } from "@/lib/utils";
 import { KRDS_COMPONENTS } from "@/modules/guide/data/krds";
 import { applyMetas, useGuideOverrides } from "@/modules/guide/overrides";
+import { MemberGate } from "@/components/hb/member-gate";
 
 interface DocFile { path: string; code: string }
 interface FwDoc { demo: string; files: DocFile[]; deps: string[] }
@@ -145,7 +146,12 @@ function vueTemplate(demo: string) { const m = demo.match(/<template>\n?([\s\S]*
 
 const TOC: [string, string][] = [["preview", "미리보기"], ["install", "설치"], ["usage", "사용법"], ["notes", "알아 둘 점"], ["krds", "KRDS 지침"]];
 
+// 회원 전용(2026-10-16) — 서버도 같은 판정으로 API 를 막는다
 export default function GuideComponent() {
+  return <MemberGate title="powerGuide 컴포넌트"><GuideComponentBody /></MemberGate>;
+}
+
+function GuideComponentBody() {
   const { id = "" } = useParams();
   const [fw, setFw] = useState<Fw>(() => (typeof localStorage !== "undefined" && localStorage.getItem("pp-guide-fw") === "vue" ? "vue" : "react"));
   const [how, setHow] = useState<"cli" | "manual">("cli");

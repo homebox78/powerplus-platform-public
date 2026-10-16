@@ -29,6 +29,7 @@ import { categoriesQuery, postQuery, postsQuery, shortDate, useCommunityMutation
 import { MODULES } from "@/lib/modules";
 import { cn } from "@/lib/utils";
 import type { Route } from "./+types/community";
+import { MemberGate } from "@/components/hb/member-gate";
 
 export const meta: Route.MetaFunction = () => [{ title: "커뮤니티 — powerPlus" }];
 
@@ -43,7 +44,12 @@ const catName = (id: string) => RAIL.find((r) => r.id === id)?.name ?? "전체";
 const moduleName = (id: string | null) => MODULES.find((m) => m.id === id)?.name ?? null;
 type EditorValue = { id?: string; category: string; title: string; body: string; module: string | null };
 
+// 회원 전용(2026-10-16) — 서버도 같은 판정으로 API 를 막는다
 export default function CommunityPage() {
+  return <MemberGate title="커뮤니티"><CommunityPageBody /></MemberGate>;
+}
+
+function CommunityPageBody() {
   const { id: postId = null } = useParams();
   const [params, setParams] = useSearchParams();
   const navigate = useNavigate();

@@ -16,6 +16,8 @@ export interface Me {
   billing_visible?: boolean;
   /** 가입 동의 상태 — required 면 웹이 동의 화면을 띄우고, 서버는 로그인 기능을 428 로 막는다. */
   consent?: { required: boolean; version: string; missing: string[]; agreed_at: string | null };
+  /** 서비스 이용 자격(회원 전용) — member 가 아니면 reason 으로 안내를 고른다. staff_until = 임직원 이용 기간 끝 */
+  access?: { member: boolean; reason: "UNAUTHORIZED" | "PLAN_REQUIRED" | "STAFF_EXPIRED" | null; staff_until: string | null };
 }
 
 export const meQuery = queryOptions({
@@ -29,7 +31,9 @@ export function useMe() {
   const q = useQuery(meQuery);
   const me = q.data && q.data.user ? q.data : null;
   const has = (r: Role) => !!me && (me.roles.includes("superadmin") || me.roles.includes(r) || (r !== "superadmin" && me.roles.includes("admin")));
-  return { me, loading: q.isLoading, isAdmin: has("admin"), hasRole: has };
+  // 회원(Pro·Team·임직원 기간 안·운영 역할) — 서버 Access::member 와 같은 값(/me 의 access.member)
+  const member = !!me?.access?.member;
+  return { me, loading: q.isLoading, isAdmin: has("admin"), hasRole: has, member };
 }
 
 export function useLogout() {

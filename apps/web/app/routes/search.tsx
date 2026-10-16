@@ -19,6 +19,7 @@ import { KRDS_PATTERNS } from "@/modules/guide/data/krds-patterns";
 import { STATUS } from "@/modules/deck/legacy/ui";
 import { cn } from "@/lib/utils";
 import type { Route } from "./+types/search";
+import { MemberGate } from "@/components/hb/member-gate";
 
 export const meta: Route.MetaFunction = ({ location }) => [{ title: `${new URLSearchParams(location.search).get("q") ?? ""} 검색 — powerPlus`.trim() }];
 
@@ -48,7 +49,12 @@ function useGuideHits(q: string): GuideHit[] {
   }, [q, kit.data]);
 }
 
+// 회원 전용(2026-10-16) — 서버도 같은 판정으로 API 를 막는다
 export default function SearchPage() {
+  return <MemberGate title="통합 검색"><SearchPageBody /></MemberGate>;
+}
+
+function SearchPageBody() {
   const [params, setParams] = useSearchParams();
   const q = (params.get("q") ?? "").trim();
   const type = (TABS.some(([t]) => t === params.get("type")) ? params.get("type") : "assets") as Tab;

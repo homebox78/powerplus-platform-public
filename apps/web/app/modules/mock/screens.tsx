@@ -452,14 +452,14 @@ const MOCK_FLOW: [string, string][] = [
 export function MockLandingSteps() {
   const ex = useQuery(galleryQuery({ view: "shared", sort: "score" }));
   const top = (ex.data?.items ?? []).slice(0, 3);
-  const { me, loading } = useMe();
+  const { me, loading, member } = useMe();
   return (
     <>
-      {/* 비로그인 안내 — 기획·시안 저장과 MCP 키는 로그인이 있어야 한다(2026-10-09 시험: 로그인 CTA 없음) */}
-      {!loading && !me && (
+      {/* 비회원 안내 — 기획·시안·컴포넌트와 MCP 는 Pro·Team·임직원 전용(2026-10-16 회원 전용 전환) */}
+      {!loading && !member && (
         <section className="mt-8 flex flex-wrap items-center justify-between gap-4 rounded-panel border border-line bg-ground-2 px-6 py-5" aria-label="로그인 안내" data-testid="mock-login-cta">
-          <Copy className="text-md text-ink-2" text="로그인하면 기획 와이어와 시안을 내 계정에 저장하고 MCP 키를 발급할 수 있습니다. 둘러보기는 로그인 없이 됩니다." />
-          <Button size="md" asChild><Link to="/login?next=/mock">로그인</Link></Button>
+          <Copy className="text-md text-ink-2" text={me ? "기획·시안·컴포넌트는 Pro·Team 회원과 임직원이 쓸 수 있습니다. 요금제를 확인해 주세요." : "기획·시안·컴포넌트는 Pro·Team 회원과 임직원이 쓸 수 있습니다. 회원가입 후 로그인해 주세요."} />
+          <Button size="md" asChild>{me ? <Link to="/pricing">요금제 보기</Link> : <Link to="/login?next=/mock">로그인</Link>}</Button>
         </section>
       )}
       <section className="mt-8" aria-label="할 수 있는 일">

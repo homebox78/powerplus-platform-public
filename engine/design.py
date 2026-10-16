@@ -3491,6 +3491,10 @@ def _plan_phase(job, j):
         import vertical   # 제출용 = A4 세로 제안서 — 기획부터 표지·목차·간지·본문 제작·결과 보고까지 한 번에(시안 확인 단계 없음)
         vertical.run(job, j, opts, brief, note)
         return
+    if str(opts.get("purpose") or "") == "company" and j.get("source_kind") != "pptx":
+        import company   # 회사소개용 = 타입 G 회사소개서 — 레이아웃 카탈로그 → HTML 렌더 → 편집 가능한 PPT, 시안 확인 단계 없음(2026-10-16)
+        company.run(job, j, opts, brief, note)
+        return
     first_run = not (plan and plan.get("slides"))
 
     # 2) 기획 (다시 만들기면 기존 기획을 쓴다)

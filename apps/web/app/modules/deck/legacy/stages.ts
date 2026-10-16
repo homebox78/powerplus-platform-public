@@ -34,6 +34,13 @@ export const STAGES_VERTICAL: { name: string; label?: string; desc: string }[] =
   { name: "시안 생성", label: "PPT 조립", desc: "양식 + 도식 + 파워에셋 그림 — 시안 없이 바로" },
   { name: "시안 정리", label: "쪽 캡처", desc: "만든 PPT 를 쪽마다 그림으로" },
 ];
+// 회사소개서(타입 G) — 레이아웃 카탈로그 → HTML 렌더 → 편집 가능한 PPT(engine/company.py). 엔진 보고 이름은 위와 같다
+export const STAGES_COMPANY: { name: string; label?: string; desc: string }[] = [
+  { name: "준비", desc: "회사 자료 읽기" },
+  { name: "기획", label: "구성 · 카피", desc: "레이아웃 13종에 글 채우기 · 파워에셋 아이콘" },
+  { name: "시안 생성", label: "HTML 렌더 → PPT", desc: "글·카드는 편집 가능한 도형으로, 빛·그라데이션은 배경 그림" },
+  { name: "시안 정리", label: "쪽 캡처", desc: "만든 PPT 를 쪽마다 그림으로" },
+];
 const isSubmit = (j: Job) => j.opts?.purpose === "submit";
 
 // design 작업의 장표 제작 단계 (prompt_design.md 가 쓰는 부분집합)
@@ -56,7 +63,7 @@ export const hasMockup = (j: Job) => {
   const sl = j.plan?.slides ?? [];
   return (j.status === "running" || j.status === "queued") && sl.length > 0 && sl.every((s) => !!(s as { wire_pick?: string }).wire_pick);
 };
-export const stagesOf = (j: Job) => (isPlanPhase(j) ? (isSubmit(j) ? STAGES_VERTICAL : STAGES_PLAN) : j.kind === "design" ? STAGES_BUILD : STAGES);
+export const stagesOf = (j: Job) => (isPlanPhase(j) ? (isSubmit(j) ? STAGES_VERTICAL : j.opts?.purpose === "company" ? STAGES_COMPANY : STAGES_PLAN) : j.kind === "design" ? STAGES_BUILD : STAGES);
 
 /** 화면에 보일 단계 이름 — 엔진이 보고하는 이름(name)이 아니라 사용자 말(label) */
 export const stageLabel = (j: Job) => { const s = stagesOf(j).find((x) => x.name === j.stage); return s ? (s.label ?? s.name) : (j.stage ?? "준비"); };

@@ -8,8 +8,8 @@ export type CompanyTheme = { id: string; name: string; desc: string; fits: strin
 export const COMPANY_THEMES: CompanyTheme[] = [
   { id: "a", name: "다크 임팩트", desc: "짙은 바탕 표지·간지 + 흰 본문, 큰 숫자와 굵은 카피 · 유리 아이콘 · 와이어 구", fits: "회사소개서 · IR · 기술 기업", tone: "blue" },
   { id: "b", name: "라이트 에디토리얼", desc: "흰 표지·간지에 흐르는 선 다발, 검정 알약 꼬리표, 테두리 없는 옅은 카드", fits: "회사소개서 · 서비스 소개 · 공공·금융", tone: "navy" },
-  { id: "c", name: "매거진", desc: "크림 바탕에 가는 선, 여백 많은 편집 — 표지 오른쪽 큰 색 면, 밑줄 꼬리표, 헤어라인 카드", fits: "브랜드 · 리테일 · 라이프스타일", tone: "lavender" },
-  { id: "d", name: "프렌들리 라운드", desc: "흰 바탕에 파스텔 둥근 면, 아주 둥근 파스텔 카드, 칩 꼬리표, 친근한 굵은 제목 · 간지는 주색 전면", fits: "플랫폼 · 커머스 · 스타트업", tone: "carrot" },
+  { id: "c", name: "솔리드 컬러", desc: "표지·간지·마무리는 톤 색 전면 + 흰 글씨, 본문은 흰 바탕에 크림 띠·알약(당근 소개서 결) · 굵은 세로 바 머리글", fits: "브랜드 · 커머스 · 라이프스타일", tone: "carrot" },
+  { id: "d", name: "프렌들리 라운드", desc: "흰 바탕 아래 주색 언덕 곡면 + 흰 둥근 카드(당근박스 덱 결), 겹치는 원은 반투명 · 간지는 주색 전면", fits: "플랫폼 · 서비스 소개 · 스타트업", tone: "coral" },
 ];
 const THUMB_V = 5;   // 5: 테마 C·D + 톤 11(640×360) · 4: 포인트 SVG · 3: 테마 A·B × 톤 5
 /** 견본 덱 쪽 구성(같은 순서) — 크게 보기 캡션 */

@@ -108,6 +108,46 @@ def tint_icon(src, dst, tone):
     return dst
 
 
+# ───────────────────────── 레이아웃 카탈로그 — AI 가 고르는 칸(글자 수 한도는 화면에 들어가는 길이)
+LAYOUTS = {
+    "cover": "표지(어두운 바탕). eyebrow(영문 대문자 20자) · title(2~3줄, 줄마다 12자 이내, 과감한 한 문장 — 회사의 약속) · sub(40자) · date(예 2026.10)",
+    "contents": "목차. items: 장 이름 4~6개(각 12자) — 뒤에 오는 section 쪽과 같은 이름·순서",
+    "statement": "한 문장 선언(밝은 바탕). eyebrow · headline(2줄, 줄마다 18자, 강조 1곳 **…**) · sub(2문장, 각 45자) · word(바탕에 크게 까는 영문 한 단어, 예 WHO WE ARE)",
+    "stats": "숫자가 주인공. eyebrow · headline(1줄 24자, 강조 1곳) · items 3~4개: value(숫자만, 예 1998·700·300) · unit(년·억·명·%) · label(10자) · note(18자)",
+    "pillars": "핵심 역량 카드. eyebrow · headline(1줄 24자, 강조 1곳) · sub(45자) · items 3~4개: title(12자) · desc(2줄, 줄마다 22자) · icon(아이콘 검색어 한국어 1~2낱말)",
+    "history": "연혁 가로 타임라인. eyebrow · headline(1줄 24자, 강조 1곳) · items 5~7개(오래된 것부터): year(4자리) · text(2줄, 줄마다 14자)",
+    "section": "간지(어두운 바탕). no(01·02…) · title(10자) · sub(32자) · icon(검색어)",
+    "services": "사업·제품 카드. eyebrow · headline(1줄 24자, 강조 1곳) · items 2~4개: tag(영문 12자) · name(10자) · desc(2줄, 줄마다 22자) · points 3개(각 12자)",
+    "showcase": "대표 사례·제품 한 개. eyebrow · name(8자, 크게) · tagline(22자) · desc(2문장, 각 40자) · url · items 3~4개: title(12자) · desc(16자)",
+    "clients": "고객·서비스 이름 그리드. eyebrow · headline(1줄 24자, 강조 1곳) · sub(45자) · items 8~24개(이름만, 각 10자)",
+    "awards": "수상·인증 목록. eyebrow · headline(1줄 24자, 강조 1곳) · items 6~12개: year · text(30자)",
+    "vision": "비전 한 문장(파랑 바탕). eyebrow · quote(2~3줄, 줄마다 16자, 강조 1곳) · by(20자)",
+    "contact": "연락처(어두운 바탕). headline(2줄, 줄마다 16자) · company · rows: label·value 3~5개(주소·대표전화·이메일·웹사이트) · offices 0~4개: name · addr(30자)",
+}
+
+PLAN_SYSTEM = """너는 국내 IT·SI 기업의 회사소개서를 만드는 카피라이터 겸 아트디렉터다. 제안서가 아니라 '회사를 처음 보는 사람에게 소개하는' 덱이다.
+쪽마다 아래 레이아웃 중 하나를 고르고 칸에 글만 채운다. 디자인은 코드가 한다 — 너는 글의 힘과 순서만 책임진다.
+
+# 레이아웃(kind)과 칸
+{layouts}
+
+# 글쓰기
+- 과감하게: 머리글은 짧고 단정하게 끝낸다(“~합니다”보다 “~한다.”·명사형·숫자 앞세우기). 형용사 나열 금지, 숫자와 고유명사로 말한다.
+- 강조는 머리글마다 한 곳만 **…** 로 감싼다(색이 바뀐다). 나머지 칸에는 ** 를 쓰지 않는다.
+- 칸마다 적힌 글자 수를 넘기지 않는다 — 넘치면 화면에서 잘린다. 줄 수가 정해진 칸은 줄을 \\n 으로 나눈다(마침표에서 줄을 바꾸고, 낱말 중간에서 끊지 않는다).
+- 자료에 없는 숫자·수상·고객을 지어내지 않는다. 모르면 그 쪽을 빼거나 숫자 없는 레이아웃을 고른다.
+- eyebrow 는 영문 대문자 짧은 꼬리표(예 ABOUT US · BY THE NUMBERS · HISTORY · CORE WORKS · CONTACT).
+
+# 구성
+- 전체 {pages}쪽 안팎. 첫 쪽 cover, 둘째 쪽 contents, 마지막 쪽 contact.
+- 장마다 section 간지로 연다(contents 의 이름과 같게). 같은 레이아웃을 세 번 연달아 쓰지 않는다.
+- 회사 이야기 순서: 우리는 누구인가(statement·stats) → 무엇을 잘하나(pillars·services) → 해 온 일(showcase·clients·history·awards) → 비전(vision) → contact.
+
+# 출력 — JSON 하나
+{"company": {"name": "회사 이름(예 ㈜솔리데오)", "short": "영문 짧은 이름", "website": "", "tagline": "회사 한 줄 소개 30자"},
+ "slides": [{"kind": "cover", ...칸}, ...]}"""
+
+
 # ───────────────────────── HTML
 def _font_css():
     out = []

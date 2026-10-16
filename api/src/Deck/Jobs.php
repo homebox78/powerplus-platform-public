@@ -320,7 +320,7 @@ final class Jobs
     {
         $n = max(0, min(200, (int) ($b['slides'] ?? 0)));
         // 새로 기획하는 장표는 장 수를 안 적으면 5장(2026-10-07 사용자) — '자동'이 자료 14만 자에 37장을 잡아 몇 시간씩 걸렸다
-        if ($design && $n === 0) $n = ['submit' => 30, 'company' => 14][$b['purpose'] ?? ''] ?? 5;   // 제출용(세로 제안서)은 본문 쪽 수 — 미입력이면 30쪽, 회사소개용(타입 G)은 14쪽
+        if ($design && $n === 0) $n = ['submit' => 30, 'company' => 14][$b['purpose'] ?? ''] ?? 5;   // 제출용(세로 제안서)은 본문 쪽 수 — 미입력이면 30쪽, 회사소개용(회사소개서)은 14쪽
         $m = in_array($b['mockups'] ?? '', ['plan', 'sample', 'all'], true) ? $b['mockups'] : 'plan';
         return json_encode(['slides' => $n, 'mockups' => $m, 'sample' => max(1, min(20, (int) ($b['sample'] ?? 3))),
             'project' => mb_substr(trim((string) ($b['project'] ?? '')), 0, 80), 'front' => self::front($b['front'] ?? null),

@@ -1,9 +1,9 @@
 // 출처: homebox-handoff apps/web/app/routes/pricing.tsx — 요금제는 billing.visible 플래그 뒤로(기획 §12.3): 꺼져 있으면 숫자 없이 "준비 중"과 지금 무료로 쓰는 범위만. 켜져 있으면 /plans 응답으로 카드를 그린다(결제 연동은 P6 이라 버튼은 상담·마이페이지로). 기관 파비콘 띠·비교표·결제창은 뺐다.
 import { ArrowRight } from "lucide-react";
-import { BrandName } from "@/components/hb/brand-name";
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { Link, useNavigate } from "react-router";
+import { BrandName } from "@/components/hb/brand-name";
 import { Copy, MBr } from "@/components/hb/copy";
 import { Tag } from "@/components/hb/tag";
 import { Button } from "@/components/ui/button";

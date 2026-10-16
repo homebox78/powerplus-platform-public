@@ -1,8 +1,8 @@
 // 관리자 화면 공용 조각 — 제목·검색·쪽 넘김·상세 항목. 부품은 hb·ui 의 것을 그대로 쓴다(홈박스 관리자 톤).
-import { SegTabs } from "@/components/hb/seg-tabs";
 import { ArrowDown, ArrowUp, ArrowUpDown, ChevronLeft, ChevronRight } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useSearchParams } from "react-router";
+import { SegTabs } from "@/components/hb/seg-tabs";
 import { Copy } from "@/components/hb/copy";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Label } from "@/components/ui/label";

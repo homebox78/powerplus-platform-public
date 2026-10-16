@@ -2,9 +2,9 @@
 // 2026-10-08 디자인 점검 리포트 반영: 히어로 = 문구만(이미지 없음, 2026-10-08 사용자), 숫자 띠, powerMCP 안내 띠.
 // 모듈 카드 그림: public/img/home/cards/*-v2.html — 움직이는 그림(원본 docs/powerplus-cards, 2026-10-11 사용자 제작). 카드 링크 클릭을 막지 않게 pointer-events 없음.
 import { useQuery } from "@tanstack/react-query";
-import { MobileCarousel } from "@/components/hb/mobile-carousel";
 import { ArrowRight } from "lucide-react";
 import { Link } from "react-router";
+import { MobileCarousel } from "@/components/hb/mobile-carousel";
 import { BrandName } from "@/components/hb/brand-name";
 import { MainChat } from "@/components/chat/main-chat";
 import { Button } from "@/components/ui/button";

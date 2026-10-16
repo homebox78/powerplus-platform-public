@@ -1,14 +1,14 @@
 // 장표 작업 목록 — 출처: powerDeck web/src/screens/JobList.tsx (옛 화면 그대로 이식, eslint.config.js legacy 구역).
 import { useState, type MouseEvent, type ReactNode } from "react";
+import { Trash2 } from "lucide-react";
+import { BulkBar, useSelection } from "@/components/admin/admin-ui";
+import { Checkbox } from "@/components/ui/checkbox";
+import { postJson } from "@/lib/api";
 import { api, fileUrl, fmtSize, usd, type Job } from "../api";
 import { Arrow, Modal, Ms, STATUS, Seg, StatusPill, cn, parseTs, useToastOn, useContextMenu, type CtxItem } from "../ui";
 import { stageLabel } from "../stages";
 import { DESIGN_TYPES } from "../DesignTypes";
 import { WireCanvas } from "../Wireframe";
-import { BulkBar, useSelection } from "@/components/admin/admin-ui";
-import { Checkbox } from "@/components/ui/checkbox";
-import { postJson } from "@/lib/api";
-import { Trash2 } from "lucide-react";
 
 type Filter = "all" | "live" | "review" | "done" | "failed";
 type View = "list" | "card";

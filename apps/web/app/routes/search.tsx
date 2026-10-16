@@ -18,8 +18,8 @@ import { KRDS_COMPONENTS } from "@/modules/guide/data/krds";
 import { KRDS_PATTERNS } from "@/modules/guide/data/krds-patterns";
 import { STATUS } from "@/modules/deck/legacy/ui";
 import { cn } from "@/lib/utils";
-import type { Route } from "./+types/search";
 import { MemberGate } from "@/components/hb/member-gate";
+import type { Route } from "./+types/search";
 
 export const meta: Route.MetaFunction = ({ location }) => [{ title: `${new URLSearchParams(location.search).get("q") ?? ""} 검색 — powerPlus`.trim() }];
 

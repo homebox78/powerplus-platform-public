@@ -1,7 +1,8 @@
 // 새 변환 올리기(파일·언어·디자인 고르기) — 출처: powerDeck web/src/screens/Upload.tsx (옛 화면 그대로 이식, eslint.config.js legacy 구역).
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { API, api, fmtSize, uploadDoc, uploadFile, usd, type Engine, type Job, type JobKind, type MockupMode, type UploadProgress } from "../api";
 import { LiveDot } from "@/components/hb/live-status";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { API, api, fmtSize, uploadDoc, uploadFile, usd, type Engine, type Job, type JobKind, type MockupMode, type UploadProgress } from "../api";
 import { getAi, type AiSettings } from "../openrouter";
 import { cn, Ms, SecTitle, Seg, useToastOn, toast, useContextMenu, type CtxItem, sent } from "../ui";
 import { DesignTypePicker, typeName } from "../DesignTypes";
@@ -9,7 +10,6 @@ import { VerticalStylePicker, VerticalTonePicker, verticalStyleName, verticalTon
 import { COMPANY_THEMES, CompanyThemePicker, CompanyTonePicker, companyThemeName, companyToneName } from "../CompanyThemes";
 import { BODY_FONTS, FontPicker, TITLE_FONTS, VERTICAL_BODY_FONTS, fontName } from "../FontPicker";
 import { LogoSearch } from "../LogoSearch";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 /** 제작 언어 — 장표 글·시안·대본(서버 Jobs::LANGS 와 같은 목록) */
 const DECK_LANGS = [["ko", "한국어"], ["en", "영어 English"], ["ja", "일본어 日本語"], ["zh", "중국어 简体中文"], ["fr", "프랑스어 Français"], ["es", "스페인어 Español"], ["de", "독일어 Deutsch"], ["vi", "베트남어 Tiếng Việt"]] as const;

@@ -2,11 +2,11 @@
 //   [SidebarProvider] [Sidebar collapsible=icon: 머리(로고 = 대시보드 링크) · 그룹 라벨 + 메뉴(하위 Collapsible)] [SidebarInset: 고정 헤더(Trigger·Breadcrumb·이동·사용자 메뉴) + 본문]
 // 레이아웃 라우트 하나가 가드·메뉴, 본문은 <Outlet />. 화면이 없는 메뉴는 넣지 않는다. 노출은 역할 기준 — 서버도 같은 역할로 막는다.
 // 다른 작업자가 메뉴를 더할 땐 GROUPS 의 자기 줄만 추가한다(children 으로 하위 메뉴 가능).
-import { BrandName } from "@/components/hb/brand-name";
 import { BookOpenText, Scale, SwatchBook, ChevronDown, ChevronRight, ClipboardList, Coins, Contrast, CreditCard, ExternalLink, FileSearch, History, Images, Inbox, LayoutTemplate, ListChecks, LogOut, Mail, MessagesSquare, Moon, Presentation, ShieldCheck, Sparkles, Sun, Trash2, Users } from "lucide-react";
 import { useTheme } from "next-themes";
 import { useEffect } from "react";
 import { Link, NavLink, Outlet, useLocation, useNavigate } from "react-router";
+import { BrandName } from "@/components/hb/brand-name";
 import { PageSkeleton } from "@/components/hb/page-skeleton";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";

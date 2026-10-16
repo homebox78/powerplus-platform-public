@@ -1,10 +1,10 @@
 // 관리자 · 메일 서식 — 서비스가 보내는 메일을 유형별로 한 페이지에서 미리 본다(샘플 값으로 그림).
 // 서버: api/routes/admin3.php GET /admin/mail/templates (본문은 api/src/Core/MailTemplate.php 하나에서 나온다).
-import { SegTabs } from "@/components/hb/seg-tabs";
 import { useQuery } from "@tanstack/react-query";
 import { ChevronDown } from "lucide-react";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useState } from "react";
+import { SegTabs } from "@/components/hb/seg-tabs";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { AdminTitle } from "@/components/admin/admin-ui";
 import { apiFetch } from "@/lib/api";
 import { cn } from "@/lib/utils";

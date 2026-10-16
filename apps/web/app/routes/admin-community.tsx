@@ -1,18 +1,18 @@
 // 관리자 · 커뮤니티 — 글(숨김·고정·분류 바꾸기·삭제) · 댓글(숨김·삭제) · 공지 쓰기(전체 알림). api/routes/admin2.php /admin/community/*.
 // 탭·표·Select·Switch·Dialog·AlertDialog 는 shadcn/ui 공식 부품(사용자 지시 2026-10-06). 숨김 = deleted_at(되돌림 가능), 삭제 = 행 제거(2단계 확인).
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { MBr } from "@/components/hb/copy";
 import { Megaphone, MessagesSquare, Pin, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { useSearchParams } from "react-router";
 import { toast } from "sonner";
+import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from "recharts";
+import { MBr } from "@/components/hb/copy";
 import { AdminTitle, BulkBar, ConfirmDelete, Field, Pager, RowSwitch, SearchBox, SelectAllCell, SelectCell, SortHead, useQueryState, useSelection, useSort } from "@/components/admin/admin-ui";
 import { bulkCommunityComments, bulkCommunityPosts, useBulkRun } from "@/lib/admin-bulk2";
 import { ChoiceButton } from "@/components/hb/choice-button";
 import { toastError } from "@/components/hb/confirm";
 import { Tag } from "@/components/hb/tag";
 import { Button } from "@/components/ui/button";
-import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from "recharts";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from "@/components/ui/chart";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";

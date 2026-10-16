@@ -1,9 +1,9 @@
 // 관리자 · 포인트 규칙 — core_point_rules 를 표로 보고 값(지급량·일/연 상한·사용)을 그 자리에서 고친다.
 // 서버: api/routes/admin3.php GET/PATCH /admin/point-rules. 부호(적립↔사용)는 바꿀 수 없다. 변경은 감사 기록에 남는다.
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { MBr } from "@/components/hb/copy";
 import { useState } from "react";
 import { toast } from "sonner";
+import { MBr } from "@/components/hb/copy";
 import { AdminTitle, SortHead, useSort } from "@/components/admin/admin-ui";
 import { toastError } from "@/components/hb/confirm";
 import { Button } from "@/components/ui/button";

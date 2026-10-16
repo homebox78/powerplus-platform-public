@@ -1,10 +1,10 @@
 // 모듈 화면 틀 — 기획 §14.4: 랜딩(시작하기) → 작업 단위 하위 메뉴. 하위 메뉴는 lib/modules.ts 가 단일 원천.
 // 각 화면의 실내용은 S2 에서 모듈을 옮겨 오며 채운다 — 지금은 "이 화면이 하는 일" 한 줄 + 자리.
+import { Lock } from "lucide-react";
+import { Link, NavLink, Navigate, useLocation, useParams, useSearchParams } from "react-router";
 import { BrandName } from "@/components/hb/brand-name";
 import { MobileCarousel } from "@/components/hb/mobile-carousel";
 import { DOWNLOAD_COUNT } from "@/modules/guide/downloads";
-import { Lock } from "lucide-react";
-import { Link, NavLink, Navigate, useLocation, useParams, useSearchParams } from "react-router";
 import { Copy } from "@/components/hb/copy";
 import { MemberLock } from "@/components/hb/member-gate";
 import { WideToggle, useWideInlinePresent } from "@/components/hb/work-space";

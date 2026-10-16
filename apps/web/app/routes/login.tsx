@@ -1,11 +1,11 @@
 // 출처: homebox-handoff apps/web/app/routes/login.tsx — 오른쪽 썸네일 콜라주는 powerMock 이 붙은 뒤. 서버 /auth/providers 가 켜진 제공자만 준다.
-import { BrandName } from "@/components/hb/brand-name";
-import { MODULES } from "@/lib/modules";
 import { useQuery } from "@tanstack/react-query";
 import { AlertCircle } from "lucide-react";
 import { useEffect, useState, type MouseEvent } from "react";
 import { toast } from "sonner";
 import { Link, useLocation, useNavigate, useSearchParams } from "react-router";
+import { BrandName } from "@/components/hb/brand-name";
+import { MODULES } from "@/lib/modules";
 import { GoogleIcon, KakaoIcon, NaverIcon } from "@/components/hb/brand-icons";
 import { Copy } from "@/components/hb/copy";
 import { EmailLogin } from "@/components/hb/email-login";

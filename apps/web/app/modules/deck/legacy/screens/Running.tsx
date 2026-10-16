@@ -1,12 +1,12 @@
 // 진행 중 화면(단계·기획 미리 보기) — 출처: powerDeck web/src/screens/Running.tsx (옛 화면 그대로 이식, eslint.config.js legacy 구역).
-import { pdGo } from "../nav";
 import { useEffect, useRef, useState } from "react";
 import { LiveDot } from "@/components/hb/live-status";
+import { useIsMobile } from "@/hooks/use-mobile";
+import { PaneToggle, usePane } from "@/components/hb/work-space";
+import { pdGo } from "../nav";
 import { api, fileUrl, fmtSize, isDesign, uploadDoc, usd, type Engine, type Job } from "../api";
 import { clampProgress, hasMockup, isPlanPhase, stageIndex, stagesOf } from "../stages";
 import { cn, fmtDur, JobHeader, Ms, parseTs, useContextMenu, useToastOn, sent } from "../ui";
-import { useIsMobile } from "@/hooks/use-mobile";
-import { PaneToggle, usePane } from "@/components/hb/work-space";
 import { TipTicker } from "../TipTicker";
 
 const TIPS: [string, string][] = [

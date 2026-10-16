@@ -13,7 +13,6 @@ import styles
 W = {}  # worker.py 가 setup() 으로 넘겨주는 함수·설정
 
 
-
 # ── 제작 언어(opts.lang) — 장표에 들어가는 글(기획·와이어·시안·앞장)을 이 언어로. 자료 요약(digest)은 한국어 그대로(내부용)
 LANGS = {"ko": ("한국어", "Korean"), "en": ("영어", "English"), "ja": ("일본어", "Japanese"), "zh": ("중국어(간체)", "Simplified Chinese"),
          "fr": ("프랑스어", "French"), "es": ("스페인어", "Spanish"), "de": ("독일어", "German"), "vi": ("베트남어", "Vietnamese")}

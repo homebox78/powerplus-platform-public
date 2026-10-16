@@ -40,7 +40,7 @@ def one(theme, tone, src):
     td = os.path.join(THUMBS, theme, tone)
     os.makedirs(td, exist_ok=True)
     for i, x in enumerate(r, 1):
-        Image.open(x["preview"]).convert("RGB").resize((960, 540), Image.LANCZOS).save(os.path.join(td, f"{i}.jpg"), quality=86)
+        Image.open(x["preview"]).convert("RGB").resize((640, 360), Image.LANCZOS).save(os.path.join(td, f"{i}.jpg"), quality=82)   # 4테마×11톤×16쪽 = 704장이라 작게
     print(f"{theme}/{tone}: {n}장 → {out}\\결과.pptx · 썸네일 {td}")
 
 

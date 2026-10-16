@@ -329,8 +329,8 @@ final class Jobs
             'purpose' => in_array($b['purpose'] ?? '', ['submit', 'company'], true) ? $b['purpose'] : 'present',   // company = 회사소개서(테마 A·B, engine/company.py)
             'vstyle' => in_array($b['vstyle'] ?? '', ['band', 'tab', 'side', 'split', 'pill', 'line'], true) ? $b['vstyle'] : 'band',   // 세로 제안서 디자인 스타일(모양) — engine/vertical.py STYLES
             'vtone' => in_array($b['vtone'] ?? ($b['vtheme'] ?? ''), ['navy', 'blue', 'deep', 'teal', 'gray', 'glass'], true) ? ($b['vtone'] ?? $b['vtheme']) : 'navy',   // 톤(색) — TONES(옛 vtheme 도 받는다)
-            'ctheme' => in_array($b['ctheme'] ?? '', ['a', 'b'], true) ? $b['ctheme'] : 'a',   // 회사소개서 테마 — A 다크 임팩트 · B 라이트 에디토리얼(engine/company.py COMPANY_THEMES)
-            'ctone' => in_array($b['ctone'] ?? '', ['blue', 'teal', 'violet', 'crimson', 'orange'], true) ? $b['ctone'] : 'blue',   // 회사소개서 톤 — engine/company.py TONES
+            'ctheme' => in_array($b['ctheme'] ?? '', ['a', 'b', 'c', 'd'], true) ? $b['ctheme'] : 'a',   // 회사소개서 테마 — A 다크 임팩트 · B 라이트 에디토리얼 · C 매거진 · D 프렌들리 라운드(engine/company.py COMPANY_THEMES)
+            'ctone' => preg_match('/^([a-z]{3,10}|#[0-9A-Fa-f]{6})$/', (string) ($b['ctone'] ?? '')) ? $b['ctone'] : 'blue',   // 회사소개서 톤 — TONES 의 id 또는 직접 고른 색 #RRGGBB(모르는 id 는 엔진이 blue 로)
             'lang' => in_array($b['lang'] ?? '', self::LANGS, true) ? $b['lang'] : 'ko',   // 제작 언어 — 장표 글·시안·대본
             'font_title' => preg_match('/^[a-z0-9]{2,16}$/', (string) ($b['font_title'] ?? '')) ? $b['font_title'] : '',
             'font_body' => preg_match('/^[a-z0-9]{2,16}$/', (string) ($b['font_body'] ?? '')) ? $b['font_body'] : ''], JSON_UNESCAPED_UNICODE);   // 서체 — worker/fonts/fonts.json 의 id(모르면 엔진이 기본)

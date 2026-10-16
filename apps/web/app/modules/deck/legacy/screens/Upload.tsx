@@ -6,7 +6,7 @@ import { getAi, type AiSettings } from "../openrouter";
 import { cn, Ms, SecTitle, Seg, useToastOn, toast, useContextMenu, type CtxItem, sent } from "../ui";
 import { DesignTypePicker, typeName } from "../DesignTypes";
 import { VerticalStylePicker, VerticalTonePicker, verticalStyleName, verticalToneName } from "../VerticalThemes";
-import { CompanyThemePicker, CompanyTonePicker, companyThemeName, companyToneName } from "../CompanyThemes";
+import { COMPANY_THEMES, CompanyThemePicker, CompanyTonePicker, companyThemeName, companyToneName } from "../CompanyThemes";
 import { BODY_FONTS, FontPicker, TITLE_FONTS, VERTICAL_BODY_FONTS, fontName } from "../FontPicker";
 import { LogoSearch } from "../LogoSearch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -98,8 +98,9 @@ export function Upload({ engine, isAdmin = false, onUploaded, onCancel, onSettin
   const [front, setFront] = useState({ cover: true, toc: true, divider: true });   // 표지·목차·간지 — 제작 직전에도 바꿀 수 있다
   const [style, setStyle] = useState("a");   // 디자인 타입 — reference/styles/styles.json
   const [purpose, setPurpose] = useState<"submit" | "present" | "company">("present");
-  const [ctheme, setCtheme] = useState("a");   // 회사소개서 테마 — A 다크 임팩트 · B 라이트 에디토리얼(engine/company.py COMPANY_THEMES)
-  const [ctone, setCtone] = useState("blue");   // 회사소개서 톤(색) — engine/company.py TONES
+  const [ctheme, setCtheme0] = useState("a");   // 회사소개서 테마 A~D(engine/company.py COMPANY_THEMES)
+  const [ctone, setCtone] = useState("blue");   // 회사소개서 톤(색) — engine/company.py TONES 의 id 또는 직접 고른 #RRGGBB
+  const setCtheme = (id: string) => { setCtheme0(id); setCtone(COMPANY_THEMES.find((t) => t.id === id)?.tone ?? "blue"); };   // 테마를 고르면 그 테마에 어울리는 기본 톤으로
   const company = purpose === "company";   // 회사소개용 = 회사소개서(engine/company.py, 테마 A·B) — 시안 없이 PPT 바로, 서체·색은 테마가 정한다
   const direct = purpose !== "present";    // 시안 확인 없이 PPT 를 바로 만드는 용도(제출용·회사소개용)
   const [vstyle, setVstyle] = useState("band");   // 제출용(세로 제안서) 디자인 스타일(모양) — engine/vertical.py STYLES
@@ -385,9 +386,9 @@ export function Upload({ engine, isAdmin = false, onUploaded, onCancel, onSettin
             ? (() => {
               // 필수 입력이 비었으면 누를 때 무엇이 빠졌는지 알린다(버튼을 꺼 두기만 하면 이유를 알 수 없다)
               const full = !!engine?.mine && engine.mine.active >= engine.mine.max;
-              const why = full ? `동시에 진행할 수 있는 작업은 ${engine!.mine!.max}건입니다(지금 ${engine!.mine!.active}건 진행 중). 진행 중인 작업이 끝나거나 취소한 뒤 시작해 주세요.` : !ready ? (design ? "장표에 담을 내용을 적거나 자료 파일을 올려 주세요." : "초안 .pptx 파일을 올려 주세요.") : aiBlock ? "AI 키가 필요합니다 — 설정에서 키를 연결해 주세요." : design && !accentOk ? "강조색 코드를 확인해 주세요(예: 1866DA)." : design && (!logos.client.length || !logos.vendor.length) ? `${!logos.client.length ? "발주기관" : "제안사"} 로고를 넣어 주세요 — 기본 로고는 필수입니다.` : undefined;
+              const why = full ? `동시에 진행할 수 있는 작업은 ${engine!.mine!.max}건입니다(지금 ${engine!.mine!.active}건 진행 중). 진행 중인 작업이 끝나거나 취소한 뒤 시작해 주세요.` : !ready ? (design ? "장표에 담을 내용을 적거나 자료 파일을 올려 주세요." : "초안 .pptx 파일을 올려 주세요.") : aiBlock ? "AI 키가 필요합니다 — 설정에서 키를 연결해 주세요." : design && !accentOk ? "강조색 코드를 확인해 주세요(예: 1866DA)." : design && !company && (!logos.client.length || !logos.vendor.length) ? `${!logos.client.length ? "발주기관" : "제안사"} 로고를 넣어 주세요 — 기본 로고는 필수입니다.` : undefined;
               return <button type="button" className={cn("btn-next !pr-3.5 min-w-[210px] justify-center", why && !working && "opacity-55")} disabled={working} title={why}
-                onClick={() => { if (canStart && !why) start(); else if (why) { toast(why, "warn"); if (!ready && design) goStep(1); else if (design && (!logos.client.length || !logos.vendor.length)) focusSec(3, "frame"); } }}>
+                onClick={() => { if (canStart && !why) start(); else if (why) { toast(why, "warn"); if (!ready && design) goStep(1); else if (design && !company && (!logos.client.length || !logos.vendor.length)) focusSec(3, "frame"); } }}>
                 {busy ?? startLabel}<Ms name="play_arrow" size={18} /></button>;
             })()
             : <button type="button" className="btn-next !pr-3.5" onClick={() => { if (goStep((step + 1) as Step)) setFocus(null); }}>다음 — {STEPS[step]}<Ms name="arrow_forward" size={18} /></button>}
@@ -609,7 +610,7 @@ export function Upload({ engine, isAdmin = false, onUploaded, onCancel, onSettin
                   </div>
                 </Row>}
                 {company && (
-                  <Row id="ctone" style={hl("ctone")} icon="palette" title="톤" sub="표지 · 간지 · 숫자 · 강조 색">
+                  <Row id="ctone" style={hl("ctone")} icon="palette" title="톤" sub="파랑 3 · 빨강 2 · 초록 2 · 보라 2 · 주황 2 · 직접 고르기">
                     <CompanyTonePicker value={ctone} onChange={setCtone} disabled={working} theme={ctheme} />
                   </Row>
                 )}
@@ -685,7 +686,7 @@ export function Upload({ engine, isAdmin = false, onUploaded, onCancel, onSettin
                                   </div>
                                 </div>
                               ))}
-                              {w === "vendor" && (   // 자주 쓰는 우리 로고 — 찾지 않고 바로(파워플러스의 투명 PNG)
+                              {w === "vendor" && !company && (   // 자주 쓰는 우리 로고 — 찾지 않고 바로(파워플러스의 투명 PNG). 회사소개서는 각자 자기 회사 로고라 두지 않는다(사용자 2026-10-16)
                                 <div className="flex gap-1.5">
                                   {SOLIDEO.map(([id, wid, label]) => (
                                     <button key={id} type="button" disabled={logos.vendor.some((f) => f.name === `${id}.png`)} onClick={() => pickSolideo(id, wid)}

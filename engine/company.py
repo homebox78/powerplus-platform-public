@@ -27,22 +27,54 @@ THEME = {"blue": "#1F4FFF", "blue2": "#3D7BFF", "sky": "#DCE6FF", "navy": "#050B
 # 디자인은 파랑(blue)으로 짜 두고, 그 색 값들을 톤 색으로 바꿔 끼운다(BLUE_KEYS 순서 = 각 톤 값 순서).
 #   a 주색 · a2 밝은 주색 · sky 옅은 면 · navy 어두운 바탕 · navy2 · dk1·dk2 어두운 그라데이션 끝 · lt 비전 쪽 빛 · deep 비전 쪽 그늘 · vg1·vg2 비전 바탕 · eb·em 어두운 쪽 꼬리표·강조
 BLUE_KEYS = ["#1F4FFF", "#3D7BFF", "#DCE6FF", "#050B24", "#0B1A4A", "#0A1440", "#040817", "#78AAFF", "#051478", "#2A5BFF", "#1436D8", "#BFD0FF", "#9FE0FF"]
-TONES = {
-    "blue":    {"label": "블루", "c": BLUE_KEYS},
-    "teal":    {"label": "틸", "c": ["#0E9F8E", "#22C7B2", "#D3F2EE", "#03191A", "#08332F", "#06302C", "#020F10", "#7FE6D6", "#04463F", "#12B3A0", "#0A7F72", "#B5F0E7", "#FFE27A"]},
-    "violet":  {"label": "바이올렛", "c": ["#6A3BFF", "#8E6BFF", "#E6DEFF", "#0D0727", "#22114F", "#1E0E4A", "#07041A", "#B49CFF", "#2A0C80", "#7B4DFF", "#4F22D8", "#D6C9FF", "#9FE0FF"]},
-    "crimson": {"label": "크림슨", "c": ["#D7263D", "#FF4D61", "#FFE0E4", "#1A0509", "#3A0A13", "#3A0A14", "#0E0205", "#FF9AA6", "#6E0A18", "#E33349", "#B0162B", "#FFC9D0", "#FFE27A"]},
-    "orange":  {"label": "차콜 오렌지", "c": ["#F26A1B", "#FF8A3D", "#FFE7D6", "#121316", "#24262C", "#22242A", "#0B0C0E", "#FFB27F", "#5A2508", "#F47A2E", "#C9500E", "#FFD7BC", "#FFF1A8"]},
+TONES = {   # 파랑 계열 3 · 빨강 2 · 초록 2 · 보라 2 · 주황 2 — "파랑으로만 도배하지 말고 트렌디한 톤"(사용자 2026-10-16). 직접 고른 색(#RRGGBB)은 tone_palette 가 만든다
+    "blue":     {"label": "코발트 블루", "c": BLUE_KEYS},
+    "navy":     {"label": "딥 네이비", "c": ["#1B3A8A", "#3A63C9", "#DCE4F5", "#060B1C", "#0E1A3C", "#0C1735", "#040716", "#8FAEE8", "#0A1C4F", "#2A4DA8", "#152E70", "#C3D1EE", "#9FE0FF"]},
+    "sky":      {"label": "스카이", "c": ["#0EA5E9", "#38BDF8", "#DCF3FF", "#06202E", "#0B3A52", "#0A3448", "#031620", "#8DDCFF", "#064A6B", "#1FB2F0", "#0A86C2", "#BFEAFF", "#FFE27A"]},
+    "crimson":  {"label": "크림슨", "c": ["#D7263D", "#FF4D61", "#FFE0E4", "#1A0509", "#3A0A13", "#3A0A14", "#0E0205", "#FF9AA6", "#6E0A18", "#E33349", "#B0162B", "#FFC9D0", "#FFE27A"]},
+    "coral":    {"label": "코랄", "c": ["#FF5A4E", "#FF7B70", "#FFE4E1", "#1F0C0A", "#3F1512", "#3A1310", "#120605", "#FFB3AC", "#7A1F17", "#FF6A5E", "#D8463B", "#FFD2CD", "#FFF1A8"]},
+    "emerald":  {"label": "에메랄드", "c": ["#0F9D58", "#2EBF78", "#D9F5E6", "#03170C", "#07331A", "#063018", "#020F08", "#8FE6B8", "#06502A", "#16AE66", "#0B7E44", "#BFEFD4", "#FFE27A"]},
+    "teal":     {"label": "틸", "c": ["#0E9F8E", "#22C7B2", "#D3F2EE", "#03191A", "#08332F", "#06302C", "#020F10", "#7FE6D6", "#04463F", "#12B3A0", "#0A7F72", "#B5F0E7", "#FFE27A"]},
+    "violet":   {"label": "바이올렛", "c": ["#6A3BFF", "#8E6BFF", "#E6DEFF", "#0D0727", "#22114F", "#1E0E4A", "#07041A", "#B49CFF", "#2A0C80", "#7B4DFF", "#4F22D8", "#D6C9FF", "#9FE0FF"]},
+    "lavender": {"label": "라벤더", "c": ["#5F0080", "#8A2BBE", "#F1E4FA", "#140420", "#2C0D45", "#280B40", "#0C0214", "#CDA3EA", "#3F0A5C", "#7A1FA8", "#4E0A6E", "#E6CFF4", "#FFE27A"]},
+    "carrot":   {"label": "당근 오렌지", "c": ["#FF6F0F", "#FF8C3A", "#FFEEDF", "#1C0F05", "#3B1E0A", "#361B09", "#120903", "#FFC08A", "#6E2F06", "#FF7A22", "#D85A0A", "#FFDCBF", "#FFF1A8"]},
+    "orange":   {"label": "차콜 오렌지", "c": ["#F26A1B", "#FF8A3D", "#FFE7D6", "#121316", "#24262C", "#22242A", "#0B0C0E", "#FFB27F", "#5A2508", "#F47A2E", "#C9500E", "#FFD7BC", "#FFF1A8"]},
 }
 _rgb = lambda h: tuple(int(h[i:i + 2], 16) for i in (1, 3, 5))
 
 
+def _hsl(h, s_, l):
+    import colorsys
+    r, g, b = colorsys.hls_to_rgb(h, max(0, min(1, l)), max(0, min(1, s_)))
+    return "#%02X%02X%02X" % (round(r * 255), round(g * 255), round(b * 255))
+
+
+def tone_palette(tone):
+    """톤 id 또는 직접 고른 색(#RRGGBB) → BLUE_KEYS 순서의 13색. 직접 고른 색은 그 색을 주색으로 밝기·채도만 바꿔 한 벌을 만든다"""
+    import colorsys
+    t = TONES.get(tone or "blue")
+    if t:
+        return t["c"]
+    if not re.fullmatch(r"#[0-9A-Fa-f]{6}", str(tone or "")):
+        return BLUE_KEYS
+    r, g, b = (x / 255 for x in _rgb(tone.upper()))
+    h, l, s_ = colorsys.rgb_to_hls(r, g, b)
+    s_ = max(s_, 0.45)
+    return [tone.upper(), _hsl(h, s_, min(0.78, l + 0.12)), _hsl(h, min(1, s_ + .1), 0.92), _hsl(h, 0.6, 0.07), _hsl(h, 0.6, 0.15), _hsl(h, 0.6, 0.13), _hsl(h, 0.6, 0.04),
+            _hsl(h, s_, 0.75), _hsl(h, 0.85, 0.24), _hsl(h, s_, max(0.4, l)), _hsl(h, s_, max(0.3, l - 0.14)), _hsl(h, s_, 0.86), _hsl((h + 0.12) % 1, 0.9, 0.8)]
+
+
+def tone_label(tone):
+    t = TONES.get(tone or "blue")
+    return t["label"] if t else f"직접 고른 색 {str(tone).upper()}"
+
+
 def toned(s, tone):
     """파랑으로 짠 HTML·CSS 의 색(#RRGGBB 와 rgba(r,g,b,…))을 톤 색으로"""
-    t = TONES.get(tone or "blue") or TONES["blue"]
-    if t["c"] is BLUE_KEYS:
+    pal = tone_palette(tone)
+    if pal is BLUE_KEYS:
         return s
-    for src, dst in zip(BLUE_KEYS, t["c"]):
+    for src, dst in zip(BLUE_KEYS, pal):
         s = re.sub(re.escape(src), dst, s, flags=re.I)
         (r, g, b), (r2, g2, b2) = _rgb(src), _rgb(dst)
         s = s.replace(f"rgba({r},{g},{b},", f"rgba({r2},{g2},{b2},")
@@ -51,14 +83,14 @@ def toned(s, tone):
 
 def tone_base(tone):
     """어두운 쪽·주색 쪽 바탕색(글자 알파를 섞을 때)"""
-    c = (TONES.get(tone or "blue") or TONES["blue"])["c"]
+    c = tone_palette(tone)
     return {"dark": _rgb(c[3]), "blue": _rgb(c[0])}
 
 
 def tint_icon(src, dst, tone):
     """파랑 유리 아이콘을 톤 색으로 — 색조만 돌린다(밝기·투명도 그대로). 블루면 그대로"""
-    t = TONES.get(tone or "blue") or TONES["blue"]
-    if t["c"] is BLUE_KEYS:
+    pal = tone_palette(tone)
+    if pal is BLUE_KEYS:
         return src
     import colorsys
     from PIL import Image
@@ -66,7 +98,7 @@ def tint_icon(src, dst, tone):
     a = im.split()[3]
     hsv = im.convert("RGB").convert("HSV")
     h0 = colorsys.rgb_to_hsv(*[x / 255 for x in _rgb(BLUE_KEYS[0])])[0]
-    h1, s1, _ = colorsys.rgb_to_hsv(*[x / 255 for x in _rgb(t["c"][0])])
+    h1, s1, _ = colorsys.rgb_to_hsv(*[x / 255 for x in _rgb(pal[0])])
     dh = int(round((h1 - h0) * 255)) % 256
     h, s, v = hsv.split()
     h = h.point(lambda x: (x + dh) % 256)
@@ -74,45 +106,6 @@ def tint_icon(src, dst, tone):
     out.putalpha(a)
     out.save(dst)
     return dst
-
-# ───────────────────────── 레이아웃 카탈로그 — AI 가 고르는 칸(글자 수 한도는 화면에 들어가는 길이)
-LAYOUTS = {
-    "cover": "표지(어두운 바탕). eyebrow(영문 대문자 20자) · title(2~3줄, 줄마다 12자 이내, 과감한 한 문장 — 회사의 약속) · sub(40자) · date(예 2026.10)",
-    "contents": "목차. items: 장 이름 4~6개(각 12자) — 뒤에 오는 section 쪽과 같은 이름·순서",
-    "statement": "한 문장 선언(밝은 바탕). eyebrow · headline(2줄, 줄마다 18자, 강조 1곳 **…**) · sub(2문장, 각 45자) · word(바탕에 크게 까는 영문 한 단어, 예 WHO WE ARE)",
-    "stats": "숫자가 주인공. eyebrow · headline(1줄 24자, 강조 1곳) · items 3~4개: value(숫자만, 예 1998·700·300) · unit(년·억·명·%) · label(10자) · note(18자)",
-    "pillars": "핵심 역량 카드. eyebrow · headline(1줄 24자, 강조 1곳) · sub(45자) · items 3~4개: title(12자) · desc(2줄, 줄마다 22자) · icon(아이콘 검색어 한국어 1~2낱말)",
-    "history": "연혁 가로 타임라인. eyebrow · headline(1줄 24자, 강조 1곳) · items 5~7개(오래된 것부터): year(4자리) · text(2줄, 줄마다 14자)",
-    "section": "간지(어두운 바탕). no(01·02…) · title(10자) · sub(32자) · icon(검색어)",
-    "services": "사업·제품 카드. eyebrow · headline(1줄 24자, 강조 1곳) · items 2~4개: tag(영문 12자) · name(10자) · desc(2줄, 줄마다 22자) · points 3개(각 12자)",
-    "showcase": "대표 사례·제품 한 개. eyebrow · name(8자, 크게) · tagline(22자) · desc(2문장, 각 40자) · url · items 3~4개: title(12자) · desc(16자)",
-    "clients": "고객·서비스 이름 그리드. eyebrow · headline(1줄 24자, 강조 1곳) · sub(45자) · items 8~24개(이름만, 각 10자)",
-    "awards": "수상·인증 목록. eyebrow · headline(1줄 24자, 강조 1곳) · items 6~12개: year · text(30자)",
-    "vision": "비전 한 문장(파랑 바탕). eyebrow · quote(2~3줄, 줄마다 16자, 강조 1곳) · by(20자)",
-    "contact": "연락처(어두운 바탕). headline(2줄, 줄마다 16자) · company · rows: label·value 3~5개(주소·대표전화·이메일·웹사이트) · offices 0~4개: name · addr(30자)",
-}
-
-PLAN_SYSTEM = """너는 국내 IT·SI 기업의 회사소개서를 만드는 카피라이터 겸 아트디렉터다. 제안서가 아니라 '회사를 처음 보는 사람에게 소개하는' 덱이다.
-쪽마다 아래 레이아웃 중 하나를 고르고 칸에 글만 채운다. 디자인은 코드가 한다 — 너는 글의 힘과 순서만 책임진다.
-
-# 레이아웃(kind)과 칸
-{layouts}
-
-# 글쓰기
-- 과감하게: 머리글은 짧고 단정하게 끝낸다(“~합니다”보다 “~한다.”·명사형·숫자 앞세우기). 형용사 나열 금지, 숫자와 고유명사로 말한다.
-- 강조는 머리글마다 한 곳만 **…** 로 감싼다(색이 바뀐다). 나머지 칸에는 ** 를 쓰지 않는다.
-- 칸마다 적힌 글자 수를 넘기지 않는다 — 넘치면 화면에서 잘린다. 줄 수가 정해진 칸은 줄을 \\n 으로 나눈다(마침표에서 줄을 바꾸고, 낱말 중간에서 끊지 않는다).
-- 자료에 없는 숫자·수상·고객을 지어내지 않는다. 모르면 그 쪽을 빼거나 숫자 없는 레이아웃을 고른다.
-- eyebrow 는 영문 대문자 짧은 꼬리표(예 ABOUT US · BY THE NUMBERS · HISTORY · CORE WORKS · CONTACT).
-
-# 구성
-- 전체 {pages}쪽 안팎. 첫 쪽 cover, 둘째 쪽 contents, 마지막 쪽 contact.
-- 장마다 section 간지로 연다(contents 의 이름과 같게). 같은 레이아웃을 세 번 연달아 쓰지 않는다.
-- 회사 이야기 순서: 우리는 누구인가(statement·stats) → 무엇을 잘하나(pillars·services) → 해 온 일(showcase·clients·history·awards) → 비전(vision) → contact.
-
-# 출력 — JSON 하나
-{"company": {"name": "회사 이름(예 ㈜솔리데오)", "short": "영문 짧은 이름", "website": "", "tagline": "회사 한 줄 소개 30자"},
- "slides": [{"kind": "cover", ...칸}, ...]}"""
 
 
 # ───────────────────────── HTML
@@ -163,7 +156,32 @@ CSS_B = """
 """
 GLOW_B = ("<div class='deco' style=\"background:radial-gradient(1300px 900px at 105% -10%,rgba(61,123,255,.16),transparent 62%),"
           "radial-gradient(900px 700px at -5% 110%,rgba(31,79,255,.07),transparent 60%),#F7F9FE\"></div>")
-COMPANY_THEMES = {"a": "다크 임팩트", "b": "라이트 에디토리얼"}
+# 테마 C — 매거진(컬리 회사소개서 결): 크림 바탕, 가는 헤어라인, 여백 많은 편집. 꼬리표는 작은 대문자 + 짧은 밑줄, 카드는 헤어라인 사각, 제목은 조금 가늘게
+CSS_C = """
+.s{background:#FAF7F2}
+.card{border:1px solid #E4DED3;background:#FFFDF9;box-shadow:none;border-radius:8px}
+.chip{border:1px solid #E4DED3;background:#FFFDF9;border-radius:6px}
+.eb{font-weight:700;font-size:19px;letter-spacing:.24em;color:var(--blue);padding-bottom:10px;border-bottom:2px solid var(--blue)}
+.h{font-weight:700;letter-spacing:-0.035em;line-height:1.22}
+.sub{color:#5B5650}
+.tag,.pg{color:#A39D93}
+"""
+GLOW_C = ("<div class='deco' style=\"background:radial-gradient(900px 700px at 100% 0%,rgba(31,79,255,.08),transparent 60%),#FAF7F2\"></div>")
+# 테마 D — 프렌들리 라운드(당근 회사소개서 결): 흰 바탕에 파스텔 둥근 면, 아주 둥근 파스텔 카드, 파스텔 칩 꼬리표, 친근한 굵은 제목. 간지는 주색 전면
+CSS_D = """
+.card{border:0;background:var(--sky);box-shadow:none;border-radius:44px}
+.chip{border:0;background:var(--sky);border-radius:999px}
+.eb{background:var(--sky);color:var(--blue);padding:8px 18px 7px;border-radius:999px;font-size:19px;letter-spacing:.08em}
+.blue .eb{background:rgba(255,255,255,.22);color:#fff}
+.h{font-weight:900;letter-spacing:-0.04em;line-height:1.14}
+"""
+GLOW_D = ("<div class='deco' style=\"background:#fff\"></div>"
+          "<div class='deco' style=\"left:1500px;top:-260px;width:720px;height:720px;right:auto;bottom:auto;border-radius:50%;background:#DCE6FF;opacity:.8;mix-blend-mode:multiply\"></div>"
+          "<div class='deco' style=\"left:1360px;top:200px;width:260px;height:260px;right:auto;bottom:auto;border-radius:50%;background:#BFD0FF;opacity:.55;mix-blend-mode:multiply\"></div>")
+COMPANY_THEMES = {"a": "다크 임팩트", "b": "라이트 에디토리얼", "c": "매거진", "d": "프렌들리 라운드"}
+THEME_DEFAULT_TONE = {"a": "blue", "b": "navy", "c": "lavender", "d": "carrot"}
+LIGHT_GLOW = {"b": GLOW_B, "c": GLOW_C, "d": GLOW_D}   # 밝은 표지·간지·연락처를 쓰는 테마의 바탕
+THEME_CSS = {"b": CSS_B, "c": CSS_C, "d": CSS_D}
 
 
 def _vars():
@@ -410,6 +428,25 @@ def decor(kind, n, has_img=False, theme="a"):
     n = 쪽 번호(같은 레이아웃이 반복되면 모양·씨앗을 바꿔 단조롭지 않게). 바탕 큰 글자(_bigword)가 있는 선언 쪽은 그것이 포인트라 더하지 않는다.
     밝은 바탕은 진한 파랑, 어두운 바탕은 밝은 파랑(dark=True). 테마 B 는 표지·간지·연락처도 밝은 바탕"""
     alt = n % 3
+    if theme == "c":   # 매거진 — 표지 오른쪽에 큰 색 면(사진 자리 느낌), 간지는 가는 원 곡선, 나머지는 아주 옅게
+        if kind == "cover":
+            return ("<div class='deco' style=\"left:1120px;top:120px;width:680px;height:840px;right:auto;bottom:auto;border-radius:16px;"
+                    "background:linear-gradient(160deg,#DCE6FF,#3D7BFF 70%,#1F4FFF)\"></div>")
+        if kind == "section":
+            return D_arcs(1500, 540, 330, seed=n, op=.5) if has_img else [D_arcs(1500, 540, 330, seed=n, op=.6), D_fan(1020, 0, 900, 700, op=.5), D_geo(1500, 540, 300, mono=True, op=.5)][alt]
+        if kind == "contact":
+            return D_fan(1100, 0, 820, 560, op=.35)
+    if theme == "d":   # 프렌들리 라운드 — 표지는 큰 주색 원, 간지(주색 전면)는 흰 네트워크, 연락처는 파스텔 원
+        if kind == "cover":
+            # 원은 반투명 + 곱하기 혼합 — 겹치는 자리에 색이 섞인다(사용자 2026-10-16 "약간 투명하게 해서 겹치는 부분의 색상이 겹치는 센스")
+            return ("<div class='deco' style=\"left:1140px;top:160px;width:760px;height:760px;right:auto;bottom:auto;border-radius:50%;background:#1F4FFF;opacity:.88;mix-blend-mode:multiply\"></div>"
+                    "<div class='deco' style=\"left:1000px;top:640px;width:340px;height:340px;right:auto;bottom:auto;border-radius:50%;background:#78AAFF;opacity:.75;mix-blend-mode:multiply\"></div>"
+                    "<div class='deco' style=\"left:1640px;top:60px;width:220px;height:220px;right:auto;bottom:auto;border-radius:50%;background:#3D7BFF;opacity:.7;mix-blend-mode:multiply\"></div>")
+        if kind == "section":
+            return D_netglobe(1500, 540, 320, seed=n, dark=True, op=.5) if has_img else [D_geo(1500, 540, 300, dark=True, op=.6), D_arcs(1500, 540, 330, seed=n, dark=True, op=.55), D_mesh(900, 360, 1020, 380, seed=n, dark=True, op=.6)][alt]
+        if kind == "contact":
+            return ("<div class='deco' style=\"left:1620px;top:-80px;width:340px;height:340px;right:auto;bottom:auto;border-radius:50%;background:#BFD0FF;opacity:.8;mix-blend-mode:multiply\"></div>"
+                    "<div class='deco' style=\"left:1540px;top:140px;width:160px;height:160px;right:auto;bottom:auto;border-radius:50%;background:#78AAFF;opacity:.6;mix-blend-mode:multiply\"></div>")
     if theme == "b":
         if kind == "cover":
             return D_ribbon(1240, 0, 640, 1080, op=.85)
@@ -684,21 +721,26 @@ def slide_html(d, n, total, ctone="blue", ctheme="a"):
         d = {**{k: v for k, v in d.items() if k.startswith("_")}, "kind": "statement", "eyebrow": d.get("eyebrow") or "",
              "headline": d.get("headline") or d.get("title") or d.get("name") or "", "sub": d.get("sub") or d.get("desc") or ""}
         tone, body = L_statement(d)
-    if ctheme == "b" and tone == "dark":   # 테마 B — 어두운 쪽(표지·간지·연락처)을 밝은 바탕으로: 흰 글자는 먹색으로
-        body = body.replace(GLOW_DARK, GLOW_B, 1).replace("rgba(255,255,255,", "rgba(11,19,36,").replace("color:#fff", "color:var(--ink)")
+    if ctheme == "d" and tone == "dark" and d.get("kind") == "section":   # 테마 D 간지는 주색 전면(흰 글자 그대로)
+        body = body.replace(GLOW_DARK, GLOW_BLUE, 1).replace("color:var(--blue2)", "color:rgba(255,255,255,.38)")   # 큰 장 번호가 주색 바탕에 묻히지 않게
+        tone = "blue"
+    elif ctheme in LIGHT_GLOW and tone == "dark":   # 테마 B·C·D — 어두운 쪽(표지·간지·연락처)을 밝은 바탕으로: 흰 글자는 먹색으로
+        body = body.replace(GLOW_DARK, LIGHT_GLOW[ctheme], 1).replace("rgba(255,255,255,", "rgba(11,19,36,").replace("color:#fff", "color:var(--ink)")
         tone = "light"
+    elif ctheme in LIGHT_GLOW and tone == "light":
+        body = body.replace(GLOW_LIGHT, LIGHT_GLOW[ctheme], 1)
     d["_tone"] = tone
     try:   # 장식은 바탕 빛(GLOW) 바로 위·내용 아래에 — 바탕이 불투명이라 앞에 두면 가려진다
         dec = decor(d.get("kind"), n, bool(d.get("_img")), ctheme)
     except Exception:
         dec = ""
-    for g in (GLOW_DARK, GLOW_LIGHT, GLOW_BLUE, GLOW_B):
+    for g in (GLOW_DARK, GLOW_LIGHT, GLOW_BLUE, GLOW_B, GLOW_C, GLOW_D):
         if dec and body.startswith(g):
             body = g + dec + body[len(g):]
             break
     tag = TAGS.get(d.get("kind"), d.get("eyebrow") or "")
     chrome = _chrome(d, n, total, tag) if d.get("kind") != "cover" else _chrome(d, n, total, "")
-    return (f"<!doctype html><html><head><meta charset='utf-8'><style>{_font_css()}{toned(_vars() + CSS + (CSS_B if ctheme == 'b' else ''), ctone)}</style></head>"
+    return (f"<!doctype html><html><head><meta charset='utf-8'><style>{_font_css()}{toned(_vars() + CSS + THEME_CSS.get(ctheme, ''), ctone)}</style></head>"
             f"<body><div class='s {tone if tone != 'light' else ''}'>{toned(body + chrome, ctone)}</div></body></html>")
 
 
@@ -1034,10 +1076,11 @@ def run(job, j, opts, brief, note):
     os.makedirs(d, exist_ok=True)
     job.push("기획", 30)
     ctone = str(opts.get("ctone") or "blue")
+    ctone = ctone if (ctone in TONES or re.fullmatch(r"#[0-9A-Fa-f]{6}", ctone)) else "blue"
     ctheme = str(opts.get("ctheme") or "a")
     ctheme = ctheme if ctheme in COMPANY_THEMES else "a"
     ctone = ctone if ctone in TONES else "blue"
-    job.event(f"테마 {ctheme.upper()} {COMPANY_THEMES[ctheme]} · 톤 {TONES[ctone]['label']}")
+    job.event(f"테마 {ctheme.upper()} {COMPANY_THEMES[ctheme]} · 톤 {tone_label(ctone)}")
     attach_assets(job, deck, d, ctone=ctone)
     json.dump(deck, open(os.path.join(d, "deck.json"), "w", encoding="utf-8"), ensure_ascii=False, indent=1)
     try:

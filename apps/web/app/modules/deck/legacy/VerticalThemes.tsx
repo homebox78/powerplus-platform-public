@@ -27,9 +27,13 @@ export const VERTICAL_TONES: VerticalTone[] = [
 ];
 export const verticalStyleName = (id?: string | null) => VERTICAL_STYLES.find((t) => t.id === (id || "band"))?.name ?? "클래식 밴드";
 export const verticalToneName = (id?: string | null) => VERTICAL_TONES.find((t) => t.id === (id || "navy"))?.name ?? "네이비";
-const THUMB_V = 9;   // 9: 테마마다 배경 세트·깔기가 다르게(2026-10-16, scripts/vstyle-previews.py 로 다시 만듦)
+const THUMB_V = 10;   // 10: 크게 보기에 견본 덱 전 쪽(p/1~37)을 더함(2026-10-16, 같은 렌더에서 뽑음)
 const PAGES = ["표지", "목차", "간지", "본문"];
 const thumb = (id: string, n: number) => `${import.meta.env.BASE_URL}vstyles/${id}/${n}.jpg?v=${THUMB_V}`;
+/** 견본 덱 전 쪽(public/vstyles/<id>/p/1~N.jpg) — 여섯 스타일이 같은 기획이라 쪽 구성이 같다. C 표지 · T 목차 · D 간지 · B 본문 */
+const DECK = "CTTTTTTTTDBBBDBBBDBBBBDBBDBBDBBBDBBBD";
+const KIND_KO: Record<string, string> = { C: "표지", T: "목차", D: "간지", B: "본문" };
+const page = (id: string, n: number) => `${import.meta.env.BASE_URL}vstyles/${id}/p/${n}.jpg?v=${THUMB_V}`;
 export const verticalThumb = thumb;   // 작업 설정 요약(ui.tsx JobSettings)도 같은 그림
 
 /** 제출용 2단계 — 스타일 6가지. 카드마다 표지·목차·간지·본문 4장 */
@@ -63,13 +67,14 @@ export function VerticalStylePicker({ value, onChange, disabled }: { value: stri
         })}
       </div>
       {view && (
-        <Modal width={1040} onClose={() => setView(null)} title={<span>{view.name} · 표지 · 목차 · 간지 · 본문</span>}
+        <Modal width={1040} onClose={() => setView(null)} title={<span>{view.name} · 견본 {DECK.length}쪽</span>}
           foot={<button className="btn-next" onClick={() => { onChange(view.id); setView(null); }}>이 스타일로<Ms name="check" size={18} /></button>}>
+          {/* 견본 덱 전 쪽 — 4열로 이어 붙이고 바깥(모달) 스크롤 하나로 내려 본다 */}
           <div className="bg-panel grid grid-cols-4 gap-3 p-4">
-            {PAGES.map((p, i) => (
-              <figure key={p} className="m-0 flex flex-col gap-1.5">
-                <img src={thumb(view.id, i + 1)} alt="" className="block w-full rounded-[3px] border border-line-soft bg-white" style={{ maxHeight: "calc(100vh - 300px)", objectFit: "contain" }} />
-                <figcaption className="text-center text-[13px] font-semibold text-ink3">{p}</figcaption>
+            {Array.from(DECK, (k, i) => (
+              <figure key={i} className="m-0 flex flex-col gap-1.5">
+                <img src={page(view.id, i + 1)} alt="" loading="lazy" className="block w-full aspect-[380/551] rounded-[3px] border border-line-soft bg-white" />
+                <figcaption className="text-center text-[13px] font-semibold text-ink3">{i + 1} · {KIND_KO[k]}</figcaption>
               </figure>
             ))}
           </div>

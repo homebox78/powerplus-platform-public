@@ -76,6 +76,13 @@ def render(pptx, dest):
             tmp = os.path.join(tempfile.gettempdir(), f"vsp-{n}.png")
             pres.Slides(k).Export(tmp, "PNG", 1200, 1733)
             Image.open(tmp).convert("RGB").resize((380, 551), Image.LANCZOS).save(os.path.join(dest, f"{n}.jpg"), "JPEG", quality=86)
+        # 크게 보기용 전 쪽 — p/1~N.jpg. 쪽 구성이 바뀌면 VerticalThemes.tsx 의 DECK 도 맞춘다
+        os.makedirs(os.path.join(dest, "p"), exist_ok=True)
+        print("  쪽 구성:", "".join({"cover": "C", "toc": "T", "divider": "D", "body": "B"}[nm.split("-")[-1]] for nm in names))
+        for k in range(1, pres.Slides.Count + 1):
+            tmp = os.path.join(tempfile.gettempdir(), f"vsp-p{k}.png")
+            pres.Slides(k).Export(tmp, "PNG", 1200, 1733)
+            Image.open(tmp).convert("RGB").resize((380, 551), Image.LANCZOS).save(os.path.join(dest, "p", f"{k}.jpg"), "JPEG", quality=86)
     finally:
         pres.Close()
 

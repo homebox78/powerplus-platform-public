@@ -19,9 +19,9 @@ const TEMPLATES = (tplData as unknown as { templates: Tpl[] }).templates;
 const TITLE_CLS = "px-1 py-0.5 text-center font-extrabold leading-[1.3] text-[var(--color-ink)] whitespace-pre-wrap break-words overflow-hidden";
 
 const FS = 0.0131;   // 기본 글자 = 캔버스 폭 × 이 값
-export const HEAD =150 / 1600, FOOT = 96 / 1600;   // design.py FRAME 과 같은 비율
+const HEAD =150 / 1600, FOOT = 96 / 1600;   // design.py FRAME 과 같은 비율
 
-export const KINDS: { k: WireKind; label: string; hint: string }[] = [
+const KINDS: { k: WireKind; label: string; hint: string }[] = [
   { k: "panel", label: "패널", hint: "머리 띠가 있는 큰 덩어리" },
   { k: "card", label: "카드", hint: "제목 + 항목 몇 줄" },
   { k: "person", label: "인물", hint: "상황을 연기하는 인물" },
@@ -70,7 +70,7 @@ const KIND_SIZE: Record<WireKind, [number, number]> = {
 const KIND = Object.fromEntries(KINDS.map((x) => [x.k, x])) as Record<WireKind, (typeof KINDS)[number]>;
 
 /** 기본 배치 — 와이어프레임이 없는 예전 기획에 넣는다(실제 장표에 가장 흔한 좌 25 · 중 50 · 우 25 + 아래 결론 띠) */
-export const defaultWire = (): WireBlock[] => [
+const defaultWire = (): WireBlock[] => [
   { id: "a", k: "panel", x: 2, y: 15, w: 26, h: 66, t: "상황·입력" },
   { id: "b", k: "image", x: 30, y: 15, w: 40, h: 66, t: "우리의 장치(플랫폼·절차·화면)" },
   { id: "c", k: "panel", x: 72, y: 15, w: 26, h: 66, t: "결과·전략" },
@@ -118,7 +118,7 @@ function Glyph({ k, fs }: { k: WireKind; fs: number }) {
  *   왼쪽: 제목·문장처럼 5자 이상이면서 길이가 들쭉날쭉한 글
  *   가운데: 그 밖의 모두(짧은 값, 길이가 고른 값 — 번호·연도·날짜·점수·상태)
  */
-export function colAlign(cells: string[]): "left" | "center" | "right" {
+function colAlign(cells: string[]): "left" | "center" | "right" {
   const v = cells.map((c) => c.trim()).filter(Boolean);
   if (!v.length) return "left";
   const num = /^[-+−]?[₩$€¥]?\s?\d[\d,.]*\s?(원|만원|억원|억|만|천|%|점|건|명|개|회|대|년|월|일|시간|분|초|㎡|km|m|kg|t|GB|TB|MB|천원|백만원|억 원|만 원)?$/;

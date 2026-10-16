@@ -22,14 +22,14 @@ export interface AssetItem {
   /** 목록에서만 — 카드에 보일 대표 키워드(최대 4) */
   keywords?: string[];
 }
-export interface AssetDetail extends AssetItem {
+interface AssetDetail extends AssetItem {
   tags: { ko: string[]; en: string[]; meta: string[] };
   original_url: string;
   slide_url?: string;
   uses: number;
 }
-export interface AssetCategoryCount { id: AssetCategory; label: string; count: number; total: number }
-export interface AssetSet { id: string; name: string; style: string | null; category: string | null; count: number; total: number; cover_url: string | null; recent?: number; updated_at?: string | null }
+interface AssetCategoryCount { id: AssetCategory; label: string; count: number; total: number }
+interface AssetSet { id: string; name: string; style: string | null; category: string | null; count: number; total: number; cover_url: string | null; recent?: number; updated_at?: string | null }
 export interface AssetRequest { id: string; title: string; kind: string | null; detail: string | null; status: "new" | "done" | "rejected"; created_at: string }
 
 export interface AssetListParams { category?: string; q?: string; set?: string; sort?: "newest" | "popular" | "name"; page?: number; limit?: number }

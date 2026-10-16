@@ -3,7 +3,7 @@
 // 본문 규칙(markdown 비슷하게): 문단은 빈 줄로 나누고, "1. …" 로 시작하는 줄들은 단계 목록으로 그린다. 가격·요금 숫자는 넣지 않는다(요금제 공개 전).
 import type { HelpDoc } from "@/lib/admin";
 
-export interface HelpCategoryDef { id: string; title: string; desc: string }
+interface HelpCategoryDef { id: string; title: string; desc: string }
 export interface HelpArticle { slug: string; title: string; updated: string; body: string[]; steps?: string[] }
 export interface HelpCategory extends HelpCategoryDef { articles: HelpArticle[] }
 

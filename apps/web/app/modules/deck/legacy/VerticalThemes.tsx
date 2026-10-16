@@ -6,7 +6,7 @@ import { cn, Modal, Ms } from "./ui";
  *  스타일 썸네일 public/vstyles/<id>/1~4.jpg = 표지·목차·간지·본문(가상 프로젝트, 네이비 톤으로 렌더 — 모양·배경 차이만 보이게).
  *  배경 세트·깔기는 테마마다 다르다(engine/vertical.py STYLE_BG·STYLE_COMPOSE). 만들기: python scripts/vstyle-previews.py <세로제안서_기획.json>.
  *  썸네일을 바꾸면 THUMB_V 를 올린다. */
-export type VerticalStyle = { id: string; name: string; desc: string };
+type VerticalStyle = { id: string; name: string; desc: string };
 export const VERTICAL_STYLES: VerticalStyle[] = [
   { id: "band", name: "클래식 밴드", desc: "꽉 찬 머리 띠 + 흰 글씨 · 간지는 가운데 태그 · 하얀 3D 배경" },
   { id: "tab", name: "인덱스 탭", desc: "왼쪽 탭 머리 + 밑선 · 간지는 왼쪽 정렬 · 유리 3D 전면 배경" },
@@ -16,8 +16,8 @@ export const VERTICAL_STYLES: VerticalStyle[] = [
   { id: "line", name: "미니멀 라인", desc: "위쪽 굵은 줄 + 진한 글씨 · 간지는 큰 장 번호 · 실사 아래 띠" },
 ];
 /** 추천 톤 — 색만 정한다. accent 는 톤을 고르면 강조색 칸에 들어가는 추천 강조색 */
-export type VerticalTone = { id: string; name: string; colors: [string, string, string]; accent: string };
-export const VERTICAL_TONES: VerticalTone[] = [
+type VerticalTone = { id: string; name: string; colors: [string, string, string]; accent: string };
+const VERTICAL_TONES: VerticalTone[] = [
   { id: "navy", name: "네이비", colors: ["#0B2A6F", "#2F5BD3", "#DCE5F7"], accent: "#2F5BD3" },
   { id: "blue", name: "블루", colors: ["#1537C4", "#3D7BFF", "#DCE7FF"], accent: "#3D7BFF" },
   { id: "deep", name: "딥 네이비", colors: ["#0A1840", "#1E4FD8", "#22D3EE"], accent: "#22B8D8" },

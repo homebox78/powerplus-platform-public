@@ -4,7 +4,7 @@ import { apiFetch, apiList } from "@/lib/api";
 export type SubStatus = "trial" | "active" | "past_due" | "canceled" | "expired";
 export type InvoiceStatus = "pending" | "paid" | "failed" | "refunded";
 
-export interface BillingSummary {
+interface BillingSummary {
   keys: { mode: "none" | "test" | "live"; webhook_secret: boolean };
   visible: boolean;
   auto_renew: boolean;
@@ -31,7 +31,7 @@ export interface AdminInvoice {
   user: { id: string | null; name: string | null; email: string | null };
 }
 
-export interface BillingEvent {
+interface BillingEvent {
   id: number; type: string; order_id: string | null; status: string | null; verified: "signature" | "api" | "none";
   processed: boolean; note: string | null; payload: string | null; created_at: string;
 }

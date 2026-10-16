@@ -46,7 +46,7 @@ const photo = (stops: string, label: string): string =>
      <text x="50" y="55" font-size="13" fill="#ffffff" text-anchor="middle" font-family="sans-serif">${label}</text>
    </svg>`;
 
-export const MOCK_ASSETS: Asset[] = [
+const MOCK_ASSETS: Asset[] = [
   // ── 아이콘 ──
   {
     id: "ic-arrow-up",

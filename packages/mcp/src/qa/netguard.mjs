@@ -14,7 +14,7 @@ const v4num = (ip) => ip.split(".").reduce((a, b) => (a << 8) + Number(b), 0) >>
 const inV4 = (ip, [base, bits]) => bits === 0 || (v4num(ip) >>> (32 - bits)) === (v4num(base) >>> (32 - bits));
 
 /** 내부(사설·루프백·링크로컬·멀티캐스트) 주소인가 */
-export function isPrivateIp(ip) {
+function isPrivateIp(ip) {
   if (net.isIPv4(ip)) return V4_BLOCK.some((r) => inV4(ip, r));
   const v6 = ip.toLowerCase();
   const mapped = v6.match(/^::ffff:(\d+\.\d+\.\d+\.\d+)$/);
@@ -37,7 +37,7 @@ async function resolve(host) {
  * 요청 하나를 허용할지 — allowLoopback 은 개발 환경(API 가 127.0.0.1)에서만 켠다.
  * @returns {Promise<string|null>} 막을 이유(허용이면 null)
  */
-export async function blockReason(rawUrl, { allowLoopback = false } = {}) {
+async function blockReason(rawUrl, { allowLoopback = false } = {}) {
   let u;
   try { u = new URL(rawUrl); } catch { return "주소 해석 실패"; }
   if (u.protocol === "data:" || u.protocol === "blob:" || u.protocol === "about:") return null;

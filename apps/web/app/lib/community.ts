@@ -4,13 +4,13 @@ import { apiFetch, apiList, postJson } from "@/lib/api";
 import { useMe } from "@/lib/auth";
 
 export interface CommunityAuthor { id: string; name: string; avatar: string | null; admin: boolean; staff: boolean }
-export interface CommunityCategory { id: string; name: string; desc: string; count: number }
+interface CommunityCategory { id: string; name: string; desc: string; count: number }
 export interface CommunityPostItem {
   id: string; category: string; title: string; excerpt: string; locked?: boolean; module: string | null; pinned: boolean;
   comments: number; likes: number; views: number; created_at: string; author: CommunityAuthor;
 }
-export interface CommunityComment { id: number; body: string; created_at: string; author: CommunityAuthor; can_delete: boolean }
-export interface CommunityPost {
+interface CommunityComment { id: number; body: string; created_at: string; author: CommunityAuthor; can_delete: boolean }
+interface CommunityPost {
   id: string; category: string; title: string; body: string; module: string | null; pinned: boolean;
   likes: number; views: number; created_at: string; updated_at: string; author: CommunityAuthor;
   liked: boolean; can_edit: boolean; comments: CommunityComment[];
@@ -55,7 +55,7 @@ export function useCommunityMutations() {
   };
 }
 
-export interface UnreadLatest { id: number; kind: string; title: string; body: string | null; link: string | null }
+interface UnreadLatest { id: number; kind: string; title: string; body: string | null; link: string | null }
 
 /** 헤더 종: 안 읽은 개수와 가장 최근 안 읽은 알림 — 30초마다·창으로 돌아올 때 다시 가져온다(창이 숨으면 멈춤) */
 export function useUnread() {
@@ -67,9 +67,8 @@ export function useUnread() {
   });
   return { count: q.data?.count ?? 0, latest: q.data?.latest ?? null };
 }
-export const useUnreadCount = () => useUnread().count;
 
-export interface NotifyPref { id: string; label: string; desc: string; mail: boolean }
+interface NotifyPref { id: string; label: string; desc: string; mail: boolean }
 export function useNotifyPrefs() {
   const qc = useQueryClient();
   const q = useQuery({ queryKey: ["notifications", "prefs"], queryFn: () => apiFetch<{ email: string; items: NotifyPref[] }>("/notifications/prefs") });

@@ -9,7 +9,7 @@ export function splitSentences(text: string): string[] {
 // 글 속 주소(https://… 또는 github.com/… 꼴)는 새 창 링크로 (사용자 지시 2026-10-07 "링크에는 링크가 걸리게 blank로")
 const URL_RE = /(?:https?:\/\/)?(?:[a-z0-9-]+\.)+(?:com|kr|net|org|io|dev|ai)(?:\/[^\s)<>]*)?/gi;
 
-export function Linkify({ text }: { text: string }) {
+function Linkify({ text }: { text: string }) {
   const out: ReactNode[] = [];
   let last = 0;
   for (const m of text.matchAll(URL_RE)) {

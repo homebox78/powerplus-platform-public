@@ -21,7 +21,7 @@ export interface PolicyVersion {
 /** 화면에서 쓰는 판 — 코드의 첫 판은 id "base". */
 export interface ShownVersion extends PolicyVersion { status: "current" | "past" | "upcoming" }
 
-export const BASE_VERSION = "1.0";
+const BASE_VERSION = "1.0";
 const toIso = (d: string) => d.replace(/\./g, "-");
 export const fmtDate = (d: string) => d.replace(/-/g, ".");
 
@@ -56,7 +56,7 @@ export async function fetchPolicy(doc: PolicyDocId) {
 }
 
 export const fetchAdminPolicies = (doc?: string) => apiList<PolicyVersion>(`/admin/policies${doc ? `?doc=${doc}` : ""}`);
-export type PolicyInput = { doc: PolicyDocId; version: string; effective_on: string; summary: string; spec: PolicySpec; published: boolean };
+type PolicyInput = { doc: PolicyDocId; version: string; effective_on: string; summary: string; spec: PolicySpec; published: boolean };
 export const createPolicy = (b: PolicyInput) => postJson<PolicyVersion>("/admin/policies", b);
 export const patchPolicy = (id: string, b: Partial<PolicyInput>) => postJson<PolicyVersion>(`/admin/policies/${id}`, b, "PATCH");
 export const deletePolicy = (id: string) => apiFetch<null>(`/admin/policies/${id}`, { method: "DELETE" });

@@ -4,7 +4,7 @@ import { cn, Modal, Ms } from "./ui";
 
 /** 회사소개서 테마(engine/company.py COMPANY_THEMES). 썸네일 public/cstyles/<테마>/<톤>/1~N.jpg = 견본 덱 전 쪽(솔리데오 회사소개서, scripts/company-sample.py 로 만듦).
  *  썸네일을 바꾸면 THUMB_V 를 올린다. tone = 테마를 고르면 따라오는 기본 톤(engine THEME_DEFAULT_TONE 과 같다) */
-export type CompanyTheme = { id: string; name: string; desc: string; fits: string; tone: string };
+type CompanyTheme = { id: string; name: string; desc: string; fits: string; tone: string };
 export const COMPANY_THEMES: CompanyTheme[] = [
   { id: "a", name: "다크 임팩트", desc: "짙은 바탕 표지·간지 + 흰 본문, 큰 숫자와 굵은 카피 · 유리 아이콘 · 와이어 구", fits: "회사소개서 · IR · 기술 기업", tone: "blue" },
   { id: "b", name: "라이트 에디토리얼", desc: "흰 표지·간지에 흐르는 선 다발, 검정 알약 꼬리표, 테두리 없는 옅은 카드", fits: "회사소개서 · 서비스 소개 · 공공·금융", tone: "navy" },
@@ -14,7 +14,7 @@ export const COMPANY_THEMES: CompanyTheme[] = [
 const THUMB_V = 6;   // 6: 힉스필드 테마 배경(cp-bg-theme) · 5: 테마 C·D + 톤 11(640×360) · 4: 포인트 SVG · 3: 테마 A·B × 톤 5
 /** 견본 덱 쪽 구성(같은 순서) — 크게 보기 캡션 */
 const PAGES = ["표지", "목차", "간지", "한 문장 선언", "숫자", "간지", "역량 카드", "사업 카드", "간지", "대표 사례", "고객 그리드", "간지", "연혁", "수상", "비전", "연락처"];
-export const isCustomTone = (t?: string | null) => /^#[0-9A-Fa-f]{6}$/.test(t ?? "");
+const isCustomTone = (t?: string | null) => /^#[0-9A-Fa-f]{6}$/.test(t ?? "");
 /** 견본 그림 — 직접 고른 색은 미리 만든 견본이 없어 그 테마의 기본 톤 견본을 보여 준다 */
 export const companyThumb = (id: string, n: number, tone = "blue") => {
   const t = isCustomTone(tone) || !COMPANY_TONES.some((x) => x.id === tone) ? (COMPANY_THEMES.find((x) => x.id === id)?.tone ?? "blue") : tone;
@@ -22,8 +22,8 @@ export const companyThumb = (id: string, n: number, tone = "blue") => {
 };
 
 /** 톤 — 색만 정한다. id 는 engine/company.py TONES 와 같다. colors = 어두운 바탕 · 주색 · 옅은 면. group = 계열(파랑 3 · 빨강 2 · 초록 2 · 보라 2 · 주황 2) */
-export type CompanyTone = { id: string; name: string; group: string; colors: [string, string, string] };
-export const COMPANY_TONES: CompanyTone[] = [
+type CompanyTone = { id: string; name: string; group: string; colors: [string, string, string] };
+const COMPANY_TONES: CompanyTone[] = [
   { id: "blue", name: "코발트 블루", group: "파랑", colors: ["#050B24", "#1F4FFF", "#DCE6FF"] },
   { id: "navy", name: "딥 네이비", group: "파랑", colors: ["#060B1C", "#1B3A8A", "#DCE4F5"] },
   { id: "sky", name: "스카이", group: "파랑", colors: ["#06202E", "#0EA5E9", "#DCF3FF"] },

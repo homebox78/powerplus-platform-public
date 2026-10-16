@@ -29,6 +29,7 @@ TS=$(date +%Y%m%d-%H%M%S)
 tar -cf - $FILES | "${SSH[@]}" "set -e; rm -rf /tmp/pd-eng && mkdir -p /tmp/pd-eng && tar -xf - -C /tmp/pd-eng
   ~/powerDeck/worker/.venv/bin/python -c 'import ast,glob; [ast.parse(open(f,encoding=\"utf-8\").read(),f) for f in glob.glob(\"/tmp/pd-eng/**/*.py\", recursive=True)]'   # 문법만 — .pyc 를 남기지 않는다
   cd ~/powerDeck && tar -czf worker-bak-$TS.tgz --exclude=.venv --exclude=fonts --exclude=__pycache__ worker
+  ls -1t worker-bak-*.tgz | tail -n +11 | xargs -r rm -f   # 백업은 최근 10개만(2026-10-16 정리 때 94개 415MB 쌓여 있었다)
   rm -rf ~/powerDeck/worker/pipeline ~/powerDeck/worker/skill && cp -r /tmp/pd-eng/* ~/powerDeck/worker/ && rm -rf /tmp/pd-eng ~/powerDeck/worker/__pycache__
   sudo systemctl restart powerdeck-worker && sleep 3 && systemctl is-active powerdeck-worker
   journalctl -u powerdeck-worker -n 5 --no-pager | tail -5"

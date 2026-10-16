@@ -19,7 +19,7 @@ interface Item {
   set?: { id: string; name: string } | null;
 }
 
-export interface FetchResult {
+interface FetchResult {
   assets: Asset[];
   total: number;
   offline: boolean;
@@ -29,7 +29,7 @@ export interface FetchResult {
 const file = (id: string, kind: string) => abs(`/api/v1/assets/items/${encodeURIComponent(id)}/file/${kind}`);
 
 /** 플랫폼 에셋 → 작업창 Asset. 원본·장표는 삽입할 때 Bearer 로 받는다(useInsert). */
-export function toAsset(x: Item): Asset {
+function toAsset(x: Item): Asset {
   return {
     id: x.id,
     name: x.name ?? x.alt ?? null,
@@ -89,14 +89,6 @@ export async function fetchTopics(category: string, signal?: AbortSignal): Promi
   }
 }
 
-export async function fetchSuggest(q: string, signal?: AbortSignal): Promise<string[]> {
-  try {
-    const r = await api<{ items: Array<{ keyword: string }> }>(`/assets/suggest?q=${encodeURIComponent(q)}`, { signal });
-    return (r.data?.items ?? []).map((x) => x.keyword);
-  } catch {
-    return [];
-  }
-}
 
 /** 즐겨찾기·최근: id 목록으로 그 에셋만(받은 순서대로). */
 export async function fetchByIds(ids: string[], signal?: AbortSignal): Promise<Asset[]> {

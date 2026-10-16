@@ -5,15 +5,15 @@ import { useEffect, useState } from "react";
 import { Link, useLocation } from "react-router";
 import { cn } from "@/lib/utils";
 
-export interface DocNavGroup { group: string; tab: string; items: Array<[string, string]> }
+interface DocNavGroup { group: string; tab: string; items: Array<[string, string]> }
 
 /** 문서 목록 — 기획 §22 문서 센터. 정책 문서는 /legal/:doc 과 같은 내용을 문서 틀 안에서 보여 준다. */
-export const DOC_NAV: DocNavGroup[] = [
+const DOC_NAV: DocNavGroup[] = [
   { group: "AI 연결", tab: "/docs", items: [["/docs", "MCP 연결 가이드"], ["/docs/clients", "클라이언트별 설정"], ["/docs/tools", "도구 목록"], ["/account/keys", "MCP 키 발급"]] },
   { group: "개발자", tab: "/docs/api", items: [["/docs/api", "API 문서"], ["/docs/limits", "호출 한도"], ["/docs/errors", "오류 코드"]] },
   { group: "정책", tab: "/docs/terms", items: [["/docs/terms", "이용약관"], ["/docs/copyright", "저작권 정책"], ["/docs/bot", "수집 로봇 안내"]] },
 ];
-export const DOC_TABS: Array<[string, string]> = [["/docs", "powerMCP"], ["/docs/api", "REST API"], ["/docs/terms", "정책"], ["/help", "도움말"], ["/about", "소개"]];
+const DOC_TABS: Array<[string, string]> = [["/docs", "powerMCP"], ["/docs/api", "REST API"], ["/docs/terms", "정책"], ["/help", "도움말"], ["/about", "소개"]];
 
 /** /docs/mcp 는 /docs 와 같은 문서 */
 const norm = (p: string) => (p.replace(/\/+$/, "") === "/docs/mcp" ? "/docs" : p.replace(/\/+$/, "") || "/");

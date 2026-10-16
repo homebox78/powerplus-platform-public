@@ -177,4 +177,3 @@ export async function composeChecks(p, o = {}) {
   return { r, fails };
 }
 
-export { measure as composeMeasure };

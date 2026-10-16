@@ -8,7 +8,7 @@ export class ApiError extends Error {
 
 export const apiBase = "/api/v1";
 
-export interface ListResult<T> { data: T[]; total?: number; page?: number; limit?: number; meta?: Record<string, unknown> }
+interface ListResult<T> { data: T[]; total?: number; page?: number; limit?: number; meta?: Record<string, unknown> }
 
 /** 응답 봉투를 벗겨 data 만 돌려준다. 204 는 null. */
 export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {

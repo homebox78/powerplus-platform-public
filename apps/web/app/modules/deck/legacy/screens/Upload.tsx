@@ -834,7 +834,7 @@ function Row({ id, style, icon, title, sub, last, children }: { id: string; styl
 }
 
 /** 제작 서버 상태 — 멈춰 있어도 올려 둘 수 있다(다시 켜질 때 시작) */
-export function EngineBadge({ engine }: { engine: Engine | null }) {
+function EngineBadge({ engine }: { engine: Engine | null }) {
   if (!engine) return null;
   return (
     <span className="flex items-center gap-2 text-[12.5px] font-semibold text-ink2 min-w-0" title={engine.workers.map((w) => w.name).join(", ")}>

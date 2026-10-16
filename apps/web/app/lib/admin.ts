@@ -78,7 +78,7 @@ export function dueLeft(due: string, now = Date.now()): { text: string; late: bo
 // ── 모듈 운영(에셋·장표 작업·시안) ──
 export type AssetVis = "internal" | "partner" | "pro" | "free" | "public" | "private";
 export interface AdminAsset { id: string; category: string; category_ko: string; name: string | null; visibility: AssetVis; ai: boolean; created_at: string; updated_at: string; deleted_at?: string | null; thumb_url: string | null }
-export interface AdminDeckJob {
+interface AdminDeckJob {
   id: string; title: string | null; filename: string | null; email: string; owner: string | null; status: string; stage: string | null; progress: number | null;
   slides: number | null; kind: string | null; phase: string | null; worker: string | null; error: string | null; spent_usd: number | null; created_at: string; finished_at: string | null; url: string;
 }
@@ -122,9 +122,9 @@ export const fetchAnalytics = (period: AnalyticsPeriod) => apiFetch<AdminAnalyti
 export const CHANNEL_KO: Record<AdminAnalytics["recent"][number]["channel"], string> = { addin: "애드인", mcp: "MCP", deck: "장표", web: "웹" };
 
 // ── 장표 운영 상세(엔진·통계·작업 상세·취소/재실행/삭제/수정) — api/routes/admin.php 끝부분과 1:1 ──
-export interface AdminDeckFile { kind: string; slide: number | null; name: string; size: number; created_at: string }
-export interface AdminDeckEvent { id: number; ts: string; kind: string; message: string }
-export interface AdminDeckJobDetail extends Omit<AdminDeckJob, "error" | "spent_usd"> {
+interface AdminDeckFile { kind: string; slide: number | null; name: string; size: number; created_at: string }
+interface AdminDeckEvent { id: number; ts: string; kind: string; message: string }
+interface AdminDeckJobDetail extends Omit<AdminDeckJob, "error" | "spent_usd"> {
   size: number; owner_id: string | null; source_kind: string | null; pilot_slide: number | null; cancel_requested: boolean;
   error: string | null; note: string | null; feedback: string | null; theme: string | null; shared: number; result_name: string | null;
   budget_usd: number | null; spent_usd: number; opts: Record<string, unknown> | null;
@@ -132,12 +132,12 @@ export interface AdminDeckJobDetail extends Omit<AdminDeckJob, "error" | "spent_
   files: { count: number; bytes: number; by_kind: Record<string, number>; items: AdminDeckFile[] };
   events: AdminDeckEvent[];
 }
-export interface AdminDeckEngines {
+interface AdminDeckEngines {
   online: boolean;
   workers: Array<{ name: string; info: string | null; seen_at: string; online: boolean; running: number }>;
   queue: { queued: number; running: number; hold: number; review: number; stale: number; oldest_queued: string | null };
 }
-export interface AdminDeckStats {
+interface AdminDeckStats {
   days: number;
   series: Array<{ date: string; total: number; done: number; failed: number; canceled: number; spent_usd: number; avg_sec: number | null }>;
   summary: { total: number; done: number; failed: number; done_rate: number | null; avg_sec: number | null; spent_usd: number };
@@ -164,14 +164,14 @@ export interface AdminAssetDetail {
   set: { id: string; name: string; count: number } | null; tags: { ko: string[]; en: string[]; meta: string[] }; files: AdminAssetFile[];
   thumb_url: string | null; original_url: string | null; uses: number; favorites: number; created_at: string; updated_at: string; deleted_at: string | null;
 }
-export interface AdminAssetCategory { id: string; label: string; count: number; deleted: number }
+interface AdminAssetCategory { id: string; label: string; count: number; deleted: number }
 export interface AdminAssetSet { id: string; name: string; style: string | null; category: string; category_ko: string; count: number; created_at: string; cover_url: string | null }
 export type RequestStatus = "new" | "done" | "rejected";
 export interface AdminAssetRequest {
   id: string; title: string; kind: string | null; kind_ko: string | null; detail: string | null; status: RequestStatus; source: string | null; reply: string | null;
   requester: string | null; requester_email: string | null; handled_item: string | null; handled_by: string | null; handled_at: string | null; created_at: string;
 }
-export interface SearchQuality {
+interface SearchQuality {
   days: number; total: number; zero: number; zero_rate: number; distinct: number; users: number; channels: Record<string, number>;
   top: Array<{ q: string; count: number; results: number }>; zero_top: Array<{ q: string; count: number; last_at: string }>;
   daily: Array<{ day: string; total: number; zero: number; zero_rate: number }>;
@@ -184,7 +184,7 @@ export const fetchAdminRequests = (o: { status?: string; q?: string; page?: numb
 export const fetchSearchQuality = (days: number) => apiFetch<SearchQuality>(`/admin/search-quality${qs({ days })}`);
 
 // powerGuide 현황 — api/routes/admin_guide.php 와 1:1. 내용 편집은 없다(코드가 정본)
-export interface GuideAdmin {
+interface GuideAdmin {
   days: number;
   files: Array<{ label: string; path: string; feeds: string; ok: boolean; size: number; updated_at: string | null }>;
   counts: { components: number; by_source: { krds: number; shadcn: number; both: number }; tokens: number; krds_components: number; krds_patterns: number; checklist: number; kit_version: string; checklist_at: string | null };
@@ -200,8 +200,8 @@ const del = <T,>(path: string) => apiFetch<T>(path, { method: "DELETE" });
 const post = <T,>(path: string, body: unknown = {}, method: "POST" | "PATCH" = "POST") =>
   apiFetch<T>(path, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
 
-export interface AdminMockupCheck { score: number | null; passed: boolean | null; fixes: Array<string | Record<string, unknown>>; summary: string | null }
-export interface AdminMockupDetail extends Omit<AdminMockup, "gallery"> {
+interface AdminMockupCheck { score: number | null; passed: boolean | null; fixes: Array<string | Record<string, unknown>>; summary: string | null }
+interface AdminMockupDetail extends Omit<AdminMockup, "gallery"> {
   visibility: string; bytes: number; views: number; checked_at: string | null; check: AdminMockupCheck | null;
   published_at: string | null; discarded_at: string | null; owner_id: string | null; updated_at: string; thumb_url: string | null;
   gallery: { id: number; status: "study" | "shared" | "hidden"; likes: number; views: number; unlocks: number; shared_at: string | null; note: string | null } | null;
@@ -216,7 +216,7 @@ export type CommCategory = "notice" | "qna" | "showcase" | "tip" | "free" | "sta
 export const COMM_CAT_KO: Record<CommCategory, string> = { notice: "공지사항", qna: "질문·답변", showcase: "작업 공유", tip: "제보·제안", free: "자유", staff: "사내 게시판" };
 export const COMM_MODULE_KO: Record<string, string> = { assets: "powerAssets", deck: "powerDeck", mock: "powerMock", guide: "powerGuide" };
 export interface AdminPostAuthor { id: string; name: string; email: string | null; staff: boolean }
-export interface AdminPost {
+interface AdminPost {
   id: string; category: CommCategory; title: string; body: string; excerpt: string; module: string | null; pinned: boolean; hidden: boolean;
   comments: number; likes: number; views: number; created_at: string; updated_at: string; author: AdminPostAuthor;
   /** 빠른 판단(Jev) — 광고·비방 확률, 더 맞는 게시판 */
@@ -252,8 +252,8 @@ export const patchAdminHelpDoc = (id: string, b: HelpDocInput) => post<HelpDoc>(
 export const deleteAdminHelpDoc = (id: string) => del<null>(`/admin/help/docs/${id}`);
 
 // ── 사용자 관리 고도화(api/routes/admin3.php) — 수동 추가·플랜·포인트·크레딧·차단·상세·키 폐기·포인트 규칙
-export type UserStatus = "active" | "blocked" | "dormant";
-export interface AdminUserBase {
+type UserStatus = "active" | "blocked" | "dormant";
+interface AdminUserBase {
   id: string; name: string; email: string; kind: "staff" | "external"; status: UserStatus; blocked_at: string | null; blocked_reason: string | null;
   dormant_at: string | null; dormant_requested_at: string | null; access_until: string | null;
   plan: AdminUser["plan"]; roles: AdminUser["roles"]; created_at: string;
@@ -295,7 +295,7 @@ export const POINT_REASON_KO: Record<string, string> = {
 };
 export const CREDIT_KIND_KO: Record<string, string> = { grant_month: "월 지급", purchase: "구매", use: "사용", refund: "환불", expire: "만료", point_convert: "포인트 전환", admin_adjust: "관리자 조정" };
 /** 감사 기록 대상 종류(서버 target_type) → 화면 이름. 내부 표 이름을 그대로 보이지 않게(GEN-019). */
-export const AUDIT_TARGET_KO: Record<string, string> = {
+const AUDIT_TARGET_KO: Record<string, string> = {
   user: "사용자", core_users: "사용자", core_api_keys: "API 키", asset: "에셋", asset_requests: "자료 요청",
   comm_posts: "커뮤니티 글", comm_comments: "커뮤니티 댓글", contact: "문의", removal: "삭제 요청",
   core_changelog: "변경 이력", core_help_docs: "도움말", core_policy_versions: "약관·정책", deck_checklist: "장표 체크리스트",
@@ -330,7 +330,7 @@ export const AUDIT_KO: Record<string, string> = {
 // ── 변경 이력(core_changelog) — 공개 /changelog?module=, 관리자 /admin/changelog
 export type ChangelogModule = "platform" | "assets" | "deck" | "mock" | "guide" | "mcp";
 export interface ChangelogEntry { id: string; module: ChangelogModule; track: string; version: string; date: string; title: string; notes: string[]; published: boolean; updated_at: string }
-export type ChangelogInput = Partial<Pick<ChangelogEntry, "module" | "track" | "version" | "date" | "title" | "notes" | "published">>;
+type ChangelogInput = Partial<Pick<ChangelogEntry, "module" | "track" | "version" | "date" | "title" | "notes" | "published">>;
 export const CHANGELOG_MODULES: { id: ChangelogModule; label: string }[] = [
   { id: "platform", label: "powerPlus 전체" }, { id: "assets", label: "powerAssets" }, { id: "deck", label: "powerDeck" },
   { id: "mock", label: "powerMock" }, { id: "guide", label: "powerGuide" }, { id: "mcp", label: "powerMCP" },

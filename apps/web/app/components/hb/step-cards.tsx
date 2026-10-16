@@ -5,7 +5,7 @@ import { MobileCarousel } from "@/components/hb/mobile-carousel";
 import { Copy } from "@/components/hb/copy";
 import { cn } from "@/lib/utils";
 
-export interface StepItem { title: string; desc: string; img: string; to?: string }
+interface StepItem { title: string; desc: string; img: string; to?: string }
 
 export function StepCards({ items, cols = 3, className }: { items: StepItem[]; cols?: 3 | 4; className?: string }) {
   return (

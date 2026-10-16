@@ -2,7 +2,7 @@
 // 사이트 규칙 "칩 나열 금지(줄바꿈되며 화면 폭마다 모양이 달라진다)" 를 작업창에도 적용한다(2026-10-07 디자인 정합).
 import * as React from "react";
 
-export type PillOption = { key: string; label: string; count?: number };
+type PillOption = { key: string; label: string; count?: number };
 
 export default function ChoicePill({
   label,

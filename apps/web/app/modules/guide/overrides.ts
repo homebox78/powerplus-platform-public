@@ -23,11 +23,11 @@ export type GuideOverrides = {
 };
 export type GuideSection = keyof GuideOverrides;
 
-export const EMPTY_OVERRIDES: GuideOverrides = { copy: {}, components: {}, krds: {}, patterns: {}, checklist: {}, tokens: {}, downloads: {} };
+const EMPTY_OVERRIDES: GuideOverrides = { copy: {}, components: {}, krds: {}, patterns: {}, checklist: {}, tokens: {}, downloads: {} };
 
 // PHP 빈 배열은 [] 로 온다 — 열쇠 맵으로 맞춘다
 const obj = <T,>(v: unknown): T => (v && typeof v === "object" && !Array.isArray(v) ? (v as T) : ({} as T));
-export async function fetchGuideOverrides(): Promise<GuideOverrides> {
+async function fetchGuideOverrides(): Promise<GuideOverrides> {
   type Raw = Partial<Record<GuideSection, unknown>>;
   const d = await apiFetch<Raw>("/guide/overrides").catch((): Raw => ({}));
   const o: Raw = d ?? {};
@@ -37,7 +37,7 @@ export async function fetchGuideOverrides(): Promise<GuideOverrides> {
   };
 }
 
-export const GUIDE_OVERRIDES_KEY = ["guide-overrides"] as const;
+const GUIDE_OVERRIDES_KEY = ["guide-overrides"] as const;
 /** 읽기 실패·로딩 중에도 원본이 보이게 빈 덮어쓰기를 준다. */
 export function useGuideOverrides(): GuideOverrides {
   const q = useQuery({ queryKey: GUIDE_OVERRIDES_KEY, queryFn: fetchGuideOverrides, staleTime: 60_000 });

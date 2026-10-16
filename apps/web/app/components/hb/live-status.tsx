@@ -3,7 +3,7 @@
 import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 
-export type LiveState = "ok" | "warn" | "wait" | "off";
+type LiveState = "ok" | "warn" | "wait" | "off";
 
 export function LiveDot({ state, className }: { state: LiveState; className?: string }) {
   return <i className={cn("hb-live-dot", className)} data-state={state} aria-hidden />;

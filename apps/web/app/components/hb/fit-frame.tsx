@@ -5,7 +5,7 @@
 import { useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 
-export interface FitFrameProps {
+interface FitFrameProps {
   src: string;
   title: string;
   /** 시안이 설계된 폭(px) */

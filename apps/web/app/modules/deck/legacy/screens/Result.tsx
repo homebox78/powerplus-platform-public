@@ -445,7 +445,7 @@ function Shared({ job, me, onChange, onLogout }: Props) {
 }
 
 /** 원본·결과를 겹쳐 놓고 손잡이로 가르는 비교 뷰. fit = 쓸 수 있는 높이(CSS 식) — 그림이 화면을 넘지 않게 */
-export function Compare({ before, after, beforeLabel = "원본", fit = "100vh - 260px" }: { before?: string; after?: string; beforeLabel?: string; fit?: string }) {
+function Compare({ before, after, beforeLabel = "원본", fit = "100vh - 260px" }: { before?: string; after?: string; beforeLabel?: string; fit?: string }) {
   const [x, setX] = useState(50);
   const [ratio, setRatio] = useState(16 / 9);
   const box = useRef<HTMLDivElement>(null);

@@ -69,7 +69,6 @@ export const MODULES: PlatformModule[] = [
   },
 ];
 
-export const moduleOf = (id: PlatformModule["id"]) => MODULES.find((m) => m.id === id)!;
 export const menuHref = (m: PlatformModule, item: ModuleMenu) => (item.slug ? `${m.to}/${item.slug}` : m.to);
 
 /** 모듈이 아닌 상위 메뉴(사용자 2026-10-06 "기존 커뮤니티를 외부 메뉴로 — 공지사항·게시판·커뮤니티 용도"). 헤더·푸터·하단 탭이 MODULES 뒤에 붙여 쓴다. */

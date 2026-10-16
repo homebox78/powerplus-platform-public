@@ -17,7 +17,7 @@ export interface DeckChecklistMeta {
   open_by_area: Record<string, number>;
   areas: Array<{ id: string; name: string }>;
 }
-export interface DeckLesson { id: number; area: string; hits: number; text: string }
+interface DeckLesson { id: number; area: string; hits: number; text: string }
 
 export const DECK_STATUS_KO: Record<DeckChecklistStatus, string> = { open: "열림", fixing: "고치는 중", fixed: "고침", watch: "지켜봄", wontfix: "안 고침" };
 export const DECK_ORIGIN_KO: Record<DeckChecklistOrigin, string> = { wire: "와이어 검사", report: "엔진 보고", user: "사용자 의견", fail: "실패", manual: "직접" };

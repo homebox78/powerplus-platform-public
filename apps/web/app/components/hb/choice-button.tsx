@@ -9,7 +9,7 @@ import { cn } from "@/lib/utils";
 // 버튼 하나에 "라벨 · 현재 값"을 보여 주고, 누르면 모달에서 고른다 — PC·모바일이 같은 동선.
 // 단일 선택(value: string) / 다중 선택(multiple, value: string[]) 둘 다.
 // 톤 = 필터 팔레트와 같은 다크(#2A2A2C) — 작은 선택·옵션 모달은 다크, 흰 모달은 요금제·상담 폼처럼 크고 긴 것만 (사용자 지시 2026-09-24).
-export interface Choice { id: string; label: string; count?: number | null; hint?: string }
+interface Choice { id: string; label: string; count?: number | null; hint?: string }
 
 interface Base { label: string; options: Choice[]; allLabel?: string; /** false = "전체" 칸을 두지 않는다(종류처럼 항상 하나가 골라진 선택) */ showAll?: boolean; description?: string; className?: string; size?: "sm" | "md" }
 type Props = Base & ({ multiple?: false; value: string; onChange: (v: string) => void } | { multiple: true; value: string[]; onChange: (v: string[]) => void });

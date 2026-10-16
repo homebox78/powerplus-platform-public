@@ -1,5 +1,5 @@
 {
- "_doc": "타입 G 견본 — 2026_(주)솔리데오 회사소개서_국문.pdf 의 내용을 레이아웃 카탈로그(company.LAYOUTS)에 옮긴 것. 숫자·연혁·수상·서비스 이름은 PDF 그대로, 문장만 과감하게 다시 썼다. icon 은 powerAssets icon-flat-blue-glass 의 로컬 원본 파일 이름(scripts/company-sample.py 가 붙인다)",
+ "_doc": "회사소개서 견본 — 2026_(주)솔리데오 회사소개서_국문.pdf 의 내용을 레이아웃 카탈로그(company.LAYOUTS)에 옮긴 것. 숫자·연혁·수상·서비스 이름은 PDF 그대로, 문장만 과감하게 다시 썼다. icon 은 powerAssets icon-flat-blue-glass 의 로컬 원본 파일 이름(scripts/company-sample.py 가 붙인다)",
  "company": {"name": "㈜솔리데오", "short": "SOLIDEO", "website": "www.solideos.com", "tagline": "데이터로 그리는 행복한 미래"},
  "slides": [
   {"kind": "cover", "eyebrow": "COMPANY PROFILE 2026", "title": "데이터로 그리는\n**행복한 미래**", "sub": "AI·데이터·클라우드로 공공의 다음 기준을 만드는 회사", "date": "2026.10", "icon": "icon_2431.png"},

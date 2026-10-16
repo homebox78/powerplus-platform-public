@@ -6,6 +6,7 @@ import { getAi, type AiSettings } from "../openrouter";
 import { Arrow, cn, Ms, SecTitle, Seg, useToastOn, toast, useContextMenu, type CtxItem, sent } from "../ui";
 import { DesignTypePicker, typeName } from "../DesignTypes";
 import { VerticalStylePicker, VerticalTonePicker, verticalStyleName, verticalToneName } from "../VerticalThemes";
+import { COMPANY_THEMES, CompanyThemePicker } from "../CompanyThemes";
 import { BODY_FONTS, FontPicker, TITLE_FONTS, VERTICAL_BODY_FONTS, fontName } from "../FontPicker";
 import { LogoSearch } from "../LogoSearch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -96,7 +97,9 @@ export function Upload({ engine, isAdmin = false, onUploaded, onCancel, onSettin
   const [evDate, setEvDate] = useState("");   // 표지 날짜 — 비우면 작성한 달
   const [front, setFront] = useState({ cover: true, toc: true, divider: true });   // 표지·목차·간지 — 제작 직전에도 바꿀 수 있다
   const [style, setStyle] = useState("a");   // 디자인 타입 — reference/styles/styles.json
-  const [purpose, setPurpose] = useState<"submit" | "present">("present");
+  const [purpose, setPurpose] = useState<"submit" | "present" | "company">("present");
+  const company = purpose === "company";   // 회사소개용 = 타입 G 회사소개서(engine/company.py) — 시안 없이 PPT 바로, 서체·색은 테마가 정한다
+  const direct = purpose !== "present";    // 시안 확인 없이 PPT 를 바로 만드는 용도(제출용·회사소개용)
   const [vstyle, setVstyle] = useState("band");   // 제출용(세로 제안서) 디자인 스타일(모양) — engine/vertical.py STYLES
   const [vtone, setVtone] = useState("navy");     // 톤(색) — engine/vertical.py TONES. 고르면 강조색도 추천 색으로
   const [lang, setLang] = useState<DeckLang>("ko");   // 제작 언어 — 자료가 한국어여도 장표 글을 이 언어로   // 용도 — 발표용(기본) / 제출용
@@ -159,7 +162,8 @@ export function Upload({ engine, isAdmin = false, onUploaded, onCancel, onSettin
   const contexts = items.filter((i) => i.role === "context");
   const hasText = text.trim().length >= 20;
   const slideUnset = !slideN || !(parseInt(slideN) > 0);
-  const slides = slideUnset ? 5 : parseInt(slideN);
+  const slideDef = company ? 14 : 5;   // 장 수 미입력 — 회사소개서는 14쪽 안팎(서버 Jobs::opts 와 같다)
+  const slides = slideUnset ? slideDef : parseInt(slideN);
   const planOpts = { slides, mockups, sample: Math.max(1, parseInt(sampleN) || 3), front, style, vstyle, vtone, purpose, lang, font_title: fontTitle, font_body: fontBody, event: event.trim(), date: evDate.trim() };
   const aiBlock = design && ai && !ai.ready;
   const working = busy !== null;
@@ -190,6 +194,8 @@ export function Upload({ engine, isAdmin = false, onUploaded, onCancel, onSettin
   const summary = !design
     ? content ? `'${content.file.name}' 을 표준 절차로 다듬습니다${pilot ? " — 대표 장 하나를 먼저 보여 드립니다" : ""}.` : "초안 .pptx 를 올려 주세요."
     : !ready ? "장표에 담을 내용을 적거나 파일을 올려 주세요."
+    : company   // 회사소개서 — 레이아웃 카탈로그에 글을 채우고 HTML 로 그려 편집 가능한 PPT 로
+    ? `${contexts.length ? `회사 자료 ${contexts.length}개를 읽고, ` : ""}${slides}쪽 안팎의 회사소개서를 구성한 뒤 시안 없이 바로 PPT 를 만듭니다. 글·카드는 PowerPoint 에서 고칠 수 있습니다.`
     : purpose === "submit"   // 세로 제안서 — 시안 없이 기획에서 바로 PPT(정해진 양식 + 도식의 조합이라 그림 시안이 필요 없다)
     ? `${contexts.length ? `배경 자료 ${contexts.length}개를 읽고, ` : ""}RFP 목차대로 ${slides}쪽 안팎을 기획한 뒤 시안 없이 바로 PPT 를 만듭니다. 결과는 실제 PPT 를 쪽마다 캡처해 보여 드립니다.`
     : `${contexts.length ? `배경 자료 ${contexts.length}개를 읽고, ` : ""}${content ? `'${content.file.name}' 의 내용으로 ` : hasText ? "적어 주신 내용으로 " : "자료에서 핵심을 뽑아 "}${slides}장을 기획합니다. `
@@ -270,7 +276,7 @@ export function Upload({ engine, isAdmin = false, onUploaded, onCancel, onSettin
   const switchKind = (k: JobKind) => { if (k === kind) return; setKind(k); setItems([]); setErr(null); setStep(1); setFocus(null); };
 
   const last = !design || step === 3;
-  const startLabel = design ? (purpose === "submit" ? "PPT 바로 만들기" : mockups === "plan" ? "기획 시작" : "기획 시작 (시안까지)") : "변환 시작";
+  const startLabel = design ? (direct ? "PPT 바로 만들기" : mockups === "plan" ? "기획 시작" : "기획 시작 (시안까지)") : "변환 시작";
   const canStart = ready && !working && !aiBlock && (!design || accentOk);
   const totalSize = items.reduce((a, i) => a + i.file.size, 0);
   const frontTxt = [front.cover && "표지", front.toc && "목차", front.divider && "간지"].filter(Boolean).join(" · ") || "없음";
@@ -279,17 +285,17 @@ export function Upload({ engine, isAdmin = false, onUploaded, onCancel, onSettin
 
   // 요약 패널 — [이름, 값, 단계, 항목]
   const rows: [string, ReactNode, Step, string][] = design ? [
-    ["용도", purpose === "present" ? "발표용" : "제출용", 1, "purpose"],
+    ["용도", purpose === "present" ? "발표용" : company ? "회사소개용" : "제출용", 1, "purpose"],
     ["언어", DECK_LANGS.find((x) => x[0] === lang)?.[1] ?? "한국어", 1, "lang"],
     ["자료", items.length ? `${hasText ? "글 + " : ""}${items.length}개 · ${fmtSize(totalSize)}` : text.trim() ? "직접 적은 글" : "없음", 1, "files"],
-    ["디자인", purpose === "submit" ? `세로 제안서 · ${verticalStyleName(vstyle)}` : `타입 ${style.toUpperCase()} · ${typeName(style)}`, 2, "design"],
+    ["디자인", company ? `타입 G · ${COMPANY_THEMES[0]!.name}` : purpose === "submit" ? `세로 제안서 · ${verticalStyleName(vstyle)}` : `타입 ${style.toUpperCase()} · ${typeName(style)}`, 2, "design"],
     ...(purpose === "submit" ? [["톤", verticalToneName(vtone), 3, "vtone"] as [string, ReactNode, Step, string]] : []),
-    ["서체", fontTxt, 2, "font"],
-    ["장 수", slideUnset ? "5장 (장 수 미입력)" : `${slides}장`, 3, "count"],
-    ...(purpose === "submit" ? [] : [["시안", `${MODE_LABEL[mockups]}${mockups === "sample" ? ` ${planOpts.sample}장` : ""}`, 3, "timing"] as [string, ReactNode, Step, string]]),
-    ["강조색", <span className="inline-flex items-center gap-1.5 font-mono text-[13px]"><i className="w-3 h-3 rounded-full flex-none" style={{ background: accentOk ? accent : "var(--color-line-3)" }} />{accent}</span>, 3, "accent"],
-    ["틀", frameTxt, 3, "frame"],
-    ["구성", frontTxt, 3, "extras"],
+    ["서체", company ? "프리텐다드(고정)" : fontTxt, 2, "font"],
+    ["장 수", slideUnset ? `${slideDef}장 (장 수 미입력)` : `${slides}장`, 3, "count"],
+    ...(direct ? [] : [["시안", `${MODE_LABEL[mockups]}${mockups === "sample" ? ` ${planOpts.sample}장` : ""}`, 3, "timing"] as [string, ReactNode, Step, string]]),
+    ...(company ? [] : [["강조색", <span className="inline-flex items-center gap-1.5 font-mono text-[13px]"><i className="w-3 h-3 rounded-full flex-none" style={{ background: accentOk ? accent : "var(--color-line-3)" }} />{accent}</span>, 3, "accent"] as [string, ReactNode, Step, string]]),
+    ["틀", company ? (logos.vendor.length ? "회사 로고" : "로고 없음 — 회사 이름 글자") : frameTxt, 3, "frame"],
+    ...(company ? [] : [["구성", frontTxt, 3, "extras"] as [string, ReactNode, Step, string]]),
     ["요청", note.trim() ? "있음" : "없음", 3, "note"],
   ] : [
     ["방식", "초안 PPT 다듬기", 1, "dfile"],
@@ -449,9 +455,10 @@ export function Upload({ engine, isAdmin = false, onUploaded, onCancel, onSettin
               <Sec id="purpose" style={hl("purpose")} className="!gap-2.5">
                 <SecTitle icon="target" title="용도" desc="같은 내용이라도 장 구성이 달라집니다" />
                 {/* 태블릿·모바일은 성격 뱃지를 숨기고 카드를 줄여 한 줄 2개(모바일은 쌓기) — 데스크톱(lg)만 뱃지 */}
-                <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
+                <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 xl:grid-cols-3">
                   {([["present", "발표용", "짧은 시간에 '왜 우리인가'를 남긴다", "play_arrow", ["한 장 한 메시지", "표 → 도식", "설명은 발표 대본으로", "10분 ≈ 15–20장"]],
-                     ["submit", "제출용", "A4 세로 제안서를 자동으로 만든다", "description", ["RFP 권고 목차대로", "표지 · 목차 · 간지 · 본문", "배경은 powerAssets 우선"]]] as const).map(([k, t, d, ic, tags]) => {
+                     ["submit", "제출용", "A4 세로 제안서를 자동으로 만든다", "description", ["RFP 권고 목차대로", "표지 · 목차 · 간지 · 본문", "배경은 powerAssets 우선"]],
+                     ["company", "회사소개용", "회사소개서 덱을 바로 만든다", "apartment", ["큰 숫자 · 굵은 카피", "레이아웃 13종", "글·카드 편집 가능"]]] as const).map(([k, t, d, ic, tags]) => {
                     const on = purpose === k;
                     return (
                       <button key={k} type="button" onClick={() => setPurpose(k)} aria-pressed={on} disabled={working}
@@ -520,7 +527,10 @@ export function Upload({ engine, isAdmin = false, onUploaded, onCancel, onSettin
             {/* ── 2단계 디자인 — 타입 카드 6장(3열) + 제목·본문 서체 ── */}
             {design && step === 2 && <>
               <Sec id="design" style={hl("design")} className="!gap-2.5">
-                {purpose === "submit" ? <>
+                {company ? <>
+                  <SecTitle icon="palette" title="회사소개서 테마" desc="표지 · 간지 · 숫자 · 카드 · 연혁 · 연락처까지 레이아웃 13종이 이 테마로 그려집니다" />
+                  <CompanyThemePicker value={COMPANY_THEMES[0]!.id} onChange={() => {}} disabled={working} />
+                </> : purpose === "submit" ? <>
                   <SecTitle icon="palette" title="세로 제안서 디자인 스타일" desc="표지 · 목차 · 간지 · 본문의 모양이 이 스타일로 정해집니다 — 색은 다음 단계에서 톤으로 고릅니다" />
                   <VerticalStylePicker value={vstyle} onChange={setVstyle} disabled={working} />
                 </> : <>
@@ -529,37 +539,38 @@ export function Upload({ engine, isAdmin = false, onUploaded, onCancel, onSettin
                 </>}
               </Sec>
               <Sec id="font" style={hl("font")} className="!gap-3">
-                <FontPicker vertical={purpose === "submit"} title={fontTitle} body={fontBody} onTitle={setFontTitle} onBody={setFontBody} disabled={working} />
+                {company ? <SecTitle icon="text_fields" title="서체" desc="프리텐다드 다섯 굵기로 고정입니다 — 산출물에 서체 파일을 함께 넣습니다" />
+                  : <FontPicker vertical={purpose === "submit"} title={fontTitle} body={fontBody} onTitle={setFontTitle} onBody={setFontBody} disabled={working} />}
               </Sec>
             </>}
 
             {/* ── 3단계 세부 설정 — 왼쪽 220px 라벨 칸 + 오른쪽 입력 ── */}
             {design && step === 3 && (
               <section className="flex flex-col">
-                <Row id="count" style={hl("count")} icon="filter_none" title="장 수" sub="8장까지 권장">
+                <Row id="count" style={hl("count")} icon="filter_none" title="장 수" sub={company ? "14쪽 안팎 권장" : "8장까지 권장"}>
                   <div className="flex flex-col gap-2.5">
                     <div className="flex items-center gap-3 flex-wrap">
                       <div className="flex items-center gap-1.5 whitespace-nowrap">
-                        <input className="field !h-[38px] !w-[72px] !px-3 text-right font-mono" inputMode="numeric" value={slideN} placeholder="5" aria-label="장 수"
+                        <input className="field !h-[38px] !w-[72px] !px-3 text-right font-mono" inputMode="numeric" value={slideN} placeholder={String(slideDef)} aria-label="장 수"
                           aria-describedby={slideUnset ? "slide-unset" : undefined}
                           onChange={(e) => setSlideN(e.target.value.replace(/\D/g, "").slice(0, 3))} />장
                       </div>
-                      <span className="sec-desc">한 번에 8장까지가 가장 안정적입니다. 더 많으면 8장씩 묶어 차례로 만듭니다</span>
+                      <span className="sec-desc">{company ? "AI 가 구성을 정하며 이 쪽 수 안팎으로 맞춥니다. 표지·목차·간지·연락처를 포함한 수입니다" : "한 번에 8장까지가 가장 안정적입니다. 더 많으면 8장씩 묶어 차례로 만듭니다"}</span>
                     </div>
                     {slideUnset && (
                       <div id="slide-unset" role="status" className="rounded-md border border-orange-line bg-orange-tint px-3.5 py-2.5 text-[13px] text-ink3 leading-[1.6] break-keep">
-                        <b className="text-ink">장 수를 적지 않으면 5장만 만듭니다.</b>{" "}
+                        <b className="text-ink">장 수를 적지 않으면 {slideDef}장{company ? " 안팎으로" : "만"} 만듭니다.</b>{" "}
                         자료가 많아도 늘리지 않습니다. 더 필요하면 원하는 장 수를 적어 주세요.
                       </div>
                     )}
-                    {slides > 8 && (
+                    {slides > 8 && !company && (
                       <div className="rounded-md border border-orange-line bg-orange-tint px-3.5 py-2.5 text-[13px] text-ink3 leading-[1.6] break-keep">
                         <b className="text-ink">{slides}장은 8장씩 {Math.ceil(slides / 8)}묶음으로 나눠 차례로 만듭니다.</b> 한 번에 다 만들면 뒤쪽 장의 품질이 떨어지고 중간에 실패하면 전부 다시 해야 해서, 시안·장표 제작·발표 대본 모두 8장 단위로 진행합니다. 먼저 8장 이하로 방향을 확인한 뒤 늘리는 것을 권합니다.
                       </div>
                     )}
                   </div>
                 </Row>
-                {purpose !== "submit" && <Row id="timing" style={hl("timing")} icon="image" title="시안 이미지 시점" sub="비용 대부분 발생">
+                {!direct && <Row id="timing" style={hl("timing")} icon="image" title="시안 이미지 시점" sub="비용 대부분 발생">
                   <div className="grid gap-2" style={{ gridTemplateColumns: "repeat(auto-fit,minmax(180px,1fr))" }}>
                     {([
                       ["plan", "와이어프레임을 먼저 받아 함께 고치고, 만들 장을 고릅니다", "이미지 비용 0"],
@@ -598,7 +609,7 @@ export function Upload({ engine, isAdmin = false, onUploaded, onCancel, onSettin
                     <VerticalTonePicker value={vtone} onChange={(t) => { setVtone(t.id); setAccent(t.accent); }} disabled={working} />
                   </Row>
                 )}
-                <Row id="accent" style={hl("accent")} icon="format_color_fill" title="강조색" sub="핵심 단어 강조">
+                {!company && <Row id="accent" style={hl("accent")} icon="format_color_fill" title="강조색" sub="핵심 단어 강조">
                   <div className="flex flex-col gap-2.5">
                     <div className="flex items-center gap-1.5 flex-wrap">
                       {ACCENTS.map(([c, l]) => (
@@ -618,24 +629,26 @@ export function Upload({ engine, isAdmin = false, onUploaded, onCancel, onSettin
                       <span className="sec-desc">제목의 핵심 단어와 강조 표시에 쓰는 색 (기본 파란색은 그대로)</span>
                     </div>
                   </div>
-                </Row>
-                <Row id="frame" style={hl("frame")} icon="web_asset" title="머리 · 바닥 틀" sub="모든 장 공통">
+                </Row>}
+                <Row id="frame" style={hl("frame")} icon="web_asset" title={company ? "회사 로고" : "머리 · 바닥 틀"} sub={company ? "모든 쪽 왼쪽 위" : "모든 장 공통"}>
                   <div className="flex flex-col gap-2">
-                    <input className="field" aria-label="사업명" value={project} maxLength={80} onChange={(e) => setProject(e.target.value)} placeholder="사업명 — 머리 띠 오른쪽 (예: OO시 업무지원포털 시스템 유지관리)" />
-                    {/* 미리보기 틀 — 실제 들어가는 자리와 같다: 바닥 왼쪽 발주기관 로고 · 가운데 쪽번호 · 오른쪽 제안사 로고 */}
+                    {!company && <input className="field" aria-label="사업명" value={project} maxLength={80} onChange={(e) => setProject(e.target.value)} placeholder="사업명 — 머리 띠 오른쪽 (예: OO시 업무지원포털 시스템 유지관리)" />}
+                    {/* 미리보기 틀 — 실제 들어가는 자리와 같다: 바닥 왼쪽 발주기관 로고 · 가운데 쪽번호 · 오른쪽 제안사 로고. 회사소개서는 회사 로고 하나(왼쪽 위) */}
                     <div className="border border-line rounded-md overflow-hidden text-[12px] bg-white">
+                      {!company && <>
                       <div className="bg-ink text-white flex justify-between gap-4 px-3 py-2 font-semibold">
                         <span className="whitespace-nowrap flex-none">장 이름 · 절 제목</span><span className={cn("truncate min-w-0", !project.trim() && "opacity-70")}>{project.trim() || "사업명"}</span>
                       </div>
                       <div className="h-14 grid place-items-center text-faint">본문 (시안 이미지)</div>
-                      <div className="border-t border-line-soft flex items-end justify-between gap-3 px-3 py-2.5 bg-panel">
-                        {(["client", "vendor"] as const).map((w) => (
+                      </>}
+                      <div className={cn("flex items-end justify-between gap-3 px-3 py-2.5 bg-panel", !company && "border-t border-line-soft")}>
+                        {(company ? (["vendor"] as const) : (["client", "vendor"] as const)).map((w) => (
                           <span key={w} className="contents">
-                            {w === "vendor" && <span className="text-faint pb-3 whitespace-nowrap flex-none">쪽번호</span>}
+                            {w === "vendor" && !company && <span className="text-faint pb-3 whitespace-nowrap flex-none">쪽번호</span>}
                             <div className="flex-1 min-w-0 max-w-[300px] border border-dashed border-orange-line rounded-md p-2.5 flex flex-col gap-2 bg-[var(--color-orange-tint)]">
                               <div className={cn("flex items-center gap-1.5 whitespace-nowrap", w === "vendor" ? "justify-end" : "justify-start")}>
                                 {w === "client" && <Ms name="south_west" size={18} />}
-                                <span className="font-bold text-[13.5px] text-ink">{w === "client" ? "발주기관 로고" : "제안사 로고"}</span>
+                                <span className="font-bold text-[13.5px] text-ink">{w === "client" ? "발주기관 로고" : company ? "회사 로고" : "제안사 로고"}</span>
                                 <span className="text-[12px] text-faint">PNG · JPG</span>
                                 {w === "vendor" && <Ms name="south_east" size={18} />}
                               </div>
@@ -685,10 +698,11 @@ export function Upload({ engine, isAdmin = false, onUploaded, onCancel, onSettin
                         ))}
                       </div>
                     </div>
-                    <div className="sec-desc">모든 장에 같은 위치·크기로 들어갑니다 (시안과 실제 장표 모두). 기본 로고는 필수입니다. 표지·간지처럼 어두운 바탕에 쓸 흰색 로고는 선택이며, 없으면 기본 로고를 흰색으로 바꿔 씁니다. 로고는 PNG·JPG, 5MB 까지. 주관기관이 둘 이상이거나 컨소시엄이면 3개까지 더할 수 있습니다 — 올린 순서대로 나란히 놓입니다.</div>
+                    {company ? <div className="sec-desc">모든 쪽 왼쪽 위에 들어갑니다. 어두운 표지·간지에는 흰색 로고를 쓰고, 없으면 기본 로고를 흰색으로 바꿔 씁니다(투명 PNG 일 때). 로고가 없으면 회사 이름을 글자로 넣습니다.</div> :
+                    <div className="sec-desc">모든 장에 같은 위치·크기로 들어갑니다 (시안과 실제 장표 모두). 기본 로고는 필수입니다. 표지·간지처럼 어두운 바탕에 쓸 흰색 로고는 선택이며, 없으면 기본 로고를 흰색으로 바꿔 씁니다. 로고는 PNG·JPG, 5MB 까지. 주관기관이 둘 이상이거나 컨소시엄이면 3개까지 더할 수 있습니다 — 올린 순서대로 나란히 놓입니다.</div>}
                   </div>
                 </Row>
-                <Row id="extras" style={hl("extras")} icon="auto_stories" title="표지 · 목차 · 간지" sub="자동 생성 · 무료">
+                {!company && <Row id="extras" style={hl("extras")} icon="auto_stories" title="표지 · 목차 · 간지" sub="자동 생성 · 무료">
                   <div className="flex flex-col gap-2">
                     <div className="flex gap-2 flex-wrap">
                       {([["cover", "표지", "사업명 · 제목 · 날짜 · 로고"], ["toc", "목차", "장 이름과 쪽 범위"], ["divider", "간지", "장이 바뀔 때마다 — 장이 둘 이상일 때만"]] as const).map(([k, t, d]) => (
@@ -717,7 +731,7 @@ export function Upload({ engine, isAdmin = false, onUploaded, onCancel, onSettin
                     )}
                     <div className="sec-desc">기획의 장·절로 자동으로 만듭니다. 본문 쪽번호는 그대로입니다. 시안을 확정할 때나 완성한 뒤(글 고치기)에도 넣고 뺄 수 있습니다. <b className="text-ink2">본문(컨텐츠) 장만 만들 때는 세 가지를 모두 해제하세요.</b></div>
                   </div>
-                </Row>
+                </Row>}
                 <Row id="note" style={hl("note")} icon="chat" title="요청 사항" sub="선택" last>
                   <textarea aria-label="요청 사항" className="field min-h-[180px] !resize-y" maxLength={2000} value={note} onChange={(e) => setNote(e.target.value)}
                     placeholder="예: 표지·목차도 넣기 / 한 장에 글을 많이 넣지 말 것 / 기관명은 'OO시' 로" />
@@ -762,7 +776,7 @@ export function Upload({ engine, isAdmin = false, onUploaded, onCancel, onSettin
               <div className="mt-3 p-3 rounded-md bg-white border border-line flex flex-col gap-1.5">
                 <div className="text-[13px] text-dim">예상 비용</div>
                 <div className="flex justify-between gap-2"><span className="whitespace-nowrap">기획 · 와이어프레임</span><span className="font-bold whitespace-nowrap">이미지 비용 0</span></div>
-                {purpose === "submit" ? <div className="flex justify-between gap-2"><span className="whitespace-nowrap">시안 이미지</span><span className="font-bold whitespace-nowrap" title="세로 제안서는 시안 이미지를 만들지 않고 PPT 를 바로 만들어 쪽 캡처로 보여 드립니다">없음 · PPT 캡처</span></div>
+                {direct ? <div className="flex justify-between gap-2"><span className="whitespace-nowrap">시안 이미지</span><span className="font-bold whitespace-nowrap" title="시안 이미지를 만들지 않고 PPT 를 바로 만들어 쪽 캡처로 보여 드립니다">{company ? "없음 · HTML 렌더" : "없음 · PPT 캡처"}</span></div>
                   : <div className="flex justify-between gap-2"><span className="whitespace-nowrap">시안 이미지</span>
                   <span className="font-bold whitespace-nowrap">{mockups === "plan" ? "고른 장만 · 나중에" : mockups === "sample" ? `장당 비용 × ${planOpts.sample}장` : `장당 비용 × ${slides ? `${slides}장` : "전체 장 수"}`}</span></div>}
                 {isAdmin && ai && (ai.budget.default != null || ai.budget.monthly_cap != null) && <>
@@ -771,7 +785,7 @@ export function Upload({ engine, isAdmin = false, onUploaded, onCancel, onSettin
                   {ai.budget.monthly_cap != null && <div className="flex justify-between gap-2"><span className="whitespace-nowrap">이달 사용</span><span className="font-bold font-mono whitespace-nowrap">{usd(ai.budget.month_spent, 3)} / {usd(ai.budget.monthly_cap)}</span></div>}
                 </>}
                 <div className="text-[12.5px] text-faint leading-[1.45] break-keep">
-                  {purpose === "submit" ? "글 AI 비용만 듭니다. 표지·목차·간지 배경은 파워에셋에서 고르고, 맞는 그림이 없을 때만 새로 만듭니다." : mockups === "plan" ? "기획을 확인한 뒤 고른 장만 시안 이미지를 만듭니다. 비용은 그때 장 수만큼 듭니다." : "비용은 대부분 시안 이미지에서 납니다. 실제 금액은 작업의 「상세」에서 볼 수 있습니다."}
+                  {company ? "글 AI 비용만 듭니다. 그림은 파워에셋 아이콘에서 고르고 새로 만들지 않습니다." : purpose === "submit" ? "글 AI 비용만 듭니다. 표지·목차·간지 배경은 파워에셋에서 고르고, 맞는 그림이 없을 때만 새로 만듭니다." : mockups === "plan" ? "기획을 확인한 뒤 고른 장만 시안 이미지를 만듭니다. 비용은 그때 장 수만큼 듭니다." : "비용은 대부분 시안 이미지에서 납니다. 실제 금액은 작업의 「상세」에서 볼 수 있습니다."}
                   {isAdmin && ai && (ai.budget.default != null || ai.budget.monthly_cap != null) && " 한도는 관리자 설정입니다."}
                 </div>
               </div>

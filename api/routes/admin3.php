@@ -15,6 +15,7 @@ use Pp\Core\HttpError;
 use Pp\Core\Ids;
 use Pp\Core\Mail;
 use Pp\Core\MailTemplate;
+use Pp\Core\Notify;
 use Pp\Core\Points;
 use Pp\Core\Response;
 use Pp\Core\Router;
@@ -74,6 +75,7 @@ return static function (Router $r): void {
         return [
             'id' => $u['public_id'], 'name' => $u['name'], 'email' => $u['email'], 'kind' => $u['kind'],
             'status' => $u['status'] ?? 'active', 'blocked_at' => $u['blocked_at'] ?? null, 'blocked_reason' => $u['blocked_reason'] ?? null,
+            'dormant_at' => $u['dormant_at'] ?? null, 'dormant_requested_at' => $u['dormant_requested_at'] ?? null, 'access_until' => $u['access_until'] ?? null,
             'plan' => Users::plan($u), 'roles' => Users::roles((int) $u['id']), 'created_at' => $u['created_at'],
         ];
     };
@@ -249,11 +251,31 @@ return static function (Router $r): void {
             // 세션 전부 무효(session_epoch+1) — 지금 열린 브라우저도 다음 요청에서 로그아웃된다
             Db::exec("UPDATE core_users SET status = 'blocked', blocked_at = NOW(3), blocked_reason = ?, session_epoch = session_epoch + 1 WHERE id = ?", [$reason, $u['id']]);
         } else {
-            Db::exec("UPDATE core_users SET status = 'active', blocked_at = NULL, blocked_reason = NULL WHERE id = ?", [$u['id']]);
+            // 휴면 승인도 여기 — 활동 시각을 지금으로 돌려 놓아야 다음 요청에서 다시 휴면으로 떨어지지 않는다
+            // MySQL 은 SET 을 왼쪽부터 적용한다 — last_seen_at 을 status 보다 먼저(바뀌기 전 status 로 판정)
+            Db::exec("UPDATE core_users SET last_seen_at = IF(status = 'dormant', NOW(3), last_seen_at), status = 'active', blocked_at = NULL, blocked_reason = NULL,
+                      dormant_at = NULL, dormant_requested_at = NULL WHERE id = ?", [$u['id']]);
         }
         $u2 = Users::byId((int) $u['id']);
-        Audit::log($a, $status === 'blocked' ? 'user.block' : 'user.unblock', 'user:' . $u['public_id'],
+        if (($u['status'] ?? '') === 'dormant' && $status === 'active') {
+            Notify::send((int) $u['id'], 'account', '휴면 해제가 승인되었습니다. 다시 로그인해 이용하세요.', '/login', $a->id());
+        }
+        $act = ($u['status'] ?? '') === 'dormant' && $status === 'active' ? 'user.reactivate' : ($status === 'blocked' ? 'user.block' : 'user.unblock');
+        Audit::log($a, $act, 'user:' . $u['public_id'],
             ['status' => $u['status'] ?? 'active'], ['status' => $status, 'reason' => $reason !== '' ? $reason : null]);
+        Response::json($userOut($u2));
+    });
+
+    // ---- 5-2. 임직원 이용 기간 연장(가입일 + 1년이 기본, 사용자 2026-10-16). 남은 기간 끝 또는 오늘 중 늦은 날에서 1년.
+    $r->post('/admin/users/{id}/extend', function (array $p, Actor $a) use ($need, $userOr404, $userOut): void {
+        $need($a, 'admin');
+        $u = $userOr404((string) $p['id']);
+        if (($u['kind'] ?? '') !== 'staff') {
+            throw new HttpError('NOT_STAFF', '임직원 계정만 이용 기간이 있습니다.', 409, '외부 회원은 플랜 지정으로 기간을 정합니다.');
+        }
+        Db::exec('UPDATE core_users SET access_until = DATE_ADD(GREATEST(COALESCE(access_until, NOW(3)), NOW(3)), INTERVAL 1 YEAR) WHERE id = ?', [$u['id']]);
+        $u2 = Users::byId((int) $u['id']);
+        Audit::log($a, 'user.extend', 'user:' . $u['public_id'], ['access_until' => $u['access_until'] ?? null], ['access_until' => $u2['access_until'] ?? null]);
         Response::json($userOut($u2));
     });
 

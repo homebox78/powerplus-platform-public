@@ -102,21 +102,92 @@ final class Users
             Db::exec('UPDATE core_users SET kind = ? WHERE id = ?', ['staff', $u['id']]);
             $u['kind'] = 'staff';
         }
+        // 임직원 이용 기간 = 가입일 + 1년(사용자 2026-10-16). 처음 임직원이 될 때 한 번 채우고, 연장은 관리자가 한다.
+        if (($u['kind'] ?? '') === 'staff' && empty($u['access_until'])) {
+            Db::exec('UPDATE core_users SET access_until = DATE_ADD(created_at, INTERVAL 1 YEAR) WHERE id = ? AND access_until IS NULL', [$u['id']]);
+            $u = self::byId((int) $u['id']) ?? $u;
+        }
         return $u;
     }
 
-    /** 관리자가 차단한 계정은 어떤 로그인 수단으로도 못 들어온다(OTP·소셜·개발 로그인 공통 지점). */
+    /**
+     * 관리자가 차단한 계정·휴면 계정은 어떤 로그인 수단으로도 못 들어온다(OTP·소셜·개발 로그인 공통 지점).
+     * 휴면 계정이 로그인을 시도하면 승인 요청(dormant_requested_at)을 남기고 관리자에게 한 번 알린다.
+     */
     public static function assertActive(array $u): void
     {
-        if (($u['status'] ?? 'active') === 'blocked') {
+        $u = self::markDormantIfIdle($u);
+        $st = $u['status'] ?? 'active';
+        if ($st === 'blocked') {
             throw new HttpError('BLOCKED', '이용이 제한된 계정입니다.', 403, '관리자에게 문의하세요.');
+        }
+        if ($st === 'dormant') {
+            if (empty($u['dormant_requested_at'])) {
+                Db::exec('UPDATE core_users SET dormant_requested_at = NOW(3) WHERE id = ? AND dormant_requested_at IS NULL', [$u['id']]);
+                $label = $u['name'] . ' (' . $u['email'] . ')';
+                foreach (Db::rows("SELECT DISTINCT user_id FROM core_user_roles WHERE role IN ('superadmin','admin')") as $r) {
+                    Notify::send((int) $r['user_id'], 'admin', "휴면 계정 승인 요청 — {$label}", '/admin/users?status=dormant');
+                }
+            }
+            throw new HttpError('DORMANT', '휴면 계정입니다.', 403, '3개월 넘게 로그인하지 않아 휴면으로 바뀌었습니다. 관리자에게 승인 요청을 보냈습니다. 승인되면 다시 로그인할 수 있습니다.');
         }
     }
 
-    /** 현재 유효 플랜: staff → staff, 아니면 활성 구독 플랜, 없으면 free. */
+    /** 휴면 기준 일수(마지막 로그인·활동 후). config account.dormant_days, 기본 90일(3개월). */
+    public static function dormantDays(): int
+    {
+        return max(1, (int) Config::get('account.dormant_days', 90));
+    }
+
+    /** 마지막 활동 = 세션 활동(last_seen_at)·로그인 수단별 마지막 로그인 중 늦은 것. 한 번도 없으면 가입일. */
+    public static function lastActive(array $u): string
+    {
+        $login = (string) (Db::val('SELECT MAX(last_login_at) FROM core_user_logins WHERE user_id = ?', [$u['id']]) ?? '');
+        $last = max((string) ($u['last_seen_at'] ?? ''), $login);
+        return $last !== '' ? $last : (string) $u['created_at'];
+    }
+
+    /**
+     * 마지막 활동이 휴면 기준을 넘긴 활성 계정을 휴면으로 바꾼다(세션 전부 무효). superadmin 은 제외 — 승인할 사람이 없어지지 않게.
+     * @return array 바뀐 뒤의 사용자 행
+     */
+    public static function markDormantIfIdle(array $u): array
+    {
+        if (($u['status'] ?? 'active') !== 'active') {
+            return $u;
+        }
+        $limit = date('Y-m-d H:i:s', time() - self::dormantDays() * 86400);
+        // 요청마다 불리므로 최근 활동이 있으면 쿼리 없이 끝낸다
+        if ((string) ($u['last_seen_at'] ?? '') >= $limit || (string) $u['created_at'] >= $limit) {
+            return $u;
+        }
+        if (self::lastActive($u) >= $limit || in_array('superadmin', self::roles((int) $u['id']), true)) {
+            return $u;
+        }
+        Db::exec("UPDATE core_users SET status = 'dormant', dormant_at = NOW(3), dormant_requested_at = NULL, session_epoch = session_epoch + 1 WHERE id = ? AND status = 'active'", [$u['id']]);
+        return self::byId((int) $u['id']) ?? $u;
+    }
+
+    /** 세션 활동 기록 — 한 시간에 한 번만 쓴다(요청마다 UPDATE 하지 않게). */
+    public static function touch(array $u): void
+    {
+        $seen = (string) ($u['last_seen_at'] ?? '');
+        if ($seen === '' || strtotime($seen) < time() - 3600) {
+            Db::exec('UPDATE core_users SET last_seen_at = NOW(3) WHERE id = ?', [$u['id']]);
+        }
+    }
+
+    /** 임직원 이용 기간이 끝났나(access_until 이 지났으면 true). 기간이 없으면 끝나지 않은 것으로 본다. */
+    public static function staffExpired(array $user): bool
+    {
+        $until = (string) ($user['access_until'] ?? '');
+        return $until !== '' && strtotime($until) <= time();
+    }
+
+    /** 현재 유효 플랜: staff(이용 기간 안) → staff, 아니면 활성 구독 플랜, 없으면 free. */
     public static function plan(array $user): string
     {
-        if (($user['kind'] ?? '') === 'staff') {
+        if (($user['kind'] ?? '') === 'staff' && !self::staffExpired($user)) {
             return 'staff';
         }
         $row = Db::row(

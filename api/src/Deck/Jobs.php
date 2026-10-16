@@ -320,13 +320,13 @@ final class Jobs
     {
         $n = max(0, min(200, (int) ($b['slides'] ?? 0)));
         // 새로 기획하는 장표는 장 수를 안 적으면 5장(2026-10-07 사용자) — '자동'이 자료 14만 자에 37장을 잡아 몇 시간씩 걸렸다
-        if ($design && $n === 0) $n = ($b['purpose'] ?? '') === 'submit' ? 30 : 5;   // 제출용(세로 제안서)은 본문 쪽 수 — 미입력이면 30쪽
+        if ($design && $n === 0) $n = ['submit' => 30, 'company' => 14][$b['purpose'] ?? ''] ?? 5;   // 제출용(세로 제안서)은 본문 쪽 수 — 미입력이면 30쪽, 회사소개용(타입 G)은 14쪽
         $m = in_array($b['mockups'] ?? '', ['plan', 'sample', 'all'], true) ? $b['mockups'] : 'plan';
         return json_encode(['slides' => $n, 'mockups' => $m, 'sample' => max(1, min(20, (int) ($b['sample'] ?? 3))),
             'project' => mb_substr(trim((string) ($b['project'] ?? '')), 0, 80), 'front' => self::front($b['front'] ?? null),
             'event' => mb_substr(trim((string) ($b['event'] ?? '')), 0, 30), 'date' => mb_substr(trim((string) ($b['date'] ?? '')), 0, 20),   // 표지 꼬리 글·날짜(비우면 엔진이 '제안설명회'·작성 날짜)
             'style' => preg_match('/^[a-z]{1,2}$/', (string) ($b['style'] ?? '')) ? $b['style'] : 'a',
-            'purpose' => ($b['purpose'] ?? '') === 'submit' ? 'submit' : 'present',
+            'purpose' => in_array($b['purpose'] ?? '', ['submit', 'company'], true) ? $b['purpose'] : 'present',   // company = 회사소개서(타입 G, engine/company.py)
             'vstyle' => in_array($b['vstyle'] ?? '', ['band', 'tab', 'side', 'split', 'pill', 'line'], true) ? $b['vstyle'] : 'band',   // 세로 제안서 디자인 스타일(모양) — engine/vertical.py STYLES
             'vtone' => in_array($b['vtone'] ?? ($b['vtheme'] ?? ''), ['navy', 'blue', 'deep', 'teal', 'gray', 'glass'], true) ? ($b['vtone'] ?? $b['vtheme']) : 'navy',   // 톤(색) — TONES(옛 vtheme 도 받는다)
             'lang' => in_array($b['lang'] ?? '', self::LANGS, true) ? $b['lang'] : 'ko',   // 제작 언어 — 장표 글·시안·대본
@@ -1098,7 +1098,7 @@ final class Jobs
         for ($try = 0; $try < 3; $try++) {
             // 세로 제안서(제출용)는 기획 단계에서 결과까지 만드는 무거운 작업이라 가벼운 자리에 주지 않는다(엔진 is_heavy 와 같은 판정, 2026-10-15)
             $id = $pdo->query("SELECT id FROM deck_jobs WHERE status = 'queued'" . ($lightOnly ? " AND kind = 'design' AND phase IN ('plan', 'edit')
-                               AND NOT (COALESCE(JSON_UNQUOTE(JSON_EXTRACT(opts, '$.purpose')), '') = 'submit' AND COALESCE(source_kind, '') <> 'pptx')" : '') . "
+                               AND NOT (COALESCE(JSON_UNQUOTE(JSON_EXTRACT(opts, '$.purpose')), '') IN ('submit', 'company') AND COALESCE(source_kind, '') <> 'pptx')" : '') . "
                                ORDER BY (SELECT COUNT(*) FROM deck_jobs r WHERE r.email = deck_jobs.email AND r.status = 'running'), created_at LIMIT 1")->fetchColumn();
             if ($id === false) return null;
             $st = $pdo->prepare("UPDATE deck_jobs SET status = 'running', worker = :w, claimed_at = NOW(), heartbeat_at = NOW(),

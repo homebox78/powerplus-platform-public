@@ -228,7 +228,7 @@ return static function (Router $r): void {
             $args[] = $kind;
         }
         $st = (string) ($_GET['status'] ?? '');
-        if (in_array($st, ['active', 'blocked'], true)) {
+        if (in_array($st, ['active', 'blocked', 'dormant'], true)) {
             $where[] = 'u.status = ?';
             $args[] = $st;
         }
@@ -255,6 +255,7 @@ return static function (Router $r): void {
                 'id' => $u['public_id'], 'name' => $u['name'], 'email' => $u['email'], 'kind' => $u['kind'], 'status' => $u['status'] ?? 'active',
                 'plan' => Users::plan($u), 'roles' => $u['role_list'] ? explode(',', (string) $u['role_list']) : [],
                 'last_active' => str_starts_with($last, '1970') ? null : $last, 'created_at' => $u['created_at'],
+                'dormant_requested_at' => $u['dormant_requested_at'] ?? null, 'access_until' => $u['access_until'] ?? null,
                 'me' => (int) $u['id'] === $a->id(),
             ];
         }, $rows);

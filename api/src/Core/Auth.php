@@ -59,7 +59,10 @@ final class Auth
         $uid = Session::userId();
         if ($uid) {
             $u = Users::byId($uid);
-            if ($u && (int) $u['session_epoch'] === Session::epoch() && ($u['status'] ?? 'active') !== 'blocked' && !TestLogin::expiredFor((int) $u['id'])) {
+            // 휴면 판정을 먼저 — 휴면으로 바뀌면 session_epoch 가 올라 이 세션도 끝난다(다시 로그인하면 승인 요청 안내)
+            $u = $u ? Users::markDormantIfIdle($u) : null;
+            if ($u && (int) $u['session_epoch'] === Session::epoch() && ($u['status'] ?? 'active') === 'active' && !TestLogin::expiredFor((int) $u['id'])) {
+                Users::touch($u);
                 return self::fromUser($u, 'session');
             }
             Session::logout();

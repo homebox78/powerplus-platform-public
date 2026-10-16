@@ -35,6 +35,32 @@ final class Router
         return in_array($first, ['assets', 'deck', 'mock', 'guide'], true) ? $first : null;
     }
 
+    /**
+     * 회원이 아니어도 열리는 경로 — 가입·로그인·내 계정·약관·요금·안내·문의, 관리자(역할로 막는다), 공유 링크 보기.
+     * 접두 일치. 여기 없는 경로(에셋·덱·목업·가이드·커뮤니티·검색·채팅·저장·애드인 등)는 전부 회원 전용.
+     */
+    private const OPEN_PATHS = [
+        '/health', '/auth/', '/me', '/plans', '/policies/', '/help/', '/changelog', '/contact', '/removal', '/home/',
+        '/billing', '/notifications', '/files/avatars/', '/files/works/', '/admin', '/reports', '/keys',
+        '/addin/login', '/addin/logout', '/addin/announcements', '/p/', '/c/',
+    ];
+
+    public static function isOpen(string $method, string $path): bool
+    {
+        if ($path === '/keys/verify') {
+            return false; // powerMCP 연결 확인 — 회원 자격까지 본다
+        }
+        foreach (self::OPEN_PATHS as $p) {
+            // '/x/' = 그 아래 전부, '/x' = /x 와 /x/… (/xyz 는 아님)
+            $hit = str_ends_with($p, '/') ? str_starts_with($path, $p) : ($path === $p || str_starts_with($path, $p . '/'));
+            if ($hit) {
+                return true;
+            }
+        }
+        // powerDeck 공유 링크(shared=3) 보기 — 작업·그림 GET 은 핸들러가 링크 권한으로 거른다
+        return $method === 'GET' && (bool) preg_match('#^/deck/jobs/[0-9a-f]{16}(/files/.+)?$#', $path);
+    }
+
     public function add(string $method, string $pattern, callable $handler, array $opt = []): self
     {
         $names = [];
@@ -84,6 +110,10 @@ final class Router
                 }
                 if (!empty($r['opt']['role']) && !$actor->hasRole((string) $r['opt']['role'])) {
                     throw HttpError::forbidden();
+                }
+                // 회원 전용(사용자 2026-10-16): 로그인 + Pro·Team·임직원이 아니면 서비스 경로를 못 쓴다. 계정·약관·요금 등은 OPEN_PATHS.
+                if (!self::isOpen($method, $path) && !Access::member($actor)) {
+                    throw Access::memberError($actor);
                 }
                 // O-01: 키 호출은 경로 첫 단으로 모듈 범위를 본다 — 한도 집계 전에 막는다(/keys/verify 와 같은 순서).
                 // 공용 경로(/keys·/me·/reports·/search·/p 등)와 /admin 은 범위가 없다(관리자 경로는 역할로 막는다).

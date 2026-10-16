@@ -30,7 +30,9 @@ export interface AdminRemoval {
 export type GrantRole = "admin" | "curator" | "support";
 export interface AdminUser {
   id: string; name: string; email: string; kind: "staff" | "external"; plan: "staff" | "free" | "pro" | "team";
-  roles: Array<GrantRole | "superadmin">; last_active: string | null; created_at: string; me: boolean; status?: "active" | "blocked";
+  roles: Array<GrantRole | "superadmin">; last_active: string | null; created_at: string; me: boolean; status?: "active" | "blocked" | "dormant";
+  /** 휴면 계정이 로그인을 시도해 승인을 기다리는 때 / 임직원 이용 기간 끝 */
+  dormant_requested_at?: string | null; access_until?: string | null;
 }
 
 const qs = (o: Record<string, string | number | undefined>) => {
@@ -250,9 +252,10 @@ export const patchAdminHelpDoc = (id: string, b: HelpDocInput) => post<HelpDoc>(
 export const deleteAdminHelpDoc = (id: string) => del<null>(`/admin/help/docs/${id}`);
 
 // ── 사용자 관리 고도화(api/routes/admin3.php) — 수동 추가·플랜·포인트·크레딧·차단·상세·키 폐기·포인트 규칙
-export type UserStatus = "active" | "blocked";
+export type UserStatus = "active" | "blocked" | "dormant";
 export interface AdminUserBase {
   id: string; name: string; email: string; kind: "staff" | "external"; status: UserStatus; blocked_at: string | null; blocked_reason: string | null;
+  dormant_at: string | null; dormant_requested_at: string | null; access_until: string | null;
   plan: AdminUser["plan"]; roles: AdminUser["roles"]; created_at: string;
 }
 export interface LedgerRow { id: number; delta: number; reason?: string; kind?: string; memo: string | null; ref?: string | null; balance_after?: number; expires_at?: string | null; created_at: string }
@@ -276,11 +279,13 @@ export const setUserPlan = (id: string, b: { plan: ManualPlan; until?: string; m
 export const adjustUserPoints = (id: string, b: { amount: number; reason: string }) => post<{ balance: number; delta: number; ref: string }>(`/admin/users/${encodeURIComponent(id)}/points`, b);
 export const adjustUserCredits = (id: string, b: { amount: number; reason: string }) => post<{ balance: number; delta: number; ref: string }>(`/admin/users/${encodeURIComponent(id)}/credits`, b);
 export const setUserStatus = (id: string, b: { status: UserStatus; reason?: string }) => post<AdminUserBase>(`/admin/users/${encodeURIComponent(id)}/status`, b, "PATCH");
+/** 임직원 이용 기간 1년 연장(남은 기간 끝 또는 오늘 중 늦은 날부터) */
+export const extendUserAccess = (id: string) => post<AdminUserBase>(`/admin/users/${encodeURIComponent(id)}/extend`);
 export const revokeUserKey = (keyId: string) => post<{ id: string; revoked: boolean }>(`/admin/keys/${encodeURIComponent(keyId)}/revoke`);
 export const fetchPointRules = () => apiFetch<PointRule[]>("/admin/point-rules");
 export const patchPointRule = (reason: string, b: Partial<Pick<PointRule, "delta" | "daily_cap" | "yearly_cap" | "enabled">>) => post<PointRule>(`/admin/point-rules/${encodeURIComponent(reason)}`, b, "PATCH");
 
-export const STATUS_KO: Record<UserStatus, string> = { active: "정상", blocked: "차단" };
+export const STATUS_KO: Record<UserStatus, string> = { active: "정상", blocked: "차단", dormant: "휴면" };
 export const POINT_REASON_KO: Record<string, string> = {
   admin_adjust: "관리자 조정", signup: "가입", attend: "출석", attend_streak7: "연속 7일 출석", birthday: "생일",
   post: "글 쓰기", comment: "댓글", like_received: "좋아요 받기", share_create: "공유 링크 만들기", share_open: "공유 링크 열림",

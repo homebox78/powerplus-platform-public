@@ -129,6 +129,13 @@ return static function (Router $r): void {
             $out['billing_visible'] = (bool) Config::get('features.billing_visible', false) || $a->hasRole('superadmin');
             $out['consent'] = Consents::status((int) $a->id());
         }
+        // 서비스 이용 자격(회원 전용, 2026-10-16) — 화면이 잠금 안내를 고른다. staff_until = 임직원 이용 기간 끝
+        $member = Access::member($a);
+        $out['access'] = [
+            'member' => $member,
+            'reason' => $member ? null : Access::memberError($a)->errorCode,
+            'staff_until' => $a->user !== null && ($a->user['kind'] ?? '') === 'staff' ? ($a->user['access_until'] ?? null) : null,
+        ];
         Response::json($out);
     });
 

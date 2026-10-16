@@ -55,6 +55,15 @@ $jobs = [
     ['알림 지우기(읽고 180일·전체 1년)',
         'SELECT COUNT(*) FROM core_notifications WHERE (read_at IS NOT NULL AND read_at < NOW() - INTERVAL 180 DAY) OR created_at < NOW() - INTERVAL 1 YEAR',
         'DELETE FROM core_notifications WHERE (read_at IS NOT NULL AND read_at < NOW() - INTERVAL 180 DAY) OR created_at < NOW() - INTERVAL 1 YEAR'],
+    // 휴면 계정(사용자 2026-10-16 "마지막 로그인 3개월") — Users::markDormantIfIdle 과 같은 기준을 하루 한 번 일괄로. superadmin 은 빼고, 세션도 끊는다.
+    ['휴면 계정 전환(마지막 활동 90일)',
+        "SELECT COUNT(*) FROM core_users u WHERE u.status = 'active' AND u.deleted_at IS NULL
+           AND GREATEST(COALESCE(u.last_seen_at, u.created_at), COALESCE((SELECT MAX(l.last_login_at) FROM core_user_logins l WHERE l.user_id = u.id), u.created_at)) < NOW() - INTERVAL 90 DAY
+           AND NOT EXISTS (SELECT 1 FROM core_user_roles r WHERE r.user_id = u.id AND r.role = 'superadmin')",
+        "UPDATE core_users u SET u.status = 'dormant', u.dormant_at = NOW(3), u.dormant_requested_at = NULL, u.session_epoch = u.session_epoch + 1
+         WHERE u.status = 'active' AND u.deleted_at IS NULL
+           AND GREATEST(COALESCE(u.last_seen_at, u.created_at), COALESCE((SELECT MAX(l.last_login_at) FROM core_user_logins l WHERE l.user_id = u.id), u.created_at)) < NOW() - INTERVAL 90 DAY
+           AND NOT EXISTS (SELECT 1 FROM core_user_roles r WHERE r.user_id = u.id AND r.role = 'superadmin')"],
     ['AI 판단 캐시 지우기(90일)',
         'SELECT COUNT(*) FROM core_decisions WHERE created_at < NOW() - INTERVAL 90 DAY',
         'DELETE FROM core_decisions WHERE created_at < NOW() - INTERVAL 90 DAY'],

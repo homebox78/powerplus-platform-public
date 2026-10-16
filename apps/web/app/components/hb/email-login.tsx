@@ -27,7 +27,8 @@ export function EmailLogin({ signup, onDone, onStep }: { signup: boolean; onDone
   const [err, setErr] = useState<string | null>(null);
   const [devCode, setDevCode] = useState<string | null>(null);
   const boxes = useRef<(HTMLInputElement | null)[]>([]);
-  const msg = (e: unknown) => (e instanceof ApiError ? e.message : "잠시 뒤에 다시 시도해 주세요.");
+  // 휴면·차단은 무엇을 하면 되는지(hint)까지 보여 준다
+  const msg = (e: unknown) => (e instanceof ApiError ? (e.hint && (e.code === "DORMANT" || e.code === "BLOCKED") ? `${e.message} ${e.hint}` : e.message) : "잠시 뒤에 다시 시도해 주세요.");
 
   const sent = sentAt !== null;
   const code = otp.join("");

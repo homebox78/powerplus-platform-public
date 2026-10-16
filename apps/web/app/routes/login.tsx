@@ -19,7 +19,7 @@ import type { Route } from "./+types/login";
 
 export const meta: Route.MetaFunction = ({ location }) => [{ title: location.pathname.startsWith("/signup") ? "회원가입 — powerPlus" : "로그인 — powerPlus" }];
 
-const ERRORS: Record<string, string> = { state: "로그인 요청이 만료되었거나 위조되었습니다. 다시 시도해 주세요.", exchange: "소셜 로그인 인증에 실패했습니다. 잠시 후 다시 시도해 주세요.", profile: "계정 정보를 가져오지 못했습니다.", access_denied: "로그인을 취소했습니다.", provider: "지원하지 않는 로그인 방식입니다." };
+const ERRORS: Record<string, string> = { state: "로그인 요청이 만료되었거나 위조되었습니다. 다시 시도해 주세요.", exchange: "소셜 로그인 인증에 실패했습니다. 잠시 후 다시 시도해 주세요.", profile: "계정 정보를 가져오지 못했습니다.", access_denied: "로그인을 취소했습니다.", provider: "지원하지 않는 로그인 방식입니다.", DORMANT: "휴면 계정입니다. 3개월 넘게 로그인하지 않아 휴면으로 바뀌었습니다. 관리자에게 승인 요청을 보냈습니다. 승인되면 다시 로그인할 수 있습니다.", BLOCKED: "이용이 제한된 계정입니다. 관리자에게 문의하세요." };
 
 export default function LoginPage() {
   const { pathname } = useLocation();

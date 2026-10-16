@@ -26,7 +26,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import {
   adjustUserCredits, adjustUserPoints, AUDIT_KO, createAdminUser, CREDIT_KIND_KO, fetchAdminUser, fetchUsers, fmtAt, POINT_REASON_KO, revokeUserKey,
-  ROLE_KO, setUserPlan, setUserStatus, STATUS_KO, type AdminUser, type AdminUserDetail, type GrantRole, type LedgerRow, type ManualPlan,
+  ROLE_KO, extendUserAccess, setUserPlan, setUserStatus, STATUS_KO, type AdminUser, type AdminUserDetail, type GrantRole, type LedgerRow, type ManualPlan,
 } from "@/lib/admin";
 import { bulkMessage, bulkUsers, type UserBulkBody } from "@/lib/admin-bulk";
 import { apiFetch, postJson } from "@/lib/api";
@@ -75,7 +75,7 @@ export default function AdminUsers() {
       </div>
       <div className="mt-7 flex flex-wrap items-center gap-2">
         <ChoiceButton size="sm" label="구분" value={kind} onChange={(v) => set({ kind: v })} options={[{ id: "staff", label: "임직원" }, { id: "external", label: "외부" }]} />
-        <ChoiceButton size="sm" label="상태" value={status} onChange={(v) => set({ status: v })} options={[{ id: "active", label: "정상" }, { id: "blocked", label: "차단" }]} />
+        <ChoiceButton size="sm" label="상태" value={status} onChange={(v) => set({ status: v })} options={[{ id: "active", label: "정상" }, { id: "dormant", label: "휴면" }, { id: "blocked", label: "차단" }]} />
         <ChoiceButton size="sm" label="역할" value={role} onChange={(v) => set({ role: v })}
           options={[{ id: "any", label: "역할 있음" }, ...(["superadmin", "admin", "curator", "support"] as const).map((r) => ({ id: r, label: ROLE_KO[r]! }))]} />
         <SearchBox value={q} onSearch={(v) => set({ q: v })} placeholder="이름·이메일 검색" />
@@ -104,7 +104,7 @@ export default function AdminUsers() {
                   <span className="block truncate text-xs text-ink-4">{u.email}</span>
                 </TableCell>
                 <TableCell className="text-center">{KIND_KO[u.kind]}</TableCell>
-                <TableCell className="text-center">{u.status === "blocked" ? <Tag tone="warn">차단</Tag> : <span className="text-ink-3">정상</span>}</TableCell>
+                <TableCell className="text-center">{u.status === "blocked" ? <Tag tone="warn">차단</Tag> : u.status === "dormant" ? <Tag tone={u.dormant_requested_at ? "ink" : "soft"}>{u.dormant_requested_at ? "승인 대기" : "휴면"}</Tag> : <span className="text-ink-3">정상</span>}</TableCell>
                 <TableCell className="hidden text-center md:table-cell">{PLAN_KO[u.plan]}</TableCell>
                 <TableCell className="hidden text-center md:table-cell">
                   {u.roles.length ? <span className="inline-flex flex-wrap justify-center gap-1">{u.roles.map((r) => <Tag key={r} tone={r === "superadmin" || r === "admin" ? "ink" : "soft"}>{ROLE_KO[r]}</Tag>)}</span> : <span className="text-ink-4">—</span>}
@@ -329,6 +329,7 @@ function Overview({ u, me, canGrantAdmin }: { u: AdminUserDetail; me: boolean; c
         <Field label="상태">{STATUS_KO[u.status]}{u.blocked_reason && <span className="ml-2 text-ink-4">· {u.blocked_reason}</span>}</Field>
         <Field label="플랜">{PLAN_KO[u.plan]}{planWord && <span className="ml-2 text-ink-4">· {planWord}</span>}</Field>
         <Field label="가입">{fmtAt(u.created_at)}</Field>
+        {u.kind === "staff" && <Field label="이용 기간"><StaffPeriod u={u} /></Field>}
         <Field label="마지막 활동">{fmtAt(u.last_active)}</Field>
       </dl>
       {u.roles.includes("superadmin") && (
@@ -407,15 +408,48 @@ function PlanEditor({ u }: { u: AdminUserDetail }) {
   );
 }
 
+/** 임직원 이용 기간(가입일 + 1년) — 끝난 기간은 경고색, 1년 연장 버튼 */
+function StaffPeriod({ u }: { u: AdminUserDetail }) {
+  const refresh = useRefresh(u.id);
+  const ext = useMutation({
+    mutationFn: () => extendUserAccess(u.id),
+    onSuccess: (r) => { toast.success(`${u.name} 님의 이용 기간을 ${fmtAt(r.access_until).slice(0, 10)}까지 늘렸습니다.`); refresh(); },
+    onError: (e) => toastError(e),
+  });
+  const [now] = useState(() => Date.now());
+  const expired = !!u.access_until && Date.parse(u.access_until.replace(" ", "T")) <= now;
+  return (
+    <span className="inline-flex items-center gap-2">
+      <span className={expired ? "font-semibold text-warn" : undefined}>{u.access_until ? `${fmtAt(u.access_until).slice(0, 10)}까지` : "기간 없음"}{expired && " · 끝남"}</span>
+      <Button size="xs" variant="outline" disabled={ext.isPending} onClick={() => confirmToast(`${u.name} 님의 이용 기간을 1년 늘릴까요?`, () => ext.mutate(), { action: "연장" })}>1년 연장</Button>
+    </span>
+  );
+}
+
 function BlockSection({ u }: { u: AdminUserDetail }) {
   const refresh = useRefresh(u.id);
   const [step, setStep] = useState<0 | 1 | 2>(0);
   const [reason, setReason] = useState("");
   const run = useMutation({
     mutationFn: (status: "active" | "blocked") => setUserStatus(u.id, { status, reason: status === "blocked" ? reason.trim() : undefined }),
-    onSuccess: (_r, status) => { toast.success(status === "blocked" ? `${u.name} 님을 차단했습니다.` : `${u.name} 님의 차단을 풀었습니다.`); setStep(0); setReason(""); refresh(); },
+    onSuccess: (_r, status) => { toast.success(status === "blocked" ? `${u.name} 님을 차단했습니다.` : u.status === "dormant" ? `${u.name} 님의 휴면을 풀었습니다.` : `${u.name} 님의 차단을 풀었습니다.`); setStep(0); setReason(""); refresh(); },
     onError: (e) => toastError(e),
   });
+  // 휴면(마지막 활동 3개월) — 승인하면 다시 로그인할 수 있다. 차단과 달리 사유 없이 승인 한 번
+  if (u.status === "dormant") {
+    return (
+      <section>
+        <h3 className="text-sm font-semibold text-ink-4">휴면 계정</h3>
+        <div className="mt-2 flex items-center gap-3 rounded-xl border border-line px-4 py-3">
+          <p className="min-w-0 flex-1 text-md">{fmtAt(u.dormant_at)}에 휴면 전환<span className="block text-sm text-ink-4">{u.dormant_requested_at ? `${fmtAt(u.dormant_requested_at)}에 로그인을 시도해 승인을 기다립니다.` : "아직 로그인 시도가 없습니다."}</span></p>
+          <Button size="sm" disabled={run.isPending}
+            onClick={() => confirmToast(`${u.name} 님의 휴면을 풀까요? 다시 로그인할 수 있게 됩니다.`, () => run.mutate("active"), { action: "승인" })}>
+            <RotateCcw aria-hidden />휴면 해제 승인
+          </Button>
+        </div>
+      </section>
+    );
+  }
   if (u.status === "blocked") {
     return (
       <section>

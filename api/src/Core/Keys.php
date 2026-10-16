@@ -44,9 +44,11 @@ final class Keys
             return null;
         }
         $u = Users::byId((int) $k['user_id']);
-        if (!$u || ($u['status'] ?? 'active') === 'blocked') {
-            return null; // 차단된 사용자의 키도 막는다
+        $u = $u ? Users::markDormantIfIdle($u) : null;
+        if (!$u || ($u['status'] ?? 'active') !== 'active') {
+            return null; // 차단·휴면 사용자의 키도 막는다
         }
+        Users::touch($u); // 키 호출(powerMCP)도 활동으로 센다 — MCP 만 쓰는 회원이 휴면으로 떨어지지 않게
         Db::exec('UPDATE core_api_keys SET last_used_at = NOW(3) WHERE id = ?', [$k['id']]);
         $k['scopes'] = json_decode((string) $k['scopes'], true) ?: ['all'];
         return Auth::fromUser($u, 'key', $k);

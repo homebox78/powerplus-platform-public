@@ -34,7 +34,7 @@ export const STAGES_VERTICAL: { name: string; label?: string; desc: string }[] =
   { name: "시안 생성", label: "PPT 조립", desc: "양식 + 도식 + 파워에셋 그림 — 시안 없이 바로" },
   { name: "시안 정리", label: "쪽 캡처", desc: "만든 PPT 를 쪽마다 그림으로" },
 ];
-// 회사소개서(타입 G) — 레이아웃 카탈로그 → HTML 렌더 → 편집 가능한 PPT(engine/company.py). 엔진 보고 이름은 위와 같다
+// 회사소개서(테마 A·B) — 레이아웃 카탈로그 → HTML 렌더 → 편집 가능한 PPT(engine/company.py). 엔진 보고 이름은 위와 같다
 export const STAGES_COMPANY: { name: string; label?: string; desc: string }[] = [
   { name: "준비", desc: "회사 자료 읽기" },
   { name: "기획", label: "구성 · 카피", desc: "레이아웃 13종에 글 채우기 · 파워에셋 아이콘" },

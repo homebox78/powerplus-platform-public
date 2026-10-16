@@ -3,7 +3,7 @@ import { pdGo } from "./nav";
 import { WideToggle } from "@/components/hb/work-space";
 import { thumb } from "./DesignTypes";
 import { VERTICAL_STYLES, verticalThumb, verticalToneName } from "./VerticalThemes";
-import { COMPANY_THEMES, companyThumb } from "./CompanyThemes";
+import { COMPANY_THEMES, companyThumb, companyThemeName, companyToneName } from "./CompanyThemes";
 import { Fragment, useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import type { Job } from "./api";
@@ -162,7 +162,7 @@ export const STEP_LABELS = ["초안 올리기", "대기·분석", "디자인 변
 export const STEP_LABELS_DESIGN = ["내용 입력", "기획", "시안", "장표 제작", "완료"];
 /** 세로 제안서(제출용) — 시안 이미지 없이 기획에서 바로 PPT(engine/vertical.py) */
 export const STEP_LABELS_VERTICAL = ["내용 입력", "기획", "PPT 제작", "완료"];
-const isSubmitJob = (job: Job) => job.kind === "design" && (job.opts?.purpose === "submit" || job.opts?.purpose === "company");   // 회사소개서(타입 G)도 시안 없이 PPT 바로
+const isSubmitJob = (job: Job) => job.kind === "design" && (job.opts?.purpose === "submit" || job.opts?.purpose === "company");   // 회사소개서(테마 A·B)도 시안 없이 PPT 바로
 
 /** 작업이 지금 몇 번째 단계인가 — 장표 변환 0~3, 기획 작업 0~4(내용·기획·시안·장표·완료) */
 export const jobStep = (job: Job) => {
@@ -239,8 +239,8 @@ export function JobSettings({ job, onEdit }: { job: Job; onEdit?: () => void }) 
       ["용도", o?.purpose === "submit" ? "제출용 — 평가위원이 읽고 점수를 매긴다" : o?.purpose === "company" ? "회사소개용 — 회사를 처음 보는 사람에게" : "발표용 — 짧은 시간에 '왜 우리인가'"],
       // 제출용은 세로 제안서 스타일·톤(opts.vstyle·vtone) — 발표장표 타입(opts.style)을 보이면 안 된다(10-15 사용자 '세로인데 발표장표 테마로 나옴')
       ["디자인", o?.purpose === "company" ? <span className="flex items-center gap-2.5 min-w-0">
-        <img src={companyThumb(COMPANY_THEMES[0]!.id, 1)} alt="" className="w-[72px] aspect-video object-cover rounded-md border border-line flex-none" />
-        <span className="min-w-0"><span className="block font-semibold">타입 G · {COMPANY_THEMES[0]!.name}</span><span className="block text-[12.5px] text-dim leading-[1.45]">{COMPANY_THEMES[0]!.desc}</span></span>
+        <img src={companyThumb(o?.ctheme || "a", 1, o?.ctone || "blue")} alt="" className="w-[72px] aspect-video object-cover rounded-md border border-line flex-none" />
+        <span className="min-w-0"><span className="block font-semibold">테마 {(o?.ctheme || "a").toUpperCase()} · {companyThemeName(o?.ctheme)} · {companyToneName(o?.ctone)}</span><span className="block text-[12.5px] text-dim leading-[1.45]">{COMPANY_THEMES.find((t) => t.id === (o?.ctheme || "a"))?.desc}</span></span>
       </span> : o?.purpose === "submit" ? <span className="flex items-center gap-2.5 min-w-0">
         <img src={verticalThumb(vstyle?.id ?? "band", 1)} alt="" className="w-[48px] aspect-[1/1.414] object-cover object-top rounded-md border border-line flex-none" />
         <span className="min-w-0"><span className="block font-semibold">세로 제안서 · {vstyle?.name} · {verticalToneName(o?.vtone)}</span><span className="block text-[12.5px] text-dim leading-[1.45]">{vstyle?.desc}</span></span>
@@ -249,7 +249,7 @@ export function JobSettings({ job, onEdit }: { job: Job; onEdit?: () => void }) 
         <span className="min-w-0"><span className="block font-semibold">타입 {(style?.id ?? "a").toUpperCase()} · {style?.name}</span><span className="block text-[12.5px] text-dim leading-[1.45]">{style?.desc}</span></span>
       </span>],
     ] as [string, ReactNode][] : []),
-    ["서체", o?.purpose === "company" ? "프리텐다드(타입 G 고정)" : `${font(FONTS.title, o?.font_title)} / ${font(FONTS.body, o?.font_body)}`],
+    ["서체", o?.purpose === "company" ? "프리텐다드(회사소개서 고정)" : `${font(FONTS.title, o?.font_title)} / ${font(FONTS.body, o?.font_body)}`],
     ...(design && o?.purpose === "company" ? [
       ["장 수", o?.slides ? `${o.slides}장 안팎` : "14장 안팎"],
     ] as [string, ReactNode][] : design ? [

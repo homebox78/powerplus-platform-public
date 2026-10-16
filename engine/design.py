@@ -3492,7 +3492,7 @@ def _plan_phase(job, j):
         vertical.run(job, j, opts, brief, note)
         return
     if str(opts.get("purpose") or "") == "company" and j.get("source_kind") != "pptx":
-        import company   # 회사소개용 = 타입 G 회사소개서 — 레이아웃 카탈로그 → HTML 렌더 → 편집 가능한 PPT, 시안 확인 단계 없음(2026-10-16)
+        import company   # 회사소개용 = 회사소개서(테마 A·B) — 레이아웃 카탈로그 → HTML 렌더 → 편집 가능한 PPT, 시안 확인 단계 없음(2026-10-16)
         company.run(job, j, opts, brief, note)
         return
     first_run = not (plan and plan.get("slides"))

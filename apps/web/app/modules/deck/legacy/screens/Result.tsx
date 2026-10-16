@@ -119,7 +119,7 @@ export function Result(p: Props) {
 type Tab = "review" | "script" | "files" | "detail";
 type Mode = "side" | "over" | "edit" | "frames" | "grid" | "canvas";
 
-/** 세로 제안서(제출용)·회사소개서(타입 G) — 비교할 시안이 없다(before 없음). 쪽 보기·캔버스로 연다 */
+/** 세로 제안서(제출용)·회사소개서(테마 A·B) — 비교할 시안이 없다(before 없음). 쪽 보기·캔버스로 연다 */
 const isVertical = (job: Job) => isDesign(job) && (job.opts?.purpose === "submit" || job.opts?.purpose === "company") && !(job.files?.before?.length);
 const isLandscape = (job: Job) => job.opts?.purpose === "company";
 const KIND: Record<string, string> = { cover: "표지", toc: "목차", div: "간지", body: "본문" };

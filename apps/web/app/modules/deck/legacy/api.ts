@@ -112,7 +112,7 @@ export type Job = {
   mine?: boolean; shared?: boolean; comments?: PinComment[];
   /** 공유 링크 권한 0 끔 · 1 의견 · 2 편집 · 3 링크로 누구나 보기 / can_edit: 내가 기획·와이어프레임을 고칠 수 있다 / anon: 로그인 없이 링크로 보는 중 */
   share?: 0 | 1 | 2 | 3; can_edit?: boolean; anon?: boolean;
-  opts?: { slides: number; mockups: "plan" | "sample" | "all"; sample: number; front?: Front; style?: string; vstyle?: string; vtone?: string; purpose?: "submit" | "present" | "company"; lang?: string; font_title?: string; font_body?: string; back?: number } | null;
+  opts?: { slides: number; mockups: "plan" | "sample" | "all"; sample: number; front?: Front; style?: string; vstyle?: string; vtone?: string; ctheme?: string; ctone?: string; purpose?: "submit" | "present" | "company"; lang?: string; font_title?: string; font_body?: string; back?: number } | null;
   est_image_usd?: number | null;
   /** 단계별 비용 — engine 은 구독 사용분의 API 환산액(실제 청구 아님). engine 행의 a = 턴 수, b = 걸린 초 */
   script?: { made_at: string; chars: number; sec?: number; goal?: number; brief?: boolean; stale?: boolean; batch?: number; none?: boolean; slides: ScriptSlide[]; qa?: QA[] } | null;
@@ -143,7 +143,7 @@ const RESUME_KEY = (f: File) => `pd_up_${f.name}_${f.size}_${f.lastModified}`;
 
 export type MockupMode = "plan" | "sample" | "all";
 export type UploadMeta = { title: string; note: string; pilot?: boolean; kind?: JobKind; budget_usd?: number | null; accent?: string | null; hold?: boolean;
-  slides?: number; mockups?: MockupMode; sample?: number; front?: Front; style?: string; purpose?: "submit" | "present" | "company"; lang?: string; font_title?: string; font_body?: string; event?: string; date?: string };
+  slides?: number; mockups?: MockupMode; sample?: number; front?: Front; style?: string; ctheme?: string; ctone?: string; purpose?: "submit" | "present" | "company"; lang?: string; font_title?: string; font_body?: string; event?: string; date?: string };
 /** 맥락 자료(RFP 등)를 작업에 붙인다 — 같은 분할 업로드, purpose=doc */
 export const uploadDoc = (file: File, jobId: string, onProgress: (p: UploadProgress) => void, signal: AbortSignal) =>
   uploadFile(file, { title: "", note: "" }, onProgress, signal, { purpose: "doc", job_id: jobId }) as unknown as Promise<{ docs: JobDoc[] }>;

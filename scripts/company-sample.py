@@ -27,8 +27,19 @@ def one(theme, tone, src):
     white = company._white_logo(logo, os.path.join(out, "logo_white.png"))
     icon = lambda f: url(company.tint_icon(os.path.join(ICONS, f), os.path.join(out, f[:-4] + f"_{tone}.png"), tone))
     comp = deck["company"]
+    BG = os.path.join(ROOT, "storage", "assets", "photos-doc")   # 테마 배경(cp-bg-theme) 로컬 원본 — cpbg-CP1-<테마>-<역할>.jpg
+    sec_words = [["회사", "소개"], ["기술", "역량", "데이터"], ["성장", "사업", "연혁", "수상"]]
+    kk = 0
     for s in deck["slides"]:
         s["_company"], s["_short"] = comp["name"], comp["short"]
+        role = {"cover": "cover", "vision": "end", "contact": "end"}.get(s["kind"])
+        if s["kind"] == "section":
+            g = next((i for i, ws in enumerate(sec_words) if any(w in str(s.get("title") or "") for w in ws)), kk % 3); kk += 1
+            role = f"div{g + 1}"
+        if role:
+            f = os.path.join(BG, f"cpbg-CP1-{theme}-{role}.jpg")
+            if os.path.isfile(f):
+                s["_bg"] = url(company.tint_icon(f, os.path.join(out, f"bg-{role}_{tone}.png"), tone))
         s["_logo"], s["_logo_dark"] = url(logo), url(white) if white else None
         if s.get("icon"):
             s["_img"] = icon(s["icon"])

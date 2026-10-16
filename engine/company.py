@@ -1035,10 +1035,23 @@ def slide_html(d, n, total, ctone="blue", ctheme="a"):
     elif ctheme in LIGHT_GLOW and tone == "light":
         body = body.replace(GLOW_LIGHT, LIGHT_GLOW[ctheme], 1)
     d["_tone"] = tone
-    try:   # 장식은 바탕 빛(GLOW) 바로 위·내용 아래에 — 바탕이 불투명이라 앞에 두면 가려진다
-        dec = decor(d.get("kind"), n, bool(d.get("_img")), ctheme)
-    except Exception:
+    if d.get("_bg"):   # 테마 배경 그림(cp-bg-theme) — 바탕 전면에 깔고, 글 쪽(왼쪽)만 바탕색으로 살짝 덮어 글이 읽히게. 장식은 더하지 않는다
+        veil = ("linear-gradient(90deg,rgba(5,11,36,.55) 0%,rgba(5,11,36,.25) 45%,rgba(5,11,36,0) 70%)" if tone == "dark"
+                else "linear-gradient(90deg,rgba(31,79,255,.35) 0%,rgba(31,79,255,.1) 45%,rgba(31,79,255,0) 70%)" if tone == "blue"
+                else "linear-gradient(90deg,rgba(255,255,255,.7) 0%,rgba(255,255,255,.35) 45%,rgba(255,255,255,0) 70%)")
+        bgimg = (f"<div class='deco' style=\"background:url('{html.escape(d['_bg'])}') center/cover no-repeat\"></div>"
+                 f"<div class='deco' style=\"background:{veil}\"></div>")
+        for g in (GLOW_DARK, GLOW_LIGHT, GLOW_BLUE, GLOW_B, GLOW_C, GLOW_C_LIGHT, GLOW_D):
+            if body.startswith(g):
+                body = bgimg + body[len(g):]
+                break
+        body = re.sub(r"<img data-x=\"i\" class=\"abs\" src=\"[^\"]*\" style=\"object-fit:contain;left:1[12]\d0px;top:2[36]0px;width:\d+px;height:\d+px\">", "", body)   # 표지·간지 큰 아이콘은 뺀다
         dec = ""
+    else:
+        try:   # 장식은 바탕 빛(GLOW) 바로 위·내용 아래에 — 바탕이 불투명이라 앞에 두면 가려진다
+            dec = decor(d.get("kind"), n, bool(d.get("_img")), ctheme)
+        except Exception:
+            dec = ""
     for g in (GLOW_DARK, GLOW_LIGHT, GLOW_BLUE, GLOW_B, GLOW_C, GLOW_C_LIGHT, GLOW_D):
         if dec and body.startswith(g):
             body = g + dec + body[len(g):]
@@ -1304,6 +1317,43 @@ def plan(job, brief, note, ctx, pages):
     return d
 
 
+# 테마별 배경(powerAssets cp-bg-theme 세트, 힉스필드 나노바나나 2.1 20장 — 사용자 2026-10-16 "힉스필드로 배경 만들어 파워에셋에 올리고 불러 쓰기").
+# 파랑 계열로 만들어 두고 tint_icon 으로 톤 색조를 돌린다. 글자는 엔진 레이어가 얹는다(그림엔 글자 없음)
+BG_SET = "cp-bg-theme"
+BG_THEME_WORD = {"a": "다크", "b": "라이트", "c": "솔리드", "d": "프렌들리"}
+BG_ROLE_WORD = {"cover": "표지", "section": "간지", "vision": "마무리", "contact": "마무리"}
+BG_SECTION_WORDS = [["회사소개", "회사", "소개", "우리"], ["기술", "역량", "서비스", "데이터", "AI"], ["성장", "성과", "사업", "연혁", "수상", "고객"]]
+
+
+def _bg_file(job, theme, kind, title, k, used, d):
+    """테마·역할·장 이름으로 배경 한 장 — 이름에 '테마 — 역할' 이 있어 그걸 먼저 거르고, 간지는 장 이름 낱말로 회사/기술/성장 중 고른다"""
+    import vertical
+    tw, rw = BG_THEME_WORD.get(theme, "다크"), BG_ROLE_WORD.get(kind, "표지")
+    q = f"{rw} {tw} 회사소개서 배경"
+    if kind == "section":
+        grp = next((i for i, ws in enumerate(BG_SECTION_WORDS) if any(w in str(title or "") for w in ws)), k % 3)
+        q += " " + " ".join(BG_SECTION_WORDS[grp][:2])
+    try:
+        rows = vertical._api("GET", "/assets/items?" + __import__("urllib.parse").parse.urlencode({"q": q, "category": "illust", "limit": 40})).get("data") or []
+    except Exception:
+        return None
+    rows = [r for r in rows if ((r.get("set") or {}).get("name") or r.get("style_group")) == BG_SET and tw in str(r.get("name") or "") and rw in str(r.get("name") or "")]
+    if kind == "section" and rows:
+        pick = [r for r in rows if any(w in str(r.get("name") or "") for w in BG_SECTION_WORDS[grp][:2])] or rows
+        rows = [r for r in pick if r["id"] not in used] or pick
+    if not rows:
+        return None
+    r = rows[0]
+    used.add(r["id"])
+    try:
+        blob = vertical._api("GET", f"/assets/items/{r['id']}/file/original", raw=True)
+    except Exception:
+        return None
+    p_ = os.path.join(d, f"bg_{r['id']}.jpg")
+    open(p_, "wb").write(blob)
+    return p_
+
+
 def _icon_file(job, query, used, d):
     """powerAssets 아이콘 세트에서 검색어로 하나 — 받은 원본 경로(없으면 None)"""
     import vertical
@@ -1335,14 +1385,19 @@ def _white_logo(src, dst):
     return dst
 
 
-def attach_assets(job, deck, d, log=print, ctone="blue"):
+def attach_assets(job, deck, d, log=print, ctone="blue", ctheme="a"):
     """그림 칸(_img) 채우기 — 표지·간지 큰 그림, 카드 아이콘(톤 색으로 색조를 돌린다). 로고(제안사 = 우리 회사)는 작업에 올린 vendor 로고"""
     import design
     used = set()
     comp = deck.get("company") or {}
     hero_q = ["데이터", "클라우드", "인공지능", "플랫폼", "네트워크", "보안", "서버"]
+    bgused = set()
     for k, s in enumerate(deck["slides"]):
-        if s["kind"] in ("cover", "section"):
+        if s["kind"] in ("cover", "section", "vision", "contact"):   # cp-bg-theme(2026-10-16 힉스필드 20장, 파랑 계열) — 톤은 tint_icon 색조 회전으로. 다음 세트는 투명 오브젝트로 만들어 바탕색을 엔진이 깐다(계획)
+            bg = _bg_file(job, ctheme, s["kind"], s.get("title"), k, bgused, d)
+            if bg:
+                s["_bg"] = bg
+        if s["kind"] in ("cover", "section") and not s.get("_bg"):
             # 표지·간지의 큰 그림은 비면 쪽이 허전하다 — AI 검색어로 못 찾으면 기본 낱말을 차례로(10-16 시험 작업에서 표지 그림이 빔)
             qs = [s.get("icon")] if s.get("icon") else []
             qs += ["데이터베이스 클라우드", "클라우드 서버"] if s["kind"] == "cover" else []
@@ -1364,6 +1419,8 @@ def attach_assets(job, deck, d, log=print, ctone="blue"):
         s["_company"], s["_short"] = comp.get("name") or "", comp.get("short") or comp.get("name") or ""
         if logo:
             s["_logo"], s["_logo_dark"] = "file:///" + logo.replace("\\", "/"), ("file:///" + logo_dark.replace("\\", "/")) if logo_dark else None
+        if s.get("_bg"):
+            s["_bg"] = "file:///" + tint_icon(s["_bg"], s["_bg"][:-4] + f"_{ctone}.png", ctone).replace("\\", "/")
         if s.get("_img"):
             s["_img"] = "file:///" + tint_icon(s["_img"], s["_img"][:-4] + f"_{ctone}.png", ctone).replace("\\", "/")
         for it in s.get("items") or []:
@@ -1391,7 +1448,7 @@ def run(job, j, opts, brief, note):
     ctheme = ctheme if ctheme in COMPANY_THEMES else "a"
     ctone = ctone if ctone in TONES else "blue"
     job.event(f"테마 {ctheme.upper()} {COMPANY_THEMES[ctheme]} · 톤 {tone_label(ctone)}")
-    attach_assets(job, deck, d, ctone=ctone)
+    attach_assets(job, deck, d, ctone=ctone, ctheme=ctheme)
     json.dump(deck, open(os.path.join(d, "deck.json"), "w", encoding="utf-8"), ensure_ascii=False, indent=1)
     try:
         put_file(job.id, "extra", os.path.join(d, "deck.json"), "회사소개서_구성.json")

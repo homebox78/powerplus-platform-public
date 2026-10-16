@@ -59,7 +59,7 @@ export default function AdminAi() {
           </div>
 
           <div className={ms.wrap("usage")}>
-          <Card title="최근 30일 사용량" desc="구독 환산은 실제 청구가 아닙니다.">
+          <Card title="최근 30일 사용량" desc="엔진(구독) 사용분을 포함한 금액입니다.">
             <div className="overflow-hidden rounded-xl border border-line">
               <Table className="table-fixed">
                 <TableHeader>

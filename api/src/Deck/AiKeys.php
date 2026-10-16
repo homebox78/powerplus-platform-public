@@ -454,29 +454,24 @@ final class AiKeys
         ];
     }
 
-    /** 구독 사용분 종류 — 실제 청구가 아니라 API 환산액(engine·e* = Claude 구독, hf = Higgsfield 크레딧). 화면 KIND 의 '(구독·환산)' 과 같게 */
+    /** 구독 사용분 종류(engine·e* = Claude 구독, hf = Higgsfield 크레딧) — 월 상한 판정에서만 뺀다. 과금 화면 합계에는 들어간다 */
     private const SUBS_SQL = "('engine','eplan','edigest','escript','ewire','hf')";
 
-    /** 관리자 — 과금 내역: 기간 합계, 사용자별·모델별 합계, 호출 한 건씩(최근 500건) */
+    /** 관리자 — 과금 내역: 기간 합계, 사용자별·모델별 합계, 호출 한 건씩(최근 500건). 구독 사용분(engine·e*·hf)도 실제 비용으로 합친다(사용자 2026-10-16) */
     public static function adminUsage(int $days): array
     {
         $days = max(1, min(365, $days));
         $pdo = Db::pdo();
         $since = "created_at >= (NOW() - INTERVAL $days DAY)";
-        $sub = "kind IN " . self::SUBS_SQL;   // 구독 사용분(Claude 구독·Higgsfield 크레딧)의 API 환산액 — 실제 청구 아님
-        $real = "NOT ($sub) AND $since";   // 실제 청구(OpenRouter)만
+        $real = $since;
         $sum = "SELECT COUNT(*) n, COALESCE(SUM(cost_usd),0) cost, COALESCE(SUM(tokens_in),0) tin, COALESCE(SUM(tokens_out),0) tout FROM deck_ai_usage WHERE ";
         $tot = $pdo->query($sum . $real)->fetch();
-        $stot = $pdo->query($sum . "$sub AND $since")->fetch();
-        $mon = "created_at >= DATE_FORMAT(NOW(), '%Y-%m-01')";
-        $month = (float) $pdo->query("SELECT COALESCE(SUM(cost_usd),0) FROM deck_ai_usage WHERE NOT ($sub) AND $mon")->fetchColumn();
-        $smonth = (float) $pdo->query("SELECT COALESCE(SUM(cost_usd),0) FROM deck_ai_usage WHERE $sub AND $mon")->fetchColumn();
+        $month = (float) $pdo->query("SELECT COALESCE(SUM(cost_usd),0) FROM deck_ai_usage WHERE created_at >= DATE_FORMAT(NOW(), '%Y-%m-01')")->fetchColumn();
         $f = static fn($r) => ['cost' => round((float) $r['cost'], 4), 'n' => (int) $r['n']] + $r;
         return [
             'days' => $days,
             'total' => ['n' => (int) $tot['n'], 'cost' => round((float) $tot['cost'], 4), 'tokens_in' => (int) $tot['tin'], 'tokens_out' => (int) $tot['tout']],
             'month_cost' => round($month, 4),
-            'subs' => ['n' => (int) $stot['n'], 'cost' => round((float) $stot['cost'], 4), 'tokens_in' => (int) $stot['tin'], 'tokens_out' => (int) $stot['tout'], 'month_cost' => round($smonth, 4)],
             'by_user' => array_map($f, $pdo->query("SELECT email, COUNT(*) n, SUM(cost_usd) cost, SUM(kind='image') images FROM deck_ai_usage WHERE $real GROUP BY email ORDER BY cost DESC")->fetchAll()),
             'by_model' => array_map($f, $pdo->query("SELECT model, kind, COUNT(*) n, SUM(cost_usd) cost FROM deck_ai_usage WHERE $since GROUP BY model, kind ORDER BY cost DESC")->fetchAll()),
             'by_day' => array_map($f, $pdo->query("SELECT DATE(created_at) day, COUNT(*) n, SUM(cost_usd) cost FROM deck_ai_usage WHERE $real GROUP BY DATE(created_at) ORDER BY day")->fetchAll()),

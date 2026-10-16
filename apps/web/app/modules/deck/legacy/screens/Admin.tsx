@@ -6,8 +6,6 @@ import { Arrow, cn, Seg, Select, StatusPill, parseTs, useToastOn, Ms } from "../
 type Usage = {
   days: number; month_cost: number;
   total: { n: number; cost: number; tokens_in: number; tokens_out: number };
-  /** 구독 사용분(Claude 구독·Higgsfield)의 API 환산 — 실제 청구 아님. 합계 옆 괄호로 */
-  subs?: { n: number; cost: number; tokens_in: number; tokens_out: number; month_cost: number };
   by_user: { email: string; n: number; cost: number; images: number | string }[];
   by_model: { model: string; kind: string; n: number; cost: number }[];
   by_day: { day: string; n: number; cost: number }[];
@@ -15,7 +13,7 @@ type Usage = {
 };
 const p2 = (n: number) => String(n).padStart(2, "0");
 const when = (s: string) => { const d = parseTs(s); return d ? `${p2(d.getMonth() + 1)}.${p2(d.getDate())} ${p2(d.getHours())}:${p2(d.getMinutes())}` : s; };   // 작업 목록과 같은 꼴(10.05 14:29)
-const KIND: Record<string, string> = { plan: "기획(글)", image: "시안(이미지)", digest: "자료 요약", engine: "장표 제작 (구독·환산)", eplan: "기획 (구독·환산)", edigest: "자료 요약 (구독·환산)", script: "발표 대본", escript: "발표 대본 (구독·환산)", ewire: "와이어프레임 (구독·환산)", hf: "Higgsfield 그림", wire: "와이어프레임" };
+const KIND: Record<string, string> = { plan: "기획(글)", image: "시안(이미지)", digest: "자료 요약", engine: "장표 제작 (엔진)", eplan: "기획 (엔진)", edigest: "자료 요약 (엔진)", script: "발표 대본", escript: "발표 대본 (엔진)", ewire: "와이어프레임 (엔진)", hf: "Higgsfield 그림", wire: "와이어프레임" };
 const kTok = (n: number) => `${(n / 1000).toFixed(0)}k`;
 const DAYS = ["7", "30", "90", "365"].map((d) => [d, `최근 ${d}일`] as const);
 
@@ -78,14 +76,13 @@ export function BillPane({ onOpen, mine = false }: { onOpen: (id: string) => voi
 
       {u && (
         <div className="grid border border-line rounded-md overflow-hidden" style={{ gridTemplateColumns: "repeat(auto-fit,minmax(min(150px,100%),1fr))" }}>
-          {([["기간 합계", usd(u.total.cost, 3), u.subs?.n ? usd(u.subs.cost, 3) : null],
-            ["이달 합계", usd(u.month_cost, 3), u.subs?.month_cost ? usd(u.subs.month_cost, 3) : null],
-            ["AI 호출", `${u.total.n.toLocaleString()}건`, u.subs?.n ? `${u.subs.n.toLocaleString()}건` : null],
-            ["토큰 (입력 / 출력)", `${kTok(u.total.tokens_in)} / ${kTok(u.total.tokens_out)}`, u.subs?.n ? `${kTok(u.subs.tokens_in)} / ${kTok(u.subs.tokens_out)}` : null]] as const).map(([l, v, sv]) => (
+          {([["기간 합계", usd(u.total.cost, 3)],
+            ["이달 합계", usd(u.month_cost, 3)],
+            ["AI 호출", `${u.total.n.toLocaleString()}건`],
+            ["토큰 (입력 / 출력)", `${kTok(u.total.tokens_in)} / ${kTok(u.total.tokens_out)}`]] as const).map(([l, v]) => (
             <div key={l} className="px-4 py-3.5 border-r border-line-soft last:border-r-0 min-w-0">
               <div className="text-[13px] text-dim whitespace-nowrap">{l}</div>
               <div className="text-[21px] font-bold mt-1 tracking-[-0.02em] whitespace-nowrap">{v}</div>
-              {sv && <div className="text-[13px] text-dim mt-0.5 whitespace-nowrap" title="구독 사용분(Claude 구독·Higgsfield 크레딧)을 API 값으로 환산한 것 — 실제 청구가 아니라 위 합계에 들어가지 않습니다">(구독 환산 {sv})</div>}
             </div>
           ))}
         </div>
@@ -131,7 +128,7 @@ export function BillPane({ onOpen, mine = false }: { onOpen: (id: string) => voi
             </div>
           </div>
 
-          <Card title={<><span className="flex-none">AI 호출 내역</span><span className="font-normal text-dim text-[13px] truncate min-w-0">{who && <b className="font-semibold text-orange-d">· {who} </b>}· 최근 {rows.length}건 · OpenRouter가 알려 준 실제 과금액</span>{who && <span className="ml-auto">{clear}</span>}</>}>
+          <Card title={<><span className="flex-none">AI 호출 내역</span><span className="font-normal text-dim text-[13px] truncate min-w-0">{who && <b className="font-semibold text-orange-d">· {who} </b>}· 최근 {rows.length}건 · 엔진(구독) 사용분 포함</span>{who && <span className="ml-auto">{clear}</span>}</>}>
             <div className="pd-rt"><div>
             <HeadRow cols={CALL_COLS}><span>시각</span><span>사용자</span><span>작업</span><span>종류</span><span>모델</span><span>토큰 입/출</span><span>과금</span></HeadRow>
             {shown.map((r) => (

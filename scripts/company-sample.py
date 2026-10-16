@@ -39,6 +39,7 @@ def one(theme, tone, src):
         if role:
             f = os.path.join(BG, f"cpbg-CP1-{theme}-{role}.jpg")
             if os.path.isfile(f):
+                s["_bg_light"] = company.bg_is_light(f)
                 s["_bg"] = url(company.tint_icon(f, os.path.join(out, f"bg-{role}_{tone}.png"), tone))
         s["_logo"], s["_logo_dark"] = url(logo), url(white) if white else None
         if s.get("icon"):

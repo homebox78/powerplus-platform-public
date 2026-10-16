@@ -9,7 +9,7 @@ export const COMPANY_THEMES: CompanyTheme[] = [
   { id: "a", name: "다크 임팩트", desc: "짙은 바탕 표지·간지 + 흰 본문, 큰 숫자와 굵은 카피 · 유리 아이콘 · 입자 구", fits: "회사소개서 · IR · 기술 기업" },
   { id: "b", name: "라이트 에디토리얼", desc: "흰 표지·간지에 흐르는 선 다발, 검정 알약 꼬리표, 테두리 없는 옅은 카드", fits: "회사소개서 · 서비스 소개 · 공공·금융" },
 ];
-const THUMB_V = 3;   // 3: 테마 A·B × 톤 5 견본(cstyles/<테마>/<톤>/N.jpg) + 빈 자리 장식
+const THUMB_V = 4;   // 4: 포인트 SVG(견본 8종 결) · 3: 테마 A·B × 톤 5 견본(cstyles/<테마>/<톤>/N.jpg) + 빈 자리 장식
 /** 견본 덱 쪽 구성(같은 순서) — 크게 보기 캡션 */
 const PAGES = ["표지", "목차", "간지", "한 문장 선언", "숫자", "간지", "역량 카드", "사업 카드", "간지", "대표 사례", "고객 그리드", "간지", "연혁", "수상", "비전", "연락처"];
 export const companyThumb = (id: string, n: number, tone = "blue") => `${import.meta.env.BASE_URL}cstyles/${id}/${tone}/${n}.jpg?v=${THUMB_V}`;
@@ -62,11 +62,10 @@ export function CompanyThemePicker({ value, onChange, disabled, tone = "blue" }:
             <div key={t.id} role="button" tabIndex={0} aria-pressed={on} onClick={() => !disabled && onChange(t.id)}
               onKeyDown={(e) => { if ((e.key === "Enter" || e.key === " ") && e.target === e.currentTarget && !disabled) { e.preventDefault(); onChange(t.id); } }}
               className={cn("group rounded-md border bg-white overflow-hidden text-left cursor-pointer flex flex-col transition-[border-color,box-shadow,background] duration-150", on ? "card-on" : "border-line hover:border-orange-line")}>
-              <div className="relative grid grid-cols-[2fr_1fr] gap-1.5 p-2.5 bg-panel">
-                <img src={companyThumb(t.id, 1, tone)} alt={`${t.name} 표지`} loading="lazy" className="block w-full aspect-video object-cover rounded-[3px] border border-line-soft bg-white" />
-                <div className="grid grid-rows-3 gap-1.5 min-h-0">
-                  {[5, 7, 10].map((n) => <img key={n} src={companyThumb(t.id, n, tone)} alt="" loading="lazy" className="block w-full h-full min-h-0 object-cover rounded-[3px] border border-line-soft bg-white" />)}
-                </div>
+              {/* 표지 크게(2×2 칸) + 오른쪽 2×2 + 아래 줄 4 — 빈 자리 없이(사용자 2026-10-16 배치 지시) */}
+              <div className="relative grid grid-cols-4 gap-1.5 p-2.5 bg-panel">
+                <img src={companyThumb(t.id, 1, tone)} alt={`${t.name} 표지`} loading="lazy" className="col-span-2 row-span-2 block w-full h-full object-cover rounded-[3px] border border-line-soft bg-white" />
+                {[5, 7, 8, 10, 11, 13, 14, 16].map((n) => <img key={n} src={companyThumb(t.id, n, tone)} alt="" loading="lazy" className="block w-full aspect-video object-cover rounded-[3px] border border-line-soft bg-white" />)}
                 <span className="absolute left-4 bottom-4 whitespace-nowrap text-[12px] font-bold text-white rounded-md px-[7px] py-0.5 bg-[rgba(17,17,17,.72)]">테마 {t.id.toUpperCase()}</span>
                 {on && <span className="absolute right-3.5 top-3.5 w-[26px] h-[26px] rounded-full bg-orange text-white grid place-items-center shadow-[0_2px_6px_rgba(0,0,0,.35)]"><Ms name="check" size={18} style={{ fontWeight: 700 }} /></span>}
                 <button type="button" title="견본 덱 전 쪽 보기" onClick={(e) => { e.stopPropagation(); setView(t); }}

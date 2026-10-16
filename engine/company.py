@@ -230,10 +230,12 @@ def _bigword(word, dark=False):
             f"white-space:nowrap\">{html.escape(str(word).upper())}</div>")
 
 
-# ───────────────────────── 장식(SVG) — 빈 자리를 도형·파형·3D 로 채운다(사용자 2026-10-16 "evolve-deck 참조해서 빈 공간에 SVG 도형·파형·3D").
-# evolve 덱의 언어(점 격자 Dots · 외곽선 글자 Ghost · 격자선 Grid · 입자 구 Organism · 나선 Loom)를 정적 SVG 로 옮겼다 — 렌더 때 배경 그림으로 굳어 PPT 에도 그대로.
-# 색은 파랑 값으로 쓰고 toned() 가 톤 색으로 바꾼다. 쪽마다 효과는 하나(PROFILE '조잡하다 = 효과가 겹친다').
+# ───────────────────────── 장식(SVG) — 허전한 자리에 포인트 하나(사용자 2026-10-16 견본 8장: 선 부채 · 꼬인 리본 선 · 원 곡선 네트워크 · 어두운 광택 리본 ·
+# 3D 메시 파형 · 점선 네트워크 지구 · 지오데식 와이어 구 2종 — "많이는 말고 허전한 곳에 포인트로 SVG"). 렌더 때 배경 그림으로 굳어 PPT 에도 그대로.
+# 색은 파랑 값(#1F4FFF·#3D7BFF·#78AAFF·#BFD0FF·#DCE6FF·#051478)으로 쓰고 toned() 가 톤 색으로 바꾼다. 쪽마다 하나(PROFILE '조잡하다 = 효과가 겹친다').
+# 모양은 쪽 번호로 정한 씨앗(random.Random)이라 같은 덱은 다시 만들어도 같다.
 import math
+import random
 
 _SVG_N = [0]
 
@@ -248,165 +250,195 @@ def _gid(p):
     return f"{p}{_SVG_N[0]}"
 
 
-def D_waves(x, y, w, h, dark=False, n=28, op=1.0):
-    """흐르는 선 다발(ref_042 파형) — 사인 곡선 n 개가 위상·진폭을 조금씩 달리하며 겹친다"""
-    g = _gid("wv")
-    c1, c2 = ("#78AAFF", "#3D7BFF") if dark else ("#3D7BFF", "#1F4FFF")
-    defs = (f"<linearGradient id='{g}' x1='0' x2='1'><stop offset='0' stop-color='{c1}' stop-opacity='0'/>"
-            f"<stop offset='.35' stop-color='{c1}' stop-opacity='.9'/><stop offset='.75' stop-color='{c2}' stop-opacity='.7'/><stop offset='1' stop-color='{c2}' stop-opacity='0'/></linearGradient>")
-    paths = []
+def _lg(gid, stops, x2=1, y2=0):
+    return (f"<linearGradient id='{gid}' x1='0' y1='0' x2='{x2}' y2='{y2}'>"
+            + "".join(f"<stop offset='{o}' stop-color='{c}' stop-opacity='{a}'/>" for o, c, a in stops) + "</linearGradient>")
+
+
+def D_fan(x, y, w, h, corner="tr", n=30, dark=False, op=1.0):
+    """선 부채(견본 1) — 한 모서리 점에서 곡선 n 개가 반대편 가장자리로 고르게 퍼진다"""
+    g = _gid("fn")
+    defs = _lg(g, [(0, "#78AAFF", .9), (1, "#BFD0FF", .5)] if dark else [(0, "#1F4FFF", .85), (1, "#78AAFF", .45)], 1, 1)
+    ox, oy = (w, 0) if corner == "tr" else (0, h) if corner == "bl" else (w, h) if corner == "br" else (0, 0)
+    tx = 0 if ox else w
+    body = []
     for i in range(n):
-        t = i / max(1, n - 1)
-        amp = h * (0.18 + 0.22 * math.sin(t * math.pi))
-        ph = t * 2.2
+        t = i / (n - 1)
+        ey = t * h
+        cx1, cy1 = (ox + tx) / 2, oy + (ey - oy) * 0.15
+        body.append(f"<path d='M{ox:.1f},{oy:.1f} Q{cx1:.1f},{cy1 + (h * .55 if oy == 0 else -h * .55) * (1 - t):.1f} {tx:.1f},{ey:.1f}' fill='none' stroke='url(#{g})' stroke-width='1.2'/>")
+    return _svg(x, y, w, h, "".join(body), defs, op)
+
+
+def D_ribbon(x, y, w, h, n=34, dark=False, op=1.0):
+    """꼬인 리본 선 다발(견본 2) — 두 S 곡선 사이를 선 n 개로 메워 비틀린 띠처럼"""
+    g = _gid("rb")
+    defs = _lg(g, [(0, "#BFD0FF", .25), (.5, "#78AAFF", .8), (1, "#3D7BFF", .9)] if dark else [(0, "#78AAFF", .35), (.5, "#3D7BFF", .85), (1, "#1F4FFF", .95)], 0, 1)
+    A = [(w * .98, 0), (w * .10, h * .32), (w * .40, h * .72), (w * .02, h * .98)]
+    B = [(w * .98, h * .06), (w * .95, h * .45), (w * .00, h * .55), (w * .98, h * .94)]
+    body = []
+    for i in range(n):
+        t = i / (n - 1)
+        p = [(a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t) for a, b in zip(A, B)]
+        body.append(f"<path d='M{p[0][0]:.1f},{p[0][1]:.1f} C{p[1][0]:.1f},{p[1][1]:.1f} {p[2][0]:.1f},{p[2][1]:.1f} {p[3][0]:.1f},{p[3][1]:.1f}' "
+                    f"fill='none' stroke='url(#{g})' stroke-width='1.1' stroke-opacity='{.35 + .55 * math.sin(t * math.pi):.2f}'/>")
+    return _svg(x, y, w, h, "".join(body), defs, op)
+
+
+def D_arcs(cx, cy, r, seed=1, n=70, dark=False, op=1.0):
+    """원 둘레를 잇는 곡선 네트워크(견본 3) — 둘레의 두 점을 안쪽으로 휜 곡선으로, 끝에 점"""
+    rnd = random.Random(seed)
+    g = _gid("ac")
+    c1, c2 = ("#78AAFF", "#BFD0FF") if dark else ("#1F4FFF", "#78AAFF")
+    defs = _lg(g, [(0, c1, .9), (1, c2, .9)], 1, 1)
+    body = [f"<circle cx='{r}' cy='{r}' r='{r}' fill='none' stroke='url(#{g})' stroke-opacity='.35' stroke-width='1.2'/>"]
+    for _ in range(n):
+        a1 = rnd.uniform(0, 2 * math.pi)
+        a2 = a1 + rnd.uniform(0.5, 2.6) * rnd.choice((1, -1))
+        p1 = (r + r * math.cos(a1), r + r * math.sin(a1))
+        k = rnd.uniform(.35, 1.0)
+        p2 = (r + r * k * math.cos(a2), r + r * k * math.sin(a2))
+        m = ((p1[0] + p2[0]) / 2 * .7 + r * .3, (p1[1] + p2[1]) / 2 * .7 + r * .3)
+        body.append(f"<path d='M{p1[0]:.1f},{p1[1]:.1f} Q{m[0]:.1f},{m[1]:.1f} {p2[0]:.1f},{p2[1]:.1f}' fill='none' stroke='url(#{g})' stroke-width='1' stroke-opacity='.55'/>"
+                    f"<circle cx='{p1[0]:.1f}' cy='{p1[1]:.1f}' r='3' fill='{c1}' fill-opacity='.8'/><circle cx='{p2[0]:.1f}' cy='{p2[1]:.1f}' r='2.6' fill='{c2}'/>")
+    return _svg(cx - r, cy - r, 2 * r, 2 * r, "".join(body), defs, op)
+
+
+def D_silk(x, y, w, h, op=1.0):
+    """어두운 광택 리본(견본 4) — 겹친 넓은 곡면 셋, 가장자리에만 빛. 어두운 쪽 바탕용"""
+    body, defs = "", ""
+    for k, (s, a) in enumerate(((1.0, .10), (.62, .14), (.30, .18))):
+        g = _gid("sk")
+        defs += _lg(g, [(0, "#FFFFFF", 0), (.55, "#FFFFFF", a), (1, "#FFFFFF", 0)], 1, 1)
+        x0, y0 = w * (1 - s), h * 0.05
+        body += (f"<path d='M{x0:.1f},{h:.1f} C{x0 - w * .12 * s:.1f},{h * .45:.1f} {x0 + w * .05:.1f},{y0:.1f} {w:.1f},{y0 + h * .02:.1f} "
+                 f"L{w:.1f},{h * (.55 + .2 * k):.1f} C{x0 + w * .3 * s:.1f},{h * (.55 + .15 * k):.1f} {x0 + w * .02:.1f},{h * .6:.1f} {x0 + w * .1 * s:.1f},{h:.1f} Z' fill='url(#{g})'/>"
+                 f"<path d='M{x0:.1f},{h:.1f} C{x0 - w * .12 * s:.1f},{h * .45:.1f} {x0 + w * .05:.1f},{y0:.1f} {w:.1f},{y0 + h * .02:.1f}' fill='none' stroke='#FFFFFF' stroke-opacity='{a * 1.6:.2f}' stroke-width='2.5'/>")
+    return _svg(x, y, w, h, body, defs, op)
+
+
+def D_mesh(x, y, w, h, seed=2, n=90, dark=False, op=1.0):
+    """3D 메시 파형(견본 5) — 봉우리 몇 개를 겹친 곡선 n 개가 깊이마다 조금씩 어긋나 그물 띠처럼"""
+    rnd = random.Random(seed)
+    peaks = [(rnd.uniform(.1, .9), rnd.uniform(.15, .45) * (1 if k % 2 else -1), rnd.uniform(.04, .09)) for k in range(6)]
+    g = _gid("ms")
+    m1, m2 = ("#78AAFF", "#BFD0FF") if dark else ("#1F4FFF", "#78AAFF")
+    defs = _lg(g, [(0, m1, 0), (.15, m1, .8), (.5, m2, .9), (.85, m1, .8), (1, m1, 0)])
+    body = []
+    for i in range(n):
+        t = i / (n - 1)
         pts = []
-        for k in range(121):
-            u = k / 120
-            env = math.sin(u * math.pi) ** 0.8
-            yy = h / 2 + amp * env * math.sin(u * math.pi * 2.3 + ph) + (t - 0.5) * h * 0.35 * (1 - env)
-            pts.append(f"{u * w:.1f},{yy:.1f}")
-        paths.append(f"<polyline points='{' '.join(pts)}' fill='none' stroke='url(#{g})' stroke-width='{1.1 + 0.6 * math.sin(t * math.pi):.2f}' stroke-opacity='{0.25 + 0.55 * math.sin(t * math.pi):.2f}'/>")
-    return _svg(x, y, w, h, "".join(paths), defs, op)
+        for k in range(161):
+            u = k / 160
+            v = sum(a * (0.55 + 0.45 * math.cos(t * math.pi * 2 + c * 9)) * math.exp(-((u - c) ** 2) / (2 * s * s)) for c, a, s in peaks)
+            v += 0.05 * math.sin(u * 14 + t * 6)
+            pts.append(f"{u * w:.1f},{h / 2 - v * h + (t - .5) * h * .12:.1f}")
+        body.append(f"<polyline points='{' '.join(pts)}' fill='none' stroke='url(#{g})' stroke-width='.8' stroke-opacity='{.25 + .5 * math.sin(t * math.pi):.2f}'/>")
+    return _svg(x, y, w, h, "".join(body), defs, op)
 
 
-def D_sphere(cx, cy, r, dark=True, n=1100, op=1.0):
-    """입자 구(evolve Organism 의 정지판) — 피보나치 구 위 점을 기울여 투영, 앞은 크고 진하게 뒤는 작고 옅게"""
+def D_netglobe(cx, cy, r, seed=3, n=110, dark=False, op=1.0):
+    """점선 네트워크 지구(견본 6) — 원 안 점들을 가까운 이웃끼리 잇고 몇은 점선, 크기가 다른 점"""
+    rnd = random.Random(seed)
+    c = "#FFFFFF" if dark else "#0B1324"
     pts = []
-    ga = math.pi * (3 - math.sqrt(5))
-    tilt, rot = 0.42, 0.6
-    for i in range(n):
-        yv = 1 - 2 * (i + 0.5) / n
-        rad = math.sqrt(1 - yv * yv)
-        th = ga * i
-        xv, zv = math.cos(th) * rad, math.sin(th) * rad
-        xv, zv = xv * math.cos(rot) - zv * math.sin(rot), xv * math.sin(rot) + zv * math.cos(rot)
-        yv, zv = yv * math.cos(tilt) - zv * math.sin(tilt), yv * math.sin(tilt) + zv * math.cos(tilt)
-        pts.append((zv, xv, yv))
-    pts.sort()
-    c = "#BFD0FF" if dark else "#1F4FFF"
-    body = [f"<circle cx='{r + px * r:.1f}' cy='{r + py * r:.1f}' r='{0.8 + 2.0 * (z + 1) / 2:.2f}' fill='{c}' fill-opacity='{0.12 + 0.78 * ((z + 1) / 2) ** 1.6:.2f}'/>" for z, px, py in pts]
-    g = _gid("sg")
-    glow = (f"<radialGradient id='{g}'><stop offset='0' stop-color='#3D7BFF' stop-opacity='.45'/><stop offset='1' stop-color='#3D7BFF' stop-opacity='0'/></radialGradient>")
-    return _svg(cx - r, cy - r, 2 * r, 2 * r, f"<circle cx='{r}' cy='{r}' r='{r * 1.25}' fill='url(#{g})'/>" + "".join(body), glow, op)
+    while len(pts) < n:
+        px, py = rnd.uniform(-1, 1), rnd.uniform(-1, 1)
+        if px * px + py * py < 0.96 and not (0.1 < px < 0.6 and -0.5 < py < -0.1 and rnd.random() < .8):   # 빈 땅 한 곳
+            pts.append((px, py))
+    body = [f"<circle cx='{r}' cy='{r}' r='{r}' fill='none' stroke='{c}' stroke-opacity='.12' stroke-width='1'/>"]
+    for i, (px, py) in enumerate(pts):
+        near = sorted(range(n), key=lambda j: (pts[j][0] - px) ** 2 + (pts[j][1] - py) ** 2)[1:4]
+        for j in near:
+            if j < i:
+                continue
+            dash = " stroke-dasharray='3 4'" if (i + j) % 3 == 0 else ""
+            body.append(f"<line x1='{r + px * r:.1f}' y1='{r + py * r:.1f}' x2='{r + pts[j][0] * r:.1f}' y2='{r + pts[j][1] * r:.1f}' stroke='{c}' stroke-opacity='.28' stroke-width='1'{dash}/>")
+    for i, (px, py) in enumerate(pts):
+        rr = (2.2, 3.2, 4.5, 7)[i % 4 if i % 7 else 3]
+        body.append(f"<circle cx='{r + px * r:.1f}' cy='{r + py * r:.1f}' r='{rr}' fill='{'#78AAFF' if i % 9 == 0 else c}' fill-opacity='{.25 if rr > 6 else .55}'/>")
+    return _svg(cx - r, cy - r, 2 * r, 2 * r, "".join(body), "", op)
 
 
-def D_globe(cx, cy, r, dark=True, op=1.0):
-    """와이어 구 — 위도 타원 + 경도 타원(기울임). 선만"""
-    c = "#FFFFFF" if dark else "#1F4FFF"
-    a = 0.22 if dark else 0.18
-    body = [f"<circle cx='{r}' cy='{r}' r='{r}' fill='none' stroke='{c}' stroke-opacity='{a * 1.6}' stroke-width='1.4'/>"]
-    for k in range(1, 7):
-        yy = r * math.sin(-math.pi / 2 + k * math.pi / 7)
-        rx = math.sqrt(max(0, r * r - yy * yy))
-        body.append(f"<ellipse cx='{r}' cy='{r + yy:.1f}' rx='{rx:.1f}' ry='{rx * 0.22:.1f}' fill='none' stroke='{c}' stroke-opacity='{a}' stroke-width='1'/>")
-    for k in range(6):
-        body.append(f"<ellipse cx='{r}' cy='{r}' rx='{r * abs(math.cos(k * math.pi / 6)):.1f}' ry='{r}' fill='none' stroke='{c}' stroke-opacity='{a}' stroke-width='1'/>")
-    for k in range(5):   # 궤도 위 빛나는 점
-        t = k * 1.3 + 0.4
-        body.append(f"<circle cx='{r + r * math.cos(t):.1f}' cy='{r + r * 0.22 * math.sin(t) + r * 0.3:.1f}' r='4' fill='#78AAFF'/>")
-    return _svg(cx - r, cy - r, 2 * r, 2 * r, f"<g transform='rotate(-18 {r} {r})'>{''.join(body)}</g>", "", op)
+def _icosphere():
+    t = (1 + 5 ** 0.5) / 2
+    v = [(-1, t, 0), (1, t, 0), (-1, -t, 0), (1, -t, 0), (0, -1, t), (0, 1, t), (0, -1, -t), (0, 1, -t), (t, 0, -1), (t, 0, 1), (-t, 0, -1), (-t, 0, 1)]
+    f = [(0, 11, 5), (0, 5, 1), (0, 1, 7), (0, 7, 10), (0, 10, 11), (1, 5, 9), (5, 11, 4), (11, 10, 2), (10, 7, 6), (7, 1, 8),
+         (3, 9, 4), (3, 4, 2), (3, 2, 6), (3, 6, 8), (3, 8, 9), (4, 9, 5), (2, 4, 11), (6, 2, 10), (8, 6, 7), (9, 8, 1)]
+    norm = lambda p: tuple(c / math.sqrt(sum(x * x for x in p)) for c in p)
+    v = [norm(p) for p in v]
+    cache, nf = {}, []
+    def mid(a, b):
+        k = (min(a, b), max(a, b))
+        if k not in cache:
+            cache[k] = len(v)
+            v.append(norm(tuple((v[a][i] + v[b][i]) / 2 for i in range(3))))
+        return cache[k]
+    for a, b, c in f:
+        ab, bc, ca = mid(a, b), mid(b, c), mid(c, a)
+        nf += [(a, ab, ca), (b, bc, ab), (c, ca, bc), (ab, bc, ca)]
+    edges = {(min(a, b), max(a, b)) for tri in nf for a, b in ((tri[0], tri[1]), (tri[1], tri[2]), (tri[2], tri[0]))}
+    return v, edges
 
 
-def D_orbs(x, y, s, dark=True, op=1.0):
-    """광택 구 셋(ref_025 파랑 유리 덩어리) — 방사 그라데이션으로 입체감, 가는 고리 하나"""
-    g1, g2 = _gid("ob"), _gid("os")
-    defs = (f"<radialGradient id='{g1}' cx='.35' cy='.3' r='.75'><stop offset='0' stop-color='#FFFFFF' stop-opacity='.95'/>"
-            f"<stop offset='.18' stop-color='#BFD0FF'/><stop offset='.55' stop-color='#3D7BFF'/><stop offset='1' stop-color='#051478'/></radialGradient>"
-            f"<radialGradient id='{g2}'><stop offset='0' stop-color='#051478' stop-opacity='.5'/><stop offset='1' stop-color='#051478' stop-opacity='0'/></radialGradient>")
-    balls = [(0.62, 0.42, 0.30), (0.30, 0.68, 0.19), (0.84, 0.80, 0.12)]
-    body = f"<ellipse cx='{s * .55}' cy='{s * .95}' rx='{s * .42}' ry='{s * .06}' fill='url(#{g2})'/>"
-    body += f"<ellipse cx='{s * .55}' cy='{s * .5}' rx='{s * .5}' ry='{s * .16}' fill='none' stroke='#78AAFF' stroke-opacity='.45' stroke-width='2' transform='rotate(-14 {s * .55} {s * .5})'/>"
-    for bx, by, br in balls:
-        body += f"<circle cx='{bx * s:.1f}' cy='{by * s:.1f}' r='{br * s:.1f}' fill='url(#{g1})'/>"
-    return _svg(x, y, s, s, body, defs, op)
-
-
-def D_helix(x, y, w, h, dark=True, op=1.0):
-    """나선 점(evolve Loom 의 스프링) — 앞쪽 점은 크고 진하게"""
-    c = "#BFD0FF" if dark else "#1F4FFF"
-    pts = []
-    for i in range(520):
-        t = i / 520 * math.pi * 2 * 6.5
-        z = math.sin(t)
-        pts.append((z, w / 2 + math.cos(t) * w * 0.42, i / 520 * h))
-    pts.sort()
-    body = "".join(f"<circle cx='{px:.1f}' cy='{py:.1f}' r='{1 + 2.2 * (z + 1) / 2:.2f}' fill='{c}' fill-opacity='{0.15 + 0.75 * (z + 1) / 2:.2f}'/>" for z, px, py in pts)
-    return _svg(x, y, w, h, f"<g transform='rotate(-24 {w / 2} {h / 2})'>{body}</g>", "", op)
-
-
-def D_cubes(x, y, s, dark=False, op=1.0):
-    """아이소메트릭 유리 판 셋(ref_058 IR 덱) — 위·옆면 그라데이션"""
-    gt, gs = _gid("ct"), _gid("cs")
-    defs = (f"<linearGradient id='{gt}' x1='0' y1='0' x2='1' y2='1'><stop offset='0' stop-color='#BFD0FF'/><stop offset='1' stop-color='#3D7BFF'/></linearGradient>"
-            f"<linearGradient id='{gs}' x1='0' y1='0' x2='0' y2='1'><stop offset='0' stop-color='#1F4FFF'/><stop offset='1' stop-color='#051478'/></linearGradient>")
-    body = ""
-    cx, w2, hh, th = s / 2, s * 0.42, s * 0.24, s * 0.07
-    for k in range(3):
-        top = s * 0.62 - k * s * 0.2
-        a = 0.55 + 0.15 * k
-        top_pts = f"{cx},{top - hh} {cx + w2},{top} {cx},{top + hh} {cx - w2},{top}"
-        left = f"{cx - w2},{top} {cx},{top + hh} {cx},{top + hh + th} {cx - w2},{top + th}"
-        right = f"{cx + w2},{top} {cx},{top + hh} {cx},{top + hh + th} {cx + w2},{top + th}"
-        body += (f"<polygon points='{left}' fill='url(#{gs})' fill-opacity='{a}'/><polygon points='{right}' fill='url(#{gs})' fill-opacity='{a * .8}'/>"
-                 f"<polygon points='{top_pts}' fill='url(#{gt})' fill-opacity='{a}' stroke='#FFFFFF' stroke-opacity='.6' stroke-width='1.5'/>")
-    return _svg(x, y, s, s, body, defs, op)
-
-
-def D_rings(cx, cy, r, dark=True, op=1.0):
-    """궤도 고리 — 아이콘 뒤에 깔리는 동심원 + 점선 + 작은 점(간지)"""
-    c = "#FFFFFF" if dark else "#1F4FFF"
-    body = ""
-    for k, (rr, dash, a) in enumerate([(1.0, "", .10), (.78, "4 10", .22), (.56, "", .14)]):
-        body += f"<circle cx='{r}' cy='{r}' r='{r * rr:.1f}' fill='none' stroke='{c}' stroke-opacity='{a}' stroke-width='1.5'" + (f" stroke-dasharray='{dash}'" if dash else "") + "/>"
-    for t, rr in ((0.6, 1.0), (2.4, .78), (4.1, .56), (5.2, 1.0)):
-        body += f"<circle cx='{r + r * rr * math.cos(t):.1f}' cy='{r + r * rr * math.sin(t):.1f}' r='6' fill='#78AAFF'/>"
-    return _svg(cx - r, cy - r, 2 * r, 2 * r, body, "", op)
-
-
-def D_dots(x, y, w, h, dark=False, op=1.0):
-    """점 격자(evolve Dots) — 가운데가 진하고 가장자리로 사라진다"""
-    p, g, m = _gid("dp"), _gid("dg"), _gid("dm")
-    c = "#BFD0FF" if dark else "#1F4FFF"
-    defs = (f"<pattern id='{p}' width='30' height='30' patternUnits='userSpaceOnUse'><circle cx='2' cy='2' r='2' fill='{c}' fill-opacity='{.35 if dark else .22}'/></pattern>"
-            f"<radialGradient id='{g}'><stop offset='0' stop-color='#fff'/><stop offset='1' stop-color='#fff' stop-opacity='0'/></radialGradient>"
-            f"<mask id='{m}'><rect width='{w}' height='{h}' fill='url(#{g})'/></mask>")
-    return _svg(x, y, w, h, f"<rect width='{w}' height='{h}' fill='url(#{p})' mask='url(#{m})'/>", defs, op)
+def D_geo(cx, cy, r, mono=False, dark=False, op=1.0):
+    """지오데식 와이어 구(견본 7·8) — 정이십면체를 한 번 나눈 42점, 앞면은 진하게 뒷면은 옅게. mono = 흑백판"""
+    v, edges = _icosphere()
+    ry, rx = 0.5, 0.35
+    P = []
+    for X, Y, Z in v:
+        X, Z = X * math.cos(ry) - Z * math.sin(ry), X * math.sin(ry) + Z * math.cos(ry)
+        Y, Z = Y * math.cos(rx) - Z * math.sin(rx), Y * math.sin(rx) + Z * math.cos(rx)
+        P.append((r + X * r, r + Y * r, Z))
+    front = "#FFFFFF" if dark else ("#0B1324" if mono else "#1F4FFF")
+    back = "#FFFFFF" if dark else ("#9AA3B2" if mono else "#BFD0FF")
+    lines = sorted(edges, key=lambda e: P[e[0]][2] + P[e[1]][2])
+    body = []
+    for a, b in lines:
+        z = (P[a][2] + P[b][2]) / 2
+        f = z > 0
+        body.append(f"<line x1='{P[a][0]:.1f}' y1='{P[a][1]:.1f}' x2='{P[b][0]:.1f}' y2='{P[b][1]:.1f}' stroke='{front if f else back}' "
+                    f"stroke-opacity='{(.8 if f else .55) * (.5 if dark else 1):.2f}' stroke-width='{1.4 if f else 1.6}'/>")
+    for X, Y, Z in sorted(P, key=lambda p: p[2]):
+        f = Z > 0
+        body.append(f"<circle cx='{X:.1f}' cy='{Y:.1f}' r='{5 if f else 7}' fill='{front if f else back}' fill-opacity='{(.95 if f else .6) * (.6 if dark else 1):.2f}'/>")
+    return _svg(cx - r, cy - r, 2 * r, 2 * r, "".join(body), "", op)
 
 
 def decor(kind, n, has_img=False, theme="a"):
-    """레이아웃마다 비는 자리에 장식 하나 — '밋밋한 데 약간의 조미료'(사용자 2026-10-16). 옅게·작게, 글과 겹치지 않는 자리만.
-    n = 쪽 번호(같은 레이아웃이 반복되면 장식을 바꿔 단조롭지 않게). 바탕 큰 글자(_bigword)가 있는 쪽(선언)은 그것이 조미료라 더하지 않는다.
-    테마 B(밝은 표지·간지)는 표지를 흐르는 선 다발(ref_042)로, 간지·연락처는 밝은 바탕에 맞는 것으로"""
+    """레이아웃마다 허전한 자리에 포인트 하나 — 많이 넣지 않는다(사용자 2026-10-16 "많이는 말고 허전한 곳에 포인트로").
+    n = 쪽 번호(같은 레이아웃이 반복되면 모양·씨앗을 바꿔 단조롭지 않게). 바탕 큰 글자(_bigword)가 있는 선언 쪽은 그것이 포인트라 더하지 않는다.
+    밝은 바탕은 진한 파랑, 어두운 바탕은 밝은 파랑(dark=True). 테마 B 는 표지·간지·연락처도 밝은 바탕"""
     alt = n % 3
     if theme == "b":
         if kind == "cover":
-            return D_waves(560, 120, 1420, 860, n=34, op=.95)
+            return D_ribbon(1240, 0, 640, 1080, op=.85)
         if kind == "section":
-            return D_dots(1260, 160, 620, 760, op=.8) if has_img else [D_cubes(1240, 220, 600, op=.8), D_globe(1520, 540, 300, dark=False, op=.5), D_waves(700, 640, 1220, 380, op=.8)][alt]
+            return D_arcs(1500, 540, 330, seed=n, op=.55) if has_img else [D_geo(1500, 540, 300, op=.7), D_fan(1020, 0, 900, 700, op=.6), D_netglobe(1500, 540, 300, seed=n, op=.7)][alt]
         if kind == "contact":
-            return D_waves(0, 600, 1920, 300, op=.45)
+            return D_fan(1100, 0, 820, 560, op=.45)
     if kind == "cover":
-        return D_sphere(1490, 540, 400, op=.5) if has_img else D_orbs(1180, 230, 620, op=.85)
+        return D_geo(1490, 540, 400, dark=True, op=.45) if has_img else D_silk(700, 0, 1220, 1080, op=1)
     if kind == "section":
-        return D_rings(1500, 540, 380, op=.6) if has_img else [D_globe(1500, 520, 300, op=.6), D_helix(1300, 180, 420, 720, op=.5), D_orbs(1180, 260, 580, op=.8)][alt]
+        return D_arcs(1500, 540, 360, seed=n, dark=True, op=.55) if has_img else [D_geo(1500, 540, 300, dark=True, op=.6), D_mesh(900, 360, 1020, 380, seed=n, dark=True, op=.7), D_netglobe(1500, 540, 300, seed=n, dark=True, op=.6)][alt]
     if kind == "contents":
-        return D_cubes(150, 640, 360, op=.45)
+        return D_fan(0, 600, 720, 480, corner="bl", op=.5)
     if kind == "stats":
-        return D_waves(0, 880, 1920, 200, op=.4)
+        return D_mesh(0, 860, 1920, 220, seed=n, op=.4)
     if kind == "pillars":
-        return D_dots(1380, 70, 540, 300, op=.7)
+        return D_geo(1660, 250, 100, op=.6)   # 오른쪽 위 꼬리표(y 64) 아래로
     if kind == "history":
-        return [D_globe(1690, 250, 150, dark=False, op=.45), D_waves(0, 880, 1920, 200, op=.4), D_cubes(1600, 60, 260, op=.4)][alt]
+        return [D_netglobe(1690, 250, 160, seed=n, op=.55), D_mesh(0, 860, 1920, 220, seed=n, op=.4), D_geo(1690, 250, 140, mono=True, op=.45)][alt]
     if kind == "showcase":
-        return D_waves(60, 840, 860, 190, op=.35)   # 나선은 이 크기에선 빗금처럼 보였다
+        return D_fan(0, 830, 880, 250, corner="bl", op=.4)
     if kind == "clients":
-        return D_dots(1380, 50, 540, 260, op=.7)
+        return D_arcs(1660, 250, 110, seed=n, op=.6)
     if kind == "awards":
-        return D_cubes(1560, 760, 280, op=.4)
+        return D_geo(1690, 860, 150, op=.5)
     if kind == "vision":
-        return D_sphere(1540, 460, 300, op=.45)
+        return D_netglobe(1560, 470, 300, seed=n, dark=True, op=.5)
     if kind == "contact":
-        return D_globe(1720, 640, 230, op=.5)
+        return D_silk(900, 0, 1020, 760, op=.9)
     return ""
 
 

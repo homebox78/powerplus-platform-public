@@ -1,0 +1,897 @@
+{
+ "reason": "자산 전체 중복 정리 2026-10-16 — 썸네일 dHash 후보를 눈으로 대조한 같은 그림",
+ "pairs": [
+  {
+   "keep": "3pyckyu7ykvn7bs2",
+   "drop": "6hfknh2yhkgi3gyf",
+   "auto": false,
+   "g": "g3.json#8"
+  },
+  {
+   "keep": "jrp859rve5vmgbuv",
+   "drop": "6juvud8rsd6t7evs",
+   "auto": false,
+   "g": "g3.json#9"
+  },
+  {
+   "keep": "q7ap3s85xncbft7u",
+   "drop": "j8i4sjtc6mywkmg2",
+   "auto": false,
+   "g": "g3.json#10"
+  },
+  {
+   "keep": "xzuze5pbmuxxqtfs",
+   "drop": "2ezpd3ue4ewi7577",
+   "auto": false,
+   "g": "g3.json#11"
+  },
+  {
+   "keep": "mqqkx89kakgw3949",
+   "drop": "4j29n3buitffg8sy",
+   "auto": false,
+   "g": "g3.json#15"
+  },
+  {
+   "keep": "yyuucppt5brmh2sm",
+   "drop": "j7urg3ig5zmc4367",
+   "auto": false,
+   "g": "g3.json#16"
+  },
+  {
+   "keep": "bu8pma4n4strvubu",
+   "drop": "d7xv7m89irery5ai",
+   "auto": false,
+   "g": "g3.json#17"
+  },
+  {
+   "keep": "p3yznvhyg8s2mw6p",
+   "drop": "qfwhqvh9hb8h52f4",
+   "auto": false,
+   "g": "g3.json#18"
+  },
+  {
+   "keep": "3bgevhxsgbcjj2a8",
+   "drop": "jf69wja8mcyhfwuw",
+   "auto": false,
+   "g": "g3.json#19"
+  },
+  {
+   "keep": "8b9pttpdpkqe8z64",
+   "drop": "cqnjy3gsz6kpcf7f",
+   "auto": false,
+   "g": "g3.json#23"
+  },
+  {
+   "keep": "zguncyw2kp82ufrk",
+   "drop": "9icjprjdkws5tuhx",
+   "auto": false,
+   "g": "g3.json#24"
+  },
+  {
+   "keep": "223p2cmzjyqrv5kn",
+   "drop": "xbcmp6tbrtdfaxwz",
+   "auto": false,
+   "g": "g3.json#25"
+  },
+  {
+   "keep": "6ca6wcpjbzj9n67x",
+   "drop": "c7xsexxgk7vw6sr5",
+   "auto": false,
+   "g": "g3.json#26"
+  },
+  {
+   "keep": "e3tpjjfwmy9fzpmc",
+   "drop": "bs9xzjdh3a72e79r",
+   "auto": false,
+   "g": "g3.json#29"
+  },
+  {
+   "keep": "vb59nfevq8wsnn6s",
+   "drop": "gvb343atts2cjyxm",
+   "auto": false,
+   "g": "g3.json#30"
+  },
+  {
+   "keep": "cg9cdavj5am53p3j",
+   "drop": "7hv433gsdfbd6ucg",
+   "auto": false,
+   "g": "g3.json#32"
+  },
+  {
+   "keep": "y7i3ydivcbpmfa9t",
+   "drop": "gdvc2bzv2uyvbz6h",
+   "auto": false,
+   "g": "g3.json#33"
+  },
+  {
+   "keep": "mut2temiyc8gcazs",
+   "drop": "urkkdtuh3pqjg3v5",
+   "auto": false,
+   "g": "g3.json#34"
+  },
+  {
+   "keep": "96v923w733bheq42",
+   "drop": "5hu5rzhg2idhnxvq",
+   "auto": false,
+   "g": "g3.json#43"
+  },
+  {
+   "keep": "qrdsaa98tbjftund",
+   "drop": "wfdzdxzdbmxqy7r2",
+   "auto": false,
+   "g": "g3.json#44"
+  },
+  {
+   "keep": "u26s29r763em48k8",
+   "drop": "si4aqy6ywi8t4qxk",
+   "auto": false,
+   "g": "g3.json#48"
+  },
+  {
+   "keep": "8pytnq9mepvwpxfx",
+   "drop": "2s5haqgwmneqbyz3",
+   "auto": false,
+   "g": "g3.json#49"
+  },
+  {
+   "keep": "qkfcqv5tzp6niaz5",
+   "drop": "83uvh8vaq94weswz",
+   "auto": false,
+   "g": "g3.json#52"
+  },
+  {
+   "keep": "wvvh3jdbesrnaa62",
+   "drop": "j9bnnbnp9n26mi29",
+   "auto": false,
+   "g": "g3.json#53"
+  },
+  {
+   "keep": "bd986vzdsqwz4hbi",
+   "drop": "znb64n2hzidhx7dv",
+   "auto": false,
+   "g": "g3.json#54"
+  },
+  {
+   "keep": "x9b6e5ugeqxdzvjx",
+   "drop": "7dchnsbkzr42i2mj",
+   "auto": false,
+   "g": "g3.json#55"
+  },
+  {
+   "keep": "9sp9uhs5kdsg5yje",
+   "drop": "jjy3a2tgya529t3s",
+   "auto": false,
+   "g": "g3.json#56"
+  },
+  {
+   "keep": "uc82hxw6a72728cz",
+   "drop": "7y94pirj9ay4zg6d",
+   "auto": false,
+   "g": "g3.json#57"
+  },
+  {
+   "keep": "arwq4pnd8zxwub4k",
+   "drop": "4pxmx2hc85tamyzr",
+   "auto": false,
+   "g": "g3.json#58"
+  },
+  {
+   "keep": "vu2vnxq6niqmbe87",
+   "drop": "iwr8gwrg5myr7qjv",
+   "auto": false,
+   "g": "g3.json#59"
+  },
+  {
+   "keep": "m7exht4ahzvdfnwq",
+   "drop": "j7f3jxgd57uz6bj9",
+   "auto": false,
+   "g": "g3.json#60"
+  },
+  {
+   "keep": "v3hhxp2gme48fn3p",
+   "drop": "xcujq89i8ebswwr4",
+   "auto": false,
+   "g": "g3.json#61"
+  },
+  {
+   "keep": "uax7bt888tvabajb",
+   "drop": "96a6su6avmjnjhay",
+   "auto": false,
+   "g": "g3.json#63"
+  },
+  {
+   "keep": "ea38prj8h6prtdyb",
+   "drop": "z534njvi8x9xnq6m",
+   "auto": false,
+   "g": "g3.json#64"
+  },
+  {
+   "keep": "muh9f82bfhg9f3ka",
+   "drop": "u4k29i2y2r2rzqnq",
+   "auto": false,
+   "g": "g3.json#66"
+  },
+  {
+   "keep": "pfr46y97qfcpdqrp",
+   "drop": "aqrxbvgmuaixz3sn",
+   "auto": false,
+   "g": "g3.json#67"
+  },
+  {
+   "keep": "wvp3uww5jsm93asj",
+   "drop": "62f92ywkij7egui3",
+   "auto": false,
+   "g": "g3.json#68"
+  },
+  {
+   "keep": "it8t6mwp4qf7sv4a",
+   "drop": "t3yxyrsyvk7mrigr",
+   "auto": false,
+   "g": "g3.json#70"
+  },
+  {
+   "keep": "kp7wjg3vwj34hkjd",
+   "drop": "egcnmz2mwjf6ceb5",
+   "auto": false,
+   "g": "g3.json#71"
+  },
+  {
+   "keep": "b4njmz96986zbxk5",
+   "drop": "sg5449gpttnk933u",
+   "auto": false,
+   "g": "g3.json#72"
+  },
+  {
+   "keep": "erf8q9u2frswvwt3",
+   "drop": "qtbxjnkeecmmpb9t",
+   "auto": false,
+   "g": "g3.json#73"
+  },
+  {
+   "keep": "in7sstvyitemqy8m",
+   "drop": "82tu364ypcmuqy96",
+   "auto": false,
+   "g": "g3.json#74"
+  },
+  {
+   "keep": "gzkwhnuckh2d9t76",
+   "drop": "38xmv8cfr6hj6jep",
+   "auto": false,
+   "g": "g3.json#75"
+  },
+  {
+   "keep": "8yahbbdy86b7gqjh",
+   "drop": "8czs559s3bczzeq4",
+   "auto": false,
+   "g": "g3.json#77"
+  },
+  {
+   "keep": "8ynr2qqxxjeyyfyq",
+   "drop": "fnpatggwds7zz7uu",
+   "auto": false,
+   "g": "g3.json#79"
+  },
+  {
+   "keep": "nymxzz2rngxwxpub",
+   "drop": "7b2c6v5if6dyqrqk",
+   "auto": false,
+   "g": "g3.json#80"
+  },
+  {
+   "keep": "xu8n3us68estaq5m",
+   "drop": "tdq6u3iniaqwhkha",
+   "auto": false,
+   "g": "g3.json#81"
+  },
+  {
+   "keep": "m7indgyv2p637dkd",
+   "drop": "aeitt3jrk5s2refe",
+   "auto": false,
+   "g": "g3.json#82"
+  },
+  {
+   "keep": "rwahcvkwaa4r433i",
+   "drop": "dztmd9mdebz3tgxa",
+   "auto": false,
+   "g": "g3.json#83"
+  },
+  {
+   "keep": "kz54b35bjm2a87ma",
+   "drop": "t5ufdqihe529j6mw",
+   "auto": false,
+   "g": "g3.json#84"
+  },
+  {
+   "keep": "rsvcew2mwthc9ej3",
+   "drop": "v6mr75dh6nz6wfts",
+   "auto": false,
+   "g": "g3.json#87"
+  },
+  {
+   "keep": "2xhihbpbeyzdqrfk",
+   "drop": "yf5ygn53h3w3u7n9",
+   "auto": false,
+   "g": "g3.json#91"
+  },
+  {
+   "keep": "kbbdt5kr8kqdifq7",
+   "drop": "t2x5cchkk5jcque7",
+   "auto": false,
+   "g": "g3.json#92"
+  },
+  {
+   "keep": "7bi5ev7yb8hmh7rh",
+   "drop": "fr8ey7kcmezeyghk",
+   "auto": false,
+   "g": "g3.json#93"
+  },
+  {
+   "keep": "sfabiiki8kn8jf7v",
+   "drop": "zs3dv84af5gieyw8",
+   "auto": false,
+   "g": "g3.json#97"
+  },
+  {
+   "keep": "kgk8wvefcy68n9vk",
+   "drop": "cbtw58mukc73ryyq",
+   "auto": false,
+   "g": "g3.json#107",
+   "why": "drop 쪽이 시안·컬렉션에서 쓰임"
+  },
+  {
+   "keep": "wuqa6qtt62a3phn8",
+   "drop": "k22tw37k6svs6h2q",
+   "auto": false,
+   "g": "g3.json#108",
+   "why": "drop 쪽이 시안·컬렉션에서 쓰임"
+  },
+  {
+   "keep": "e3njhbwvxpyr9w3s",
+   "drop": "bv4ueuk3pu65wnxa",
+   "auto": false,
+   "g": "g3.json#109",
+   "why": "drop 쪽이 시안·컬렉션에서 쓰임"
+  },
+  {
+   "keep": "4ay7ywe6ddxz94d6",
+   "drop": "fmridbwrvpnn7wp3",
+   "auto": false,
+   "g": "g3.json#110",
+   "why": "drop 쪽이 시안·컬렉션에서 쓰임"
+  },
+  {
+   "keep": "4xpxpna2bjnaxbzt",
+   "drop": "qfac6hpqhmhhuyak",
+   "auto": false,
+   "g": "g3.json#112",
+   "why": "drop 쪽이 시안·컬렉션에서 쓰임"
+  },
+  {
+   "keep": "b9axfucw55pcs2qq",
+   "drop": "scgshbns92xnjk3m",
+   "auto": false,
+   "g": "g3.json#113",
+   "why": "drop 쪽이 시안·컬렉션에서 쓰임"
+  },
+  {
+   "keep": "mc9bqaqd7wgyvk3v",
+   "drop": "y4p7wfk4adrv2xhq",
+   "auto": false,
+   "g": "g3.json#114",
+   "why": "drop 쪽이 시안·컬렉션에서 쓰임"
+  },
+  {
+   "keep": "yfpwjvzdznzdjsxp",
+   "drop": "jn7dsqavy4wz3zfj",
+   "auto": false,
+   "g": "g3.json#115",
+   "why": "drop 쪽이 시안·컬렉션에서 쓰임"
+  },
+  {
+   "keep": "23925e9irkww2ckg",
+   "drop": "vtjhg8c3fmxvnaj3",
+   "auto": false,
+   "g": "g3.json#116",
+   "why": "drop 쪽이 시안·컬렉션에서 쓰임"
+  },
+  {
+   "keep": "v9q2mya9yhvnaggz",
+   "drop": "w7kafg3c4t44qguj",
+   "auto": false,
+   "g": "g3.json#117",
+   "why": "drop 쪽이 시안·컬렉션에서 쓰임"
+  },
+  {
+   "keep": "c26ifzb34f5t44ta",
+   "drop": "92zmrurgk8pv7dhz",
+   "auto": false,
+   "g": "g3.json#118",
+   "why": "drop 쪽이 시안·컬렉션에서 쓰임"
+  },
+  {
+   "keep": "ptaytg2m69epbsi8",
+   "drop": "d5vzsc22kw3z9i79",
+   "auto": true,
+   "g": "g3.json#119"
+  },
+  {
+   "keep": "89y5wm9fna46bxkg",
+   "drop": "s82qrh87j79d29ni",
+   "auto": true,
+   "g": "g3.json#120"
+  },
+  {
+   "keep": "zpe5arfmv5njfsaw",
+   "drop": "rn5akfhk5hnn7eut",
+   "auto": false,
+   "g": "g3.json#121",
+   "why": "drop 쪽이 시안·컬렉션에서 쓰임"
+  },
+  {
+   "keep": "hcj82vjrymgx8rnx",
+   "drop": "ttspv9djamndqx47",
+   "auto": false,
+   "g": "g3.json#122",
+   "why": "drop 쪽이 시안·컬렉션에서 쓰임"
+  },
+  {
+   "keep": "ydapdci5rp5nd65w",
+   "drop": "psigdun827bzmhys",
+   "auto": false,
+   "g": "g3.json#123",
+   "why": "drop 쪽이 시안·컬렉션에서 쓰임"
+  },
+  {
+   "keep": "ucb993v2tckdw628",
+   "drop": "2yk4h2a2mwvz2332",
+   "auto": false,
+   "g": "g3.json#124",
+   "why": "drop 쪽이 시안·컬렉션에서 쓰임"
+  },
+  {
+   "keep": "zmvwmwdya6saq97a",
+   "drop": "sditfxm3siv66hrx",
+   "auto": false,
+   "g": "g3.json#125",
+   "why": "drop 쪽이 시안·컬렉션에서 쓰임"
+  },
+  {
+   "keep": "xw8fexbn7pt6uzvi",
+   "drop": "tjdm7479ix2rerhb",
+   "auto": false,
+   "g": "g3.json#126",
+   "why": "drop 쪽이 시안·컬렉션에서 쓰임"
+  },
+  {
+   "keep": "wxudh4arh6ftfk35",
+   "drop": "s6nsfxwiv59kibpw",
+   "auto": false,
+   "g": "g3.json#127",
+   "why": "drop 쪽이 시안·컬렉션에서 쓰임"
+  },
+  {
+   "keep": "wfb5z2cs4x5znm2h",
+   "drop": "hfbc4jk2qauu5vci",
+   "auto": false,
+   "g": "g3.json#128",
+   "why": "drop 쪽이 시안·컬렉션에서 쓰임"
+  },
+  {
+   "keep": "rjpv8pmr5i7w6zgp",
+   "drop": "n7yzatv76x67z6ph",
+   "auto": false,
+   "g": "g3.json#129",
+   "why": "drop 쪽이 시안·컬렉션에서 쓰임"
+  },
+  {
+   "keep": "muazyzfje6yp87w6",
+   "drop": "ju34pgku2k8fqf5s",
+   "auto": false,
+   "g": "g3.json#130",
+   "why": "drop 쪽이 시안·컬렉션에서 쓰임"
+  },
+  {
+   "keep": "5btxvxma434rntcp",
+   "drop": "frdbgnkw8yz7dqbn",
+   "auto": false,
+   "g": "g3.json#131",
+   "why": "drop 쪽이 시안·컬렉션에서 쓰임"
+  },
+  {
+   "keep": "63ifkavzrayrqmnj",
+   "drop": "fgvmmayju85z4qaj",
+   "auto": true,
+   "g": "g3.json#132"
+  },
+  {
+   "keep": "8p824rpmgb23wjue",
+   "drop": "zeq3huswdeqa7diu",
+   "auto": true,
+   "g": "g3.json#133"
+  },
+  {
+   "keep": "zayau74bb6tibycw",
+   "drop": "wkj27uf2vnrdgcx4",
+   "auto": true,
+   "g": "g3.json#134"
+  },
+  {
+   "keep": "wg2aqzgdba6jzevx",
+   "drop": "ftdtz4pg9jkpbaaf",
+   "auto": false,
+   "g": "g3.json#135",
+   "why": "drop 쪽이 시안·컬렉션에서 쓰임"
+  },
+  {
+   "keep": "7qbjjd4mp46kjfvg",
+   "drop": "gwbcubha9yc3y98u",
+   "auto": true,
+   "g": "g3.json#136"
+  },
+  {
+   "keep": "w2vecrnjj5c28v6v",
+   "drop": "jh22nnpqf8idik7q",
+   "auto": false,
+   "g": "g3.json#137",
+   "why": "drop 쪽이 시안·컬렉션에서 쓰임"
+  },
+  {
+   "keep": "h36jtgtwqz8zb2iq",
+   "drop": "jb6mbs7umep8fpga",
+   "auto": true,
+   "g": "g3.json#138"
+  },
+  {
+   "keep": "m4gyamn4gjiivef2",
+   "drop": "ff7pq83gs6uz3fm8",
+   "auto": true,
+   "g": "g3.json#139"
+  },
+  {
+   "keep": "dfzpa7agpiup43sa",
+   "drop": "nthx8fikm6c4r69c",
+   "auto": false,
+   "g": "g3.json#140",
+   "why": "drop 쪽이 시안·컬렉션에서 쓰임"
+  },
+  {
+   "keep": "edwwd45sxcqp4u5k",
+   "drop": "pkh78db2ghfudx7j",
+   "auto": false,
+   "g": "g3.json#142",
+   "why": "drop 쪽이 시안·컬렉션에서 쓰임"
+  },
+  {
+   "keep": "9qmv55u4zncewnsq",
+   "drop": "wfg7y68u5ar7puuh",
+   "auto": true,
+   "g": "g3.json#143"
+  },
+  {
+   "keep": "kqccsynmr2s4a75d",
+   "drop": "ey2pd7pp8xcvdjsr",
+   "auto": false,
+   "g": "g3.json#144",
+   "why": "drop 쪽이 시안·컬렉션에서 쓰임"
+  },
+  {
+   "keep": "t7wxcdpx93zqdkk7",
+   "drop": "6smv8gw8rpakx639",
+   "auto": true,
+   "g": "g3.json#145"
+  },
+  {
+   "keep": "sfxbwbkkxr8kcqcm",
+   "drop": "3v9sr3f5s2cmfew7",
+   "auto": false,
+   "g": "g3.json#146",
+   "why": "drop 쪽이 시안·컬렉션에서 쓰임"
+  },
+  {
+   "keep": "7yr3bc86arputnuk",
+   "drop": "75ybyv2quvjdth43",
+   "auto": false,
+   "g": "g3.json#147",
+   "why": "drop 쪽이 시안·컬렉션에서 쓰임"
+  },
+  {
+   "keep": "uzyj2kg66i4w6ty6",
+   "drop": "8mgsqe2havqu47hp",
+   "auto": false,
+   "g": "g3.json#148",
+   "why": "drop 쪽이 시안·컬렉션에서 쓰임"
+  },
+  {
+   "keep": "76hm4vpua62pr797",
+   "drop": "bbhgrb9zm954pk83",
+   "auto": false,
+   "g": "g3.json#149",
+   "why": "drop 쪽이 시안·컬렉션에서 쓰임"
+  },
+  {
+   "keep": "gcj7vnqemj4rkwcr",
+   "drop": "ve57rnrhzqae823e",
+   "auto": true,
+   "g": "g3.json#150"
+  },
+  {
+   "keep": "xyaqvekc3kn3msy4",
+   "drop": "a8nbniqt3iff74rz",
+   "auto": false,
+   "g": "g3.json#151",
+   "why": "drop 쪽이 시안·컬렉션에서 쓰임"
+  },
+  {
+   "keep": "wxfrhux4c3k6iyr2",
+   "drop": "nvkfd9bpqejd9ih4",
+   "auto": false,
+   "g": "g3.json#152",
+   "why": "drop 쪽이 시안·컬렉션에서 쓰임"
+  },
+  {
+   "keep": "tjttzsgn3yabycvn",
+   "drop": "sd2na6mniu3m5zb7",
+   "auto": false,
+   "g": "g3.json#153",
+   "why": "drop 쪽이 시안·컬렉션에서 쓰임"
+  },
+  {
+   "keep": "73srmq49zr6fccuv",
+   "drop": "yuw58rvnu6fqdb5c",
+   "auto": false,
+   "g": "g3.json#154",
+   "why": "drop 쪽이 시안·컬렉션에서 쓰임"
+  },
+  {
+   "keep": "7z752ixdgyvc3dyc",
+   "drop": "ukd9qtdr9hf8fxqc",
+   "auto": true,
+   "g": "g3.json#155"
+  },
+  {
+   "keep": "8wda88tdec6bfjb7",
+   "drop": "b2nwhpdecxu3jd4g",
+   "auto": true,
+   "g": "g3.json#156"
+  },
+  {
+   "keep": "zgqt437s5sg8k5aa",
+   "drop": "tuc9um5pmetjkb89",
+   "auto": false,
+   "g": "g3.json#157",
+   "why": "drop 쪽이 시안·컬렉션에서 쓰임"
+  },
+  {
+   "keep": "evydqn8f9izia8yj",
+   "drop": "4qx9gcca7tp3w49j",
+   "auto": true,
+   "g": "g3.json#158"
+  },
+  {
+   "keep": "7hmf96eutib6hwdd",
+   "drop": "5jzcdxdghngsqdst",
+   "auto": false,
+   "g": "g3.json#159",
+   "why": "drop 쪽이 시안·컬렉션에서 쓰임"
+  },
+  {
+   "keep": "2ck3ic27ubdb95mm",
+   "drop": "yr3gx2ncrej62yut",
+   "auto": false,
+   "g": "g3.json#160",
+   "why": "drop 쪽이 시안·컬렉션에서 쓰임"
+  },
+  {
+   "keep": "bj844s3ykjxy23yv",
+   "drop": "havn8pxgun3y9tch",
+   "auto": true,
+   "g": "g3.json#161"
+  },
+  {
+   "keep": "3nqy3ifz5wwpaitb",
+   "drop": "4iuardp7a8pfv2p2",
+   "auto": false,
+   "g": "g3.json#163",
+   "why": "drop 쪽이 시안·컬렉션에서 쓰임"
+  },
+  {
+   "keep": "pbi4ep6zw5g282kc",
+   "drop": "5i5eed5unbyhg35x",
+   "auto": true,
+   "g": "g3.json#164"
+  },
+  {
+   "keep": "8sbijvmz2fffuvrr",
+   "drop": "mb7j9qvs7jnvwi29",
+   "auto": true,
+   "g": "g3.json#165"
+  },
+  {
+   "keep": "8fksn26fqyk47dbf",
+   "drop": "ym86rp4vp3yumzwv",
+   "auto": true,
+   "g": "g3.json#166"
+  },
+  {
+   "keep": "vfkye83v56xkhcyv",
+   "drop": "qb5qdbirs9fcu852",
+   "auto": false,
+   "g": "g3.json#167",
+   "why": "drop 쪽이 시안·컬렉션에서 쓰임"
+  },
+  {
+   "keep": "hnui9ytw55xn2caf",
+   "drop": "ty2tid96n4ci66ni",
+   "auto": false,
+   "g": "g3.json#168",
+   "why": "drop 쪽이 시안·컬렉션에서 쓰임"
+  },
+  {
+   "keep": "tu7nt7g3sex3n6at",
+   "drop": "zhebz7xaynuxvdv8",
+   "auto": false,
+   "g": "g3.json#169",
+   "why": "drop 쪽이 시안·컬렉션에서 쓰임"
+  },
+  {
+   "keep": "6d8kqisu6uanqu8a",
+   "drop": "zcpcxfwgw84knruw",
+   "auto": false,
+   "g": "g6.json#4"
+  },
+  {
+   "keep": "bktiqz9sttk52pmd",
+   "drop": "ce9age9vxmkkf42g",
+   "auto": false,
+   "g": "g6.json#5"
+  },
+  {
+   "keep": "2mc29qgrnvwahsvg",
+   "drop": "6gzshyrmetgcxi3c",
+   "auto": false,
+   "g": "g6.json#27"
+  },
+  {
+   "keep": "ye9c9gyicamd5ekb",
+   "drop": "vcy3uuzxyrbg39ru",
+   "auto": false,
+   "g": "g6.json#28"
+  },
+  {
+   "keep": "9j4yhnyu7uq98m2q",
+   "drop": "56rfgem6z9ncruht",
+   "auto": false,
+   "g": "g6.json#30"
+  },
+  {
+   "keep": "dgrkd7ma4cmx7dq5",
+   "drop": "m4m823rp3idfnq6s",
+   "auto": false,
+   "g": "g6.json#31"
+  },
+  {
+   "keep": "q5q4qfq4834ns4r7",
+   "drop": "kvwezrkcrjcp2ymr",
+   "auto": false,
+   "g": "g6.json#34"
+  },
+  {
+   "keep": "8q8wzyp5zsf4rmtv",
+   "drop": "na2ycmdegtyuddhq",
+   "auto": false,
+   "g": "g6.json#52"
+  },
+  {
+   "keep": "y9xs9eu7v6dcdfkj",
+   "drop": "q3rvtjmf7y7yhwe9",
+   "auto": false,
+   "g": "g6.json#63"
+  },
+  {
+   "keep": "fctexj262kbs44vz",
+   "drop": "uwsqzkz3ngzqy9k3",
+   "auto": false,
+   "g": "g6.json#67"
+  },
+  {
+   "keep": "w6fu6g2twq4ye6xs",
+   "drop": "cmeqbmf4a59a6nxb",
+   "auto": false,
+   "g": "g6.json#75"
+  },
+  {
+   "keep": "cjcg6d3czrcibts8",
+   "drop": "tjt2n5wuj65an3td",
+   "auto": false,
+   "g": "g6.json#77"
+  },
+  {
+   "keep": "trrt769fdxmwsa5d",
+   "drop": "fwagi23zbebsxprf",
+   "auto": false,
+   "g": "g6.json#81"
+  },
+  {
+   "keep": "rmtm6viydtvwdn25",
+   "drop": "tg2ymfytfiurdewu",
+   "auto": false,
+   "g": "g6.json#83"
+  },
+  {
+   "keep": "x8ycmxrayxqsz6v2",
+   "drop": "2eni2j5n5xk9zusn",
+   "auto": false,
+   "g": "g6.json#85"
+  },
+  {
+   "keep": "x86kpp7fc5w247e3",
+   "drop": "8x8cjtn7n7d9bery",
+   "auto": false,
+   "g": "g6.json#86"
+  },
+  {
+   "keep": "q78rn2jsk3cbneij",
+   "drop": "nra83rgsksqvqykd",
+   "auto": false,
+   "g": "g6.json#106"
+  },
+  {
+   "keep": "e8aqcb4feh8ncriz",
+   "drop": "mf4zejri6gngxndg",
+   "auto": false,
+   "g": "g6.json#107"
+  },
+  {
+   "keep": "cwsf5z5ayfqf83kp",
+   "drop": "pfq4q57gnwt39tr3",
+   "auto": false,
+   "g": "g6.json#108"
+  },
+  {
+   "keep": "6e94j9i82p7zfzrd",
+   "drop": "xxfkbqfrdt7iwnvz",
+   "auto": false,
+   "g": "g6.json#109"
+  },
+  {
+   "keep": "gzurwtcwty9b3sy3",
+   "drop": "q8b8kuyzdrgymzn5",
+   "auto": false,
+   "g": "g6.json#112"
+  },
+  {
+   "keep": "jk9w2wv45ey9eu23",
+   "drop": "vxwyxz7z23hyi6ci",
+   "auto": false,
+   "g": "g6.json#128",
+   "why": "drop 쪽이 시안·컬렉션에서 쓰임"
+  },
+  {
+   "keep": "vuffepqms44svzg3",
+   "drop": "fc97h6wgi4mqczj8",
+   "auto": false,
+   "g": "g6.json#129",
+   "why": "drop 쪽이 시안·컬렉션에서 쓰임"
+  },
+  {
+   "keep": "vfdnf7ki2eg8sgyc",
+   "drop": "tudrphpn557i8izi",
+   "auto": true,
+   "g": "g6.json#131"
+  }
+ ],
+ "skipped_both_referenced": [
+  {
+   "keep": "vns8v2pstcsmfzqy",
+   "drop": "2vn6ivgvgx8a8bwn",
+   "auto": true,
+   "g": "g3.json#111"
+  },
+  {
+   "keep": "e7z9fh2fmn7gheh6",
+   "drop": "fvcrfm79kgv84htf",
+   "auto": true,
+   "g": "g3.json#141"
+  }
+ ]
+}

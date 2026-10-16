@@ -21,7 +21,7 @@ ICON_SET = "icon-flat-blue-glass"   # 세로 제안서 본문과 같은 세트 �
 
 # ───────────────────────── 테마(파랑 기업 덱) — 색은 여기 한 곳
 THEME = {"blue": "#1F4FFF", "blue2": "#3D7BFF", "sky": "#DCE6FF", "navy": "#050B24", "navy2": "#0B1A4A",
-         "ink": "#0B1324", "body": "#3E4A60", "muted": "#7A8499", "line": "#E2E7F1", "paper": "#F3F6FC"}
+         "ink": "#0B1324", "body": "#3E4A60", "muted": "#7A8499", "line": "#DCE6FF", "paper": "#F3F6FC"}   # line = 톤 옅은색(BLUE_KEYS 라 toned 로 바뀜) — 구분선이 바탕 계열이어야(사용자 2026-10-16, 4테마 공통)
 
 # 톤 — 세로 제안서처럼 색만 고른다(opts.ctone, 사용자 2026-10-16 "세로제안서처럼 톤을 선택할 수 있게").
 # 디자인은 파랑(blue)으로 짜 두고, 그 색 값들을 톤 색으로 바꿔 끼운다(BLUE_KEYS 순서 = 각 톤 값 순서).
@@ -202,9 +202,9 @@ CSS_C = """
 .card{border:0;background:#fff;box-shadow:0 6px 24px -14px rgba(31,79,255,.25);border-radius:14px}
 .chip{border:1px solid #DCE6FF;background:#fff;border-radius:10px}
 .eb{background:var(--blue);color:#fff;padding:7px 16px 6px;border-radius:6px;font-size:18px;letter-spacing:.06em}
-.h{letter-spacing:-0.045em;padding-left:28px;border-left:10px solid var(--blue)}
+.h{letter-spacing:-0.045em;padding-left:28px;position:relative}   /* 세로 바는 렌더 때 글 줄 실측 범위로(C_BAR_JS) */
 .blue .eb{background:#fff;color:var(--blue)}
-.blue .h{color:#fff;border-left-color:#fff}
+.blue .h{color:#fff}
 .blue em{color:#fff;opacity:.75}
 .blue .sub{color:rgba(255,255,255,.8)}
 .blue .tag,.blue .pg{color:rgba(255,255,255,.6)}
@@ -216,6 +216,51 @@ GLOW_C_LIGHT = "<div class='deco' style=\"background:#fff\"></div>"
 # 면 규칙(사용자 2026-10-16 "여백은 규칙으로 정해 일정하게"): 안쪽 여백 PAD 네 방향 같음 · 모서리 PAD_R · 색·투명도 하나. 면의 크기는 손으로 적지 않고
 # 구역(data-zone) 요소들의 실측 외곽으로 렌더 때 잰다(c_pad_js) — 그래서 어떤 레이아웃이든 여백이 정확히 같다
 PAD, PAD_R = 40, 24
+# 카드 안 글 세로 중심 검사 — .card-v 카드마다 안에 든 글 요소 외곽의 위·아래 여백 차(px). 2 넘으면 어긋남
+CARD_FIX_JS = """
+() => {
+  for (const c of document.querySelectorAll('.card-v')) {
+    const cb = c.getBoundingClientRect(); const els = []; let t = 1e9, b = -1e9;
+    for (const el of document.querySelectorAll('[data-x=t]')) { const r = el.getBoundingClientRect();
+      if (r.left >= cb.left && r.right <= cb.right && r.top >= cb.top && r.bottom <= cb.bottom) {
+        const rg = document.createRange(); rg.selectNodeContents(el); const rs = [...rg.getClientRects()]; if (!rs.length) continue;
+        els.push(el); t = Math.min(t, ...rs.map(x => x.top)); b = Math.max(b, ...rs.map(x => x.bottom)); } }
+    if (!els.length) continue;
+    const dy = ((cb.top + cb.bottom) / 2) - ((t + b) / 2);
+    for (const el of els) el.style.top = (parseFloat(el.style.top) + dy) + 'px';
+  }
+}
+"""
+CARD_JS = """
+() => {
+  const out = [];
+  for (const c of document.querySelectorAll('.card-v')) {
+    const cb = c.getBoundingClientRect(); let t = 1e9, b = -1e9;
+    for (const el of document.querySelectorAll('[data-x=t]')) { const r = el.getBoundingClientRect();
+      if (r.left >= cb.left && r.right <= cb.right && r.top >= cb.top && r.bottom <= cb.bottom) {
+        const rg = document.createRange(); rg.selectNodeContents(el); const rs = [...rg.getClientRects()]; if (!rs.length) continue;
+        t = Math.min(t, ...rs.map(x => x.top)); b = Math.max(b, ...rs.map(x => x.bottom)); } }
+    if (t < 1e9) out.push(Math.round(((t - cb.top) - (cb.bottom - b)) * 10) / 10);
+  }
+  return out;
+}
+"""
+BAR_W = 10   # 테마 C 제목 세로 바 두께 — 높이는 글 줄 실측(첫 줄 위 ~ 마지막 줄 아래), 사용자 2026-10-16 "라인 높이가 글 높이와 같아야"
+C_BAR_JS = """
+(w) => {
+  for (const h of document.querySelectorAll('.h')) {
+    const r = document.createRange(); r.selectNodeContents(h);
+    const rects = [...r.getClientRects()].filter(x => x.width > 0 && x.height > 0); if (!rects.length) continue;
+    const fs = parseFloat(getComputedStyle(h).fontSize), lh = parseFloat(getComputedStyle(h).lineHeight) || fs * 1.2;
+    const trim = (lh - fs) / 2 + fs * 0.08;   // 줄 상자에서 글리프 위·아래 빈 띠를 뺀다
+    const top = Math.min(...rects.map(x => x.top)) + trim, bot = Math.max(...rects.map(x => x.bottom)) - trim;
+    const hb = h.getBoundingClientRect(), bg = getComputedStyle(h).color;
+    const d = document.createElement('div'); d.className = 'deco';
+    d.style.cssText = `left:${hb.left}px;top:${top}px;width:${w}px;height:${bot - top}px;right:auto;bottom:auto;border-radius:2px;background:${h.closest('.blue') ? '#fff' : 'var(--blue)'}`;
+    h.parentElement.appendChild(d);
+  }
+}
+"""
 C_PAD_JS = """
 ({ pad, r }) => {
   const els = [...document.querySelectorAll('[data-zone]')]; if (!els.length) return null;
@@ -229,6 +274,7 @@ C_PAD_JS = """
 """
 
 
+C_LINE = [("background:var(--line)", "background:#BFD0FF")]   # 크림 면 위 구분선 — 면 색(#DCE6FF .45)과 같은 계열 한 단계 진하게(BLUE_KEYS 색이라 toned 로 톤 색이 된다)
 C_INK = [("color:var(--blue2)", "color:rgba(255,255,255,.45)"), ("color:var(--blue)", "color:#fff"), ("color:var(--ink)", "color:#fff"),
          ("color:var(--body)", "color:rgba(255,255,255,.82)"), ("color:var(--muted)", "color:rgba(255,255,255,.6)"), ("color:#BFD0FF", "color:rgba(255,255,255,.7)"),
          ("background:var(--line)", "background:rgba(255,255,255,.3)"), ("background:var(--blue2)", "background:rgba(255,255,255,.7)"),
@@ -275,7 +321,7 @@ def T(text, cls="", style="", rich=True, fit=False, raw=False, zone=False):
 
 
 def R(style, cls="card", zone=False):
-    return f'<div data-x="r"{" data-zone=1" if zone else ""} class="{cls}" style="{style}"></div>'
+    return f'<div data-x="r"{" data-zone=1" if zone else ""} class="{cls if cls != "card-v" else "card card-v"}" style="{style}"></div>'
 
 
 def I(src, style):
@@ -499,7 +545,7 @@ def decor(kind, n, has_img=False, theme="a"):
     alt = n % 3
     if theme == "c":   # 솔리드 컬러 — 흰색 선·점만 옅게(dark=True 계열이 toned 로 톤의 밝은 색이 된다)
         if kind == "cover":
-            return ""   # 당근 표지처럼 글과 로고만
+            return D_geo(1440, 540, 330, dark=True, op=.45)   # 오른쪽 빈 자리에 흰 와이어 구 하나(사용자 2026-10-16 "표지 우측에 뭐라도")
         if kind == "section":
             return [D_geo(1500, 540, 300, dark=True, op=.45), D_arcs(1500, 540, 330, seed=n, dark=True, op=.4), D_netglobe(1500, 540, 300, seed=n, dark=True, op=.4)][alt]
         if kind == "contact":
@@ -580,7 +626,6 @@ def L_statement(d):
     return "light", (GLOW_LIGHT + _bigword(d.get("word"))
                      + T(d.get("eyebrow"), "eb", "left:120px;top:250px", rich=False)
                      + T(d.get("headline"), "h", "left:120px;top:300px;width:1680px;height:270px;font-size:96px;line-height:1.16;letter-spacing:-0.05em", fit=True)
-                     + R("left:124px;top:610px;width:120px;height:8px;background:var(--blue);border:0;border-radius:4px;box-shadow:none")
                      + T(d.get("sub"), "sub", "left:124px;top:660px;width:1300px;height:150px;font-size:31px", rich=False, fit=True))
 
 
@@ -711,7 +756,7 @@ def L_clients(d):
         x = 120 + (i % cols) * (cw + gap)
         y = 400 + (i // cols) * (chh + gap)
         out += R(f"left:{x}px;top:{y}px;width:{cw}px;height:{chh}px", "chip")
-        out += T(it, "", f"left:{x + 16}px;top:{y + chh / 2 - 19}px;width:{cw - 32}px;height:40px;font-size:28px;font-weight:800;text-align:center;letter-spacing:-0.03em;white-space:nowrap", rich=False, fit=True)
+        out += T(it, "", f"left:{x + 16}px;top:{y}px;width:{cw - 32}px;height:{chh}px;line-height:{chh + 2}px;font-size:28px;font-weight:800;text-align:center;letter-spacing:-0.03em;white-space:nowrap", rich=False)
     return "light", out
 
 
@@ -750,9 +795,10 @@ def L_contact(d):
         cw = (1680 - 24 * (len(offs) - 1)) // len(offs)
         for i, o in enumerate(offs):
             x = 120 + i * (cw + 24)
-            out += R(f"left:{x}px;top:780px;width:{cw}px;height:170px;background:rgba(255,255,255,.06);border:2px solid rgba(255,255,255,.14);border-radius:24px;box-shadow:none")
-            out += T(o.get("name"), "", f"left:{x + 32}px;top:810px;font-size:26px;font-weight:900;color:#fff", rich=False)
-            out += T(o.get("addr"), "", f"left:{x + 32}px;top:860px;width:{cw - 64}px;height:72px;font-size:21px;line-height:1.5;color:rgba(255,255,255,.7)", rich=False, fit=True)
+            # 카드 안 글 묶음(이름 31 + 간격 12 + 주소 1줄 32 = 75)은 카드 세로 중심에 — 위·아래 여백 같게(사용자 2026-10-16 "카드 내 세로 중심", 검사 CARD_JS)
+            out += R(f"left:{x}px;top:780px;width:{cw}px;height:170px;background:rgba(255,255,255,.06);border:2px solid rgba(255,255,255,.14);border-radius:24px;box-shadow:none", cls="card-v")
+            out += T(o.get("name"), "", f"left:{x + 32}px;top:{780 + (170 - 107) / 2:.0f}px;font-size:26px;line-height:31px;font-weight:900;color:#fff", rich=False)
+            out += T(o.get("addr"), "", f"left:{x + 32}px;top:{780 + (170 - 107) / 2 + 43:.0f}px;width:{cw - 64}px;height:64px;font-size:21px;line-height:32px;color:rgba(255,255,255,.7)", rich=False, fit=True)
     return "dark", out
 
 
@@ -803,12 +849,12 @@ def V_pillars_list(d):
     rh = 170
     for i, it in enumerate(items):
         y = 200 + i * rh
-        out += R(f"left:860px;top:{y}px;width:940px;height:1px;background:var(--line);border:0;border-radius:0;box-shadow:none")
+        if i:
+            out += R(f"left:860px;top:{y}px;width:940px;height:1px;background:var(--line);border:0;border-radius:0;box-shadow:none")
         out += T(f"{i + 1:02d}", "", f"left:860px;top:{y + 30}px;font-size:26px;font-weight:800;color:var(--blue)", rich=False)
         out += T(it.get("title"), "", f"left:960px;top:{y + 24}px;width:480px;height:80px;font-size:34px;font-weight:800;line-height:1.2;letter-spacing:-0.035em", rich=False, fit=True)
         out += T(it.get("desc"), "", f"left:960px;top:{y + 100}px;width:560px;height:56px;font-size:21px;line-height:1.5;color:var(--body)", rich=False, fit=True)
         out += I(it.get("_img"), f"left:1680px;top:{y + 30}px;width:110px;height:110px")
-    out += R(f"left:860px;top:{200 + len(items) * rh}px;width:940px;height:1px;background:var(--line);border:0;border-radius:0;box-shadow:none")
     return "light", out
 
 
@@ -887,7 +933,7 @@ def V_clients_pills(d):
     for i, it in enumerate(items):
         x, y = 120 + (i % cols) * (cw + gap), 400 + (i // cols) * (chh + gap)
         out += R(f"left:{x}px;top:{y}px;width:{cw}px;height:{chh}px;border-radius:{chh // 2}px", "chip", zone=True)
-        out += T(it, "", f"left:{x + 16}px;top:{y + chh / 2 - 18}px;width:{cw - 32}px;height:36px;font-size:26px;font-weight:800;text-align:center;color:var(--blue);letter-spacing:-0.03em;white-space:nowrap", rich=False, fit=True)
+        out += T(it, "", f"left:{x + 16}px;top:{y}px;width:{cw - 32}px;height:{chh}px;line-height:{chh + 2}px;font-size:26px;font-weight:800;text-align:center;color:var(--blue);letter-spacing:-0.03em;white-space:nowrap", rich=False)
     return "light", out
 
 
@@ -899,7 +945,8 @@ def V_awards_big(d):
     rh = min(88, 680 // max(1, len(items)))
     for i, it in enumerate(items):
         y = 200 + i * rh
-        out += R(f"left:860px;top:{y + rh - 1}px;width:940px;height:1px;background:var(--line);border:0;border-radius:0;box-shadow:none", zone=True)
+        if i < len(items) - 1:   # 구분선은 행 사이에만(사용자 2026-10-16 "마지막 행 아래 라인 없어야")
+            out += R(f"left:860px;top:{y + rh - 1}px;width:940px;height:1px;background:var(--line);border:0;border-radius:0;box-shadow:none", zone=True)
         out += T(it.get("year"), "", f"left:860px;top:{y + rh / 2 - 24}px;font-size:40px;font-weight:900;color:var(--blue);letter-spacing:-0.03em", rich=False, zone=True)
         out += T(it.get("text"), "", f"left:1010px;top:{y + rh / 2 - 17}px;width:790px;height:34px;font-size:25px;font-weight:600;white-space:nowrap", rich=False, fit=True, zone=True)
     return "light", out
@@ -917,7 +964,8 @@ def V_showcase_panel(d):
     rh = min(180, 740 // max(1, len(items)))
     for i, it in enumerate(items):
         y = 180 + i * rh
-        out += R(f"left:980px;top:{y + rh - 1}px;width:820px;height:1px;background:var(--line);border:0;border-radius:0;box-shadow:none", zone=True)
+        if i < len(items) - 1:
+            out += R(f"left:980px;top:{y + rh - 1}px;width:820px;height:1px;background:var(--line);border:0;border-radius:0;box-shadow:none", zone=True)
         out += T(f"{i + 1:02d}", "", f"left:980px;top:{y + 30}px;font-size:26px;font-weight:900;color:var(--blue)", rich=False, zone=True)
         out += T(it.get("title"), "", f"left:1070px;top:{y + 24}px;width:700px;height:80px;font-size:36px;font-weight:900;line-height:1.2;letter-spacing:-0.04em", rich=False, fit=True, zone=True)
         out += T(it.get("desc"), "", f"left:1070px;top:{y + 106}px;width:700px;height:34px;font-size:22px;color:var(--muted);white-space:nowrap", rich=False, fit=True, zone=True)
@@ -974,8 +1022,10 @@ def slide_html(d, n, total, ctone="blue", ctheme="a"):
         for x, y in C_INK:
             body = body.replace(x, y)
         tone = "blue"
-    elif ctheme == "c":   # 본문 — 흰 바탕 + 내용 범위에만 옅은 크림 면(당근 본문)
+    elif ctheme == "c":   # 본문 — 흰 바탕 + 내용 범위에만 옅은 크림 면(당근 본문). 면 위 선은 면 색보다 한 단계 진하게(공통 선 색은 면과 같아 안 보인다)
         body = body.replace(GLOW_LIGHT, GLOW_C_LIGHT, 1)
+        for x, y in C_LINE:
+            body = body.replace(x, y)
     elif ctheme == "d" and tone == "dark" and d.get("kind") == "section":   # 테마 D 간지는 주색 전면(흰 글자 그대로)
         body = body.replace(GLOW_DARK, GLOW_BLUE, 1).replace("color:var(--blue2)", "color:rgba(255,255,255,.38)")   # 큰 장 번호가 주색 바탕에 묻히지 않게
         tone = "blue"
@@ -1085,9 +1135,11 @@ def render(slides, out_dir, log=print, ctone="blue", ctheme="a"):
             pg.goto("file:///" + hp.replace("\\", "/"))
             pg.evaluate("document.fonts.ready")
             pg.wait_for_load_state("networkidle")
-            if ctheme == "c" and d.get("_tone") == "light":
-                padbox = pg.evaluate(C_PAD_JS, {"pad": PAD, "r": PAD_R})
-                d["_padbox"] = padbox
+            pg.evaluate(CARD_FIX_JS)   # 카드 안 글 묶음을 실측해 세로 중심으로(모든 테마)
+            if ctheme == "c":
+                pg.evaluate(C_BAR_JS, BAR_W)
+                if d.get("_tone") == "light":
+                    d["_padbox"] = pg.evaluate(C_PAD_JS, {"pad": PAD, "r": PAD_R})
             boxes = pg.evaluate(MEASURE_JS)
             prev = os.path.join(out_dir, f"s{i:02d}.png")
             pg.screenshot(path=prev)

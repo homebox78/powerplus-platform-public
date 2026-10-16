@@ -156,31 +156,42 @@ CSS_B = """
 """
 GLOW_B = ("<div class='deco' style=\"background:radial-gradient(1300px 900px at 105% -10%,rgba(61,123,255,.16),transparent 62%),"
           "radial-gradient(900px 700px at -5% 110%,rgba(31,79,255,.07),transparent 60%),#F7F9FE\"></div>")
-# 테마 C — 매거진(컬리 회사소개서 결): 크림 바탕, 가는 헤어라인, 여백 많은 편집. 꼬리표는 작은 대문자 + 짧은 밑줄, 카드는 헤어라인 사각, 제목은 조금 가늘게
+# 테마 C — 솔리드 컬러(당근 소개서 결, 사용자 2026-10-16 "단색 바탕에 흰색 글씨" + 당근 pdf 참조): 표지·간지·비전·연락처는 주색 전면 + 흰 글자,
+# 본문은 흰 바탕에 주색을 옅게 희석한 크림 면(#FFF7E5 결 = sky 를 더 옅게)·둥근 알약·굵은 주색 세로 바 머리글. 카드는 흰색, 선은 옅은 주색
 CSS_C = """
-.s{background:#FAF7F2}
-.card{border:1px solid #E4DED3;background:#FFFDF9;box-shadow:none;border-radius:8px}
-.chip{border:1px solid #E4DED3;background:#FFFDF9;border-radius:6px}
-.eb{font-weight:700;font-size:19px;letter-spacing:.24em;color:var(--blue);padding-bottom:10px;border-bottom:2px solid var(--blue)}
-.h{font-weight:700;letter-spacing:-0.035em;line-height:1.22}
-.sub{color:#5B5650}
-.tag,.pg{color:#A39D93}
+.card{border:0;background:#fff;box-shadow:0 6px 24px -14px rgba(31,79,255,.25);border-radius:14px}
+.chip{border:1px solid #DCE6FF;background:#fff;border-radius:10px}
+.eb{background:var(--blue);color:#fff;padding:7px 16px 6px;border-radius:6px;font-size:18px;letter-spacing:.06em}
+.h{letter-spacing:-0.045em;padding-left:28px;border-left:10px solid var(--blue)}
+.blue .eb{background:#fff;color:var(--blue)}
+.blue .h{color:#fff;border-left-color:#fff}
+.blue em{color:#fff;opacity:.75}
+.blue .sub{color:rgba(255,255,255,.8)}
+.blue .tag,.blue .pg{color:rgba(255,255,255,.6)}
 """
-GLOW_C = ("<div class='deco' style=\"background:radial-gradient(900px 700px at 100% 0%,rgba(31,79,255,.08),transparent 60%),#FAF7F2\"></div>")
+GLOW_C = ("<div class='deco' style=\"background:#1F4FFF\"></div>")   # 단색 전면
+GLOW_C_LIGHT = ("<div class='deco' style=\"background:#fff\"></div>"
+                "<div class='deco' style=\"left:120px;top:400px;width:1680px;height:560px;right:auto;bottom:auto;border-radius:20px;background:#DCE6FF;opacity:.45\"></div>")   # 본문 아래 크림 면
+C_INK = [("color:var(--blue2)", "color:rgba(255,255,255,.45)"), ("color:var(--blue)", "color:#fff"), ("color:var(--ink)", "color:#fff"),
+         ("color:var(--body)", "color:rgba(255,255,255,.82)"), ("color:var(--muted)", "color:rgba(255,255,255,.6)"), ("color:#BFD0FF", "color:rgba(255,255,255,.7)"),
+         ("background:var(--line)", "background:rgba(255,255,255,.3)"), ("background:var(--blue2)", "background:rgba(255,255,255,.7)"),
+         ("background:#fff;border:2px solid rgba(255,255,255,.14)", "background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.3)")]
 # 테마 D — 프렌들리 라운드(당근 회사소개서 결): 흰 바탕에 파스텔 둥근 면, 아주 둥근 파스텔 카드, 파스텔 칩 꼬리표, 친근한 굵은 제목. 간지는 주색 전면
 CSS_D = """
-.card{border:0;background:var(--sky);box-shadow:none;border-radius:44px}
-.chip{border:0;background:var(--sky);border-radius:999px}
+.card{border:0;background:#fff;box-shadow:0 14px 40px -18px rgba(31,79,255,.35);border-radius:36px}
+.chip{border:0;background:#fff;box-shadow:0 8px 24px -14px rgba(31,79,255,.35);border-radius:999px}
 .eb{background:var(--sky);color:var(--blue);padding:8px 18px 7px;border-radius:999px;font-size:19px;letter-spacing:.08em}
 .blue .eb{background:rgba(255,255,255,.22);color:#fff}
 .h{font-weight:900;letter-spacing:-0.04em;line-height:1.14}
 """
 GLOW_D = ("<div class='deco' style=\"background:#fff\"></div>"
-          "<div class='deco' style=\"left:1500px;top:-260px;width:720px;height:720px;right:auto;bottom:auto;border-radius:50%;background:#DCE6FF;opacity:.8;mix-blend-mode:multiply\"></div>"
-          "<div class='deco' style=\"left:1360px;top:200px;width:260px;height:260px;right:auto;bottom:auto;border-radius:50%;background:#BFD0FF;opacity:.55;mix-blend-mode:multiply\"></div>")
-COMPANY_THEMES = {"a": "다크 임팩트", "b": "라이트 에디토리얼", "c": "매거진", "d": "프렌들리 라운드"}
-THEME_DEFAULT_TONE = {"a": "blue", "b": "navy", "c": "lavender", "d": "carrot"}
-LIGHT_GLOW = {"b": GLOW_B, "c": GLOW_C, "d": GLOW_D}   # 밝은 표지·간지·연락처를 쓰는 테마의 바탕
+          "<div class='deco' style=\"left:-200px;top:820px;width:2320px;height:900px;right:auto;bottom:auto;border-radius:50% 50% 0 0 / 60% 60% 0 0;"
+          "background:linear-gradient(180deg,#78AAFF 0%,#1F4FFF 70%);opacity:.9\"></div>"
+          "<div class='deco' style=\"left:900px;top:900px;width:1400px;height:700px;right:auto;bottom:auto;border-radius:50% 50% 0 0 / 70% 70% 0 0;"
+          "background:#3D7BFF;opacity:.55;mix-blend-mode:multiply\"></div>")   # 아래 주색 언덕 두 겹(겹친 자리 색 섞임)
+COMPANY_THEMES = {"a": "다크 임팩트", "b": "라이트 에디토리얼", "c": "솔리드 컬러", "d": "프렌들리 라운드"}
+THEME_DEFAULT_TONE = {"a": "blue", "b": "navy", "c": "carrot", "d": "coral"}
+LIGHT_GLOW = {"b": GLOW_B, "d": GLOW_D}   # C 는 전 쪽이 주색 전면(slide_html 에서 따로)   # 밝은 표지·간지·연락처를 쓰는 테마의 바탕
 THEME_CSS = {"b": CSS_B, "c": CSS_C, "d": CSS_D}
 
 
@@ -428,14 +439,17 @@ def decor(kind, n, has_img=False, theme="a"):
     n = 쪽 번호(같은 레이아웃이 반복되면 모양·씨앗을 바꿔 단조롭지 않게). 바탕 큰 글자(_bigword)가 있는 선언 쪽은 그것이 포인트라 더하지 않는다.
     밝은 바탕은 진한 파랑, 어두운 바탕은 밝은 파랑(dark=True). 테마 B 는 표지·간지·연락처도 밝은 바탕"""
     alt = n % 3
-    if theme == "c":   # 매거진 — 표지 오른쪽에 큰 색 면(사진 자리 느낌), 간지는 가는 원 곡선, 나머지는 아주 옅게
+    if theme == "c":   # 솔리드 컬러 — 흰색 선·점만 옅게(dark=True 계열이 toned 로 톤의 밝은 색이 된다)
         if kind == "cover":
-            return ("<div class='deco' style=\"left:1120px;top:120px;width:680px;height:840px;right:auto;bottom:auto;border-radius:16px;"
-                    "background:linear-gradient(160deg,#DCE6FF,#3D7BFF 70%,#1F4FFF)\"></div>")
+            return ""   # 당근 표지처럼 글과 로고만
         if kind == "section":
-            return D_arcs(1500, 540, 330, seed=n, op=.5) if has_img else [D_arcs(1500, 540, 330, seed=n, op=.6), D_fan(1020, 0, 900, 700, op=.5), D_geo(1500, 540, 300, mono=True, op=.5)][alt]
+            return [D_geo(1500, 540, 300, dark=True, op=.45), D_arcs(1500, 540, 330, seed=n, dark=True, op=.4), D_netglobe(1500, 540, 300, seed=n, dark=True, op=.4)][alt]
         if kind == "contact":
-            return D_fan(1100, 0, 820, 560, op=.35)
+            return D_mesh(0, 820, 1920, 260, seed=n, dark=True, op=.35)
+        if kind in ("contents", "stats", "pillars", "history", "showcase", "clients", "awards", "vision"):
+            return ""   # 본문은 글만 — 단색 소개서 결
+    if theme == "d" and kind in ("contents", "stats", "pillars", "history", "showcase", "clients", "awards", "services"):
+        return ""   # 본문은 바탕의 주색 언덕이 꾸밈(당근박스 덱 결)
     if theme == "d":   # 프렌들리 라운드 — 표지는 큰 주색 원, 간지(주색 전면)는 흰 네트워크, 연락처는 파스텔 원
         if kind == "cover":
             # 원은 반투명 + 곱하기 혼합 — 겹치는 자리에 색이 섞인다(사용자 2026-10-16 "약간 투명하게 해서 겹치는 부분의 색상이 겹치는 센스")
@@ -855,7 +869,7 @@ def V_showcase_panel(d):
 # 테마 → 레이아웃 변형. 없는 것은 기본(A 뼈대)
 VARIANTS = {
     "b": {"stats": V_stats_tiles, "history": V_history_vertical, "awards": V_awards_big},
-    "c": {"stats": V_stats_tiles, "pillars": V_pillars_list, "history": V_history_vertical, "clients": V_clients_text, "awards": V_awards_big, "showcase": V_showcase_panel},
+    "c": {"stats": V_stats_band, "pillars": V_pillars_blocks, "history": V_history_pills, "clients": V_clients_pills, "awards": V_awards_big, "showcase": V_showcase_panel},
     "d": {"stats": V_stats_band, "pillars": V_pillars_blocks, "history": V_history_pills, "clients": V_clients_pills, "showcase": V_showcase_panel},
 }
 
@@ -897,7 +911,14 @@ def slide_html(d, n, total, ctone="blue", ctheme="a"):
         d = {**{k: v for k, v in d.items() if k.startswith("_")}, "kind": "statement", "eyebrow": d.get("eyebrow") or "",
              "headline": d.get("headline") or d.get("title") or d.get("name") or "", "sub": d.get("sub") or d.get("desc") or ""}
         tone, body = L_statement(d)
-    if ctheme == "d" and tone == "dark" and d.get("kind") == "section":   # 테마 D 간지는 주색 전면(흰 글자 그대로)
+    if ctheme == "c" and tone in ("dark", "blue"):   # 테마 C — 표지·간지·비전·연락처는 주색 전면 + 흰 글자(당근 소개서 결)
+        body = body.replace(GLOW_DARK, GLOW_C, 1).replace(GLOW_BLUE, GLOW_C, 1)
+        for x, y in C_INK:
+            body = body.replace(x, y)
+        tone = "blue"
+    elif ctheme == "c":   # 본문 — 흰 바탕 + 옅은 크림 면(당근 본문)
+        body = body.replace(GLOW_LIGHT, GLOW_C_LIGHT, 1)
+    elif ctheme == "d" and tone == "dark" and d.get("kind") == "section":   # 테마 D 간지는 주색 전면(흰 글자 그대로)
         body = body.replace(GLOW_DARK, GLOW_BLUE, 1).replace("color:var(--blue2)", "color:rgba(255,255,255,.38)")   # 큰 장 번호가 주색 바탕에 묻히지 않게
         tone = "blue"
     elif ctheme in LIGHT_GLOW and tone == "dark":   # 테마 B·C·D — 어두운 쪽(표지·간지·연락처)을 밝은 바탕으로: 흰 글자는 먹색으로
@@ -910,7 +931,7 @@ def slide_html(d, n, total, ctone="blue", ctheme="a"):
         dec = decor(d.get("kind"), n, bool(d.get("_img")), ctheme)
     except Exception:
         dec = ""
-    for g in (GLOW_DARK, GLOW_LIGHT, GLOW_BLUE, GLOW_B, GLOW_C, GLOW_D):
+    for g in (GLOW_DARK, GLOW_LIGHT, GLOW_BLUE, GLOW_B, GLOW_C, GLOW_C_LIGHT, GLOW_D):
         if dec and body.startswith(g):
             body = g + dec + body[len(g):]
             break

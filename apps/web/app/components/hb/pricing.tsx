@@ -22,7 +22,7 @@ export function SaveNote({ plan, className }: { plan?: PlanRow; className?: stri
   return <p className={cn("text-sm text-ink-3", className)}><b className="font-bold text-point-ink">{save}% 할인</b> · 연간 결제 시</p>;
 }
 
-export function CheckDot({ point }: { point?: boolean }) {
+function CheckDot({ point }: { point?: boolean }) {
   return <span className={cn("flex size-5 shrink-0 items-center justify-center rounded-full", point ? "bg-point/15 text-point-ink" : "bg-ground-4")}><Check className="size-3" strokeWidth={3} aria-hidden /></span>;
 }
 

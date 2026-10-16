@@ -7,12 +7,12 @@ import { ApiError, apiFetch, postJson } from "@/lib/api";
 import { useMe } from "@/lib/auth";
 
 export type SaveType = "asset" | "gallery" | "post";
-export interface SavedIds { asset: string[]; gallery: string[]; post: string[] }
+interface SavedIds { asset: string[]; gallery: string[]; post: string[] }
 const EMPTY: SavedIds = { asset: [], gallery: [], post: [] };
 
-export const savedQuery = { queryKey: ["saved"] as const, queryFn: () => apiFetch<{ ids: SavedIds }>("/saved").then((r) => r.ids), staleTime: 30_000 };
+const savedQuery = { queryKey: ["saved"] as const, queryFn: () => apiFetch<{ ids: SavedIds }>("/saved").then((r) => r.ids), staleTime: 30_000 };
 
-export function useSaved(): SavedIds {
+function useSaved(): SavedIds {
   const { me } = useMe();
   const q = useQuery({ ...savedQuery, enabled: !!me });
   return q.data ?? EMPTY;

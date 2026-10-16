@@ -1,22 +1,12 @@
 // powerDeck API 클라이언트 — 출처: powerDeck web/src/api.ts. 플랫폼 이식(계약 §4):
 //   · 경로 /api/v1/deck, 플랫폼 세션 쿠키 + X-Requested-With: powerplus (Bearer 토큰·devRole 없음)
 //   · 응답 {data: …} 봉투를 벗겨 옛 코드에 넘긴다. 오류는 {error, code, message} → message ?? error
-//   · export 이름(token·setToken·devRole…)은 화면 코드 호환을 위해 남기되 빈 동작이다.
 export const API = "/api/v1/deck";
-
-/** [호환] 옛 Bearer 토큰 — 플랫폼은 세션 쿠키라 항상 null */
-export const token = (): string | null => null;
-/** [호환] 빈 동작 */
-export const setToken = (_t: string | null, _keep = true) => { /* 플랫폼 세션 */ };
 
 export class ApiError extends Error {
   status: number;
   constructor(msg: string, status: number) { super(msg); this.status = status; }
 }
-
-/** [호환] 옛 개발용 역할 바꿔 보기 — 플랫폼에서는 쓰지 않는다 */
-export function devRole(): string { return ""; }
-export function setDevRole(_r: "admin" | "user" | "") { /* 없음 */ }
 
 const HEADERS = { "X-Requested-With": "powerplus", Accept: "application/json" };
 
@@ -55,7 +45,7 @@ export type PinComment = { id: number; slide: number; x: number; y: number; emai
 export type JobDoc ={ id: string; name: string; size: number; created_at: string };
 export type JobFile = { kind: string; slide: number | null; name: string; size: number; ts?: number };
 export type JobEvent = { id: number; ts: string; kind: string; message: string };
-export type CheckItem = { title: string; detail?: string; slide?: number; level?: "info" | "warn" };
+type CheckItem = { title: string; detail?: string; slide?: number; level?: "info" | "warn" };
 export type Report = {
   summary?: string;
   score?: number;
@@ -91,7 +81,7 @@ export type WireBlock = { id: string; k: WireKind; x: number; y: number; w: numb
 export type PlanFront = { id: string; kind: "cover" | "toc" | "div" | "end" | "qna"; label: string; title?: string; name?: string; status?: "ok" | "failed"; error?: string;
   project?: string; tail?: string; date?: string; no?: number; desc?: string; items?: string[]; chapters?: { no: number; name: string; items: string[] }[] };
 /** 사람이 고친 표지·목차·간지 글 — 엔진이 앞장을 다시 짤 때 이것을 우선한다(id → 고친 칸) */
-export type FrontEdit = Record<string, { title?: string; project?: string; tail?: string; date?: string; name?: string; desc?: string }>;
+type FrontEdit = Record<string, { title?: string; project?: string; tail?: string; date?: string; name?: string; desc?: string }>;
 export type Front = { cover: boolean; toc: boolean; divider: boolean; ending?: boolean };
 export type Plan = { title?: string; core?: string; slides: PlanSlide[]; front?: PlanFront[]; front_edit?: FrontEdit; chapters?: { name: string; goal?: string }[];
   /** 덱 전체 점검(AI 없이) — 발표 시간 대비 장 수, 평가 항목명이 장 제목·절에 있는지, 첫 장의 발주처 수치. 엔진 fact_check 가 채운다 */
@@ -142,7 +132,7 @@ export type UploadProgress = { sent: number; total: number; speed: number; eta: 
 const RESUME_KEY = (f: File) => `pd_up_${f.name}_${f.size}_${f.lastModified}`;
 
 export type MockupMode = "plan" | "sample" | "all";
-export type UploadMeta = { title: string; note: string; pilot?: boolean; kind?: JobKind; budget_usd?: number | null; accent?: string | null; hold?: boolean;
+type UploadMeta = { title: string; note: string; pilot?: boolean; kind?: JobKind; budget_usd?: number | null; accent?: string | null; hold?: boolean;
   slides?: number; mockups?: MockupMode; sample?: number; front?: Front; style?: string; ctheme?: string; ctone?: string; purpose?: "submit" | "present" | "company"; lang?: string; font_title?: string; font_body?: string; event?: string; date?: string };
 /** 맥락 자료(RFP 등)를 작업에 붙인다 — 같은 분할 업로드, purpose=doc */
 export const uploadDoc = (file: File, jobId: string, onProgress: (p: UploadProgress) => void, signal: AbortSignal) =>

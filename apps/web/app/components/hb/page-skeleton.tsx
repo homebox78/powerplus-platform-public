@@ -31,7 +31,3 @@ export function PageSkeleton({ kind = "detail", className }: { kind?: "detail" |
   );
 }
 
-/** 목록 줄 골격 (팔레트·드롭다운 등 작은 리스트용). dark 면 어두운 배경 위 */
-export function RowsSkeleton({ n = 6, dark, className }: { n?: number; dark?: boolean; className?: string }) {
-  return <ul className={cn("flex flex-col gap-1", className)} aria-busy="true" aria-label="불러오는 중">{Array.from({ length: n }, (_, i) => <li key={i} className="flex items-center gap-3 px-2 py-2.5"><Skeleton className={cn("h-4 rounded-md", dark && "bg-white/10", i % 3 === 0 ? "w-32" : i % 3 === 1 ? "w-24" : "w-40")} /><Skeleton className={cn("ml-auto h-3 w-8 rounded-md", dark && "bg-white/10")} /></li>)}</ul>;
-}

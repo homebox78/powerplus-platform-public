@@ -25,9 +25,9 @@ import { cn } from "@/lib/utils";
 import { BrowserBar, SectionArt } from "./wire-art";
 
 // ---------------------------------------------------------------- 형
-export interface WireCol { span: number; k: string; t?: string; h?: number }
-export interface WireRow { id: string; zone: "top" | "body" | "bottom"; cols: WireCol[] }
-export interface Wire { version?: number; screen: string; org: string; title?: string; lnb: boolean; rows: WireRow[] }
+interface WireCol { span: number; k: string; t?: string; h?: number }
+interface WireRow { id: string; zone: "top" | "body" | "bottom"; cols: WireCol[] }
+interface Wire { version?: number; screen: string; org: string; title?: string; lnb: boolean; rows: WireRow[] }
 interface WireIssue { sev: "error" | "warn" | "info"; code: string; row?: number; msg: string; fix: string }
 interface WireCheck { score: number; pass: boolean; issues: WireIssue[]; stats: { rows: number; cells: number; body_rows: number } }
 interface WireOptions { screens: { id: string; label: string; desc: string; samples: number }[]; orgs: { id: string; label: string }[]; styles?: { id: string; label: string; desc: string; main_only: boolean }[]; types: { k: string; name: string; scope: string; group?: string; kit?: boolean; h?: number }[] }
@@ -46,7 +46,7 @@ const renumber = (rows: WireRow[]): WireRow[] => rows.map((r, i) => ({ ...r, id:
 // ---------------------------------------------------------------- 미리보기
 /** 끌어 옮기기 — 칸 이동(같은 줄·다른 줄·줄 사이에 새 줄), 줄 이동, 칸 폭 조절(12칸 격자에 스냅). */
 type DropTo = { row: number; index: number } | { newAt: number };
-export type WireDrag =
+type WireDrag =
   | { kind: "row"; from: number; to: number }
   | { kind: "cell"; r: number; c: number; to: DropTo }
   | { kind: "resize"; r: number; c: number; span: number; next: number | null }

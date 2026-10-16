@@ -131,4 +131,3 @@ export function ComponentArt({ id, className }: { id: string; className?: string
   );
 }
 
-export const COMPONENT_ART_IDS = Object.keys(ART);

@@ -19,20 +19,9 @@ const tagVariants = cva(
   },
 );
 
-export interface TagProps extends React.ComponentProps<"span">, VariantProps<typeof tagVariants> {}
+interface TagProps extends React.ComponentProps<"span">, VariantProps<typeof tagVariants> {}
 
 export function Tag({ className, tone, ...props }: TagProps) {
   return <span data-slot="tag" className={cn(tagVariants({ tone }), className)} {...props} />;
 }
 
-/** PRO 배지: h-[22px] px-[9px] bg-ink 11/800 tracking .06em */
-export function ProBadge({ className, ...props }: React.ComponentProps<"span">) {
-  return (
-    <span
-      className={cn("inline-flex h-[22px] items-center rounded-chip bg-point px-[9px] pt-0.5 text-[11px] leading-none font-extrabold tracking-[.06em] text-white", className)}
-      {...props}
-    >
-      PRO
-    </span>
-  );
-}

@@ -3,7 +3,7 @@ import type { Job } from "./api";
 
 // 변환 단계 — 엔진(worker/prompt.md·prompt_design.md)이 같은 이름으로 보고한다. 이름을 바꾸면 양쪽을 함께 바꿀 것.
 // 장표 제작 표준 절차(si-deck process.md 1~9단계) + autopilot 탐지 + 재검수.
-export const STAGES: { name: string; label?: string; desc: string }[] = [
+const STAGES: { name: string; label?: string; desc: string }[] = [
   { name: "준비", desc: "원본 보관 · 그림 압축 끄기" },
   { name: "실측", desc: "서체·색·크기·그림 실측, 전 장 렌더" },
   { name: "디자인 시스템", desc: "서체·팔레트·역할별 값 확정" },
@@ -16,26 +16,26 @@ export const STAGES: { name: string; label?: string; desc: string }[] = [
   { name: "재검수", desc: "3회 · 9×10 점수표" },
   { name: "결과 정리", desc: "렌더 · 확인 목록 · 결과 파일" },
 ];
-export const STAGE_PCT = [5, 10, 15, 25, 35, 45, 60, 70, 80, 88, 95, 100];
+const STAGE_PCT = [5, 10, 15, 25, 35, 45, 60, 70, 80, 88, 95, 100];
 
 // design 작업의 기획·시안 단계 (worker/design.py 와 같은 값)
-export const STAGES_PLAN: { name: string; label?: string; desc: string }[] = [
+const STAGES_PLAN: { name: string; label?: string; desc: string }[] = [
   { name: "준비", desc: "내용 읽기 (글 · md · 초안 pptx)" },
   { name: "기획", desc: "장 나누기 · 구성 · 참고 시안 고르기" },
   { name: "시안 생성", desc: "와이어프레임 A·B, 고른 장은 시안 이미지까지" },
   { name: "시안 정리", desc: "기획·시안 저장 · 확인 단계로" },
 ];
-export const STAGE_PCT_PLAN = [2, 5, 20, 96, 100];
+const STAGE_PCT_PLAN = [2, 5, 20, 96, 100];
 
 // 세로 제안서(제출용) — 시안 없이 기획에서 바로 PPT 를 조립한다(engine/vertical.py). 엔진이 보고하는 name 은 STAGES_PLAN 과 같고 화면 말만 다르다
-export const STAGES_VERTICAL: { name: string; label?: string; desc: string }[] = [
+const STAGES_VERTICAL: { name: string; label?: string; desc: string }[] = [
   { name: "준비", desc: "자료 읽기 (RFP · 요약 · 메모)" },
   { name: "기획", label: "기획 · 본문 쓰기", desc: "RFP 목차대로 장·절, 콘텐츠 규칙 검사" },
   { name: "시안 생성", label: "PPT 조립", desc: "양식 + 도식 + 파워에셋 그림 — 시안 없이 바로" },
   { name: "시안 정리", label: "쪽 캡처", desc: "만든 PPT 를 쪽마다 그림으로" },
 ];
 // 회사소개서(테마 A·B) — 레이아웃 카탈로그 → HTML 렌더 → 편집 가능한 PPT(engine/company.py). 엔진 보고 이름은 위와 같다
-export const STAGES_COMPANY: { name: string; label?: string; desc: string }[] = [
+const STAGES_COMPANY: { name: string; label?: string; desc: string }[] = [
   { name: "준비", desc: "회사 자료 읽기" },
   { name: "기획", label: "구성 · 카피", desc: "레이아웃 13종에 글 채우기 · 파워에셋 아이콘" },
   { name: "시안 생성", label: "HTML 렌더 → PPT", desc: "글·카드는 편집 가능한 도형으로, 빛·그라데이션은 배경 그림" },
@@ -45,7 +45,7 @@ const isSubmit = (j: Job) => j.opts?.purpose === "submit";
 
 // design 작업의 장표 제작 단계 (prompt_design.md 가 쓰는 부분집합)
 // name 은 엔진이 보고하는 이름(바꾸지 말 것), label·desc 는 화면에 보이는 말
-export const STAGES_BUILD: { name: string; label?: string; desc: string }[] = [
+const STAGES_BUILD: { name: string; label?: string; desc: string }[] = [
   { name: "준비", desc: "확정 시안·기획 읽기" },
   { name: "디자인 시스템", label: "시안 실측", desc: "시안 요소의 위치·크기·색을 잰다" },
   { name: "도식 재구성", label: "시안대로 조립", desc: "잰 좌표 그대로 글·표·도형을 놓는다" },

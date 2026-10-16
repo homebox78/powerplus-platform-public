@@ -16,7 +16,7 @@ export interface GalleryItem {
   status: "study" | "shared" | "hidden"; likes: number; views: number; unlocks: number; note: string | null;
   owner: GalleryOwner; mine: boolean; liked: boolean; unlocked: boolean; created_at: string; shared_at: string | null;
 }
-export interface GalleryNotes {
+interface GalleryNotes {
   summary: string; height: unknown; similarity: unknown; sources: unknown;
   frame: { left: number | null; right: number | null; gap: number | null; row_gap: number | null } | null; fixes: string[];
   /** 감점 없는 참고 사항(판정 notes) — 서버가 문자열로 정리해 준다 */
@@ -24,8 +24,8 @@ export interface GalleryNotes {
 }
 /** 내 시안 상세용 판정 요약 — GET /mock/mockups/{token} 의 check(판정 결과 원문 일부) */
 export interface MockupCheck { summary?: string; fixes?: Array<string | { message?: string }>; notes?: Array<string | { message?: string }> }
-export interface Leader { name: string; avatar: string | null; points: number; shared: number; badge: { id: string; name: string } | null }
-export interface PointsInfo {
+interface Leader { name: string; avatar: string | null; points: number; shared: number; badge: { id: string; name: string } | null }
+interface PointsInfo {
   points: number; ledger: Array<{ delta: number; reason: string; name: string; created_at: string }>;
   rules: Array<{ reason: string; points: number; name: string; daily_cap: number | null }>; unlock_cost: number; cut: number;
 }
@@ -47,7 +47,7 @@ export const galleryQuery = (p: { view: "shared" | "mine"; sort: "popular" | "ne
   });
 
 export const leadersQuery = queryOptions({ queryKey: ["mock", "leaders"], queryFn: () => apiFetch<{ items: Leader[] }>("/mock/gallery/leaders"), staleTime: 60_000 });
-export const galleryDetailQuery = (id: number | null) =>
+const galleryDetailQuery = (id: number | null) =>
   queryOptions({
     queryKey: ["mock", "gallery", "detail", id],
     queryFn: () => apiFetch<{ item: GalleryItem; notes: GalleryNotes | null; html_url: string | null; points: number | null; unlock_cost: number }>(`/mock/gallery/${id}`),

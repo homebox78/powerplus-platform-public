@@ -27,18 +27,8 @@ export function Ms({ name, size = 19, fill, className, style }: { name: string; 
   return <span aria-hidden className={cn("ms", fill && "ms-fill", className)} style={{ fontSize: size, width: size, height: size, ...style }}>{name}</span>;
 }
 
-/** 예전 선 아이콘 이름 → Material Symbols. 새 코드는 Ms 를 바로 쓴다 */
-const LEGACY: Record<string, string> = {
-  grid: "grid_view", check: "check", upload: "upload", file: "description", slides: "slideshow", sparkle: "auto_awesome", download: "download", x: "close",
-  warn: "warning", clock: "schedule", list: "list", retry: "refresh", logout: "logout", plus: "add", chevL: "chevron_left", chevR: "chevron_right",
-  mail: "mail", cpu: "memory", compare: "compare", play: "play_arrow", pause: "pause", film: "movie", edit: "edit", send: "send",
-};
 /** 글 사이 화살표 — 특수문자 → 대신 아이콘 */
 export const Arrow = ({ size = 15 }: { size?: number }) => <Ms name="arrow_forward" size={size} className="align-[-3px] mx-0.5" />;
-
-export function Icon({ name, size = 16, className, color }: { name: string; size?: number; stroke?: number; className?: string; color?: string }) {
-  return <Ms name={LEGACY[name] ?? name} size={size + 4} className={className} style={color && color !== "currentColor" ? { color } : undefined} />;
-}
 
 /** 로고 — 장표 두 장이 겹친 모양(뒷장 연주황 · 앞장 주황) + 반짝임. 주황 바탕 칸은 쓰지 않는다. size 24(사이드바) / 36(로그인) */
 export function Logo({ size = 24 }: { size?: number }) {
@@ -49,92 +39,6 @@ export function Logo({ size = 24 }: { size?: number }) {
       <span className="absolute" style={{ left: 1 * k, top: 7 * k, width: 15 * k, height: 12 * k, border: `${bw}px solid var(--color-point)`, borderRadius: 3 * k, background: "rgba(255,255,255,.55)" }} />
       <Ms name="auto_awesome" fill size={9 * k} className="absolute text-orange" style={{ left: 16 * k, top: 16 * k }} />
     </span>
-  );
-}
-
-/* ── 앱 셸 ── */
-
-const ZOOMS = [1, 1.07, 1.14];
-/** CSS zoom 을 아는 브라우저인가 — 모르면(Firefox 126 이전 등) transform 확대로 대신한다 */
-const ZOOM_OK = typeof CSS !== "undefined" && typeof CSS.supports === "function" && CSS.supports("zoom", "1.2");
-
-function Zoomed({ z, children }: { z: number; children: ReactNode }) {
-  if (ZOOM_OK) return <div className="flex flex-col min-w-0 min-h-0 bg-white relative" style={{ zoom: z }}>{children}</div>;
-  return (
-    <div className="min-w-0 min-h-0 relative overflow-hidden bg-white">
-      <div className="absolute left-0 top-0 flex flex-col" style={{ width: `${100 / z}%`, height: `${100 / z}%`, transform: `scale(${z})`, transformOrigin: "0 0" }}>{children}</div>
-    </div>
-  );
-}
-
-/**
- * 앱 셸 — 사이드바 252px | 본문. 최소 폭 1120px(그보다 좁으면 가로 스크롤).
- * nav: 사이드바 위쪽(새 변환 · 내 작업 · 최근 작업), foot: 아래쪽(엔진 · 설정 · 계정). 글자 크기 세그먼트는 셸이 붙인다.
- * guest: 공유받은 시안 검토 — 사이드바 없이 본문만(머리줄은 화면이 그린다), 최소 폭 1200px.
- * autoFold: 작업 화면(2단계 기획·시안부터)은 사이드바를 저절로 접어 본문을 넓게 — 손으로 펼치면 그 화면에서는 펼친 채로, 다른 화면으로 가면 다시 원래대로.
- */
-export function Shell({ nav, foot, guest, autoFold, children }: { nav?: ReactNode; foot?: ReactNode; guest?: boolean; autoFold?: boolean; children: ReactNode }) {
-  const [fs, setFs] = useState(() => { try { return Math.min(2, Math.max(0, Number(localStorage.getItem("pd_fs")) || 0)); } catch { return 0; } });
-  const pick = (i: number) => { setFs(i); try { localStorage.setItem("pd_fs", String(i)); } catch { /* 무시 */ } };
-  // 사이드바 접기 — 접으면 52px 띠(로고·새 변환·내 작업·설정)만 남는다. 브라우저마다 기억
-  const [pref, setPref] = useState(() => { try { return localStorage.getItem("pd_side") === "0"; } catch { return false; } });
-  const [over, setOver] = useState<boolean | null>(null);   // 자동 접힘 화면에서 손으로 바꾼 것 — 그 화면에서만
-  useEffect(() => { setOver(null); }, [autoFold]);
-  const folded = autoFold ? (over ?? true) : pref;
-  const fold = (v: boolean) => {
-    if (autoFold) { setOver(v); return; }
-    setPref(v); try { localStorage.setItem("pd_side", v ? "0" : "1"); } catch { /* 무시 */ }
-  };
-  if (guest) return <div className="h-full overflow-auto bg-white"><div className="h-full flex flex-col min-w-[1000px]">{children}</div></div>;
-  return (
-    <div className="h-full overflow-auto">
-      <div className={cn("h-full grid", folded ? "min-w-[940px]" : "min-w-[1120px]")} style={{ gridTemplateColumns: folded ? "52px minmax(0,1fr)" : "252px minmax(0,1fr)" }}>
-        {folded ? (
-          <aside className="flex flex-col items-center gap-1 min-h-0 bg-side border-r border-line py-3.5">
-            <a href="#/list" title="내 작업" aria-label="powerDeck — 내 작업" className="rounded-md"><Logo size={24} /></a>
-            <button onClick={() => fold(false)} title="사이드바 펼치기" aria-label="사이드바 펼치기" className="btn-icon !w-9 !h-9 mt-2"><Ms name="left_panel_open" size={20} /></button>
-            <a href="#/" title="새 변환" aria-label="새 변환" className="btn-next !w-9 !h-9 !p-0 mt-1"><Ms name="add" size={20} /></a>
-            <a href="#/list" title="내 작업" aria-label="내 작업" className="btn-icon !w-9 !h-9"><Ms name="list" size={20} /></a>
-            <a href="#/settings" title="설정" aria-label="설정" className="btn-icon !w-9 !h-9 mt-auto"><Ms name="settings" size={20} /></a>
-          </aside>
-        ) : (
-        <aside className="flex flex-col min-h-0 bg-side border-r border-line">
-          <div className="flex items-center gap-2 pl-4 pr-2 pt-3 pb-2.5">
-            <a href="#/list" title="내 작업" className="flex items-center gap-2 rounded-md text-ink">
-              <Logo size={24} />
-              <span className="text-[17px] font-black tracking-[-0.03em]">powerDeck</span>
-            </a>
-            <div className="ml-auto font-mono text-[11px] text-faint">v0.1</div>
-            <button onClick={() => fold(true)} title="사이드바 접기" aria-label="사이드바 접기" className="btn-icon !w-8 !h-8"><Ms name="left_panel_close" size={19} /></button>
-          </div>
-          {nav}
-          <div className="border-t border-line p-2 flex flex-col gap-0.5">
-            {foot}
-            <div className="flex items-center justify-between px-2.5 py-1">
-              <span className="whitespace-nowrap text-[12px] text-faint">글자 크기</span>
-              <div className="inline-flex bg-line rounded-md p-0.5 gap-0.5" title="글자 크기">
-                {["가", "가+", "가++"].map((l, i) => (
-                  <button key={l} onClick={() => pick(i)} aria-pressed={fs === i}
-                    className={cn("h-5 px-2 rounded-md text-[12px] font-semibold inline-flex items-center justify-center", fs === i ? "bg-white text-ink shadow-[0_1px_2px_rgba(17,17,17,.12)]" : "text-dim hover:text-ink")}>{l}</button>
-                ))}
-              </div>
-            </div>
-          </div>
-        </aside>
-        )}
-        <Zoomed z={ZOOMS[fs] ?? 1}>{children}</Zoomed>
-      </div>
-    </div>
-  );
-}
-
-/** 사이드바 메뉴 줄(내 작업 · 설정) — 고른 것은 흰 바탕 */
-export function NavItem({ on, onClick, children, right }: { on?: boolean; onClick: () => void; children: ReactNode; right?: ReactNode }) {
-  return (
-    <button onClick={onClick} className={cn("w-full flex items-center gap-2 h-[42px] px-[18px] rounded-md text-[14px] font-semibold text-[var(--color-ink)]",
-      on ? "bg-white shadow-[0_0_0_1px_var(--color-line)]" : "hover:bg-[var(--color-line)]")}>
-      {children}{right && <span className="ml-auto text-[12px] font-medium text-dim">{right}</span>}
-    </button>
   );
 }
 
@@ -158,14 +62,14 @@ export function StatusPill({ status, small }: { status: string; small?: boolean 
 
 /* ── 머리줄 ── */
 
-export const STEP_LABELS = ["초안 올리기", "대기·분석", "디자인 변환", "완료"];
-export const STEP_LABELS_DESIGN = ["내용 입력", "기획", "시안", "장표 제작", "완료"];
+const STEP_LABELS = ["초안 올리기", "대기·분석", "디자인 변환", "완료"];
+const STEP_LABELS_DESIGN = ["내용 입력", "기획", "시안", "장표 제작", "완료"];
 /** 세로 제안서(제출용) — 시안 이미지 없이 기획에서 바로 PPT(engine/vertical.py) */
-export const STEP_LABELS_VERTICAL = ["내용 입력", "기획", "PPT 제작", "완료"];
+const STEP_LABELS_VERTICAL = ["내용 입력", "기획", "PPT 제작", "완료"];
 const isSubmitJob = (job: Job) => job.kind === "design" && (job.opts?.purpose === "submit" || job.opts?.purpose === "company");   // 회사소개서(테마 A·B)도 시안 없이 PPT 바로
 
 /** 작업이 지금 몇 번째 단계인가 — 장표 변환 0~3, 기획 작업 0~4(내용·기획·시안·장표·완료) */
-export const jobStep = (job: Job) => {
+const jobStep = (job: Job) => {
   // 실패·취소는 멈춘 단계에 머문다(그 단계가 빨간 ! 로 보인다)
   if (isSubmitJob(job)) return job.status === "done" ? 3 : job.stage === "시안 생성" || job.stage === "시안 정리" ? 2 : 1;   // 엔진 보고 이름은 그대로(stages.ts STAGES_VERTICAL)
   if (job.kind === "design") return job.status === "done" ? 4 : !isPlanPhase(job) && job.status !== "review" ? 3 : hasMockup(job) ? 2 : 1;
@@ -173,7 +77,7 @@ export const jobStep = (job: Job) => {
 };
 
 /** 단계 표시 — 끝난 단계는 초록 ✓, 지금 단계는 주황 번호, 실패한 단계는 빨간 ! */
-export function StepTrail({ labels, step, failed, done }: { labels: string[]; step: number; failed?: boolean; done?: boolean }) {
+function StepTrail({ labels, step, failed, done }: { labels: string[]; step: number; failed?: boolean; done?: boolean }) {
   return (
     <div className="flex items-center gap-1.5 flex-none">
       {labels.map((l, i) => {
@@ -218,7 +122,7 @@ function UsedModels({ costs }: { costs: NonNullable<Job["costs"]> }) {
  * 이 작업을 어떤 설정으로 시작했는가 — 머리줄 제목 옆 「설정」을 누르면 요약이 뜬다(용도·디자인 타입·서체·강조색·장 수·시안·구성·자료·요청).
  * 진행 중·기획 확인·결과 어느 화면에서나 같다.
  */
-export function JobSettings({ job, onEdit }: { job: Job; onEdit?: () => void }) {
+function JobSettings({ job, onEdit }: { job: Job; onEdit?: () => void }) {
   const [open, setOpen] = useState(false);
   const box = useRef<HTMLSpanElement>(null);
   useEffect(() => {
@@ -474,7 +378,7 @@ export function Modal({ title, onClose, width = 480, children, foot }: { title?:
 
 /* ── 토스트 — 모든 오류·경고를 화면 아래 가운데에 잠깐 띄운다 ── */
 
-export type ToastKind = "error" | "warn" | "ok";
+type ToastKind = "error" | "warn" | "ok";
 /** 어디서든 부른다. 서버 요청 실패(조회 제외)는 api.ts 가 알아서 띄운다 */
 export const toast = (msg: string, kind: ToastKind = "error") => { window.dispatchEvent(new CustomEvent("pd:toast", { detail: { msg, kind } })); };
 /** 화면의 오류 상태(err)가 생기면 토스트로도 알린다 */
@@ -568,17 +472,6 @@ export function Asker() {
   );
 }
 
-/** 화면 아래 버튼 줄 — 개선안에서는 주요 버튼이 머리줄 오른쪽으로 갔다. 아직 옮기지 않은 화면만 쓴다 */
-export function Footer({ left, children }: { left?: ReactNode; children: ReactNode }) {
-  return (
-    <div className="flex-none flex items-center gap-2 px-6 py-3 border-t border-line bg-white">
-      {left}
-      <span className="ml-auto" />
-      {children}
-    </div>
-  );
-}
-
 export const fmtDur = (sec: number) => {
   sec = Math.max(0, Math.round(sec));
   const h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60), s = sec % 60;
@@ -588,7 +481,7 @@ export const fmtDur = (sec: number) => {
  *  ISO 로 타임존이 이미 붙어 오면(…Z, +09:00) 그대로 쓴다 */
 export const parseTs = (s: string | null | undefined) => (s ? new Date(s.replace(" ", "T")) : null);
 /** 서버 UTC 시각 문자열(gmdate — wire_at) → Date */
-export const parseUtc = (s: string | null | undefined) => {
+const parseUtc = (s: string | null | undefined) => {
   if (!s) return null;
   const t = s.replace(" ", "T");
   return new Date(/(Z|[+-]\d\d:?\d\d)$/.test(t) ? t : t + "Z");

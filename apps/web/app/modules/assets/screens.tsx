@@ -181,7 +181,7 @@ const SORT_OPTIONS = (Object.entries(SORT_KO) as Array<[keyof typeof SORT_KO, st
 
 // ---- 화면
 
-export function AssetsBrowse() {
+function AssetsBrowse() {
   // 둘러보기 = 검색 + 종류·정렬 + 같은 스타일 세트 + 최신 에셋(옛 '최근 업데이트'를 합침, 사용자 2026-10-12)
   const [sp, setSp] = useSearchParams();
   const catOptions = useCategoryOptions();
@@ -233,7 +233,7 @@ export function AssetsBrowse() {
   );
 }
 
-export function AssetsRequests() {
+function AssetsRequests() {
   const { me } = useMe();
   const qc = useQueryClient();
   const q = useQuery({ ...assetRequestsQuery, enabled: !!me });
@@ -281,7 +281,7 @@ export function AssetsRequests() {
 }
 
 /** 애드인 설치 파일 정보 — GET /assets/setup. 파일 본체는 /assets/setup/download 가 302 로 보낸다. */
-export interface SetupInfo { url: string; version: string; size: number; published: string; requires: string[]; unsupported: string; assets_setup_visible?: boolean }
+interface SetupInfo { url: string; version: string; size: number; published: string; requires: string[]; unsupported: string; assets_setup_visible?: boolean }
 const setupQuery = (uid: string) => ({ queryKey: ["assets", "setup", uid], queryFn: () => apiFetch<SetupInfo>("/assets/setup"), staleTime: 3_600_000 });
 const fmtMB = (n: number) => `${(n / 1048576).toFixed(0)}MB`;
 

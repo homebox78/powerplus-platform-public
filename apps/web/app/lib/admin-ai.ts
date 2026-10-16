@@ -11,7 +11,7 @@ export interface AiChatSolution {
   id: "chat"; name: string; desc: string; model: string; default_model: string;
   enabled: boolean; daily_usd: number; spent_today: number;
 }
-export interface AdminAi {
+interface AdminAi {
   openrouter: { set: boolean; usable: boolean; source: "company" | "config" | null; last4: string | null };
   solutions: Array<AiDeckSolution | AiJevSolution | AiChatSolution>;
   usage: Array<{ solution: "deck" | "jev" | "chat"; kind: string; label: string; calls: number; cost: number; billed: boolean }>;

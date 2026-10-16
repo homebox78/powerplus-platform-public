@@ -4,7 +4,7 @@ import { cn } from "@/lib/utils";
 
 // docs/03 §3 검색창: pill bg-ground-3, 좌 아이콘, 우 단축키 kbd. 헤더 520×44 / 홈 720×60
 // 단축키 표시는 맥이면 ⌘K, 그 밖(Windows 등)은 Ctrl K — 서버 렌더는 Ctrl K, 맥만 마운트 뒤 바꾼다(사이트종합평가리포트 3-2-9).
-export interface SearchInputProps extends Omit<React.ComponentProps<"input">, "size"> {
+interface SearchInputProps extends Omit<React.ComponentProps<"input">, "size"> {
   size?: "header" | "hero";
   kbd?: boolean;
   className?: string;

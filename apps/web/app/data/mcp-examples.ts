@@ -3,8 +3,8 @@
 // tools 는 그 질문에 AI 가 부르는 도구 이름 — 화면에는 mcp-tools.json 의 한글 title 로 바꿔 보인다(MC-13). data/mcp-examples.test.ts 가 이름을 대조한다.
 // 사용자 실사용 질문 분석이 오면 여기에 그대로 더하거나 바꾼다(화면 코드는 손대지 않는다).
 
-export interface McpExample { q: string; tools: string[]; result: string }
-export interface McpExampleGroup { id: string; label: string; desc: string; items: McpExample[] }
+interface McpExample { q: string; tools: string[]; result: string }
+interface McpExampleGroup { id: string; label: string; desc: string; items: McpExample[] }
 
 export const MCP_EXAMPLE_GROUPS: McpExampleGroup[] = [
   {

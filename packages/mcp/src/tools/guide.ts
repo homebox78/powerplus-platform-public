@@ -6,7 +6,7 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 type ToolResult = { content: Array<{ type: "text"; text: string }>; isError?: boolean };
 type PpRes = { ok: boolean; status: number; data: unknown; body: (Record<string, unknown> & { error?: string; code?: string; hint?: string }) | null };
 
-export type GuideCtx = {
+type GuideCtx = {
   guard: (tool: string) => Promise<ToolResult | null>;
   pp: (p: string, key: string | null, init?: { method?: string; body?: unknown }) => Promise<PpRes>;
   key: string | null;

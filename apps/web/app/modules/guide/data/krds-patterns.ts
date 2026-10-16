@@ -9,7 +9,7 @@
  * 전체 12개 중 12개 대응.
  */
 
-export interface KrdsPattern {
+interface KrdsPattern {
   ko: string
   /** 우리 문서의 대응 앵커 id. 빈 문자열이면 미대응 */
   id: string
@@ -342,10 +342,4 @@ export const KRDS_PATTERNS: KrdsPattern[] = [
   },
 ]
 
-/** 패턴 앵커 id 로 KRDS 지침을 찾습니다. */
-export const krdsPatternFor = (id: string) => KRDS_PATTERNS.filter((p) => p.id === id)
 
-export const KRDS_PATTERN_STATS = {
-  total: KRDS_PATTERNS.length,
-  covered: KRDS_PATTERNS.filter((p) => p.id).length,
-}

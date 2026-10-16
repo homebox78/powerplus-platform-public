@@ -18,7 +18,7 @@ export interface QaMeta {
   open_by_area: Record<string, number>;
   areas: Array<{ id: string; name: string }>;
 }
-export interface QaOverview {
+interface QaOverview {
   source: QaSource; name: string; page: string; loop: string;
   open: number; fixing: number; fixed: number; watch: number; wontfix: number; regressed: number; new_7d: number; fixed_7d: number;
   oldest_open: string | null; last_seen: string | null;

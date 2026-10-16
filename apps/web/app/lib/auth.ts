@@ -2,10 +2,10 @@
 import { queryOptions, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiFetch, postJson } from "@/lib/api";
 
-export type Provider = "google" | "naver" | "kakao" | "email";
-export type Role = "superadmin" | "admin" | "curator" | "support";
+type Provider = "google" | "naver" | "kakao" | "email";
+type Role = "superadmin" | "admin" | "curator" | "support";
 
-export interface Me {
+interface Me {
   user: { id: string; email: string | null; name: string | null; avatar_url: string | null; birthday: string | null; marketing_opt_in: boolean; name_changed_at: string | null; created_at: string | null } | null;
   kind: "staff" | "external" | "anon" | "worker";
   plan: "staff" | "free" | "pro" | "team";
@@ -20,7 +20,7 @@ export interface Me {
   access?: { member: boolean; reason: "UNAUTHORIZED" | "PLAN_REQUIRED" | "STAFF_EXPIRED" | null; staff_until: string | null };
 }
 
-export const meQuery = queryOptions({
+const meQuery = queryOptions({
   queryKey: ["me"],
   queryFn: () => apiFetch<Me>("/me"),
   staleTime: 60_000,

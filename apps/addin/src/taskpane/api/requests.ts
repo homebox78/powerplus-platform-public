@@ -1,7 +1,7 @@
 // 자료 요청 — 출처: powerPlus addin/src/taskpane/api/requests.ts. 플랫폼 /assets/requests({title, kind, detail}).
 import { api } from "./config";
 
-export interface RequestPayload {
+interface RequestPayload {
   type: string;
   title: string;
   description: string;

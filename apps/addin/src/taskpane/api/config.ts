@@ -3,7 +3,7 @@
 // 작업창이 플랫폼에서 서비스되면 같은 출처 상대 경로, 로컬 개발(webpack dev)은 운영 주소.
 const IS_DEV_HOST = /^(localhost|127\.0\.0\.1)$/.test(window.location.hostname);
 export const SITE_BASE = IS_DEV_HOST ? "https://powerplus.hom2box.com" : window.location.origin;
-export const API_BASE = SITE_BASE + "/api/v1";
+const API_BASE = SITE_BASE + "/api/v1";
 
 const TOKEN_KEY = "pa_token";
 

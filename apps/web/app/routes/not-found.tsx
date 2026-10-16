@@ -8,6 +8,8 @@ import { MODULES } from "@/lib/modules";
 import { titleForPath } from "@/lib/page-title";
 import type { Route } from "./+types/not-found";
 
+// 없는 주소(404) — 검색창과 모듈 바로가기로 길을 다시 잡게 한다. 검색엔진에는 색인하지 않는다(noindex).
+
 export const meta: Route.MetaFunction = () => [{ title: titleForPath("", true) }, { name: "robots", content: "noindex" }];
 
 // docs/02 §4: 빈 결과·오류는 일러스트 없이 텍스트 + 되돌아갈 버튼.

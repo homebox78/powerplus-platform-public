@@ -6,7 +6,7 @@ import { DesignTypePicker } from "./DesignTypes";
 import { FontPicker, BODY_FONTS, TITLE_FONTS } from "./FontPicker";
 
 /** 강조색 고르기 — 새 변환(Upload.tsx)과 같은 색 */
-export const ACCENTS: [string, string][] = [
+const ACCENTS: [string, string][] = [
   ["#1866DA", "블루"], ["#2E9BD6", "스카이"], ["#0E9F8E", "틸"], ["#1A9C5B", "그린"],
   ["#F59E0B", "앰버"], ["#E8703A", "오렌지"], ["#D7263D", "레드"], ["#E8336D", "진분홍"], ["#C01348", "버건디"],
 ];

@@ -5,7 +5,7 @@ import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 
 /** 그림·사진 자리 — 대각선 두 줄 */
-export function XFill({ className }: { className?: string }) {
+function XFill({ className }: { className?: string }) {
   return (
     <svg className={cn("pointer-events-none text-line-3", className)} width="100%" height="100%" preserveAspectRatio="none" viewBox="0 0 100 100" aria-hidden>
       <path d="M0 0L100 100M100 0L0 100" stroke="currentColor" strokeWidth="1" vectorEffect="non-scaling-stroke" fill="none" />

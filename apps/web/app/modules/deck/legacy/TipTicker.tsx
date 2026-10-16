@@ -4,7 +4,7 @@
 import { useEffect, useState } from "react";
 import { Ms } from "./ui";
 
-export const DECK_TIPS = [
+const DECK_TIPS = [
   "목차는 평가 배점표 순서를 따릅니다 — 위원이 채점표와 장표를 1:1로 맞춰 봅니다.",
   "배점 10점 이상 항목은 평가요소 문구를 장표 제목에 그대로 씁니다.",
   "배점 상위 3개 항목에는 장표를 2장 이상 둡니다.",

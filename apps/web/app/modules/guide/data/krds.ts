@@ -1527,10 +1527,4 @@ export const KRDS_COMPONENTS: KrdsComponent[] = [
   },
 ]
 
-/** 컴포넌트 앵커 id 로 KRDS 지침을 찾습니다. */
-export const krdsFor = (id: string) => KRDS_COMPONENTS.filter((c) => c.id === id)
 
-export const KRDS_STATS = {
-  total: KRDS_COMPONENTS.length,
-  covered: KRDS_COMPONENTS.filter((c) => c.id).length,
-}

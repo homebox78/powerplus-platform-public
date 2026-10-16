@@ -7,7 +7,7 @@ import { Avatar, avatarColor, cn, Ms, parseTs } from "../ui";
 
 export const who = (email: string) => email.split("@")[0];
 /** '3분 전' · '2일 전' — 서버 시각(UTC 저장) 기준 */
-export const ago = (ts: string) => {
+const ago = (ts: string) => {
   const t = parseTs(ts)?.getTime();
   if (!t) return "";
   const s = Math.max(0, (Date.now() - t) / 1000);
@@ -30,7 +30,7 @@ export type PinCtl = {
 };
 
 /** 의견 상태 — 검토 대기(노랑) → 반영 예정(초록) / 반영 안 함(회색) */
-export const State = ({ c }: { c: PinComment }) => (
+const State = ({ c }: { c: PinComment }) => (
   <span className={cn("inline-flex items-center flex-none h-[22px] px-2 rounded-md text-[12px] font-bold whitespace-nowrap",
     c.resolved ? "bg-bar text-dim" : c.accepted ? "bg-ok-soft text-ok" : "bg-[var(--color-mark-soft)] text-[var(--color-ink-2)]")}>
     {c.resolved ? (c.accepted ? "반영됨" : "반영 안 함") : c.accepted ? "반영 예정" : "검토 대기"}

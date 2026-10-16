@@ -137,7 +137,7 @@ const isPowerPoint = (): boolean =>
   typeof Office !== "undefined" &&
   Office.context?.host === Office.HostType.PowerPoint;
 
-export interface InsertState {
+interface InsertState {
   insertingId: string | null;
   message: string | null;
   error: boolean;

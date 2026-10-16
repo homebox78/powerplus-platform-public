@@ -3,7 +3,7 @@ import { Lock } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 // docs/03 §3: 썸네일 프레임 border line bg-ground-2, hover 오버레이 bg-black/50 + 흰 pill 버튼, Free 잠금 blur(10px)
-export interface ThumbFrameProps {
+interface ThumbFrameProps {
   children: React.ReactNode;
   ratio?: "16/10" | "16/9" | "2/1" | "auto";
   radius?: "thumb" | "card" | "lg";
@@ -37,7 +37,7 @@ export function ThumbFrame({ children, ratio = "16/10", radius = "thumb", hover,
 }
 
 /** Free 잠금: backdrop-blur-[10px] bg-white/55 + 자물쇠 + "Pro에서 열람" */
-export function LockedOverlay({ label = "Pro에서 열람" }: { label?: string }) {
+function LockedOverlay({ label = "Pro에서 열람" }: { label?: string }) {
   return (
     <span className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-white/55 backdrop-blur-[10px] dark:bg-ground/65">
       <Lock className="size-[22px] text-ink" aria-hidden />

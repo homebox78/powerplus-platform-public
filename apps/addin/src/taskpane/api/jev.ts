@@ -3,8 +3,8 @@
 // 서버는 AI 가 꺼져 있거나 실패하면 규칙으로, 그것도 안 되면 null 을 준다 → 그때는 지금처럼 전체에서 찾는다.
 import { api } from "./config";
 
-export interface RouteResult { kind: string | null; by: "ai" | "rule" | null }
-export interface SuggestResult {
+interface RouteResult { kind: string | null; by: "ai" | "rule" | null }
+interface SuggestResult {
   kind: string | null;
   kind_by: "ai" | "rule" | null;
   keyword: string | null;

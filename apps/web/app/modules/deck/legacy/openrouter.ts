@@ -28,11 +28,7 @@ export const saveBudget = (b: { default_budget_usd: number | null; monthly_cap_u
   api<{ budget: AiSettings["budget"] }>("/ai/budget", { method: "PUT", body: JSON.stringify(b) });
 
 export const getAi = () => api<AiSettings>("/ai/settings");
-export const savePersonalHf = (b: { id?: string; secret?: string; remove?: boolean; provider?: "openrouter" | "higgsfield" }) => api<{ ok: boolean }>("/ai/hf", { method: "PUT", body: JSON.stringify(b) });
 export const checkAiKey = () => api<{ info: KeyInfo }>("/ai/key/check");
-export const savePersonalKey = (key: string) => api<{ info: KeyInfo }>("/ai/key", { method: "PUT", body: JSON.stringify({ key }) });
-export const deletePersonalKey = () => api("/ai/key", { method: "DELETE" });
-export const saveModels = (m: OrModels) => api("/ai/models", { method: "PUT", body: JSON.stringify(m) });
 export const saveAdmin = (b: { mode?: KeyMode; company_key?: string; remove_company_key?: boolean; plan?: string; image?: string; engine_model?: string; text_engine?: "cli" | "api"; text_model?: string; text_effort?: string; digest_model?: string; image_provider?: "openrouter" | "higgsfield"; hf_key?: string; hf_key_id?: string; hf_key_secret?: string; remove_hf_key?: boolean }) =>
   api<{ info: KeyInfo | null }>("/ai/admin", { method: "PUT", body: JSON.stringify(b) });
 
@@ -55,7 +51,6 @@ export async function listModels(): Promise<OrModel[]> {
   return [...all.values()];
 }
 
-export const isImageModel = (m: OrModel) => m.output.includes("image") && !m.id.startsWith("openrouter/");
 /* 고르기 쉬운 목록 — OpenRouter 466개 중 장표·글 작업에 쓸 만한 것만(2026-10: 제작 46 · 글 60).
    주요 회사(중국 회사 deepseek·qwen·moonshotai·z-ai·minimax 제외 — 사용자 2026-10-06 "한국 사용자는 중국 AI 를 신뢰하지 않는다") · 최근 1년 · 문맥 128k 이상 · 무료/배치/소형/검색·음성·번역·안전·코딩 전용·실험판 제외 · 계열마다 최신 2개.
    목록에 없어도 엔진은 어떤 모델이든 돈다(지금 값은 목록 맨 위에 따로 보인다). */

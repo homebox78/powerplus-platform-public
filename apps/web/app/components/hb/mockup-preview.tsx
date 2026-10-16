@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { FitFrame } from "@/components/hb/fit-frame";
 
-export type Device = "pc" | "tablet" | "phone";
+type Device = "pc" | "tablet" | "phone";
 const WIDTH: Record<Device, number> = { pc: 1920, tablet: 768, phone: 390 };
 const DEVICES: Array<{ id: Device; label: string; px: string; icon: typeof Monitor }> = [
   { id: "pc", label: "PC", px: "1920", icon: Monitor },
@@ -15,7 +15,7 @@ const DEVICES: Array<{ id: Device; label: string; px: string; icon: typeof Monit
   { id: "phone", label: "모바일", px: "390", icon: Smartphone },
 ];
 
-export interface MockupPreviewProps {
+interface MockupPreviewProps {
   /** iframe 에 넣을 주소(/api/v1/mock/…/html 또는 /p/{token}) */
   src: string;
   /** 새 창으로 열 주소 — 없으면 src */

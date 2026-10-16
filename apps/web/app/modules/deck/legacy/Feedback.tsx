@@ -12,7 +12,7 @@ const ago = (ts: string) => {
 };
 
 /** 의견 상태 — 검토 대기(노랑) → 반영 예정(주황) → 반영됨(초록) / 반영 안 함(회색) */
-export const State = ({ c }: { c: PinComment }) => (
+const State = ({ c }: { c: PinComment }) => (
   <span className={cn("inline-flex items-center flex-none h-[22px] px-2 rounded-md text-[12px] font-bold whitespace-nowrap",
     c.resolved ? (c.accepted ? "bg-ok-soft text-ok" : "bg-bar text-dim") : c.accepted ? "bg-orange-soft text-orange-d" : "bg-[var(--color-mark-soft)] text-[var(--color-ink-2)]")}>
     {c.resolved ? (c.accepted ? "반영됨" : "반영 안 함") : c.accepted ? "반영 예정" : "검토 대기"}
@@ -56,7 +56,7 @@ export function useFeedback(job: Job, me: string, target: "mockup" | "result") {
     removeReply: (c: PinComment, rid: number) => act(api(`${base}/${c.id}/replies/${rid}`, { method: "DELETE" })),
   };
 }
-export type Feedback = ReturnType<typeof useFeedback>;
+type Feedback = ReturnType<typeof useFeedback>;
 
 /** 핀 옆에 뜨는 창의 자리 — 가장자리에서는 반대쪽으로 펼친다(x 50% 넘으면 왼쪽, y 가 flipY 를 넘으면 위). 세로로 넘치면 창 안에서 스크롤 */
 const popAt = (x: number, y: number, w: number, flipY: number) => ({
@@ -210,12 +210,12 @@ export function PinImage({ fb, slide, src, alt, className, fit, children }: { fb
 }
 
 /** 공유 링크 권한 — 0 끔 · 1 로그인한 사람 의견 · 2 로그인한 사람 편집(시안 확인의 기획·와이어프레임) · 3 링크만 있으면 누구나 보기(로그인 없이) */
-export const SHARE_LEVELS = [
+const SHARE_LEVELS = [
   [1, "로그인한 사람 · 의견만"],
   [2, "로그인한 사람 · 편집 가능"],
   [3, "링크만 있으면 누구나 보기"],
 ] as const;
-export const shareLevel = (j: Job) => j.share ?? (j.shared ? 1 : 0);
+const shareLevel = (j: Job) => j.share ?? (j.shared ? 1 : 0);
 /** 링크 권한 고르기 — 고르면 바로 그 권한으로 공유가 켜진다 */
 export function ShareLevel({ job, onJob }: { job: Job; onJob: (j: Job) => void }) {
   const lv = shareLevel(job);

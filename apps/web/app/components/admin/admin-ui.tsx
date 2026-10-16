@@ -118,7 +118,7 @@ export function ConfirmDelete({ open, onOpenChange, title, desc, onConfirm }: { 
  *   머리 칸 <SelectAllCell sel={sel} />, 행 칸 <SelectCell sel={sel} id={x.id} label="…" />,
  *   표 아래 <BulkBar sel={sel} total={전체 건수} actions={[…]} /> — 고르면 화면 아래에 붙는 막대가 뜬다.
  * 필터·쪽이 바뀌면 고른 것은 비운다(다른 쪽 항목을 모르고 지우는 일을 막는다). */
-export type Selection = {
+type Selection = {
   ids: string[];
   has: (id: string) => boolean;
   toggle: (id: string) => void;
@@ -159,7 +159,7 @@ export function SelectCell({ sel, id, label }: { sel: Selection; id: string; lab
     </TableCell>
   );
 }
-export type BulkAction = {
+type BulkAction = {
   label: string;
   icon?: React.ReactNode;
   onRun: (ids: string[]) => void;
@@ -201,7 +201,7 @@ export function BulkBar({ sel, actions, children }: { sel: Selection; actions: B
  *         <SortHead s={s} k="hits">횟수</SortHead> … s.rows.map(…)
  */
 type SortVal = string | number | boolean | null | undefined;
-export type Sort<T> = { rows: T[]; key: string | null; dir: "asc" | "desc"; toggle: (k: string) => void };
+type Sort<T> = { rows: T[]; key: string | null; dir: "asc" | "desc"; toggle: (k: string) => void };
 export function useSort<T>(items: T[], get: Record<string, (x: T) => SortVal>): Sort<T> {
   const [key, setKey] = useState<string | null>(null);
   const [dir, setDir] = useState<"asc" | "desc">("asc");

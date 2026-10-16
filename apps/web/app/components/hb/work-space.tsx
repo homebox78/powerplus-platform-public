@@ -31,7 +31,7 @@ function useStored(key: string): string | null {
 
 /* ── 넓게 보기 ── */
 const WIDE_KEY = "pp:wide";
-export function useWideMode(): [boolean, (v: boolean) => void] {
+function useWideMode(): [boolean, (v: boolean) => void] {
   const wide = useStored(WIDE_KEY) === "1";
   return [wide, (v) => write(WIDE_KEY, v ? "1" : null)];
 }

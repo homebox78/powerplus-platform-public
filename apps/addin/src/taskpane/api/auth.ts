@@ -20,7 +20,7 @@ export function clearSession(): void {
   localStorage.removeItem(EMAIL_KEY);
 }
 
-export interface RequestCodeResult {
+interface RequestCodeResult {
   /** 개발 서버(debug)일 때만 서버가 코드를 내려준다. */
   devCode?: string;
 }

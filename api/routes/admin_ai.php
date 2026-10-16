@@ -39,8 +39,8 @@ return static function (Router $r): void {
     /** 사용 기록 종류 → 솔루션·이름 */
     $kindInfo = static function (string $kind): array {
         $deck = ['plan' => '기획(글)', 'image' => '시안(이미지)', 'digest' => '자료 요약', 'script' => '발표 대본', 'wire' => '와이어프레임', 'build' => '장표 제작',
-            'engine' => '장표 제작(구독 환산)', 'eplan' => '기획(구독 환산)', 'edigest' => '자료 요약(구독 환산)', 'escript' => '발표 대본(구독 환산)',
-            'ewire' => '와이어프레임(구독 환산)', 'hf' => 'Higgsfield 그림'];
+            'engine' => '장표 제작(엔진)', 'eplan' => '기획(엔진)', 'edigest' => '자료 요약(엔진)', 'escript' => '발표 대본(엔진)',
+            'ewire' => '와이어프레임(엔진)', 'hf' => 'Higgsfield 그림'];
         if ($kind === 'jev') {
             return ['jev', '빠른 판단'];
         }

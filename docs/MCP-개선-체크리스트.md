@@ -124,7 +124,7 @@
 | MC-78 | 여러 에이전트 일괄 작업은 staff 시험 키 + lend/transfer | deploy 플랜 한도 100/일 몇 분 만에 소진 | mcp-test-key.php lend·transfer·revoke |
 | MC-79 | 기본 CSS·동작 스크립트를 고치면 보관 시안까지 | 판정 때 박힌 판이라 이미 만든 시안엔 안 들어감 | api/bin/mock-refresh.php · R37 |
 | MC-80 | 샘플 그림 판별은 주소 열쇠로(id 아님) | id=banner-03-…·주소=2i8u… 라 글자 그림 잘림을 하나도 못 잡음 | index.ts textSampleKeys |
-| MC-81 | 배포 범위에 남의 미커밋 파일이 있으면 커밋된 코드만 깨끗한 작업 트리(git worktree)에서 배포 | R04 를 지키면서 내 배포를 막지 않는다 | git worktree add --detach … HEAD |
+| MC-81 | 배포 범위에 남의 미커밋 파일이 있으면 커밋된 코드만 깨끗한 작업 트리(git worktree)에서 배포 | R04 를 지키면서 내 배포를 막지 않는다 | git worktree add --detach … HEAD — 웹(deploy.sh)은 kit-files·node_modules 가 없어 막힌다(R55), 남의 커밋을 기다려 원래 트리에서가 쉽다 |
 | MC-82 | MCP 가 REST 응답을 읽는 경로는 실제 응답 키와 대조한다(타입 선언만 믿지 않는다) | mock_get_page_code 가 `{screen:{public_url}}` 를 `scr.public_url` 로 읽어 원본 화면 이미지가 늘 빠졌다(bc2324a) | 응답 JSON 을 한 번 찍어 키 경로 확인 |
 | MC-83 | 한글 문자열을 바이트(substr)로 자른 뒤 `/u` 정규식에 넣지 않는다 — 글자 중간이 잘리면 preg 가 false | "보안인증 ISO 27001" 규격 검사가 앞 12바이트를 잘라 치명 오탐(349bd7e) | 한글 앞에 붙은 입력으로 음성 대조 |
 | MC-84 | 만들어 두고 안 쓰는 판정 도우미가 있는지 본다(정의만 있고 호출 0) | flat()·has() 미연결로 "53 퍼센트=53%" 오탐·"19일 속 9일" 미탐(349bd7e) | `grep -n 'function 이름'` 과 호출 수 대조 |
@@ -311,7 +311,7 @@
 | O-37 | check_code 결과 기록 표 | db-design 먼저 |
 | O-38 | guide 데이터 잡일 | **대부분** 0740c1f(PDF 찌꺼기·출처 문구·터치 기준 token·type 허용값). 남음: 지침 117개 마침표(대부분 KWCAG 항목 이름) |
 | ~~O-39~~ | ~~Tailwind v3 프리셋 누락~~ | 0740c1f — 같은 정본에서 생성, 옛 키 값 변경 0 |
-| ~~O-40~~ | assets 검색 잡음·빈 메타 | **완료(2026-10-16)** e7z9fh2fmn7gheh6 채움, 크기 빈 2,204개 asset-backfill-dims.php(cbb669c), 이름 6,352·설명 4,687 빈 행 asset-backfill-names.php 로 드문 키워드+분류(「승인도장 검토완료 아이콘」)·로고는 「기관명 로고」·alt 있으면 이름=alt. 검색 상위에 자주 나오는 키워드 설명 자산 980개 중 노출 점수 상위 300개는 그림을 보고 문장으로 다시 씀(db/data/asset-descriptions-2026-10-16.json, asset-apply-descriptions.php — 키워드 값 그대로인 행만 바꿈). 남은 680개는 같은 방법으로 이어서. 중복: 자산 전체 9,242개 썸네일 dHash(asset-dup-scan.php·scripts/asset-dup-pairs.mjs) 후보를 눈 대조해 139쌍 합침(asset-merge.php, db/data/asset-dup-merge-2026-10-16.json) — 거리 7~10 과 어두운 배경 사진 큰 묶음은 해시가 약해 남음 |
+| ~~O-40~~ | assets 검색 잡음·빈 메타 | **완료(2026-10-16)** e7z9fh2fmn7gheh6 채움, 크기 빈 2,204개 asset-backfill-dims.php(cbb669c), 이름 6,352·설명 4,687 빈 행 asset-backfill-names.php 로 드문 키워드+분류(「승인도장 검토완료 아이콘」)·로고는 「기관명 로고」·alt 있으면 이름=alt. 검색 상위에 자주 나오는 키워드 설명 자산 980개 중 노출 점수 상위 300개는 그림을 보고 문장으로 다시 씀(db/data/asset-descriptions-2026-10-16.json, asset-apply-descriptions.php — 키워드 값 그대로인 행만 바꿈). 검색 오타·유사어(10-16): 한/영 자판 실수(qhdks→보안)·영문 철자(secuirty→security)·초성(ㅂㅇ→보안)·입말 동의어(피씨·컴터→컴퓨터) — Lexicon. 남은 680개는 같은 방법으로 이어서. 중복: 자산 전체 9,242개 썸네일 dHash(asset-dup-scan.php·scripts/asset-dup-pairs.mjs) 후보를 눈 대조해 139쌍 합침(asset-merge.php, db/data/asset-dup-merge-2026-10-16.json) — 거리 7~10 과 어두운 배경 사진 큰 묶음은 해시가 약해 남음 |
 | ~~O-41~~ | ~~deck_jobs 실패 원인·보건소 분류·보고서 공개~~ | cbb669c — 보건소 레퍼런스 0곳이라 public_medical 별칭(수집은 O-42), 보고서 visibility link·staff·private |
 | O-42 | 레퍼런스 부족(보건소 0곳·비전 등 서브 화면)·섞기 B·C 비중 | 실제 사이트 수집이 필요 — 생성 이미지로 못 메움. 수집 워커 작업으로 |
 | ~~O-43~~ | ~~판정 대기열 단일 직렬~~ | 유지 결정 — 서버 메모리(판정 1건 ~2.5GB)상 전체 1건 직렬이 키당 1건보다 안전. 서버 사양을 올릴 때 다시 |

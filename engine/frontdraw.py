@@ -33,6 +33,26 @@ def _cover(im, w, h, anchor="center"):
     return im.crop((x, y, x + w, y + h))
 
 
+def _trim_letterbox(im, anchor="center"):
+    """그림 모델이 '흰 띠 금지' 지시를 어기고 위·아래에 흰 띠(레터박스)를 넣은 그림 — 띠를 잘라 내고 원래 비율로 꽉 채운다.
+    판정: 위 35%·아래 35% 안에서 한 줄 만에 크게 바뀌는 가로 경계가 둘 다 있고(줄 차이 30 이상), 그 바깥 띠가 밝고 밋밋하다(평균 225↑·편차 20↓).
+    견본 24장 실측(2026-10-16): D 간지2 만 위 48·아래 43, 나머지 23장은 위·아래 동시 30 이상 없음(C 표지 19·25 는 옅은 바탕). 아니면 그대로"""
+    from PIL import ImageChops, ImageStat
+    g = im.convert("L")
+    w, h = g.size
+    lim = int(h * 0.35)
+    top ={y: ImageStat.Stat(ImageChops.difference(g.crop((0, y, w, y + 1)), g.crop((0, y + 1, w, y + 2)))).mean[0] for y in range(4, lim)}
+    bot = {y: ImageStat.Stat(ImageChops.difference(g.crop((0, y, w, y + 1)), g.crop((0, y + 1, w, y + 2)))).mean[0] for y in range(h - lim, h - 5)}
+    ty, by = max(top, key=top.get), max(bot, key=bot.get)
+    flat = lambda a, b: (lambda s: s.mean[0] > 225 and s.stddev[0] < 20)(ImageStat.Stat(g.crop((0, a, w, b))))
+    if top[ty] < 30 or bot[by] < 30 or not flat(0, ty) or not flat(by + 1, h):
+        return im
+    t, b = ty + 1 + 2, by - 2   # 경계 줄의 번짐 2px 도 뺀다
+    cw = min(w, int((b - t) * w / h))   # 원래 비율로 자를 폭
+    x = {"right": w - cw, "left": 0}.get(anchor, (w - cw) // 2)
+    return im.crop((x, t, x + cw, b)).resize((w, h), Image.LANCZOS)
+
+
 def _width(text, font, track):
     return sum(font.getlength(ch) for ch in text) + track * max(0, len(text) - 1)
 
@@ -388,7 +408,9 @@ def compose(kind, bg_png, texts, st, accent, title_font=None, body_font=None, lo
     fd = (st or {}).get("front_draw") or {}
     tpath = fontset.title_file(title_font)
     bold, semi, reg = fontset.file(3, body_font), fontset.file(2, body_font), fontset.file(1, body_font)
-    bg = _soften_seams(_cover(Image.open(io.BytesIO(bg_png)).convert("RGB"), W, H))   # 그림 모델이 남긴 곧은 판·액자 경계를 녹인다(10-15 C 목차·D 표지 '잘린 듯')
+    lay = layout_of(st, kind)   # 글이 왼쪽이면 그림은 오른쪽 — 띠를 잘라 좁아진 그림은 그림 쪽을 기준으로 맞춘다
+    raw = _trim_letterbox(Image.open(io.BytesIO(bg_png)).convert("RGB"), {"left": "right", "right": "left"}.get(lay, "center"))   # 10-16 D 간지2 위아래 흰 띠
+    bg = _soften_seams(_cover(raw, W, H))   # 그림 모델이 남긴 곧은 판·액자 경계를 녹인다(10-15 C 목차·D 표지 '잘린 듯')
     panel = (fd.get("panel") or {}).get(kind)   # 판: 글 쪽을 단색 면으로(사진은 나머지 쪽에)
     lay = layout_of(st, kind)
     card = bool((fd.get("card") or {}).get(kind))

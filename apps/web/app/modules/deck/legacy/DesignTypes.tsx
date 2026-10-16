@@ -7,7 +7,7 @@ import { cn, Modal, Ms } from "./ui";
 export type DesignType = { id: string; name: string; desc: string; fits: string; samples?: number };
 export const DESIGN_TYPES: DesignType[] = (data as { styles: DesignType[] }).styles.map((s) => ({ ...s, samples: s.samples ?? 6 }));   // 1 표지 · 2 목차 · 3 간지1 · 4 본문1 · 5 간지2 · 6 본문2
 export const typeName = (id?: string | null) => DESIGN_TYPES.find((t) => t.id === (id || "a"))?.name ?? "공공 제안 클레이";
-export const THUMB_V = 23;   // 샘플 그림을 바꾸면 올린다(브라우저 캐시). 22: 견본 작업의 간지2·본문2 를 5·6 으로 · 23: D 간지2 위아래 흰 띠 잘라 냄(R56)
+export const THUMB_V = 24;   // 샘플 그림을 바꾸면 올린다(브라우저 캐시). 22: 견본 작업의 간지2·본문2 를 5·6 으로 · 23·24: D 간지2 위아래 흰 띠·왼쪽 판 경계 잘라 냄(R56)
 export const thumb = (id: string, n: number) => `${import.meta.env.BASE_URL}styles/${id}/${n}.jpg?v=${THUMB_V}`;
 const hide = (e: { target: EventTarget }) => { (e.target as HTMLImageElement).style.visibility = "hidden"; };
 

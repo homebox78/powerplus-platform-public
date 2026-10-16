@@ -210,8 +210,25 @@ CSS_C = """
 .blue .tag,.blue .pg{color:rgba(255,255,255,.6)}
 """
 GLOW_C = ("<div class='deco' style=\"background:#1F4FFF\"></div>")   # 단색 전면
-GLOW_C_LIGHT = ("<div class='deco' style=\"background:#fff\"></div>"
-                "<div class='deco' style=\"left:120px;top:400px;width:1680px;height:560px;right:auto;bottom:auto;border-radius:20px;background:#DCE6FF;opacity:.45\"></div>")   # 본문 아래 크림 면
+GLOW_C_LIGHT = "<div class='deco' style=\"background:#fff\"></div>"
+
+
+# 면 규칙(사용자 2026-10-16 "여백은 규칙으로 정해 일정하게"): 안쪽 여백 PAD 네 방향 같음 · 모서리 PAD_R · 색·투명도 하나. 면의 크기는 손으로 적지 않고
+# 구역(data-zone) 요소들의 실측 외곽으로 렌더 때 잰다(c_pad_js) — 그래서 어떤 레이아웃이든 여백이 정확히 같다
+PAD, PAD_R = 40, 24
+C_PAD_JS = """
+({ pad, r }) => {
+  const els = [...document.querySelectorAll('[data-zone]')]; if (!els.length) return null;
+  let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9;
+  for (const el of els) { const b = el.getBoundingClientRect(); x0 = Math.min(x0, b.left); y0 = Math.min(y0, b.top); x1 = Math.max(x1, b.right); y1 = Math.max(y1, b.bottom); }
+  const d = document.createElement('div'); d.className = 'deco';
+  d.style.cssText = `left:${x0 - pad}px;top:${y0 - pad}px;width:${x1 - x0 + 2 * pad}px;height:${y1 - y0 + 2 * pad}px;right:auto;bottom:auto;border-radius:${r}px;background:#DCE6FF;opacity:.45`;
+  const glow = document.querySelector('.s > .deco'); glow.insertAdjacentElement('afterend', d);
+  return [x0 - pad, y0 - pad, x1 - x0 + 2 * pad, y1 - y0 + 2 * pad];
+}
+"""
+
+
 C_INK = [("color:var(--blue2)", "color:rgba(255,255,255,.45)"), ("color:var(--blue)", "color:#fff"), ("color:var(--ink)", "color:#fff"),
          ("color:var(--body)", "color:rgba(255,255,255,.82)"), ("color:var(--muted)", "color:rgba(255,255,255,.6)"), ("color:#BFD0FF", "color:rgba(255,255,255,.7)"),
          ("background:var(--line)", "background:rgba(255,255,255,.3)"), ("background:var(--blue2)", "background:rgba(255,255,255,.7)"),
@@ -250,14 +267,15 @@ def _plain(s):
     return html.escape(re.sub(r"\*\*", "", str(s or "")).replace("\\n", "\n")).replace("\n", "<br>")
 
 
-def T(text, cls="", style="", rich=True, fit=False, raw=False):
-    """글 요소 — data-x=t 는 PPT 글상자가 된다. fit 이면 상자를 넘칠 때 글자를 줄인다(높이·폭이 정해진 상자). raw = 이미 만든 HTML(이스케이프 끝난 것)"""
+def T(text, cls="", style="", rich=True, fit=False, raw=False, zone=False):
+    """글 요소 — data-x=t 는 PPT 글상자가 된다. fit 이면 상자를 넘칠 때 글자를 줄인다(높이·폭이 정해진 상자). raw = 이미 만든 HTML(이스케이프 끝난 것).
+    zone = 테마 C 크림 면 구역에 든다(면은 구역 요소들의 외곽 + PAD)"""
     body = text if raw else (_rich(text) if rich else _plain(text))
-    return f'<div data-x="t"{" data-fit=1" if fit else ""} class="abs {cls}" style="{style}">{body}</div>'
+    return f'<div data-x="t"{" data-fit=1" if fit else ""}{" data-zone=1" if zone else ""} class="abs {cls}" style="{style}">{body}</div>'
 
 
-def R(style, cls="card"):
-    return f'<div data-x="r" class="{cls}" style="{style}"></div>'
+def R(style, cls="card", zone=False):
+    return f'<div data-x="r"{" data-zone=1" if zone else ""} class="{cls}" style="{style}"></div>'
 
 
 def I(src, style):
@@ -551,10 +569,10 @@ def L_contents(d):
     gap = min(130, 640 // n)
     for i, it in enumerate(items):
         y = 230 + i * gap
-        out += T(f"{i + 1:02d}", "", f"left:860px;top:{y}px;font-size:56px;font-weight:900;color:var(--blue);letter-spacing:-0.03em;line-height:1", rich=False)
-        out += T(it, "", f"left:1000px;top:{y + 4}px;width:800px;font-size:46px;font-weight:800;line-height:1.1;letter-spacing:-0.04em", rich=False)
+        out += T(f"{i + 1:02d}", "", f"left:860px;top:{y}px;font-size:56px;font-weight:900;color:var(--blue);letter-spacing:-0.03em;line-height:1", rich=False, zone=True)
+        out += T(it, "", f"left:1000px;top:{y + 4}px;width:800px;font-size:46px;font-weight:800;line-height:1.1;letter-spacing:-0.04em", rich=False, zone=True)
         if i < n - 1:
-            out += R(f"left:860px;top:{y + gap - 30}px;width:940px;height:2px;background:var(--line);border:0;border-radius:0;box-shadow:none")
+            out += R(f"left:860px;top:{y + gap - 30}px;width:940px;height:2px;background:var(--line);border:0;border-radius:0;box-shadow:none", zone=True)
     return "light", GLOW_LIGHT + out
 
 
@@ -639,7 +657,7 @@ def L_services(d):
     for i, it in enumerate(items):
         x = 120 + (i % cols) * (cw + gap)
         y = 330 + (i // cols) * (ch + gap)
-        out += R(f"left:{x}px;top:{y}px;width:{cw}px;height:{ch}px")
+        out += R(f"left:{x}px;top:{y}px;width:{cw}px;height:{ch}px", zone=True)
         out += R(f"left:{x + 44}px;top:{y + 40}px;width:{max(120, 16 * len(str(it.get('tag') or '')) + 48)}px;height:44px;background:var(--sky);border:0;border-radius:22px;box-shadow:none", "chip")
         out += T(it.get("tag"), "", f"left:{x + 68}px;top:{y + 48}px;font-size:19px;font-weight:800;letter-spacing:.1em;color:var(--blue);text-transform:uppercase", rich=False)
         out += T(it.get("name"), "", f"left:{x + 44}px;top:{y + 108}px;width:{cw - 88}px;height:64px;font-size:50px;font-weight:900;letter-spacing:-0.045em;white-space:nowrap", rich=False, fit=True)
@@ -802,7 +820,7 @@ def V_pillars_blocks(d):
     gap, cw, ch = 24, 828, 270
     for i, it in enumerate(items):
         x, y = 120 + (i % 2) * (cw + gap), 390 + (i // 2) * (ch + gap)
-        out += R(f"left:{x}px;top:{y}px;width:{cw}px;height:{ch}px")
+        out += R(f"left:{x}px;top:{y}px;width:{cw}px;height:{ch}px", zone=True)
         out += I(it.get("_img"), f"left:{x + 40}px;top:{y + 45}px;width:180px;height:180px")
         out += T(f"{i + 1:02d}", "", f"left:{x + 270}px;top:{y + 44}px;font-size:22px;font-weight:900;color:var(--blue);letter-spacing:.04em", rich=False)
         out += T(it.get("title"), "", f"left:{x + 270}px;top:{y + 82}px;width:{cw - 310}px;height:84px;font-size:38px;font-weight:900;line-height:1.15;letter-spacing:-0.04em", rich=False, fit=True)
@@ -833,13 +851,13 @@ def V_history_pills(d):
     out = GLOW_LIGHT + _head(d, 170)
     cw = 1680 // n
     pw = min(cw - 20, 150)
-    out += R("left:120px;top:520px;width:1680px;height:6px;background:var(--sky);border:0;border-radius:3px;box-shadow:none")
+    out += R("left:120px;top:520px;width:1680px;height:6px;background:var(--sky);border:0;border-radius:3px;box-shadow:none", zone=True)
     for i, it in enumerate(items):
         x = 120 + i * cw
         last = i == n - 1
-        out += R(f"left:{x}px;top:470px;width:{pw}px;height:106px;background:{'var(--blue)' if last else 'var(--sky)'};border:0;border-radius:53px;box-shadow:none")
+        out += R(f"left:{x}px;top:470px;width:{pw}px;height:106px;background:{'var(--blue)' if last else 'var(--sky)'};border:0;border-radius:53px;box-shadow:none", zone=True)
         out += T(it.get("year"), "", f"left:{x}px;top:496px;width:{pw}px;font-size:40px;font-weight:900;letter-spacing:-0.03em;text-align:center;color:{'#fff' if last else 'var(--blue)'}", rich=False)
-        out += T(it.get("text"), "", f"left:{x + 6}px;top:620px;width:{cw - 30}px;height:200px;font-size:23px;line-height:1.5;color:var(--body)", rich=False, fit=True)
+        out += T(it.get("text"), "", f"left:{x + 6}px;top:620px;width:{cw - 30}px;height:200px;font-size:23px;line-height:1.5;color:var(--body)", rich=False, fit=True, zone=True)
     return "light", out
 
 
@@ -868,7 +886,7 @@ def V_clients_pills(d):
     out = GLOW_LIGHT + _head(d, 150) + T(d.get("sub"), "sub", "left:120px;top:290px;width:1500px", rich=False)
     for i, it in enumerate(items):
         x, y = 120 + (i % cols) * (cw + gap), 400 + (i // cols) * (chh + gap)
-        out += R(f"left:{x}px;top:{y}px;width:{cw}px;height:{chh}px;border-radius:{chh // 2}px", "chip")
+        out += R(f"left:{x}px;top:{y}px;width:{cw}px;height:{chh}px;border-radius:{chh // 2}px", "chip", zone=True)
         out += T(it, "", f"left:{x + 16}px;top:{y + chh / 2 - 18}px;width:{cw - 32}px;height:36px;font-size:26px;font-weight:800;text-align:center;color:var(--blue);letter-spacing:-0.03em;white-space:nowrap", rich=False, fit=True)
     return "light", out
 
@@ -881,9 +899,9 @@ def V_awards_big(d):
     rh = min(88, 680 // max(1, len(items)))
     for i, it in enumerate(items):
         y = 200 + i * rh
-        out += R(f"left:860px;top:{y + rh - 1}px;width:940px;height:1px;background:var(--line);border:0;border-radius:0;box-shadow:none")
-        out += T(it.get("year"), "", f"left:860px;top:{y + rh / 2 - 24}px;font-size:40px;font-weight:900;color:var(--blue);letter-spacing:-0.03em", rich=False)
-        out += T(it.get("text"), "", f"left:1010px;top:{y + rh / 2 - 17}px;width:790px;height:34px;font-size:25px;font-weight:600;white-space:nowrap", rich=False, fit=True)
+        out += R(f"left:860px;top:{y + rh - 1}px;width:940px;height:1px;background:var(--line);border:0;border-radius:0;box-shadow:none", zone=True)
+        out += T(it.get("year"), "", f"left:860px;top:{y + rh / 2 - 24}px;font-size:40px;font-weight:900;color:var(--blue);letter-spacing:-0.03em", rich=False, zone=True)
+        out += T(it.get("text"), "", f"left:1010px;top:{y + rh / 2 - 17}px;width:790px;height:34px;font-size:25px;font-weight:600;white-space:nowrap", rich=False, fit=True, zone=True)
     return "light", out
 
 
@@ -899,10 +917,10 @@ def V_showcase_panel(d):
     rh = min(180, 740 // max(1, len(items)))
     for i, it in enumerate(items):
         y = 180 + i * rh
-        out += R(f"left:980px;top:{y + rh - 1}px;width:820px;height:1px;background:var(--line);border:0;border-radius:0;box-shadow:none")
-        out += T(f"{i + 1:02d}", "", f"left:980px;top:{y + 30}px;font-size:26px;font-weight:900;color:var(--blue)", rich=False)
-        out += T(it.get("title"), "", f"left:1070px;top:{y + 24}px;width:700px;height:80px;font-size:36px;font-weight:900;line-height:1.2;letter-spacing:-0.04em", rich=False, fit=True)
-        out += T(it.get("desc"), "", f"left:1070px;top:{y + 106}px;width:700px;height:34px;font-size:22px;color:var(--muted);white-space:nowrap", rich=False, fit=True)
+        out += R(f"left:980px;top:{y + rh - 1}px;width:820px;height:1px;background:var(--line);border:0;border-radius:0;box-shadow:none", zone=True)
+        out += T(f"{i + 1:02d}", "", f"left:980px;top:{y + 30}px;font-size:26px;font-weight:900;color:var(--blue)", rich=False, zone=True)
+        out += T(it.get("title"), "", f"left:1070px;top:{y + 24}px;width:700px;height:80px;font-size:36px;font-weight:900;line-height:1.2;letter-spacing:-0.04em", rich=False, fit=True, zone=True)
+        out += T(it.get("desc"), "", f"left:1070px;top:{y + 106}px;width:700px;height:34px;font-size:22px;color:var(--muted);white-space:nowrap", rich=False, fit=True, zone=True)
     return "light", out
 
 
@@ -956,7 +974,7 @@ def slide_html(d, n, total, ctone="blue", ctheme="a"):
         for x, y in C_INK:
             body = body.replace(x, y)
         tone = "blue"
-    elif ctheme == "c":   # 본문 — 흰 바탕 + 옅은 크림 면(당근 본문)
+    elif ctheme == "c":   # 본문 — 흰 바탕 + 내용 범위에만 옅은 크림 면(당근 본문)
         body = body.replace(GLOW_LIGHT, GLOW_C_LIGHT, 1)
     elif ctheme == "d" and tone == "dark" and d.get("kind") == "section":   # 테마 D 간지는 주색 전면(흰 글자 그대로)
         body = body.replace(GLOW_DARK, GLOW_BLUE, 1).replace("color:var(--blue2)", "color:rgba(255,255,255,.38)")   # 큰 장 번호가 주색 바탕에 묻히지 않게
@@ -1067,6 +1085,9 @@ def render(slides, out_dir, log=print, ctone="blue", ctheme="a"):
             pg.goto("file:///" + hp.replace("\\", "/"))
             pg.evaluate("document.fonts.ready")
             pg.wait_for_load_state("networkidle")
+            if ctheme == "c" and d.get("_tone") == "light":
+                padbox = pg.evaluate(C_PAD_JS, {"pad": PAD, "r": PAD_R})
+                d["_padbox"] = padbox
             boxes = pg.evaluate(MEASURE_JS)
             prev = os.path.join(out_dir, f"s{i:02d}.png")
             pg.screenshot(path=prev)

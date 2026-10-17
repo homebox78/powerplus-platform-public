@@ -311,9 +311,10 @@ const AI_STEPS = [
 /** 랜딩(시작하기) — 설치 파일 받기·설치 5단계·로그인과 사용(사용자 2026-10-06). 2026-10-07: 이 셋은 설정 features.assets_setup_visible 뒤로 가렸고(superadmin 은 봄),
  *  자주 묻는 질문은 도움말 문서(assets 카테고리, 마이그레이션 0014)로 옮겼다. 숫자 한 줄은 맨 아래. */
 export function AssetsLandingStats() {
-  const cats = useQuery(assetCategoriesQuery);
-  const { me } = useMe();
-  const setup = useQuery(setupQuery(me?.user?.id ?? "anon"));
+  // 둘 다 회원 전용 경로 — 비회원 랜딩에서는 부르지 않는다(401 콘솔 오류 방지, 2026-10-17 점검)
+  const { me, canView } = useMe();
+  const cats = useQuery({ ...assetCategoriesQuery, enabled: canView });
+  const setup = useQuery({ ...setupQuery(me?.user?.id ?? "anon"), enabled: canView });
   const total = cats.data?.reduce((s, c) => s + c.total, 0) ?? 0;
   const s = setup.data;
   return (

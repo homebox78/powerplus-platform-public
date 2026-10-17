@@ -276,8 +276,7 @@ final class Claude
         }
         $raw = curl_exec($ch);
         $status = (int) curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
-        $err = curl_error($ch);
-        curl_close($ch);
+        $err = curl_error($ch);   // curl_close 는 8.5 에서 사용 중단(8.0 부터 하는 일 없음)
         if ($raw === false) {
             return [502, (string) json_encode(['error' => ['message' => 'Claude API 에 연결하지 못했습니다: ' . $err]], JSON_UNESCAPED_UNICODE)];
         }

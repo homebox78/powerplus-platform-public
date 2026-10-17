@@ -95,6 +95,24 @@ final class Access
         return $a->user !== null && in_array($a->plan, ['pro', 'team', 'staff'], true);
     }
 
+    /**
+     * 보기만 되는 회원 — 로그인한 비회원(Free·임직원 기간 끝)이 웹에서 볼 때(2026-10-17 사용자 "가입된 free 회원은 사용은 못하고 볼 수만 있음, pro 이상만 사용 가능").
+     * 키(MCP)·엔진 호출은 해당 없음 — 키는 곧 '사용'이다.
+     */
+    public static function viewer(Actor $a): bool
+    {
+        return $a->user !== null && $a->via === 'session' && !self::member($a);
+    }
+
+    /** 보기만 되는 회원에게 열리는 요청 — 읽기(GET·HEAD)만. 내려받기·내보내기·애드인 설치 파일·장표 재료는 '사용'이라 뺀다 */
+    public static function viewAllowed(Actor $a, string $method, string $path): bool
+    {
+        if (!in_array($method, ['GET', 'HEAD'], true) || !self::viewer($a)) {
+            return false;
+        }
+        return preg_match('#^/assets/setup/download|^/deck/jobs/[^/]+/(export\.zip|files/|plan\.md|script\.(html|md)|practice\.html)|^/deck/kit/|^/deck/reference\.zip#', $path) !== 1;
+    }
+
     /** member() 가 false 일 때 돌려줄 오류 — 화면이 code 로 안내를 고른다(로그인 / 임직원 기간 끝 / 플랜 필요). */
     public static function memberError(Actor $a): HttpError
     {
@@ -104,7 +122,7 @@ final class Access
         if (($a->user['kind'] ?? '') === 'staff' && Users::staffExpired($a->user)) {
             return new HttpError('STAFF_EXPIRED', '임직원 이용 기간이 끝났습니다.', 402, '가입일로부터 1년이 지났습니다. 관리자에게 연장을 요청하세요.');
         }
-        return new HttpError('PLAN_REQUIRED', 'Pro·Team 회원만 이용할 수 있습니다.', 402, '요금제를 확인하거나 관리자에게 문의하세요.');
+        return new HttpError('PLAN_REQUIRED', 'Pro 이상 회원만 사용할 수 있습니다. 지금 계정은 보기만 됩니다.', 402, '협력사·계약직은 관리자에게 전환을 요청하세요.');
     }
 
     private static function sameOrg(Actor $a, array $res): bool

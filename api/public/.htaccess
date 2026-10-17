@@ -1,4 +1,4 @@
-# 상위 api/.htaccess 가 *.php 를 막는다 — 공개 진입점 index.php 하나만 다시 연다(하위 규칙이 상위를 대신한다).
-<Files "index.php">
+# 상위 api/.htaccess 가 *.php 를 막는다 — 공개 진입점 index.php(REST)·spa.php(화면 주소·robots·sitemap) 둘만 다시 연다(하위 규칙이 상위를 대신한다).
+<FilesMatch "^(index|spa)\.php$">
   Require all granted
-</Files>
+</FilesMatch>

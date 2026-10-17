@@ -24,7 +24,8 @@ final class Db
                     PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
                     PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
                     PDO::ATTR_EMULATE_PREPARES => false,
-                    PDO::MYSQL_ATTR_INIT_COMMAND => "SET NAMES utf8mb4 COLLATE utf8mb4_unicode_ci, time_zone = '+09:00'",
+                    // PHP 8.5 부터 PDO::MYSQL_ATTR_* 는 사라질 예정 — 새 상수가 있으면 그것을 쓴다(8.4 서버는 옛 상수)
+                    (class_exists(\Pdo\Mysql::class) ? \Pdo\Mysql::ATTR_INIT_COMMAND : PDO::MYSQL_ATTR_INIT_COMMAND) => "SET NAMES utf8mb4 COLLATE utf8mb4_unicode_ci, time_zone = '+09:00'",
                 ]
             );
         }

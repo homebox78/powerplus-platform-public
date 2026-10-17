@@ -9,7 +9,9 @@
 #   5. 배포 범위에 커밋 안 한 변경 — deploy 는 작업 트리를 싣는다. 다른 세션의 반쯤 된 코드가 같이 올라감
 #      (2026-10-08 core.php 잘림). 정말 올려야 하면 PP_ALLOW_DIRTY=1
 #   6. 역슬래시가 빠진 정규식(packages/mcp) — R38
-# 알려 주기만 하는 것: 마지막 커밋이 다른 배포 범위를 건드렸는데 그 배포를 잊기 쉬운 경우, 크론 주석만 있고 deploy.sh 등록이 없는 api/bin 스크립트(R47)
+#   7. 크론 주석만 있고 deploy.sh 등록이 없는 api/bin 스크립트(R47, 2026-10-17 알림 → 실패)
+#   8. routes.ts 화면 경로가 api/src/Core/SpaRoutes.php 에 없음 — 운영에서 404 상태로 나간다
+# 알려 주기만 하는 것: 마지막 커밋이 다른 배포 범위를 건드렸는데 그 배포를 잊기 쉬운 경우
 set -uo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"; cd "$ROOT"
 SCOPE="${1:-web}"
@@ -69,11 +71,15 @@ if [ "$SCOPE" = web ] || [ "$SCOPE" = mcp ]; then
   [ -n "$BADRE" ] && { echo "$BADRE" | head -5; bad "역슬래시가 빠진 정규식 — 정규식은 Edit 도구로 고친다(R02·R38)"; }
 fi
 
-# 알림 — 머리 주석에 크론이 적힌 api/bin 스크립트가 deploy.sh 에서 등록되지 않음(R47: qa-feed 가 주석에만 있어 한 번도 안 돌았다)
+# 7. 머리 주석(앞 15줄)에 크론이 적힌 api/bin 스크립트는 deploy.sh 의 addcron 으로 등록돼 있어야 한다(R47: qa-feed·retention·scan-queue·prewarm-wm 이
+#    주석에만 있어 한 번도 안 돌았다). 2026-10-17 전부 등록한 뒤 알림 → 실패로 올림. 크론이 아닌 스크립트는 머리에 cron·크론을 쓰지 않는다
 if [ "$SCOPE" = web ]; then
-  for f in $(grep -lis "cron" api/bin/*.php 2>/dev/null); do
-    b=$(basename "$f"); grep -q "$b" scripts/deploy.sh || echo "ℹ️  $b 머리 주석에 크론이 있는데 deploy.sh 가 등록하지 않는다 — 서버 crontab 에 있는지 확인(R47)"
+  for f in api/bin/*.php; do
+    head -15 "$f" | grep -qiE "cron|크론" || continue
+    b=$(basename "$f"); grep -qE "addcron $b " scripts/deploy.sh || bad "$b 머리 주석에 크론이 있는데 deploy.sh 가 addcron 으로 등록하지 않는다(R47)"
   done
+  # 8. 화면 경로 목록(routes.ts ↔ api/src/Core/SpaRoutes.php) — 빠진 화면은 운영에서 404 상태로 나간다
+  php scripts/preflight/spa-routes.php >/dev/null || { php scripts/preflight/spa-routes.php | grep -v '^SPA'; bad "routes.ts 에 있는 화면이 SpaRoutes::PATTERNS 에 없다 — 한 줄 더할 것"; }
 fi
 
 # 알림 — 다른 배포가 필요한지

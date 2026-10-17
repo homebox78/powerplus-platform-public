@@ -8,14 +8,16 @@ import { BrandName } from "@/components/hb/brand-name";
 import { MBr } from "@/components/hb/copy";
 import { OPERATOR } from "@/lib/docs-content";
 
-const LINKS: Array<[string, string]> = [["소개", "/about"], ["도움말", "/help"], ["문서", "/docs"], ["이용약관", "/legal/terms"], ["개인정보처리방침", "/legal/privacy"]];
+// 요금제(/pricing)는 서비스 안내 묶음(소개·도움말·문서) 끝에 — 2026-10-17 점검 "바닥글에 요금제 링크 없음"
+const LINKS: Array<[string, string]> = [["소개", "/about"], ["도움말", "/help"], ["문서", "/docs"], ["요금제", "/pricing"], ["이용약관", "/legal/terms"], ["개인정보처리방침", "/legal/privacy"]];
 
 function FooterLinks({ mobile }: { mobile?: boolean }) {
   return (
-    <nav aria-label="바닥 메뉴" className={mobile ? "flex flex-wrap items-center text-[13px]" : "flex flex-wrap items-center text-sm"}>
+    // 모바일은 | 구분선 없이 간격만 — 요금제를 더해 두 줄이 되면서 줄 머리에 | 가 오던 것(2026-10-17)
+    <nav aria-label="바닥 메뉴" className={mobile ? "flex flex-wrap items-center gap-x-4 text-[13px]" : "flex flex-wrap items-center text-sm"}>
       {LINKS.map(([label, to], i) => (
         <span key={to} className="flex items-center">
-          {i > 0 && <span aria-hidden className={mobile ? "mx-2 text-white/25" : "mx-3 text-white/25"}>|</span>}
+          {i > 0 && !mobile && <span aria-hidden className="mx-3 text-white/25">|</span>}
           <Link to={to} className={mobile ? "pp-hit inline-flex min-h-8 items-center whitespace-nowrap text-white/85 hover:text-white" : "inline-flex min-h-8 items-center text-white/85 hover:text-white"}>{label}</Link>
         </span>
       ))}
@@ -25,9 +27,9 @@ function FooterLinks({ mobile }: { mobile?: boolean }) {
 
 export function AppFooter() {
   return (
-    <footer className="mt-auto bg-[#161616] text-white">
-      {/* 모바일 */}
-      <div className="container-hb flex flex-col gap-3 pb-28 pt-7 md:hidden">
+    <footer data-site-footer className="mt-auto bg-[#161616] text-white">
+      {/* 모바일 — 오른쪽 pr-16 은 떠 있는 도움·TOP 버튼 칸(글이 버튼 밑으로 지나가지 않게, 2026-10-17 점검) */}
+      <div className="container-hb flex flex-col gap-3 pb-28 pr-16 pt-7 md:hidden">
         <div className="flex items-baseline gap-2.5">
           <span className="pp-logo text-[18px]"><BrandName name="powerPlus" /></span>
           <p className="text-[13px] text-white/60">SI 실무자의 올인원</p>

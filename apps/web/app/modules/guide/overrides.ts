@@ -2,6 +2,7 @@
 // 서버 api/src/Guide/Overrides.php 와 같은 규칙(REST·MCP 도 같은 값을 본다). 저장은 /admin/guide 화면(PUT /admin/guide/overrides/{section}).
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiFetch } from "@/lib/api";
+import { useMe } from "@/lib/auth";
 
 export type GuideCopy = {
   module?: { sub?: string; desc?: string; free?: string };
@@ -38,9 +39,11 @@ async function fetchGuideOverrides(): Promise<GuideOverrides> {
 }
 
 const GUIDE_OVERRIDES_KEY = ["guide-overrides"] as const;
-/** 읽기 실패·로딩 중에도 원본이 보이게 빈 덮어쓰기를 준다. */
+/** 읽기 실패·로딩 중에도 원본이 보이게 빈 덮어쓰기를 준다.
+ *  /guide/overrides 는 회원 전용 경로 — 비회원(공개 랜딩)은 부르지 않고 원본 글을 쓴다(401 콘솔 오류 방지, 2026-10-17 점검). */
 export function useGuideOverrides(): GuideOverrides {
-  const q = useQuery({ queryKey: GUIDE_OVERRIDES_KEY, queryFn: fetchGuideOverrides, staleTime: 60_000 });
+  const { canView } = useMe();
+  const q = useQuery({ queryKey: GUIDE_OVERRIDES_KEY, queryFn: fetchGuideOverrides, staleTime: 60_000, enabled: canView });
   return q.data ?? EMPTY_OVERRIDES;
 }
 

@@ -39,11 +39,11 @@ function HeaderSearch({ initialQ, onSubmit }: { initialQ: string; onSubmit: (v: 
   return (
     <form role="search" data-search-open={open || undefined} className="flex items-center" onSubmit={(e) => { e.preventDefault(); onSubmit((ref.current?.value ?? "").trim()); }}>
       <div className={cn("overflow-hidden transition-[width,opacity] duration-300 ease-out", open ? "w-[min(360px,36vw)] opacity-100 lg:w-[min(360px,52vw)]" : "w-0 opacity-0")} aria-hidden={!open}>
-        <SearchInput ref={ref} name="q" kbd={false} tabIndex={open ? 0 : -1} defaultValue={initialQ} className="w-[min(360px,36vw)] lg:w-[min(360px,52vw)]" placeholder="에셋, 가이드, 내 장표 검색…"
+        <SearchInput ref={ref} name="q" kbd={false} tabIndex={open ? 0 : -1} defaultValue={initialQ} className="h-9 w-[min(360px,36vw)] lg:w-[min(360px,52vw)]" placeholder="에셋, 가이드, 내 장표 검색…"
           onKeyDown={(e) => { if (e.key === "Escape") setOpen(false); }}
           onBlur={(e) => { if (!e.currentTarget.value.trim()) setOpen(false); }} />
       </div>
-      {!open && <Button type="button" variant="ghost" size="icon" aria-label="검색 열기" onClick={() => setOpen(true)}><Search /></Button>}
+      {!open && <Button type="button" variant="ghost" size="icon-sm" aria-label="검색 열기" onClick={() => setOpen(true)}><Search /></Button>}
     </form>
   );
 }
@@ -72,10 +72,11 @@ export function AppHeader() {
           ))}
         </nav>
         <div className="ml-auto flex items-center gap-1.5">
+          {/* 같은 줄 컨트롤은 전부 36px(Button sm·icon-sm, 검색칸 h-9) — 2026-10-17 점검: 32·36·40·44 가 섞여 있었다 */}
           {/* 검색은 평소 아이콘만 — 누르면 입력칸이 옆으로 펼쳐진다(사용자 2026-10-08 "상단 검색이 공간을 차지") */}
           <HeaderSearch initialQ={initialQ} onSubmit={(v) => navigate(v ? `/search?q=${encodeURIComponent(v)}` : "/search")} />
           {/* powerMCP 안내(/powermcp). /mcp 는 MCP 서버 주소라 페이지로 쓰지 않는다 */}
-          <Button asChild variant="outline" size="xs" className="hidden md:inline-flex"><Link to="/powermcp">powerMCP</Link></Button>
+          <Button asChild variant="outline" size="sm" className="hidden md:inline-flex"><Link to="/powermcp">powerMCP</Link></Button>
           {u ? (
             <>
               <NotificationBell />
@@ -115,8 +116,8 @@ export function AppHeader() {
             </>
           ) : (
             <>
-              <Link to="/login" className="inline-flex min-h-11 items-center px-2 text-md font-semibold">로그인</Link>
-              <Button asChild size="sm"><Link to="/signup">무료로 시작</Link></Button>
+              <Button asChild variant="ghost" size="sm" className="px-3 text-md font-semibold"><Link to="/login">로그인</Link></Button>
+              <Button asChild size="sm"><Link to="/signup">가입하기</Link></Button>
             </>
           )}
         </div>

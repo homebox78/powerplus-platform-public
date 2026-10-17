@@ -90,7 +90,6 @@ final class Llm
             ]);
             $raw = curl_exec($ch);
             $status = (int) curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
-            curl_close($ch);
         }
         if ($raw === false || $status !== 200) {
             error_log('[llm] 실패 ' . $status . ' ' . mb_substr((string) $raw, 0, 300));

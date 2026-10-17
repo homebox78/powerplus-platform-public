@@ -94,6 +94,17 @@ export default function App() {
   );
 }
 
+// 첫 화면 껍데기 — SPA 빌드가 index.html 에 미리 그려 둔다. 스크립트가 다 받아지기 전 4~6초 흰 화면이던 것(2026-10-17 점검)을
+// 로고 글자 하나로 채운다. 무거운 자산 없이 인라인 스타일만(CSS 파일이 늦어도 보이게). 주황은 사이트 공통 #E46B37
+export function HydrateFallback() {
+  return (
+    <div role="status" aria-label="불러오는 중" style={{ flex: 1, minHeight: "100dvh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 12, background: "#fff", fontFamily: "Pretendard, system-ui, -apple-system, 'Malgun Gothic', sans-serif" }}>
+      <div style={{ fontSize: 32, fontWeight: 800, letterSpacing: "-0.03em", color: "#1a1a1a" }}>power<span style={{ color: "#E46B37" }}>Plus</span></div>
+      <div style={{ fontSize: 14, color: "#8a8a8a" }}>SI 실무자의 올인원</div>
+    </div>
+  );
+}
+
 export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
   let title = "오류가 발생했습니다";
   let detail = "잠시 후 다시 시도해 주세요.";

@@ -142,7 +142,7 @@ export function MainChat({ variant = "full", onClose }: { variant?: "full" | "do
         // 로그인 전 — 답하지 않고 회원가입으로 이끈다(2026-10-15 사용자). 적은 말은 남겨 두었다가 로그인 뒤 입력창에 다시 채운다.
         try { sessionStorage.setItem(DRAFT, t); } catch { /* 없음 */ }
         const back = encodeURIComponent(loc.pathname + loc.search);
-        const a: Reply = { kind: "reply", module: "help", body: "powerPlus AI 는 로그인 후 사용할 수 있어요.\n무료로 가입하면 적어 두신 말 그대로 이어서 시작합니다.", items: [], item_type: null, links: [[`/signup?next=${back}`, "무료로 회원가입"], [`/login?next=${back}`, "로그인"]], login: true };
+        const a: Reply = { kind: "reply", module: "help", body: "powerPlus AI 는 로그인 후 사용할 수 있어요.\n가입하고 로그인하면 적어 두신 말 그대로 이어서 시작합니다.", items: [], item_type: null, links: [[`/signup?next=${back}`, "회원가입"], [`/login?next=${back}`, "로그인"]], login: true };
         const next = [...anon, { q: t, a }];
         setAnon(next); anonStore.set(next);
       } else if (!p) {
@@ -300,13 +300,13 @@ export function MainChat({ variant = "full", onClose }: { variant?: "full" | "do
               {p?.job?.status === "hold"
                 ? <button type="button" onClick={() => fileRef.current?.click()} aria-label="자료 올리기" title="자료 올리기" className="inline-flex size-9 shrink-0 items-center justify-center rounded-full text-ink-2 transition-colors hover:bg-ground-3"><Plus className="size-5" aria-hidden /></button>
                 : <span className="hidden size-9 shrink-0 items-center justify-center text-ink-4/60 @md:inline-flex" title="제안서 작업을 시작하면 자료를 올릴 수 있습니다" aria-hidden><Plus className="size-5" /></span>}
-              {/* 탭 — 고른 것만 옅은 면(LLM 입력창의 이미지·비디오·텍스트 탭 문법). 좁은 칸은 그림 없이 글자만 */}
-              <div role="radiogroup" aria-label="무엇을 할까요" className="flex min-w-0 items-center">
+              {/* 탭 — 고른 것만 옅은 면(LLM 입력창의 이미지·비디오·텍스트 탭 문법). 좁은 칸은 그림 없이 글자만 — 대신 안 고른 탭에 옅은 테두리를 둘러 눌리는 것으로 보이게(모바일 홈, 2026-10-17 점검) */}
+              <div role="radiogroup" aria-label="무엇을 할까요" className="flex min-w-0 items-center gap-1 @xl:gap-0">
                 {MODES.map((m) => (
                   <button key={m.k} type="button" role="radio" aria-checked={mode === m.k} onClick={() => { setMode(m.k); inputRef.current?.focus(); }}
                     title={m.k === "auto" ? "질문·안내·MCP 연결 — 말을 보고 알아서 고릅니다" : undefined}
                     className={cn("inline-flex h-9 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full px-1.5 text-[calc(var(--text-sm)*0.9)] transition-colors @sm:px-2.5 @xl:px-3",   // 모바일 챗봇 창(286px)에서도 다섯 개가 한 줄에. 글자·그림 = 기본의 90%(사용자)
-                      mode === m.k ? "bg-ground-3 font-semibold text-ink" : "text-ink-4 hover:text-ink-2")}>
+                      mode === m.k ? "bg-ground-3 font-semibold text-ink" : "text-ink-4 hover:text-ink-2 @max-xl:ring-1 @max-xl:ring-inset @max-xl:ring-line")}>
                     <m.icon className="hidden size-[14.4px] @xl:block" aria-hidden />{m.label}
                   </button>
                 ))}

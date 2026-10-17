@@ -9,13 +9,29 @@ RewriteRule ^p/([A-Za-z0-9_-]+)$ api/public/index.php [L,QSA]
 <FilesMatch "(\.(pem|key|env|bak|sql|log|sh|ps1|md)|^config\.php\..*)$">
   Require all denied
 </FilesMatch>
-# SPA 폴백
+# 화면 주소 → api/public/spa.php (2026-10-17): routes.ts 에 있는 주소는 index.html 200 + 공개 화면 제목·설명 주입,
+# 없는 주소는 같은 껍데기를 404 로(예전엔 전부 200 — 소프트 404). 홈('/')·robots.txt·sitemap.xml 도 여기서 만든다
+# (공개 화면 목록 하나 = api/src/Core/SpaRoutes.php). 웹 빌드의 robots.txt·sitemap.xml 파일은 쓰이지 않는다.
+RewriteRule ^$ api/public/spa.php [L]
+RewriteRule ^(robots\.txt|sitemap\.xml)$ api/public/spa.php [L]
 RewriteCond %{REQUEST_FILENAME} !-f
 RewriteCond %{REQUEST_FILENAME} !-d
-RewriteRule ^ index.html [L]
+RewriteRule ^ api/public/spa.php [L]
 <IfModule mod_headers.c>
   Header always set X-Content-Type-Options "nosniff"
   Header always set Referrer-Policy "strict-origin-when-cross-origin"
+  # 보안 헤더(2026-10-17). 권한 정책은 쓰지 않는 기기 기능만 끈다(클립보드·전체 화면은 그대로)
+  Header always set Permissions-Policy "camera=(), microphone=(), geolocation=(), payment=(), usb=()"
+  # HSTS 는 https 로 온 요청에만(로컬 http 개발 서버에 1년 고정되지 않게)
+  Header always set Strict-Transport-Security "max-age=31536000" "expr=%{HTTPS} == 'on'"
+  # 다른 사이트가 iframe 으로 덮어씌우지 못하게(클릭재킹) — 같은 사이트 iframe(시안 미리보기·덱 그림)은 된다.
+  # 애드인(/addin/)은 PowerPoint(데스크톱 WebView·Office 웹 *.officeapps.live.com 등)가 iframe 으로 띄우므로 뺀다.
+  # X-Frame-Options 는 always 가 아닌 set — PHP 가 이미 넣은 같은 머리(deck.php)를 덮어 두 줄이 되지 않게.
+  # CSP 는 always — PHP 가 넣은 sandbox CSP(mock.php 미리보기)와 따로 한 줄 더 붙어 둘 다 지켜진다.
+  <If "%{REQUEST_URI} !~ m#^/addin(/|$)#">
+    Header set X-Frame-Options "SAMEORIGIN"
+    Header always set Content-Security-Policy "frame-ancestors 'self'"
+  </If>
   <FilesMatch "\.(js|css|woff2)$">
     Header set Cache-Control "public, max-age=31536000, immutable"
   </FilesMatch>

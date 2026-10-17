@@ -123,7 +123,7 @@ final class Jev
         ]);
         $raw = curl_exec($ch);
         $status = (int) curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
-        curl_close($ch);
+        unset($ch); // curl_close 는 PHP 8.0 부터 하는 일이 없고 8.5 에서 폐기 예고
         if ($raw === false || $status !== 200) {
             error_log('[jev] ' . $task . ' 실패 ' . $status . ' ' . mb_substr((string) $raw, 0, 300));
             return null;

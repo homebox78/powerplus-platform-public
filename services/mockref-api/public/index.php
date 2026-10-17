@@ -57,6 +57,23 @@ if (in_array($method, ['POST', 'PUT', 'PATCH', 'DELETE'], true)) {
     }
 }
 
+// 레퍼런스 데이터는 powerMCP 키·관리자만 (보안 점검 2026-10-17) — GET /api/sites 가 로그인 없이 기관 1,071곳 목록을 돌려줬다.
+// 10-06 '수집 화면은 관리자 전용'·10-16 '회원 전용' 결정을 이 주소로 우회할 수 있었다.
+// 열어 두는 것: 상태(/api/health)·결제 웹훅·공유 시안 미리보기(/api/p)와 그 안의 그림(/api/files·/api/samples/file)·내부 호출(/api/internal — 각자 requireAdmin).
+$path = Router::path();
+$open = in_array($path, ['/api/health', '/api/billing/webhook'], true)
+    || preg_match('#^/api/(p|files|samples/file|internal)/#', $path) === 1;
+if (!$open && $method !== 'OPTIONS') {
+    $plan = \Homebox\Plan::current();
+    if (empty($plan['via_key']) && empty($plan['admin'])) {
+        if (isset($_SERVER['HTTP_X_ADMIN_TOKEN'])) {
+            \Homebox\Http\Auth::requireAdmin();   // 워커·스크립트 토큰 — 틀리면 401 로 끝난다
+        } else {
+            Response::error(401, 'KEY_REQUIRED', '레퍼런스 데이터는 powerMCP 키로만 볼 수 있습니다. powerplus.hom2box.com/powermcp 에서 키를 받으세요.');
+        }
+    }
+}
+
 try {
     $router->dispatch($_SERVER['REQUEST_METHOD'], Router::path());
 } catch (Throwable $e) {

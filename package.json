@@ -12,7 +12,7 @@
     "dev": "pnpm --filter @pp/web dev",
     "build": "pnpm -r --filter './apps/*' --filter './packages/*' build",
     "db:migrate": "node db/scripts/migrate.mjs",
-    "db:seed": "node db/scripts/seed.mjs",
+    "db:seed": "node db/scripts/seed-demo.mjs",
     "legacy:powerplus": "node db/migrate-legacy/powerplus-assets.mjs",
     "leak-audit": "node scripts/leak-audit.mjs",
     "lint": "pnpm -r lint",

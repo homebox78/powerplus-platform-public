@@ -371,8 +371,10 @@ function PlanEditor({ u }: { u: AdminUserDetail }) {
   const refresh = useRefresh(u.id);
   const [plan, setPlan] = useState<ManualPlan>(u.plan === "pro" || u.plan === "team" ? u.plan : "free");
   const [until, setUntil] = useState(u.plan_source === "manual" && u.plan_until ? u.plan_until.slice(0, 10) : "");
+  // 메모 — 협력사·계약직 수동 전환 근거(2026-10-17 임직원 전용 운영: "컨소시엄 ○○사 · 계약 끝" 등). 이력 표에 같이 보인다
+  const [memo, setMemo] = useState("");
   const save = useMutation({
-    mutationFn: () => setUserPlan(u.id, { plan, until: until || undefined }),
+    mutationFn: () => setUserPlan(u.id, { plan, until: until || undefined, memo: memo.trim() || undefined }),
     onSuccess: (r) => {
       toast.success(`플랜을 ${PLAN_KO[plan]}(으)로 지정했습니다.`, { description: r.paid_subscription ? "결제 구독이 따로 있습니다. 결제 구독은 이 화면에서 바뀌지 않습니다." : undefined });
       refresh();
@@ -403,6 +405,10 @@ function PlanEditor({ u }: { u: AdminUserDetail }) {
           <Input id="pl-until" type="date" className="h-9" value={until} onChange={(e) => setUntil(e.target.value)} disabled={plan === "free"} />
         </div>
         <Button size="sm" onClick={() => save.mutate()} disabled={save.isPending}>지정</Button>
+      </div>
+      <div className="mt-2 flex min-w-0 flex-col gap-1.5">
+        <Label htmlFor="pl-memo" className="text-sm text-ink-4">메모(전환 근거)</Label>
+        <Input id="pl-memo" className="h-9" maxLength={150} value={memo} placeholder="예: 컨소시엄 ○○사 · 계약 끝 날짜" onChange={(e) => setMemo(e.target.value)} disabled={plan === "free"} />
       </div>
     </section>
   );

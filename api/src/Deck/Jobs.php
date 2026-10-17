@@ -990,7 +990,7 @@ final class Jobs
         $op = json_decode((string) $st->fetchColumn(), true) ?: [];
         unset($op['back']);
         $pdo->prepare("UPDATE deck_jobs SET status = 'hold', phase = 'plan', plan = NULL, review = NULL, stage = NULL, progress = 0, worker = NULL,
-                       claimed_at = NULL, heartbeat_at = NULL, started_at = NULL, finished_at = NULL, error = NULL, cancel_requested = 0,
+                       claimed_at = NULL, heartbeat_at = NULL, started_at = NULL, finished_at = NULL, error = NULL, cancel_requested = 0, attempts = 0,
                        opts = :o WHERE id = :i")
             ->execute([':o' => $op ? json_encode($op, JSON_UNESCAPED_UNICODE) : null, ':i' => $id]);
         // 옛 기획 미리 보기(plan.json)·시안·사업 요약(context.md)이 새 기획에 섞이지 않게 지운다
@@ -1074,7 +1074,61 @@ final class Jobs
             ->execute([':n' => mb_substr($name, 0, 64), ':i' => mb_substr($info, 0, 255)]);
     }
 
-    /** 대기 작업 하나를 원자적으로 가져간다. 15분 넘게 소식 없는 진행 작업은 다시 대기로 돌린다. */
+    /** 같은 작업을 이만큼 잡았는데도 엔진과 연결이 끊기면 다시 대기열로 돌리지 않고 실패로 끝낸다(엔진을 죽이는 작업이 끝없이 돌지 않게) */
+    public const MAX_ATTEMPTS = 3;
+    /** 엔진 꺼짐 안내 문구 머리 — 한 번만 남겼는지 이 문구로 찾는다(따옴표·% 를 넣지 말 것, SQL LIKE 에 그대로 들어간다) */
+    private const ENGINE_DOWN_MSG = '변환 엔진이 지금 꺼져 있어 작업이 기다리고 있습니다.';
+
+    /**
+     * 멈춘 작업 정리 — 엔진 요청(claim)과 api/bin/deck-reaper.php 크론(5분)이 같이 부른다.
+     * 엔진이 하나도 붙어 있지 않을 때도 돌아야 해서 claim 에서 뺐다(2026-10-17).
+     *  ① 취소를 요청했는데 엔진이 90초 넘게 소식이 없으면(멈췄거나 재시작됨) 취소로 끝낸다(「멈추고 내용 입력으로」면 시작 대기로)
+     *  ② 15분 넘게 소식 없는 진행 작업 → 대기열로. 이미 MAX_ATTEMPTS 번 잡혔으면 실패로 끝내고 주인에게 알린다
+     *  ③ 엔진이 5분 넘게 안 보이는데 30분 넘게 기다린 작업 → 작업 기록에 한 번만 알린다
+     * @return array{canceled:int, requeued:int, failed:int, engine_down:int}
+     */
+    public static function reap(): array
+    {
+        $pdo = Db::pdo();
+        $out = ['canceled' => 0, 'requeued' => 0, 'failed' => 0, 'engine_down' => 0];
+        $dead = $pdo->query("SELECT id, opts FROM deck_jobs WHERE status = 'running' AND cancel_requested = 1 AND heartbeat_at < (NOW() - INTERVAL 90 SECOND)")->fetchAll(PDO::FETCH_KEY_PAIR);
+        foreach ($dead as $d => $dOpts) {
+            if (!empty((json_decode((string) $dOpts, true) ?: [])['back'])) { self::toHold((string) $d); continue; }
+            $st = $pdo->prepare("UPDATE deck_jobs SET status = 'canceled', stage = '취소됨', finished_at = NOW() WHERE id = :i AND status = 'running'");
+            $st->execute([':i' => $d]);
+            if ($st->rowCount() === 1) { self::event((string) $d, 'warn', '취소되었습니다.'); $out['canceled']++; }
+        }
+        $stale = $pdo->query("SELECT id, worker, attempts FROM deck_jobs WHERE status = 'running' AND heartbeat_at < (NOW() - INTERVAL 15 MINUTE)")->fetchAll();
+        foreach ($stale as $s) {
+            $id = (string) $s['id'];
+            if ((int) $s['attempts'] >= self::MAX_ATTEMPTS) {
+                $msg = "엔진과 연결이 {$s['attempts']}번 끊겨 작업을 멈췄습니다. 자료가 너무 크거나 엔진에서 오류가 난 것 같습니다. 다시 돌리거나 관리자에게 문의해 주세요.";
+                $st = $pdo->prepare("UPDATE deck_jobs SET status = 'failed', stage = '실패', progress = 0, worker = NULL, finished_at = NOW(), error = :e WHERE id = :i AND status = 'running'");
+                $st->execute([':e' => $msg, ':i' => $id]);
+                if ($st->rowCount() === 1) {
+                    self::event($id, 'error', $msg);
+                    self::notifyOwner($id, '장표 변환에 실패했습니다', '내 작업에서 실패 사유를 보고 다시 돌릴 수 있습니다.', 'deck_failed');
+                    $out['failed']++;
+                }
+                continue;
+            }
+            $st = $pdo->prepare("UPDATE deck_jobs SET status = 'queued', worker = NULL WHERE id = :i AND status = 'running'");
+            $st->execute([':i' => $id]);
+            if ($st->rowCount() === 1) { self::event($id, 'warn', "엔진({$s['worker']})과 연결이 끊겨 대기열로 되돌렸습니다."); $out['requeued']++; }
+        }
+        // ③ 엔진이 안 보이면 오래 기다린 작업에 한 번만 안내 — 화면이 아는 kind(warn)로 쓰고, 같은 문구가 이미 있으면 건너뛴다
+        $alive = (int) $pdo->query('SELECT COUNT(*) FROM deck_workers WHERE seen_at > (NOW() - INTERVAL 5 MINUTE)')->fetchColumn();
+        if ($alive === 0) {
+            $waiting = $pdo->query("SELECT j.id FROM deck_jobs j WHERE j.status = 'queued' AND j.created_at < (NOW() - INTERVAL 30 MINUTE)
+                                    AND NOT EXISTS (SELECT 1 FROM deck_job_events e WHERE e.job_id = j.id AND e.kind = 'warn' AND e.message LIKE '" . self::ENGINE_DOWN_MSG . "%') LIMIT 200")->fetchAll(PDO::FETCH_COLUMN);
+            foreach ($waiting as $wid) {
+                self::event((string) $wid, 'warn', self::ENGINE_DOWN_MSG . ' 엔진이 다시 켜지면 자동으로 이어서 시작합니다. 운영팀에도 알렸습니다.');
+                $out['engine_down']++;
+            }
+        }
+        return $out;
+    }
+
     /**
      * 대기열에서 하나 잡는다.
      * - 고르게: 지금 돌고 있는 작업이 적은 사람의 것부터(한 사람이 여러 개 올려도 다른 사람이 밀리지 않게), 같으면 먼저 올린 것부터.
@@ -1085,18 +1139,7 @@ final class Jobs
     {
         $pdo = Db::pdo();
         try { self::purgeDocs(); } catch (Throwable $e) { error_log('[powerDeck] purgeDocs: ' . $e->getMessage()); }
-        // 취소를 요청했는데 엔진이 90초 넘게 소식이 없으면(멈췄거나 재시작됨) 서버가 취소로 끝낸다
-        $dead = $pdo->query("SELECT id, opts FROM deck_jobs WHERE status = 'running' AND cancel_requested = 1 AND heartbeat_at < (NOW() - INTERVAL 90 SECOND)")->fetchAll(PDO::FETCH_KEY_PAIR);
-        foreach ($dead as $d => $dOpts) {
-            if (!empty((json_decode((string) $dOpts, true) ?: [])['back'])) { self::toHold((string) $d); continue; }
-            $pdo->prepare("UPDATE deck_jobs SET status = 'canceled', stage = '취소됨', finished_at = NOW() WHERE id = :i AND status = 'running'")->execute([':i' => $d]);
-            self::event((string) $d, 'warn', '취소되었습니다.');
-        }
-        $stale = $pdo->query("SELECT id, worker FROM deck_jobs WHERE status = 'running' AND heartbeat_at < (NOW() - INTERVAL 15 MINUTE)")->fetchAll();
-        foreach ($stale as $s) {
-            $pdo->prepare("UPDATE deck_jobs SET status = 'queued', worker = NULL WHERE id = :i AND status = 'running'")->execute([':i' => $s['id']]);
-            self::event($s['id'], 'warn', "엔진({$s['worker']})과 연결이 끊겨 대기열로 되돌렸습니다.");
-        }
+        try { self::reap(); } catch (Throwable $e) { error_log('[powerDeck] reap: ' . $e->getMessage()); }
         for ($try = 0; $try < 3; $try++) {
             // 세로 제안서(제출용)는 기획 단계에서 결과까지 만드는 무거운 작업이라 가벼운 자리에 주지 않는다(엔진 is_heavy 와 같은 판정, 2026-10-15)
             $id = $pdo->query("SELECT id FROM deck_jobs WHERE status = 'queued'" . ($lightOnly ? " AND kind = 'design' AND phase IN ('plan', 'edit')
@@ -1104,7 +1147,7 @@ final class Jobs
                                ORDER BY (SELECT COUNT(*) FROM deck_jobs r WHERE r.email = deck_jobs.email AND r.status = 'running'), created_at LIMIT 1")->fetchColumn();
             if ($id === false) return null;
             $st = $pdo->prepare("UPDATE deck_jobs SET status = 'running', worker = :w, claimed_at = NOW(), heartbeat_at = NOW(),
-                                 started_at = COALESCE(started_at, NOW()), stage = '준비', progress = 1
+                                 started_at = COALESCE(started_at, NOW()), stage = '준비', progress = 1, attempts = attempts + 1
                                  WHERE id = :i AND status = 'queued'");
             $st->execute([':w' => $worker, ':i' => $id]);
             if ($st->rowCount() === 1) {
@@ -1185,6 +1228,8 @@ final class Jobs
     public static function finish(string $id, string $worker, array $b): array
     {
         $j0 = self::mine($id, $worker);
+        // 엔진이 끝까지 보고했다 = 이번 단계는 끊기지 않았다. 잡은 횟수를 비워 다음 단계(시안·제작·글 고치기)가 새로 센다
+        Db::pdo()->prepare('UPDATE deck_jobs SET attempts = 0 WHERE id = :i')->execute([':i' => $id]);
         $status = in_array($b['status'] ?? '', ['done', 'failed', 'canceled', 'review'], true) ? $b['status'] : 'failed';
         if (isset($b['engine']) && is_array($b['engine'])) {
             $en = $b['engine'];

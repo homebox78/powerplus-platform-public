@@ -23,6 +23,11 @@ final class Otp
         if ($last && (time() - strtotime((string) $last['created_at'])) < self::RESEND_SEC) {
             throw new HttpError('TOO_SOON', '잠시 뒤 다시 요청하세요.', 429, self::RESEND_SEC . '초 간격');
         }
+        // 메일 폭탄·발송 비용 막기(2026-10-17) — 이메일마다 60초 말고도 IP 한 곳에서 시간 10번·하루 30번, 사이트 전체 하루 상한
+        $ip = RateLimit::ipKey();
+        RateLimit::hit("otp.ip.h:{$ip}", 10, RateLimit::HOUR, '인증 코드 요청이 너무 잦습니다. 잠시 뒤 다시 요청하세요.');
+        RateLimit::hit("otp.ip.d:{$ip}", 30, RateLimit::DAY, '오늘 이 곳에서 요청할 수 있는 인증 코드 수를 넘었습니다.');
+        RateLimit::hit('otp.all.d', (int) Config::get('auth.otp_daily_cap', 1000), RateLimit::DAY, '지금은 인증 코드를 보낼 수 없습니다. 잠시 뒤 다시 시도해 주세요.');
         $code = Ids::otp();
         Db::exec('DELETE FROM core_otp_codes WHERE email = ?', [$email]);
         Db::exec(

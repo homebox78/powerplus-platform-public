@@ -680,46 +680,7 @@ final class AiKeys
         echo $raw;
     }
 
-    /**
-     * 글 작업을 엔진 PC 에 맡긴다(ai_tasks). 엔진이 켜져 있고 글 엔진이 '구독(CLI)'일 때만.
-     * 20초 안에 아무 엔진도 안 가져가면(꺼짐·과부하) 거두고 null — 부르는 쪽이 OpenRouter 로 간다.
-     * 가져갔는데 4분 안에 끝나지 않거나 실패해도 null.
-     */
-    // 정리 필요: 이 파일 안팎 어디서도 부르지 않는다(2026-10-15 확인) — chatForJob 에서 연결이 끊긴 것인지 일부러 끈 것인지 확인 후 연결하거나 지운다
-    private static function viaEngine(array $job, string $kind, array $b): ?array
-    {
-        if (self::textEngine() !== 'cli') return null;
-        $pdo = Db::pdo();
-        if (!(int) $pdo->query('SELECT COUNT(*) FROM deck_workers WHERE seen_at > (NOW() - INTERVAL 30 SECOND)')->fetchColumn()) return null;
-        $pdo->prepare('INSERT INTO deck_ai_tasks (job_id, email, kind, body, status, created_at, updated_at) VALUES (?, ?, ?, ?, \'queued\', NOW(), NOW())')
-            ->execute([(string) ($job['id'] ?? ''), strtolower((string) $job['email']), $kind, json_encode(['messages' => $b['messages'] ?? []], JSON_UNESCAPED_UNICODE)]);
-        $id = (int) $pdo->lastInsertId();
-        @set_time_limit(320);
-        $t0 = time();
-        while (true) {
-            usleep(1000000);
-            $st = $pdo->prepare('SELECT status, result, error FROM deck_ai_tasks WHERE id = ?');
-            $st->execute([$id]);
-            $r = $st->fetch() ?: ['status' => 'failed'];
-            if ($r['status'] === 'done') {
-                $pdo->prepare('INSERT INTO deck_ai_usage (email, job_id, kind, model, cost_usd, tokens_in, tokens_out, created_at) VALUES (?, ?, ?, ?, 0, 0, 0, NOW())')
-                    ->execute([strtolower((string) $job['email']), (string) ($job['id'] ?? ''), 'e' . $kind, 'engine (Claude 구독)']);
-                return ['choices' => [['message' => ['content' => (string) $r['result']]]], 'model' => 'engine', 'usage' => ['cost' => 0]];
-            }
-            if ($r['status'] === 'failed') return null;
-            $wait = time() - $t0;
-            if ($r['status'] === 'queued' && $wait >= 20) {   // 아무도 안 가져감 — 거두고 OpenRouter 로
-                $pdo->prepare("UPDATE deck_ai_tasks SET status = 'canceled', updated_at = NOW() WHERE id = ? AND status = 'queued'")->execute([$id]);
-                return null;
-            }
-            if ($wait >= 240) {
-                $pdo->prepare("UPDATE deck_ai_tasks SET status = 'canceled', updated_at = NOW() WHERE id = ?")->execute([$id]);
-                return null;
-            }
-        }
-    }
-
-    /** 엔진이 글 작업 하나를 가져간다(원자적으로) */
+    /** 엔진이 글 작업 하나를 가져간다(원자적으로) — 글을 엔진 구독(CLI)으로 넘기던 길(viaEngine)은 2026-10-05 에 닫혀 2026-10-17 에 지웠다. 엔진 폴링 호환으로 남긴다 */
     public static function claimTask(string $worker): ?array
     {
         $pdo = Db::pdo();
@@ -895,8 +856,7 @@ final class AiKeys
         if ($body !== null) curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($body, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
         $raw = curl_exec($ch);
         $status = (int) curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
-        $err = curl_error($ch);
-        curl_close($ch);
+        $err = curl_error($ch);   // curl_close 는 PHP 8 부터 하는 일이 없고 8.5 에서 사용 중단 — 핸들은 범위를 벗어나면 닫힌다
         if ($raw === false) Legacy::fail('OpenRouter 에 연결하지 못했습니다: ' . $err, 502);
         return [$status, (string) $raw];
     }

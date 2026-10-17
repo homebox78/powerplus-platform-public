@@ -108,7 +108,7 @@ export default function PowerMcpPage() {
                 </div>
                 <p className="mt-5 text-sm font-semibold text-ink-4">요청</p>
                 <ul className="mt-2 flex flex-col gap-2">
-                  {flow.asks.map((a) => <li key={a} className="rounded-field bg-ground-2 px-4 py-3 text-md">“{a}”</li>)}
+                  {flow.asks.map((a) => <li key={a} className="rounded-field bg-ground-2 px-4 py-3 text-md"><span className="pp-sent">“{a}”</span></li>)}
                 </ul>
                 <p className="mt-5 flex items-center gap-1.5 text-sm font-semibold text-ink-4"><ArrowRight className="size-4" aria-hidden />이 도구가</p>
                 <div className="mt-2 flex flex-wrap gap-1.5">{names.map((n) => <Tag key={n} tone="line" className="[overflow-wrap:anywhere]">{label(n)}</Tag>)}</div>
@@ -142,9 +142,9 @@ export default function PowerMcpPage() {
         <ul className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2" role="tabpanel">
           {g.items.map((e) => (
             <li key={e.q} className="flex min-w-0 flex-col rounded-card border border-line p-5">
-              <p className="text-md font-semibold leading-[1.6]">“{e.q}”</p>
+              <Copy className="text-md font-semibold leading-[1.6]" text={`“${e.q}”`} />
               <div className="mt-3 flex flex-wrap gap-1.5">{e.tools.map((n) => <Tag key={n} tone="line" className="[overflow-wrap:anywhere]">{label(n)}</Tag>)}</div>
-              <p className="mt-3 flex items-start gap-1.5 text-sm leading-[1.6] text-ink-3"><ArrowRight className="mt-[3px] size-4 shrink-0" aria-hidden />{e.result}</p>
+              <p className="mt-3 flex items-start gap-1.5 text-sm leading-[1.6] text-ink-3"><ArrowRight className="mt-[3px] size-4 shrink-0" aria-hidden /><Copy as="span" text={e.result} /></p>
             </li>
           ))}
         </ul>
@@ -184,7 +184,7 @@ export default function PowerMcpPage() {
                 <TableRow key={t.name}>
                   <TableCell className="text-center text-ink-3">{t.module}</TableCell>
                   <TableCell className="text-center font-semibold [overflow-wrap:anywhere] whitespace-normal">{t.name}</TableCell>
-                  <TableCell className="whitespace-normal text-left"><span className="font-semibold">{t.title}</span><span className="mt-0.5 block text-sm leading-[1.6] text-ink-3">{brief(t.description)}</span></TableCell>
+                  <TableCell className="whitespace-normal text-left"><span className="font-semibold">{t.title}</span><Copy as="span" className="mt-0.5 block text-sm leading-[1.6] text-ink-3" text={brief(t.description)} /></TableCell>
                 </TableRow>
               ))}
             </TableBody>
@@ -195,7 +195,7 @@ export default function PowerMcpPage() {
             <li key={t.name} className="min-w-0 rounded-card border border-line p-4">
               <div className="flex flex-wrap items-center gap-2"><Tag tone="soft">{t.module}</Tag><span className="text-sm font-semibold [overflow-wrap:anywhere]">{t.name}</span></div>
               <p className="mt-2 text-md font-semibold">{t.title}</p>
-              <p className="mt-0.5 text-sm leading-[1.6] text-ink-3">{brief(t.description)}</p>
+              <Copy className="mt-0.5 text-sm leading-[1.6] text-ink-3" text={brief(t.description)} />
             </li>
           ))}
         </MobileCarousel>

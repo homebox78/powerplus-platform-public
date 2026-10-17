@@ -64,10 +64,10 @@ final class Session
         $_SESSION['user_id'] = $userId;
         $_SESSION['epoch'] = (int) (Db::row('SELECT session_epoch FROM users WHERE id = ?', [$userId])['session_epoch'] ?? 0);
         Db::exec('UPDATE users SET last_login_at = NOW(3) WHERE id = ?', [$userId]);
-        // 관리자 = admin@example.com 구글 로그인 계정 (사용자 지정 2026-09-26). users 는 배포 덤프 제외라 SQL 한 번이 아니라 로그인마다 맞춘다.
-        // 이메일은 구글·이메일 코드 로그인 모두 소유 확인을 거친 값이다. 추가 관리자는 config admin.emails.
+        // 관리자 이메일은 config admin.emails 에만 둔다(코드에 적지 않는다 — 공개 저장소). users 는 배포 덤프 제외라 로그인마다 맞춘다.
+        // 이메일은 구글·이메일 코드 로그인 모두 소유 확인을 거친 값이다.
         $email = strtolower((string) (Db::row('SELECT email FROM users WHERE id = ?', [$userId])['email'] ?? ''));
-        $admins = array_map('strtolower', array_merge(self::ADMIN_EMAILS, (array) \Config::get('admin.emails', [])));
+        $admins = array_map('strtolower', (array) \Config::get('admin.emails', []));
         // 구글 계정이 연결된 사용자만 승격한다(보안 점검 2026-10-05) — 예전에 검증 없이 저장된 이메일로는 못 오르게.
         $hasGoogle = Db::row("SELECT 1 AS ok FROM oauth_accounts WHERE user_id = ? AND provider = 'google'", [$userId]) !== null;
         if ($email !== '' && $hasGoogle && in_array($email, $admins, true)) {

@@ -80,6 +80,8 @@ if [ "$SCOPE" = web ]; then
   done
   # 8. 화면 경로 목록(routes.ts ↔ api/src/Core/SpaRoutes.php) — 빠진 화면은 운영에서 404 상태로 나간다
   php scripts/preflight/spa-routes.php >/dev/null || { php scripts/preflight/spa-routes.php | grep -v '^SPA'; bad "routes.ts 에 있는 화면이 SpaRoutes::PATTERNS 에 없다 — 한 줄 더할 것"; }
+  # 9. 아이콘 글꼴(잘라 받은 Material Symbols) — 코드가 새 아이콘을 쓰면 글꼴에 없어 빈 네모로 나온다(R61)
+  node scripts/ms-subset.mjs check || bad "아이콘 글꼴에 없는 이름이 있다 — node scripts/ms-subset.mjs build 로 다시 받을 것"
 fi
 
 # 알림 — 다른 배포가 필요한지

@@ -4,6 +4,7 @@
  * 출처: 새로 씀. 역할 검사·응답·감사 기록은 api/routes/admin.php 와 같은 방식.
  *  - GET  /admin/ai      : OpenRouter 연결 상태(키 값은 끝 4자리도 아닌 "있음/없음·출처·끝 4자리"만) + 솔루션별 현재값 + 최근 30일 사용량
  *  - PUT  /admin/ai/jev  : 빠른 판단(Jev) 켜기·하루 상한·사용처별 켜기 → core_settings(ai.jev.*)
+ *  - PUT  /admin/ai/provider : 글 작업 경로(OpenRouter 하나로 | 그림만 OpenRouter·나머지 Claude API)·Claude 키·Claude 글 모델 → Deck\AiKeys::saveProvider
  * powerDeck 모델·키·예산은 여기서 새로 저장하지 않는다 — 화면이 기존 장표 설정(Deck\AiKeys::saveAdmin·saveBudget 경로)을 그대로 끼워 쓴다.
  * 권한: admin 이상, 세션 로그인만. 시크릿 원문은 응답·로그 어디에도 넣지 않는다.
  */
@@ -83,8 +84,16 @@ return static function (Router $r): void {
                 'billed' => !in_array((string) $row['kind'], ['engine', 'eplan', 'edigest', 'escript', 'ewire', 'hf'], true)];
         }
 
+        $claudeHint = (string) ($deck['claude']['hint'] ?? '');
         Response::json([
             'openrouter' => ['set' => $source !== null, 'usable' => $usable, 'source' => $source, 'last4' => $last4],
+            // 글 작업 경로 — openrouter(전부) | claude(그림만 OpenRouter). 키는 끝 4자리만
+            'provider' => [
+                'value' => (string) ($deck['text_provider'] ?? 'openrouter'),
+                'claude' => ['set' => !empty($deck['claude']['set']), 'usable' => $safe(static fn () => AiKeys::claudeKey() !== null, false),
+                    'last4' => $claudeHint !== '' ? mb_substr($claudeHint, -4) : null,
+                    'model' => (string) ($deck['claude']['model'] ?? ''), 'models' => $deck['claude']['models'] ?? []],
+            ],
             'solutions' => [
                 [
                     'id' => 'deck', 'name' => 'powerDeck', 'desc' => '자료 정리·기획·대본·와이어·시안·장표 제작',
@@ -144,6 +153,18 @@ return static function (Router $r): void {
         $after = Jev::config();
         Audit::log($a, 'ai.jev.update', 'settings:ai.jev', $before, $after);
         Response::json($after);
+    });
+
+    // 글 작업 경로 — OpenRouter 하나로 / 그림은 OpenRouter · 나머지는 Claude API(2026-10-17). 키는 확인 뒤 암호화 저장, 감사 기록엔 끝 4자리만
+    $r->put('/admin/ai/provider', function (array $p, Actor $a) use ($need): void {
+        $need($a);
+        $in = Response::input();
+        $before = ['provider' => AiKeys::textProvider(), 'claude_model' => AiKeys::claudeModel()];
+        $out = AiKeys::saveProvider($in);
+        $after = ['provider' => $out['provider'], 'claude_model' => $out['claude_model'],
+            'claude_key' => trim((string) ($in['claude_key'] ?? '')) !== '' ? '…' . mb_substr((string) $out['claude_hint'], -4) . ' 새로 넣음' : (!empty($in['remove_claude_key']) ? '지움' : '그대로')];
+        Audit::log($a, 'ai.provider.update', 'settings:ai.provider', $before, $after);
+        Response::json(['provider' => $out['provider'], 'claude_model' => $out['claude_model']]);
     });
 
     // powerPlus AI(채팅) — 켜기·모델(OpenRouter id, 비우면 기본)·하루 상한 → core_settings(ai.chat.*)

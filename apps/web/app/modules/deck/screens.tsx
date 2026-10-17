@@ -5,7 +5,7 @@
 //   내 현황은 마이페이지 /account/settings/deck, 서비스 설정(AI·엔진/이력·과금/참조 자료)은 관리자 /admin/deck-settings/<engine|bill|ref> (사용자 지시 2026-10-06)
 // 옛 Shell(사이드바)·Login 은 쓰지 않는다 — 플랫폼 틀(헤더·모듈 탭) 안에 본문만. Toaster·Asker·GlobalContextMenu 는 모듈 루트에서 한 번.
 // 화면 코드(legacy/*)의 UI/UX 는 그대로, 디자인 토큰만 플랫폼 톤(legacy/theme.css·legacy.css, 계약 §4).
-import "material-symbols/outlined.css";
+import "@/styles/material-symbols.css";
 import { BadgeCheck, Link2, MessagesSquare, Users } from "lucide-react";
 import { MobileCarousel } from "@/components/hb/mobile-carousel";
 import "./legacy/legacy.css";

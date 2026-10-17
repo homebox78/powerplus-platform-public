@@ -4,7 +4,7 @@
  * 출처: 새로 씀. 역할 검사·응답·감사 기록은 api/routes/admin.php 와 같은 방식.
  *  - GET  /admin/ai      : OpenRouter 연결 상태(키 값은 끝 4자리도 아닌 "있음/없음·출처·끝 4자리"만) + 솔루션별 현재값 + 최근 30일 사용량
  *  - PUT  /admin/ai/jev  : 빠른 판단(Jev) 켜기·하루 상한·사용처별 켜기 → core_settings(ai.jev.*)
- *  - PUT  /admin/ai/provider : 글 작업 경로(OpenRouter 하나로 | 그림만 OpenRouter·나머지 Claude API)·Claude 키·Claude 글 모델 → Deck\AiKeys::saveProvider
+ *  - PUT  /admin/ai/provider : Claude API 키 넣기·지우기(있으면 그림 외 글 작업이 Claude, 모델 고정) → Deck\AiKeys::saveProvider
  * powerDeck 모델·키·예산은 여기서 새로 저장하지 않는다 — 화면이 기존 장표 설정(Deck\AiKeys::saveAdmin·saveBudget 경로)을 그대로 끼워 쓴다.
  * 권한: admin 이상, 세션 로그인만. 시크릿 원문은 응답·로그 어디에도 넣지 않는다.
  */
@@ -87,12 +87,11 @@ return static function (Router $r): void {
         $claudeHint = (string) ($deck['claude']['hint'] ?? '');
         Response::json([
             'openrouter' => ['set' => $source !== null, 'usable' => $usable, 'source' => $source, 'last4' => $last4],
-            // 글 작업 경로 — openrouter(전부) | claude(그림만 OpenRouter). 키는 끝 4자리만
+            // 글 작업 경로 — Claude 키가 있으면 claude(그림만 OpenRouter, 모델 고정), 없으면 openrouter. 키는 끝 4자리만
             'provider' => [
                 'value' => (string) ($deck['text_provider'] ?? 'openrouter'),
                 'claude' => ['set' => !empty($deck['claude']['set']), 'usable' => $safe(static fn () => AiKeys::claudeKey() !== null, false),
-                    'last4' => $claudeHint !== '' ? mb_substr($claudeHint, -4) : null,
-                    'model' => (string) ($deck['claude']['model'] ?? ''), 'models' => $deck['claude']['models'] ?? []],
+                    'last4' => $claudeHint !== '' ? mb_substr($claudeHint, -4) : null, 'fixed' => $deck['claude']['fixed'] ?? []],
             ],
             'solutions' => [
                 [
@@ -155,16 +154,16 @@ return static function (Router $r): void {
         Response::json($after);
     });
 
-    // 글 작업 경로 — OpenRouter 하나로 / 그림은 OpenRouter · 나머지는 Claude API(2026-10-17). 키는 확인 뒤 암호화 저장, 감사 기록엔 끝 4자리만
+    // Claude API 키 — 있으면 시안 그림 외 글 작업이 Claude(모델 고정), 지우면 OpenRouter 기존 설정(2026-10-17). 확인 뒤 암호화 저장, 감사 기록엔 끝 4자리만
     $r->put('/admin/ai/provider', function (array $p, Actor $a) use ($need): void {
         $need($a);
         $in = Response::input();
-        $before = ['provider' => AiKeys::textProvider(), 'claude_model' => AiKeys::claudeModel()];
+        $before = ['provider' => AiKeys::textProvider()];
         $out = AiKeys::saveProvider($in);
-        $after = ['provider' => $out['provider'], 'claude_model' => $out['claude_model'],
+        $after = ['provider' => $out['provider'],
             'claude_key' => trim((string) ($in['claude_key'] ?? '')) !== '' ? '…' . mb_substr((string) $out['claude_hint'], -4) . ' 새로 넣음' : (!empty($in['remove_claude_key']) ? '지움' : '그대로')];
         Audit::log($a, 'ai.provider.update', 'settings:ai.provider', $before, $after);
-        Response::json(['provider' => $out['provider'], 'claude_model' => $out['claude_model']]);
+        Response::json(['provider' => $out['provider']]);
     });
 
     // powerPlus AI(채팅) — 켜기·모델(OpenRouter id, 비우면 기본)·하루 상한 → core_settings(ai.chat.*)

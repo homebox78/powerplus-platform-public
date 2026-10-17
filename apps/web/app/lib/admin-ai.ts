@@ -14,7 +14,7 @@ export interface AiChatSolution {
 export type AiTextProvider = "openrouter" | "claude";
 export interface AiProvider {
   value: AiTextProvider;
-  claude: { set: boolean; usable: boolean; last4: string | null; model: string; models: Record<string, string> };
+  claude: { set: boolean; usable: boolean; last4: string | null; fixed: Array<[string, string]> };
 }
 interface AdminAi {
   openrouter: { set: boolean; usable: boolean; source: "company" | "config" | null; last4: string | null };
@@ -30,9 +30,9 @@ export const saveAdminChat = (b: { enabled?: boolean; model?: string; daily_usd?
 
 export const fetchAdminAi = () => apiFetch<AdminAi>("/admin/ai");
 
-/** 글 작업 경로·Claude 키·Claude 글 모델 — 키는 서버가 확인한 뒤 암호화해 둔다 */
-export const saveAdminProvider = (b: { provider?: AiTextProvider; claude_key?: string; remove_claude_key?: boolean; claude_model?: string }) =>
-  apiFetch<{ provider: AiTextProvider; claude_model: string }>("/admin/ai/provider", {
+/** Claude 키 넣기·지우기 — 있으면 그림 외 글 작업이 Claude(모델 고정), 없으면 OpenRouter. 키는 서버가 확인한 뒤 암호화해 둔다 */
+export const saveAdminProvider = (b: { claude_key?: string; remove_claude_key?: boolean }) =>
+  apiFetch<{ provider: AiTextProvider }>("/admin/ai/provider", {
     method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(b),
   });
 

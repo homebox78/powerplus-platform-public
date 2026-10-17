@@ -10,8 +10,7 @@ import { toastError } from "@/components/hb/confirm";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHeader, TableRow } from "@/components/ui/table";
-import { SegTabs } from "@/components/hb/seg-tabs";
-import { fetchAdminAi, saveAdminChat, saveAdminJev, saveAdminProvider, type AiChatSolution, type AiDeckSolution, type AiJevSolution, type AiProvider, type AiTextProvider } from "@/lib/admin-ai";
+import { fetchAdminAi, saveAdminChat, saveAdminJev, saveAdminProvider, type AiChatSolution, type AiDeckSolution, type AiJevSolution, type AiProvider } from "@/lib/admin-ai";
 import { DeckSettingsScreen } from "@/modules/deck/screens";
 import { useMobileSections } from "@/components/hb/mobile-sections";
 import type { Route } from "./+types/admin-ai";
@@ -45,7 +44,7 @@ export default function AdminAi() {
             <span className="text-ink-4">{d.provider.value === "claude" ? "시안 그림과 빠른 판단이 이 키로 돕니다." : "모든 AI 가 이 키 하나로 돕니다."}</span>
           </div>
 
-          <ProviderCard key={d.provider.value + d.provider.claude.model + (d.provider.claude.last4 ?? "")} s={d.provider} />
+          <ProviderCard key={d.provider.value + (d.provider.claude.last4 ?? "")} s={d.provider} />
 
           {ms.bar}
 
@@ -106,55 +105,50 @@ function Card({ title, desc, extra, children }: { title: string; desc: string; e
   );
 }
 
-/** 글 작업 경로 — OpenRouter 하나로 / 그림은 OpenRouter · 나머지(답변·기획·요약·대본·와이어·장표 제작)는 Claude API. 빠른 판단은 늘 OpenRouter. */
+/**
+ * Claude API 키 — 있으면 시안 그림 외 글 작업(답변·기획·자료 정리·대본·와이어·장표 제작)이 Claude API, 없으면 OpenRouter 기존 설정.
+ * 고르는 칸 없음(2026-10-17 사용자 지시) — 모델도 고정: 장표 제작 Opus 5.5, 나머지 Sonnet 5.5. 빠른 판단은 늘 OpenRouter.
+ */
 function ProviderCard({ s }: { s: AiProvider }) {
   const qc = useQueryClient();
   const [key, setKey] = useState("");
   const save = useMutation({
     mutationFn: saveAdminProvider,
     onSuccess: (_r, b) => {
-      toast.success(b.claude_key ? "Claude API 키를 확인하고 저장했습니다." : b.remove_claude_key ? "Claude API 키를 지웠습니다." : "AI 연결 방식을 저장했습니다.");
+      toast.success(b.claude_key ? "Claude API 키를 확인하고 저장했습니다." : "Claude API 키를 지웠습니다. 이제 OpenRouter 로 돕니다.");
       setKey("");
       void qc.invalidateQueries({ queryKey: KEY });
     },
     onError: (e) => toastError(e),
   });
-  const validKey = /^sk-ant-api\d*-[A-Za-z0-9_-]{20,}$/.test(key.trim());
-  const pick = (v: AiTextProvider) => {
-    if (v === s.value) return;
-    if (v === "claude" && !s.claude.set) { toast.error("Claude API 키를 먼저 넣어 주세요."); return; }
-    save.mutate({ provider: v });
-  };
+  // 붙여 넣다 섞인 줄바꿈·공백은 뺀다. 꼴은 앞머리만 보고 진짜 확인은 서버가 Claude API 에 물어서 한다(2026-10-17 저장 버튼이 안 켜졌다)
+  const clean = key.replace(/\s+/g, "");
+  const validKey = clean.startsWith("sk-ant-") && !clean.startsWith("sk-ant-admin") && clean.length >= 30;
+  const on = s.value === "claude";
   return (
-    <Card title="AI 연결 방식" desc="시안 그림은 늘 OpenRouter 로 만듭니다. 나머지 글 작업을 어디로 보낼지 고릅니다.">
-      <SegTabs label="AI 연결 방식" value={s.value} onChange={pick} items={[
-        { value: "openrouter", label: "OpenRouter 하나로" },
-        { value: "claude", label: "그림은 OpenRouter · 나머지는 Claude API" },
-      ]} />
-      <p className="mt-2 text-sm text-ink-4">
-        {s.value === "claude" ? "AI 답변·기획·자료 정리·대본·와이어·장표 제작이 Claude API 로 갑니다. 빠른 판단은 OpenRouter 그대로입니다." : "모든 AI 가 OpenRouter 키 하나로 돕니다."}
-      </p>
-
-      <h3 className="mt-6 text-md font-bold">Claude API 키</h3>
-      <div className="mt-3 flex flex-wrap items-center gap-3">
+    <Card title="Claude API" desc="키가 있으면 시안 그림 외 글 작업을 Claude API 로 먼저 보냅니다.">
+      <div className="flex flex-wrap items-center gap-3">
         {s.claude.set
-          ? (s.claude.usable ? <LiveStatus state="ok">키 …{s.claude.last4}</LiveStatus> : <b className="text-sm text-warn">키를 풀 수 없음 — 다시 넣어 주세요</b>)
-          : <span className="text-sm text-ink-4">아직 없음</span>}
+          ? (s.claude.usable ? <LiveStatus state="ok">사용 중 · 키 …{s.claude.last4}</LiveStatus> : <b className="text-sm text-warn">키를 풀 수 없음 — 다시 넣어 주세요</b>)
+          : <span className="text-sm text-ink-4">키 없음 — 지금은 OpenRouter 기존 설정으로 돕니다</span>}
       </div>
       <div className="mt-3 flex flex-wrap items-center gap-3">
         <label htmlFor="claude-key" className="sr-only">Claude API 키</label>
         <Input id="claude-key" type="password" autoComplete="off" className="h-9 w-96 max-w-full min-w-0" value={key} placeholder="sk-ant-api…" onChange={(e) => setKey(e.target.value)} />
-        <Button size="sm" variant="outline" disabled={!validKey || save.isPending} onClick={() => save.mutate({ claude_key: key.trim() })}>{s.claude.set ? "바꾸기" : "저장"}</Button>
-        {s.claude.set && s.value !== "claude" && (
+        <Button size="sm" variant="outline" disabled={!validKey || save.isPending} onClick={() => save.mutate({ claude_key: clean })}>{s.claude.set ? "바꾸기" : "저장"}</Button>
+        {s.claude.set && (
           <Button size="sm" variant="ghost" disabled={save.isPending} onClick={() => save.mutate({ remove_claude_key: true })}>지우기</Button>
         )}
       </div>
-      <p className="mt-2 text-sm text-ink-4">콘솔에서 워크스페이스 범위로 만든 키를 넣습니다. 저장할 때 Claude API 에 한 번 물어 맞는 키인지 확인합니다.</p>
+      <p className="mt-2 text-sm text-ink-4">콘솔에서 워크스페이스 범위로 만든 키를 넣습니다.<br />저장할 때 Claude API 에 물어 맞는 키인지 확인합니다.</p>
 
-      <h3 className="mt-6 text-md font-bold">Claude 글 모델</h3>
-      <SegTabs className="mt-3" label="Claude 글 모델" value={s.claude.model} onChange={(v) => v !== s.claude.model && save.mutate({ claude_model: v })}
-        items={Object.entries(s.claude.models).map(([value, label]) => ({ value, label }))} />
-      <p className="mt-2 text-sm text-ink-4">설정에서 Claude 모델을 고른 자리는 그 모델 그대로 씁니다. 다른 회사 모델을 고른 자리만 이 모델로 바뀝니다.</p>
+      <h3 className="mt-6 text-md font-bold">{on ? "지금 쓰는 모델" : "키를 넣으면 쓰는 모델"}</h3>
+      <dl className="mt-3 grid w-fit grid-cols-[auto_auto] gap-x-8 gap-y-2 text-sm">
+        {s.claude.fixed.map(([label, model]) => (
+          <div key={label} className="contents"><dt className="text-ink-3">{label}</dt><dd className="font-mono text-ink">{model}</dd></div>
+        ))}
+      </dl>
+      <p className="mt-3 text-sm text-ink-4">시안 그림과 빠른 판단은 키와 상관없이 OpenRouter 로 만듭니다.</p>
     </Card>
   );
 }

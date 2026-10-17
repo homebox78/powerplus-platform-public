@@ -7,6 +7,7 @@ use Pp\Deck\AiKeys;
 
 /**
  * 글을 쓰는 LLM — 메인 채팅·챗봇(powerLLM)이 답을 쓸 때 부른다. OpenRouter chat/completions, 회사 키(AiKeys::serverKey).
+ *  - 관리자가 글 작업 경로를 Claude API 로 고르면(AiKeys::textProvider) Core\Claude 로 간다 — 답 꼴은 같다.
  *  - 모델: 관리자 AI 설정(core_settings ai.chat.model) > 기본 anthropic/claude-haiku-4.5(빠르고 한국어가 자연스럽다).
  *  - 하루 상한(ai.chat.daily_usd, 기본 3달러)을 넘거나·키가 없거나·실패하면 null — 부른 쪽은 도움말 원문 카드로 계속한다.
  *  - 비용은 deck_ai_usage(kind='chat') 에 남겨 이력·과금 화면 하나로 본다. 개인 정보는 넣지 않는다(부르는 쪽이 Triage::scrub).
@@ -67,23 +68,32 @@ final class Llm
         } catch (\Throwable) {
             return null;
         }
-        $key = AiKeys::serverKey();
-        if ($key === null) {
-            return null;
-        }
         $body = ['model' => $cfg['model'], 'messages' => $messages, 'max_tokens' => $maxTokens, 'temperature' => 0.4, 'usage' => ['include' => true]];
-        $ch = curl_init(self::URL);
-        curl_setopt_array($ch, [
-            CURLOPT_POST => true,
-            CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_CONNECTTIMEOUT => 5,
-            CURLOPT_TIMEOUT => $timeout,
-            CURLOPT_HTTPHEADER => ['Authorization: Bearer ' . $key, 'Content-Type: application/json', 'X-Title: powerPlus'],
-            CURLOPT_POSTFIELDS => json_encode($body, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
-        ]);
-        $raw = curl_exec($ch);
-        $status = (int) curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
-        curl_close($ch);
+        if (AiKeys::textProvider() === 'claude') {   // 관리자가 "나머지는 Claude API" 를 골랐다 — 모델이 Claude 면 그 모델, 아니면 Claude 글 모델
+            $key = AiKeys::claudeKey();
+            if ($key === null) {
+                return null;
+            }
+            $model = Claude::modelFor($cfg['model'], AiKeys::claudeModel());
+            [$status, $raw] = Claude::chat($key, $model, $body, $timeout, 'low');
+        } else {
+            $key = AiKeys::serverKey();
+            if ($key === null) {
+                return null;
+            }
+            $ch = curl_init(self::URL);
+            curl_setopt_array($ch, [
+                CURLOPT_POST => true,
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_CONNECTTIMEOUT => 5,
+                CURLOPT_TIMEOUT => $timeout,
+                CURLOPT_HTTPHEADER => ['Authorization: Bearer ' . $key, 'Content-Type: application/json', 'X-Title: powerPlus'],
+                CURLOPT_POSTFIELDS => json_encode($body, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
+            ]);
+            $raw = curl_exec($ch);
+            $status = (int) curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
+            curl_close($ch);
+        }
         if ($raw === false || $status !== 200) {
             error_log('[llm] 실패 ' . $status . ' ' . mb_substr((string) $raw, 0, 300));
             return null;

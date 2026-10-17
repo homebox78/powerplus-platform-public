@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 namespace Pp\Deck;
 
+use Pp\Core\Claude;
 use Pp\Core\Db;
 use Pp\Core\Config;
 use Pp\Core\Response;
@@ -59,7 +60,10 @@ final class AiKeys
         $out['digest_model'] = self::setting('digest_model') ?? '';   // 비면 글 모델을 따른다(자료 정리만 따로 고를 수 있다)
         $out['text_model'] = self::setting('text_model') ?? self::DEFAULT_TEXT;
         $out['text_effort'] = self::textEffort();
+        $out['text_provider'] = self::textProvider();
+        $out['claude'] = ['set' => self::setting('claude_key_enc') !== null, 'model' => self::claudeModel(), 'models' => Claude::MODELS];
         if ($admin) {
+            $out['claude']['hint'] = self::setting('claude_key_hint');
             $out['company']['hint'] = $companyHint;
             $out['admin_models'] = ['plan' => self::setting('plan_model') ?? self::textModel(), 'image' => self::setting('image_model') ?? self::DEFAULT_IMAGE];
         }
@@ -70,6 +74,79 @@ final class AiKeys
     public static function imageProvider(): string
     {
         return 'openrouter';
+    }
+
+    /**
+     * 글 작업이 가는 곳 — openrouter(전부 OpenRouter, 기본) | claude(시안 그림만 OpenRouter, 나머지 글 작업은 Claude API 직접).
+     * 2026-10-17 사용자 지시: 관리자 AI 설정에서 고른다. 빠른 판단(Jev)은 어느 쪽이든 OpenRouter 그대로.
+     */
+    public static function textProvider(): string
+    {
+        return self::setting('text_provider') === 'claude' && self::setting('claude_key_enc') !== null ? 'claude' : 'openrouter';
+    }
+
+    /** Claude 글 모델 — OpenRouter 쪽에서 Claude 가 아닌 모델(muse-spark 등)을 고른 자리에 쓴다. Claude 모델을 고른 자리는 그 모델 그대로 */
+    public static function claudeModel(): string
+    {
+        $m = (string) (self::setting('claude_model') ?? '');
+        return isset(Claude::MODELS[$m]) ? $m : Claude::DEFAULT_MODEL;
+    }
+
+    /** 서버가 쓰는 Claude API 키 — 없거나 풀 수 없으면 null */
+    public static function claudeKey(): ?string
+    {
+        $enc = self::setting('claude_key_enc');
+        if ($enc === null) return null;
+        try { return self::dec($enc); } catch (Throwable) { return null; }
+    }
+
+    /** 관리자 — 글 작업 경로·Claude 키·Claude 글 모델 */
+    public static function saveProvider(array $b): array
+    {
+        $key = trim((string) ($b['claude_key'] ?? ''));
+        if ($key !== '') {
+            if (!preg_match('/^sk-ant-api\d*-[A-Za-z0-9_-]{20,300}$/', $key)) Legacy::fail('Claude API 키는 sk-ant-api 로 시작합니다. 관리자 키(sk-ant-admin)는 쓸 수 없습니다.');
+            Claude::verify($key);
+            self::setSetting('claude_key_enc', self::enc($key));
+            self::setSetting('claude_key_hint', substr($key, 0, 10) . '…' . substr($key, -4));
+        }
+        if (!empty($b['remove_claude_key'])) {
+            if (self::textProvider() === 'claude') Legacy::fail('Claude API 로 돌고 있어 키를 지울 수 없습니다. 먼저 OpenRouter 하나로 바꿔 주세요.');
+            self::setSetting('claude_key_enc', null);
+            self::setSetting('claude_key_hint', null);
+        }
+        if (isset($b['claude_model'])) {
+            $m = (string) $b['claude_model'];
+            if (!isset(Claude::MODELS[$m])) Legacy::fail('Claude 글 모델은 ' . implode('·', array_keys(Claude::MODELS)) . ' 중 하나입니다.');
+            self::setSetting('claude_model', $m);
+        }
+        if (isset($b['provider'])) {
+            $p = (string) $b['provider'];
+            if (!in_array($p, ['openrouter', 'claude'], true)) Legacy::fail('글 작업 경로는 openrouter 또는 claude 입니다.');
+            if ($p === 'claude' && self::setting('claude_key_enc') === null) Legacy::fail('Claude API 로 바꾸려면 Claude API 키를 먼저 넣어 주세요.');
+            self::setSetting('text_provider', $p === 'claude' ? 'claude' : null);
+        }
+        return ['ok' => true, 'provider' => self::textProvider(), 'claude_model' => self::claudeModel(), 'claude_hint' => self::setting('claude_key_hint')];
+    }
+
+    /**
+     * 글 호출 하나 — 경로가 claude 면 Claude API, 아니면 OpenRouter. [상태, OpenAI 꼴 JSON, 실제로 쓴 모델].
+     * Claude 쪽 추론 강도: 엔진이 정한 값(reasoning.effort)이 있으면 그것, 없으면 작업 종류별 추천(자료 정리 low · 기획 high · 나머지 medium).
+     */
+    private static function sendText(string $email, array $b, int $timeout, string $kind): array
+    {
+        if (self::textProvider() === 'claude') {
+            $key = self::claudeKey();
+            if ($key === null) Legacy::fail('Claude API 키를 풀 수 없습니다. 관리자 AI 설정에서 키를 다시 넣어 주세요.', 409);
+            $model = Claude::modelFor((string) ($b['model'] ?? ''), self::claudeModel());
+            $effort = (string) ($b['reasoning']['effort'] ?? '') ?: match ($kind) { 'digest' => 'low', 'plan' => 'high', default => 'medium' };
+            unset($b['_answer_tokens']);
+            [$status, $raw] = Claude::chat($key, $model, $b, $timeout, $effort);
+            return [$status, $raw, $model];
+        }
+        $b = self::fitModel((string) $b['model'], $b, $kind);
+        [$status, $raw] = self::send(self::effectiveKey($email), $b, $timeout);
+        return [$status, $raw, (string) $b['model']];
     }
 
     /** 장표 제작 에이전트 모델(OpenRouter id) — 관리자가 OpenRouter 목록에서 아무 모델이나 고른다. 기본 Claude Opus 5.5 */
@@ -512,7 +589,6 @@ final class AiKeys
         $bi = self::budgetInfo($email);
         if ($bi['monthly_cap'] !== null && $bi['month_spent'] >= $bi['monthly_cap']) Legacy::fail(sprintf('이달 AI 비용 상한($%.2f)에 도달했습니다 (사용 $%.4f). AI 키 설정에서 상한을 올려 주세요.', $bi['monthly_cap'], $bi['month_spent']), 402);
 
-        $key = self::effectiveKey($email);
         $kind = in_array($b['kind'] ?? '', ['image', 'digest', 'build'], true) ? $b['kind'] : 'plan';
         unset($b['kind']);
         // 엔진이 정한 기다릴 시간(선택 단계는 짧게) — 60~300초, 없으면 300(2026-10-07 속도 점검)
@@ -523,17 +599,16 @@ final class AiKeys
             : ($kind === 'image' ? self::models($email)['image']   // 그림은 관리자가 정해 둔 이미지 모델 고정(예전엔 여기서 글 모델이 들어갔다)
             : ($kind === 'digest' ? (self::setting('digest_model') ?: self::textModelFor($email)) : self::textModelFor($email)));
         if (!preg_match('#^[a-z0-9._-]+/[a-z0-9._:-]+$#i', $b['model'])) Legacy::fail('모델 이름이 올바르지 않습니다.');
-        if ($kind !== 'image') $b = self::fitModel($b['model'], $b, $kind);
         unset($b['stream']);
-        // 글(기획)은 chat/completions, 그림(시안)은 전용 이미지 API(/images: prompt·aspect_ratio·quality·input_references → data[].b64_json)
+        // 그림(시안)은 늘 OpenRouter 전용 이미지 API(/images: prompt·aspect_ratio·quality·input_references → data[].b64_json),
+        // 글(기획·요약·제작)은 관리자가 고른 경로(OpenRouter chat/completions 또는 Claude API) — 답은 어느 쪽이든 OpenAI 꼴
         if ($kind === 'image') {
             if (trim((string) ($b['prompt'] ?? '')) === '') Legacy::fail('prompt 가 필요합니다.');
-            $path = '/images';
+            [$status, $raw] = self::http('POST', '/images', self::effectiveKey($email), $b, 300);
         } else {
             if (!isset($b['messages']) || !is_array($b['messages'])) Legacy::fail('messages 가 필요합니다.');
-            $path = '/chat/completions';
+            [$status, $raw, $b['model']] = self::sendText($email, $b, $wait, $kind);
         }
-        [$status, $raw] = $kind === 'image' ? self::http('POST', $path, $key, $b, 300) : self::send($key, $b, $wait, $path);
         $d = json_decode($raw, true);
         $cost = 0.0;
         if ($status === 200 && is_array($d)) {
@@ -622,9 +697,8 @@ final class AiKeys
         if ($budget !== null && (float) $job['spent_usd'] >= $budget) Legacy::fail(sprintf('이 작업의 비용 한도($%.2f)에 도달했습니다.', $budget), 402);
         $bi = self::budgetInfo($email);
         if ($bi['monthly_cap'] !== null && $bi['month_spent'] >= $bi['monthly_cap']) Legacy::fail(sprintf('이달 AI 비용 상한($%.2f)에 도달했습니다.', $bi['monthly_cap']), 402);
-        $b['model'] = self::textModelFor(strtolower((string) $job['email']));   // 대본·와이어 등 서버 직접 호출도 글 모델 하나로(OpenRouter)
-        $b = self::fitModel($b['model'], $b, $kind === 'script' ? 'script' : 'plan');
-        [$status, $raw] = self::send(self::effectiveKey($email), $b, 280);
+        $b['model'] = self::textModelFor(strtolower((string) $job['email']));   // 대본·와이어 등 서버 직접 호출도 글 모델 하나로(관리자가 고른 경로)
+        [$status, $raw, $b['model']] = self::sendText($email, $b, 280, $kind === 'script' ? 'script' : 'plan');
         $d = json_decode($raw, true);
         if ($status !== 200 || !is_array($d)) Legacy::fail('AI 호출에 실패했습니다 (' . $status . '): ' . mb_substr((string) ($d['error']['message'] ?? $raw), 0, 200), 502);
         $u = $d['usage'] ?? [];
@@ -641,15 +715,14 @@ final class AiKeys
      */
     public static function chat(string $email, array $b): void
     {
-        $key = self::effectiveKey($email);
         $kind = ($b['kind'] ?? 'plan') === 'image' ? 'image' : 'plan';
         unset($b['kind']);
         $b['model'] = (string) ($b['model'] ?? '') !== '' ? (string) $b['model'] : ($kind === 'image' ? self::models($email)[$kind] : self::textModelFor($email));
         if (!preg_match('#^[a-z0-9._-]+/[a-z0-9._:-]+$#i', $b['model'])) Legacy::fail('모델 이름이 올바르지 않습니다.');
-        $b = self::fitModel($b['model'], $b);
         if (!isset($b['messages']) || !is_array($b['messages'])) Legacy::fail('messages 가 필요합니다.');
         unset($b['stream']); // 대리 호출은 한 번에 받는다
-        [$status, $raw] = self::send($key, $b, 300);
+        // 그림(modalities: image)은 OpenRouter, 글은 관리자가 고른 경로
+        [$status, $raw] = $kind === 'image' ? self::send(self::effectiveKey($email), self::fitModel($b['model'], $b), 300) : array_slice(self::sendText($email, $b, 300, 'plan'), 0, 2);
         http_response_code($status);
         header('Content-Type: application/json; charset=utf-8');
         echo $raw;

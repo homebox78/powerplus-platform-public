@@ -10,7 +10,8 @@ import { toastError } from "@/components/hb/confirm";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHeader, TableRow } from "@/components/ui/table";
-import { fetchAdminAi, saveAdminChat, saveAdminJev, type AiChatSolution, type AiDeckSolution, type AiJevSolution } from "@/lib/admin-ai";
+import { SegTabs } from "@/components/hb/seg-tabs";
+import { fetchAdminAi, saveAdminChat, saveAdminJev, saveAdminProvider, type AiChatSolution, type AiDeckSolution, type AiJevSolution, type AiProvider, type AiTextProvider } from "@/lib/admin-ai";
 import { DeckSettingsScreen } from "@/modules/deck/screens";
 import { useMobileSections } from "@/components/hb/mobile-sections";
 import type { Route } from "./+types/admin-ai";
@@ -41,8 +42,10 @@ export default function AdminAi() {
             <b className="text-ink">OpenRouter</b>
             {d.openrouter.usable ? <LiveStatus state="ok">연결됨</LiveStatus> : d.openrouter.set ? <b className="text-warn">키를 풀 수 없음 — 아래에서 다시 넣어 주세요</b> : <b className="text-warn">키 없음 — 아래에서 넣어 주세요</b>}
             {d.openrouter.last4 && <span className="text-ink-4">키 …{d.openrouter.last4} · {d.openrouter.source === "config" ? "서버 설정 파일" : "관리자 입력"}</span>}
-            <span className="text-ink-4">모든 AI 가 이 키 하나로 돕니다.</span>
+            <span className="text-ink-4">{d.provider.value === "claude" ? "시안 그림과 빠른 판단이 이 키로 돕니다." : "모든 AI 가 이 키 하나로 돕니다."}</span>
           </div>
+
+          <ProviderCard key={d.provider.value + d.provider.claude.model + (d.provider.claude.last4 ?? "")} s={d.provider} />
 
           {ms.bar}
 
@@ -100,6 +103,59 @@ function Card({ title, desc, extra, children }: { title: string; desc: string; e
       </div>
       {children}
     </section>
+  );
+}
+
+/** 글 작업 경로 — OpenRouter 하나로 / 그림은 OpenRouter · 나머지(답변·기획·요약·대본·와이어·장표 제작)는 Claude API. 빠른 판단은 늘 OpenRouter. */
+function ProviderCard({ s }: { s: AiProvider }) {
+  const qc = useQueryClient();
+  const [key, setKey] = useState("");
+  const save = useMutation({
+    mutationFn: saveAdminProvider,
+    onSuccess: (_r, b) => {
+      toast.success(b.claude_key ? "Claude API 키를 확인하고 저장했습니다." : b.remove_claude_key ? "Claude API 키를 지웠습니다." : "AI 연결 방식을 저장했습니다.");
+      setKey("");
+      void qc.invalidateQueries({ queryKey: KEY });
+    },
+    onError: (e) => toastError(e),
+  });
+  const validKey = /^sk-ant-api\d*-[A-Za-z0-9_-]{20,}$/.test(key.trim());
+  const pick = (v: AiTextProvider) => {
+    if (v === s.value) return;
+    if (v === "claude" && !s.claude.set) { toast.error("Claude API 키를 먼저 넣어 주세요."); return; }
+    save.mutate({ provider: v });
+  };
+  return (
+    <Card title="AI 연결 방식" desc="시안 그림은 늘 OpenRouter 로 만듭니다. 나머지 글 작업을 어디로 보낼지 고릅니다.">
+      <SegTabs label="AI 연결 방식" value={s.value} onChange={pick} items={[
+        { value: "openrouter", label: "OpenRouter 하나로" },
+        { value: "claude", label: "그림은 OpenRouter · 나머지는 Claude API" },
+      ]} />
+      <p className="mt-2 text-sm text-ink-4">
+        {s.value === "claude" ? "AI 답변·기획·자료 정리·대본·와이어·장표 제작이 Claude API 로 갑니다. 빠른 판단은 OpenRouter 그대로입니다." : "모든 AI 가 OpenRouter 키 하나로 돕니다."}
+      </p>
+
+      <h3 className="mt-6 text-md font-bold">Claude API 키</h3>
+      <div className="mt-3 flex flex-wrap items-center gap-3">
+        {s.claude.set
+          ? (s.claude.usable ? <LiveStatus state="ok">키 …{s.claude.last4}</LiveStatus> : <b className="text-sm text-warn">키를 풀 수 없음 — 다시 넣어 주세요</b>)
+          : <span className="text-sm text-ink-4">아직 없음</span>}
+      </div>
+      <div className="mt-3 flex flex-wrap items-center gap-3">
+        <label htmlFor="claude-key" className="sr-only">Claude API 키</label>
+        <Input id="claude-key" type="password" autoComplete="off" className="h-9 w-96 max-w-full min-w-0" value={key} placeholder="sk-ant-api…" onChange={(e) => setKey(e.target.value)} />
+        <Button size="sm" variant="outline" disabled={!validKey || save.isPending} onClick={() => save.mutate({ claude_key: key.trim() })}>{s.claude.set ? "바꾸기" : "저장"}</Button>
+        {s.claude.set && s.value !== "claude" && (
+          <Button size="sm" variant="ghost" disabled={save.isPending} onClick={() => save.mutate({ remove_claude_key: true })}>지우기</Button>
+        )}
+      </div>
+      <p className="mt-2 text-sm text-ink-4">콘솔에서 워크스페이스 범위로 만든 키를 넣습니다. 저장할 때 Claude API 에 한 번 물어 맞는 키인지 확인합니다.</p>
+
+      <h3 className="mt-6 text-md font-bold">Claude 글 모델</h3>
+      <SegTabs className="mt-3" label="Claude 글 모델" value={s.claude.model} onChange={(v) => v !== s.claude.model && save.mutate({ claude_model: v })}
+        items={Object.entries(s.claude.models).map(([value, label]) => ({ value, label }))} />
+      <p className="mt-2 text-sm text-ink-4">설정에서 Claude 모델을 고른 자리는 그 모델 그대로 씁니다. 다른 회사 모델을 고른 자리만 이 모델로 바뀝니다.</p>
+    </Card>
   );
 }
 

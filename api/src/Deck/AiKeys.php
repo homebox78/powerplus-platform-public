@@ -61,7 +61,10 @@ final class AiKeys
         $out['text_model'] = self::setting('text_model') ?? self::DEFAULT_TEXT;
         $out['text_effort'] = self::textEffort();
         $out['text_provider'] = self::textProvider();
-        $out['claude'] = ['set' => self::setting('claude_key_enc') !== null, 'fixed' => Claude::FIXED];
+        $out['claude'] = ['set' => self::setting('claude_key_enc') !== null, 'fixed' => Claude::FIXED, 'status' => self::claudeStatus()];
+        if ($admin) {
+            try { $out['claude']['budget'] = self::claudeBudget(); } catch (Throwable) { $out['claude']['budget'] = null; }
+        }
         if ($admin) {
             $out['claude']['hint'] = self::setting('claude_key_hint');
             $out['company']['hint'] = $companyHint;
@@ -85,6 +88,65 @@ final class AiKeys
         return self::setting('claude_key_enc') !== null ? 'claude' : 'openrouter';
     }
 
+    /** 크레딧 소진·키 거절 뒤 Claude 를 건너뛰는 시간(초) — 지나면 다시 Claude 로 한 번 시도한다(충전되면 저절로 돌아오게) */
+    private const CLAUDE_SKIP = 1800;
+
+    /**
+     * Claude 로 한 번 부른다 — [상태, OpenAI 꼴 JSON]. Claude 를 쓸 수 없으면 null(부른 쪽이 OpenRouter 기존 설정으로 간다).
+     * null 이 되는 경우: 키 없음·풀 수 없음 / 잔액 부족·키 거절로 막힌 지 30분이 안 됨 / 이번 호출이 잔액 부족·키 거절(2026-10-17 사용자 "크레딧 떨어지면 자동으로 OpenRouter").
+     * 그 밖의 오류(요청 잘못·과부하)는 그대로 돌려준다 — OpenRouter 로 넘겨도 같은 요청이라 소용없고 비용만 겹친다.
+     */
+    public static function claudeCall(string $model, array $b, int $timeout, string $effort): ?array
+    {
+        $key = self::claudeKey();
+        if ($key === null) return null;
+        $st = self::claudeStatus();
+        if ($st['state'] !== 'ok' && time() - (int) ($st['ts'] ?? 0) < self::CLAUDE_SKIP) return null;
+        unset($b['_answer_tokens']);
+        [$status, $raw] = Claude::chat($key, $model, $b, $timeout, $effort);
+        if ($status === 200) {
+            if ($st['state'] !== 'ok') self::setSetting('claude_status', null);   // 충전·키 교체 뒤 첫 성공 — 표시를 지운다
+            return [$status, $raw];
+        }
+        $msg = (string) (json_decode($raw, true)['error']['message'] ?? '');
+        $state = $status === 401 || $status === 403 ? 'bad_key'
+            : (preg_match('/credit balance|purchase credits|billing|insufficient.*(credit|fund)/i', $msg) ? 'no_credits' : null);
+        if ($state === null) return [$status, $raw];
+        error_log('[claude] ' . $state . ' — OpenRouter 로 넘김: ' . mb_substr($msg, 0, 200));
+        self::setSetting('claude_status', json_encode(['state' => $state, 'message' => mb_substr($msg, 0, 300), 'at' => date('Y-m-d H:i:s'), 'ts' => time()], JSON_UNESCAPED_UNICODE));
+        return null;
+    }
+
+    /** Claude 상태 — ok | no_credits(잔액 부족) | bad_key(키 거절). 막힌 뒤 30분이 지나면 다시 시도하므로 화면엔 그 시각을 같이 보인다 */
+    public static function claudeStatus(): array
+    {
+        $s = json_decode((string) (self::setting('claude_status') ?? ''), true);
+        return is_array($s) && in_array($s['state'] ?? '', ['no_credits', 'bad_key'], true) ? $s : ['state' => 'ok'];
+    }
+
+    /**
+     * 이번 기간 Claude 사용 — 관리자가 적은 월 크레딧(기본 $200)·갱신일(매월 N일, 기본 1일)로 기간을 잡고,
+     * 사용 기록 중 모델이 claude- 로 시작하는 것(이 서버가 Claude API 로 직접 부른 것)의 비용을 더한다.
+     * 잔액을 알려 주는 API 가 Claude 에 없어서 "추정" — 같은 키를 다른 곳에서 쓴 만큼은 빠지지 않는다. 정확한 값은 콘솔 결제 화면.
+     */
+    public static function claudeBudget(): array
+    {
+        $credit = (float) (self::setting('claude_credit_usd') ?? 200);
+        $day = max(1, min(31, (int) (self::setting('claude_reset_day') ?? 1)));
+        $now = new \DateTimeImmutable('today');
+        $at = static function (\DateTimeImmutable $m) use ($day): \DateTimeImmutable {   // 그 달의 N일 — 짧은 달이면 말일
+            return $m->setDate((int) $m->format('Y'), (int) $m->format('n'), min($day, (int) $m->format('t')));
+        };
+        $since = $at($now->modify('first day of this month'));
+        if ($since > $now) $since = $at($now->modify('first day of last month'));
+        // 엔진 PC 의 Claude 구독(Claude Code) 사용분(engine·e*)도 모델이 claude- 로 남는다 — 구독 종류는 빼야 API 크레딧만 센다(2026-10-17 시험에서 $106 이 섞여 나왔다)
+        $w = "model LIKE 'claude-%' AND kind NOT IN " . self::SUBS_SQL . " AND created_at >= ?";
+        $spent = (float) Db::val("SELECT COALESCE(SUM(cost_usd), 0) FROM deck_ai_usage WHERE $w", [$since->format('Y-m-d')]);
+        $calls = (int) Db::val("SELECT COUNT(*) FROM deck_ai_usage WHERE $w", [$since->format('Y-m-d')]);
+        return ['credit' => round($credit, 2), 'reset_day' => $day, 'since' => $since->format('Y-m-d'),
+            'spent' => round($spent, 4), 'left' => round(max(0.0, $credit - $spent), 4), 'calls' => $calls];
+    }
+
     /** 서버가 쓰는 Claude API 키 — 없거나 풀 수 없으면 null */
     public static function claudeKey(): ?string
     {
@@ -104,10 +166,22 @@ final class AiKeys
             Claude::verify($key);
             self::setSetting('claude_key_enc', self::enc($key));
             self::setSetting('claude_key_hint', substr($key, 0, 10) . '…' . substr($key, -4));
+            self::setSetting('claude_status', null);   // 새 키 — 막힘 표시를 지우고 바로 Claude 로
+        }
+        if (array_key_exists('claude_credit_usd', $b)) {
+            $c = $b['claude_credit_usd'];
+            if (!is_numeric($c) || (float) $c < 0 || (float) $c > 100000) Legacy::fail('월 크레딧은 0~100,000 달러로 적어 주세요.');
+            self::setSetting('claude_credit_usd', (string) round((float) $c, 2));
+        }
+        if (array_key_exists('claude_reset_day', $b)) {
+            $d = $b['claude_reset_day'];
+            if (!is_numeric($d) || (int) $d < 1 || (int) $d > 31) Legacy::fail('갱신일은 1~31 사이 날짜로 적어 주세요.');
+            self::setSetting('claude_reset_day', (string) (int) $d);
         }
         if (!empty($b['remove_claude_key'])) {   // 지우면 바로 OpenRouter 기존 설정으로 돌아간다
             self::setSetting('claude_key_enc', null);
             self::setSetting('claude_key_hint', null);
+            self::setSetting('claude_status', null);
         }
         return ['ok' => true, 'provider' => self::textProvider(), 'claude_hint' => self::setting('claude_key_hint')];
     }
@@ -119,13 +193,11 @@ final class AiKeys
     private static function sendText(string $email, array $b, int $timeout, string $kind): array
     {
         if (self::textProvider() === 'claude') {
-            $key = self::claudeKey();
-            if ($key === null) Legacy::fail('Claude API 키를 풀 수 없습니다. 관리자 AI 설정에서 키를 다시 넣어 주세요.', 409);
             $model = Claude::forKind($kind);   // 고르지 않는다 — 장표 제작 Opus 5.5, 나머지 Sonnet 5.5 고정
             $effort = (string) ($b['reasoning']['effort'] ?? '') ?: match ($kind) { 'digest' => 'low', 'plan' => 'high', default => 'medium' };
-            unset($b['_answer_tokens']);
-            [$status, $raw] = Claude::chat($key, $model, $b, $timeout, $effort);
-            return [$status, $raw, $model];
+            $r = self::claudeCall($model, $b, $timeout, $effort);
+            if ($r !== null) return [$r[0], $r[1], $model];
+            // 키를 풀 수 없음·크레딧 소진·키 거절 — 아래 OpenRouter 기존 설정으로 이어서(작업이 멈추지 않게)
         }
         $b = self::fitModel((string) $b['model'], $b, $kind);
         [$status, $raw] = self::send(self::effectiveKey($email), $b, $timeout);

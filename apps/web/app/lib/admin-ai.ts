@@ -14,7 +14,13 @@ export interface AiChatSolution {
 export type AiTextProvider = "openrouter" | "claude";
 export interface AiProvider {
   value: AiTextProvider;
-  claude: { set: boolean; usable: boolean; last4: string | null; fixed: Array<[string, string]> };
+  claude: {
+    set: boolean; usable: boolean; last4: string | null; fixed: Array<[string, string]>;
+    /** ok | no_credits(잔액 부족) | bad_key(키 거절) — 막히면 30분 동안 OpenRouter 로 대신 돈다 */
+    status: { state: "ok" | "no_credits" | "bad_key"; message?: string; at?: string };
+    /** 이번 기간 사용 추정 — 잔액 API 가 없어 이 서버 기록으로 셈 */
+    budget: { credit: number; reset_day: number; since: string; spent: number; left: number; calls: number } | null;
+  };
 }
 interface AdminAi {
   openrouter: { set: boolean; usable: boolean; source: "company" | "config" | null; last4: string | null };
@@ -31,7 +37,7 @@ export const saveAdminChat = (b: { enabled?: boolean; model?: string; daily_usd?
 export const fetchAdminAi = () => apiFetch<AdminAi>("/admin/ai");
 
 /** Claude 키 넣기·지우기 — 있으면 그림 외 글 작업이 Claude(모델 고정), 없으면 OpenRouter. 키는 서버가 확인한 뒤 암호화해 둔다 */
-export const saveAdminProvider = (b: { claude_key?: string; remove_claude_key?: boolean }) =>
+export const saveAdminProvider = (b: { claude_key?: string; remove_claude_key?: boolean; claude_credit_usd?: number; claude_reset_day?: number }) =>
   apiFetch<{ provider: AiTextProvider }>("/admin/ai/provider", {
     method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(b),
   });

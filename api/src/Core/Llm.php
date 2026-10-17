@@ -69,13 +69,11 @@ final class Llm
             return null;
         }
         $body = ['model' => $cfg['model'], 'messages' => $messages, 'max_tokens' => $maxTokens, 'temperature' => 0.4, 'usage' => ['include' => true]];
-        if (AiKeys::textProvider() === 'claude') {   // Claude 키가 있다 — 답변 모델이 Claude 면 그 모델(기본 Haiku 4.5), 아니면 Sonnet 5.5
-            $key = AiKeys::claudeKey();
-            if ($key === null) {
-                return null;
-            }
-            $model = Claude::modelFor($cfg['model'], Claude::DEFAULT_MODEL);
-            [$status, $raw] = Claude::chat($key, $model, $body, $timeout, 'low');
+        // Claude 키가 있으면 먼저 — 답변 모델이 Claude 면 그 모델(기본 Haiku 4.5), 아니면 Sonnet 5.5.
+        // 키를 풀 수 없음·크레딧 소진·키 거절이면 null → 아래 OpenRouter 로 이어서
+        $r = AiKeys::textProvider() === 'claude' ? AiKeys::claudeCall(Claude::modelFor($cfg['model'], Claude::DEFAULT_MODEL), $body, $timeout, 'low') : null;
+        if ($r !== null) {
+            [$status, $raw] = $r;
         } else {
             $key = AiKeys::serverKey();
             if ($key === null) {

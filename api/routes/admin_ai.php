@@ -91,7 +91,8 @@ return static function (Router $r): void {
             'provider' => [
                 'value' => (string) ($deck['text_provider'] ?? 'openrouter'),
                 'claude' => ['set' => !empty($deck['claude']['set']), 'usable' => $safe(static fn () => AiKeys::claudeKey() !== null, false),
-                    'last4' => $claudeHint !== '' ? mb_substr($claudeHint, -4) : null, 'fixed' => $deck['claude']['fixed'] ?? []],
+                    'last4' => $claudeHint !== '' ? mb_substr($claudeHint, -4) : null, 'fixed' => $deck['claude']['fixed'] ?? [],
+                    'status' => $deck['claude']['status'] ?? ['state' => 'ok'], 'budget' => $deck['claude']['budget'] ?? null],
             ],
             'solutions' => [
                 [

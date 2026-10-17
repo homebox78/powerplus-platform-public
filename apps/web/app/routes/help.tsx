@@ -1,5 +1,5 @@
 // 출처: homebox-handoff apps/web/app/routes/help.tsx — 카테고리 아이콘을 powerPlus 분류(시작·에셋·장표·목업·가이드·계정)로, 히어로 #111 을 토큰 bg-dark 로, 문서 카드 흰 바탕에 다크 모드 대응, 제목 powerPlus
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useParams } from "react-router";
 import { BookOpenText, Boxes, Bot, ChevronRight, FileSliders, KeyRound, Rocket, Search, ThumbsDown, ThumbsUp } from "lucide-react";
@@ -11,7 +11,8 @@ import { Copy } from "@/components/hb/copy";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { fetchHelpDocs } from "@/lib/admin";
-import { buildHelpTree, type HelpArticle, type HelpCategory } from "@/lib/help-content";
+import { buildHelpTree, HELP_CAT_KO, type HelpArticle, type HelpCategory } from "@/lib/help-content";
+import { pageTitle } from "@/lib/page-title";
 import type { Route } from "./+types/help";
 import { BackButton } from "@/components/hb/back-button";
 
@@ -21,7 +22,11 @@ import { BackButton } from "@/components/hb/back-button";
 /** powerAssets 애드인 설치 파일 — 이 플랫폼이 /addin/ 에서 내준다(서버가 최신 설치 파일 주소로 보낸다). 시작하기 다운로드 버튼과 같은 주소 */
 const ADDIN_SETUP = "/api/v1/assets/setup/download";
 
-export const meta: Route.MetaFunction = () => [{ title: "도움말 센터 — powerPlus" }];
+// 탭 제목은 화면마다 다르게(2026-10-17 점검: /help 아래 6개가 전부 "도움말 센터"). 분류는 주소로 바로, 문서 제목은 API 로 받은 뒤 ArticleView 가 바꾼다
+export const meta: Route.MetaFunction = ({ params }) => {
+  const cat = HELP_CAT_KO[(params as { cat?: string }).cat ?? ""];
+  return [{ title: cat ? pageTitle(cat, "도움말 센터") : pageTitle("도움말 센터") }];
+};
 
 export default function HelpPage() {
   const { cat, article } = useParams();
@@ -86,7 +91,7 @@ function HelpHome({ tree }: { tree: HelpCategory[] }) {
             <span className="grid size-12 shrink-0 place-items-center rounded-2xl bg-white dark:bg-ground">{(() => { const I = CAT_ICON[c.id] ?? Rocket; return <I className="size-6" aria-hidden />; })()}</span>
             <span className="flex min-w-0 flex-col">
               <span className="text-xl font-bold">{c.title}</span>
-              <span className="mt-1 text-md text-ink-3">{c.desc}</span>
+              <span className="pp-sent mt-1 text-md text-ink-3">{c.desc}</span>
               <span className="mt-4 text-sm text-ink-4">문서 {c.articles.length}개</span>
             </span>
           </Link>
@@ -125,6 +130,7 @@ function ArticleView({ cat, art }: { cat: HelpCategory; art: HelpArticle }) {
   const [voted, setVoted] = useState<null | boolean>(null);
   const vote = (yes: boolean) => { setVoted(yes); toast.success(yes ? "도움이 되었다니 다행입니다." : "알려 주셔서 고맙습니다.", yes ? undefined : { description: "더 필요한 내용은 문의로 보내 주세요." }); };
   const others = cat.articles.filter((a) => a.slug !== art.slug);
+  useEffect(() => { document.title = pageTitle(art.title, cat.title); }, [art.title, cat.title]);
   return (
     <div className="container-page pb-14 pt-12">
       <BackButton fallback={`/help/${cat.id}`} className="mb-3" />

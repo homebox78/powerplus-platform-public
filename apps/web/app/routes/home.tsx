@@ -8,7 +8,7 @@ import { MobileCarousel } from "@/components/hb/mobile-carousel";
 import { BrandName } from "@/components/hb/brand-name";
 import { MainChat } from "@/components/chat/main-chat";
 import { Button } from "@/components/ui/button";
-import { Copy, MBr } from "@/components/hb/copy";
+import { Copy, MBr, glueDots } from "@/components/hb/copy";
 import { apiFetch } from "@/lib/api";
 import { useMe } from "@/lib/auth";
 import { MODULES } from "@/lib/modules";
@@ -36,7 +36,7 @@ export default function Home() {
         <p className="mt-3 text-lg leading-[1.7] text-ink-3">제안서 에셋, 장표 변환, 홈페이지 목업, 디자인 규칙.<MBr />로그인 한 번으로 전부 씁니다.</p>
         {!me && (
           <div className="mt-5 flex flex-wrap justify-center gap-2">
-            <Button asChild size="lg"><Link to="/signup">무료로 시작</Link></Button>
+            <Button asChild size="lg"><Link to="/signup">가입하기</Link></Button>
             <Button asChild size="lg" variant="outline"><Link to="/login">로그인</Link></Button>
           </div>
         )}
@@ -63,11 +63,12 @@ export default function Home() {
             <div className="flex flex-1 flex-col gap-4 p-7 xl:p-6">
               <div className="flex items-center gap-3">
                 <span className="inline-flex size-11 items-center justify-center rounded-card bg-ink text-white"><m.icon className="size-5" aria-hidden /></span>
-                <div><div className="pp-module-title text-[22px] leading-tight"><BrandName name={m.name} /></div><div className="text-sm text-ink-4">{m.sub}</div></div>
+                <div><h2 className="pp-module-title text-[22px] font-normal leading-tight"><BrandName name={m.name} /></h2><div className="text-sm text-ink-4">{m.sub}</div></div>
               </div>
               <Copy className="text-md leading-[1.7] text-ink-3" text={m.desc} />
-              <div className="mt-auto flex flex-wrap items-center justify-between gap-2 text-sm">
-                <span className="text-ink-4">무료 범위 · {m.free}</span>
+              {/* 아래 칸은 네 카드 모두 두 줄(이용 범위 / 바로 해 보기) — 글 길이에 따라 한 줄·두 줄로 갈려 높이가 달랐다(2026-10-17 점검) */}
+              <div className="mt-auto flex flex-col items-start gap-2 text-sm">
+                <span className="text-ink-4">{glueDots(`회원 전용 · ${m.free}`)}</span>
                 <span className="inline-flex items-center gap-1 font-semibold text-ink">바로 해 보기<ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" aria-hidden /></span>
               </div>
             </div>

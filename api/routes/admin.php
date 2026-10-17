@@ -687,7 +687,7 @@ return static function (Router $r): void {
         curl_setopt_array($ch, [CURLOPT_RETURNTRANSFER => true, CURLOPT_CONNECTTIMEOUT_MS => 700, CURLOPT_TIMEOUT_MS => 1200]);
         $raw = curl_exec($ch);
         $code = (int) curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
-        curl_close($ch);
+        unset($ch); // curl_close 폐기 예고(8.5) — 핸들은 범위를 벗어나면 닫힌다
         if ($raw !== false && $code === 200) {
             $d = json_decode((string) $raw, true);
             $mcp = ['version' => $d['version'] ?? null, 'tools' => $d['tools'] ?? null];

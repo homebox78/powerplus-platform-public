@@ -15,6 +15,7 @@ use Pp\Core\HttpError;
 use Pp\Core\Ids;
 use Pp\Core\Mail;
 use Pp\Core\Notify;
+use Pp\Core\RateLimit;
 use Pp\Core\Response;
 use Pp\Core\Router;
 
@@ -54,6 +55,10 @@ return static function (Router $r): void {
         if (Db::val('SELECT id FROM core_contacts WHERE email = ? AND created_at > NOW(3) - INTERVAL 1 MINUTE', [$email])) {
             throw HttpError::tooMany('잠시 뒤에 다시 보내 주세요.');
         }
+        // 도배 막기(2026-10-17) — 이메일을 바꿔 가며 보내도 IP 한 곳에서 시간 5번·하루 20번
+        $ip = RateLimit::ipKey();
+        RateLimit::hit("contact.ip.h:{$ip}", 5, RateLimit::HOUR, '문의를 너무 자주 보냈습니다. 잠시 뒤에 다시 보내 주세요.');
+        RateLimit::hit("contact.ip.d:{$ip}", 20, RateLimit::DAY, '오늘 보낼 수 있는 문의 수를 넘었습니다. 내일 다시 보내 주세요.');
         $pid = Ids::publicId();
         $seats = (int) ($b['seats'] ?? 0);
         Db::exec('INSERT INTO core_contacts (public_id, user_id, topic, module, name, email, org, seats, message, ip) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', [
@@ -63,7 +68,10 @@ return static function (Router $r): void {
             $message, Audit::ip(),
         ]);
         // 빠른 판단(Jev) — 실제 주제·모듈·급함·스팸을 core_contacts.ai 에 붙인다. 실패해도 접수는 그대로.
-        $ai = \Pp\Core\Triage::contact($pid, $topic, $module, $message, (string) ($b['org'] ?? '') ?: null);
+        // 비로그인 문의는 사이트 전체 하루 50건까지만 묻는다(AI 비용을 남이 태우지 못하게). 넘으면 판단 없이 접수만.
+        $ai = $a->id() !== null || RateLimit::take('contact.triage.anon.d', 50, RateLimit::DAY)
+            ? \Pp\Core\Triage::contact($pid, $topic, $module, $message, (string) ($b['org'] ?? '') ?: null)
+            : null;
         if (($ai['spam'] ?? 0) < 0.8) {
             $notifyOps('contact', ($ai && ($ai['urgent'] ?? 0) >= 0.7 ? '[급함] ' : '') . "새 문의: {$name}", '/admin');
         }
@@ -137,6 +145,13 @@ return static function (Router $r): void {
         $dup = Db::val('SELECT no FROM core_removal_requests WHERE requester_email = ? AND target_url = ? AND created_at > NOW(3) - INTERVAL 1 DAY', [$email, mb_substr($url, 0, 300)]);
         if ($dup) {
             throw new HttpError('DUPLICATE', "이미 접수된 요청입니다(접수번호 {$dup}).", 409);
+        }
+        // 도배 막기(2026-10-17) — 접수마다 확인 메일이 나간다. IP 한 곳에서 시간 3번·하루 10번, 이메일 하나에 하루 10건
+        $ip = RateLimit::ipKey();
+        RateLimit::hit("removal.ip.h:{$ip}", 3, RateLimit::HOUR, '삭제요청을 너무 자주 보냈습니다. 잠시 뒤에 다시 보내 주세요.');
+        RateLimit::hit("removal.ip.d:{$ip}", 10, RateLimit::DAY, '오늘 보낼 수 있는 삭제요청 수를 넘었습니다. 여러 건이면 문의로 한 번에 보내 주세요.');
+        if ((int) Db::val('SELECT COUNT(*) FROM core_removal_requests WHERE requester_email = ? AND created_at > NOW(3) - INTERVAL 1 DAY', [$email]) >= 10) {
+            throw HttpError::tooMany('이 이메일로 오늘 보낼 수 있는 삭제요청 수를 넘었습니다.', '하루 10건');
         }
         $no = 'RM' . date('ymd') . strtoupper(bin2hex(random_bytes(2))); // RM261006A1B2 (12자)
         Db::exec('INSERT INTO core_removal_requests (no, content_type, content_id, claimant_name, claimant_org, requester_email, claimant_phone, target_url, reason_kind, reason, due_at)

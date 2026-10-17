@@ -112,7 +112,8 @@ final class Router
                     throw HttpError::forbidden();
                 }
                 // 회원 전용(사용자 2026-10-16): 로그인 + Pro·Team·임직원이 아니면 서비스 경로를 못 쓴다. 계정·약관·요금 등은 OPEN_PATHS.
-                if (!self::isOpen($method, $path) && !Access::member($actor)) {
+                // 로그인한 Free 회원은 웹에서 보기(GET)만(2026-10-17 사용자 "볼 수만 있음") — 쓰기·내려받기는 막는다(Access::viewAllowed)
+                if (!self::isOpen($method, $path) && !Access::member($actor) && !Access::viewAllowed($actor, $method, $path)) {
                     throw Access::memberError($actor);
                 }
                 // O-01: 키 호출은 경로 첫 단으로 모듈 범위를 본다 — 한도 집계 전에 막는다(/keys/verify 와 같은 순서).

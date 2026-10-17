@@ -17,7 +17,7 @@ interface Me {
   /** 가입 동의 상태 — required 면 웹이 동의 화면을 띄우고, 서버는 로그인 기능을 428 로 막는다. */
   consent?: { required: boolean; version: string; missing: string[]; agreed_at: string | null };
   /** 서비스 이용 자격(회원 전용) — member 가 아니면 reason 으로 안내를 고른다. staff_until = 임직원 이용 기간 끝 */
-  access?: { member: boolean; reason: "UNAUTHORIZED" | "PLAN_REQUIRED" | "STAFF_EXPIRED" | null; staff_until: string | null };
+  access?: { member: boolean; view?: boolean; reason: "UNAUTHORIZED" | "PLAN_REQUIRED" | "STAFF_EXPIRED" | null; staff_until: string | null };
 }
 
 const meQuery = queryOptions({
@@ -33,7 +33,9 @@ export function useMe() {
   const has = (r: Role) => !!me && (me.roles.includes("superadmin") || me.roles.includes(r) || (r !== "superadmin" && me.roles.includes("admin")));
   // 회원(Pro·Team·임직원 기간 안·운영 역할) — 서버 Access::member 와 같은 값(/me 의 access.member)
   const member = !!me?.access?.member;
-  return { me, loading: q.isLoading, isAdmin: has("admin"), hasRole: has, member };
+  // 보기 — 로그인한 Free 회원은 화면을 볼 수 있다(쓰기·내려받기는 member 만, 서버 Access::viewAllowed, 2026-10-17)
+  const canView = member || !!me?.access?.view;
+  return { me, loading: q.isLoading, isAdmin: has("admin"), hasRole: has, member, canView };
 }
 
 export function useLogout() {

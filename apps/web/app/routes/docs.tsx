@@ -113,7 +113,7 @@ function GuidePage() {
                 <h3 className="text-lg"><BrandName name={g.name} /></h3>
                 <span className="ml-auto text-sm text-ink-4">도구 {g.tools.length}개</span>
               </div>
-              <p className="mt-3 whitespace-pre-line text-sm leading-[1.7] text-ink-3">{CAN[g.name] ?? g.mod?.desc ?? ""}</p>
+              <Copy className="mt-3 text-sm leading-[1.7] text-ink-3" text={CAN[g.name] ?? g.mod?.desc ?? ""} />
             </div>
           ))}
         </div>
@@ -139,7 +139,7 @@ function GuidePage() {
             </div>
           </Step>
           <Step icon={<Search className="size-4" aria-hidden />} title="3. 연결 확인">
-            <p className="mt-1 text-md text-ink-3">AI 도구의 MCP 목록에서 <b>powerplus</b> 가 연결됨인지 봅니다.<br />Claude Code 는 세션 안에서 <code className="rounded-md bg-ground-3 px-1.5 py-0.5 text-sm">/mcp</code> 로 확인합니다.</p>
+            <p className="mt-1 text-md text-ink-3"><span className="pp-sent">AI 도구의 MCP 목록에서 <b>powerplus</b> 가 연결됨인지 봅니다.</span><br /><span className="pp-sent">Claude Code 는 세션 안에서 <code className="rounded-md bg-ground-3 px-1.5 py-0.5 text-sm">/mcp</code> 로 확인합니다.</span></p>
           </Step>
         </ol>
       </section>
@@ -158,7 +158,7 @@ function GuidePage() {
         <h2 className={H2}>이렇게 물어보세요</h2>
         <Copy className="mt-3 text-md text-ink-3" text="평소 말로 부탁하면 됩니다. AI 가 알맞은 도구를 골라 부릅니다." />
         <ol className="mt-6 flex flex-col gap-2">
-          {EXAMPLES.map((q, i) => <li key={q} className="flex gap-3 rounded-card border border-line px-5 py-3.5 text-md"><span className="w-5 shrink-0 text-right text-ink-4">{i + 1}</span><span className="min-w-0">{q}</span></li>)}
+          {EXAMPLES.map((q, i) => <li key={q} className="flex gap-3 rounded-card border border-line px-5 py-3.5 text-md"><span className="w-5 shrink-0 text-right text-ink-4">{i + 1}</span><span className="pp-sent min-w-0">{q}</span></li>)}
         </ol>
       </section>
 

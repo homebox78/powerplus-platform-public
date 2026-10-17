@@ -8,20 +8,22 @@ import { cn } from "@/lib/utils";
 interface StepItem { title: string; desc: string; img: string; to?: string }
 
 export function StepCards({ items, cols = 3, className }: { items: StepItem[]; cols?: 3 | 4; className?: string }) {
+  const stack = cols === 4;
   return (
     <MobileCarousel as="ol" label="단계" className={cn("mt-6 grid grid-cols-1 gap-4 md:grid-cols-2", cols === 4 ? "xl:grid-cols-4" : "xl:grid-cols-3", className)}>
       {items.map((s, i) => {
+        // 4칸(xl)은 카드 폭이 좁아 그림 옆 글 칸이 120px 남짓 → 6~7줄·낱말 중간 끊김(2026-10-17 점검). xl 4칸만 그림을 위로 쌓아 글 칸을 카드 폭만큼 쓴다.
         const body = (
           <>
-            <iframe src={s.img} title="" aria-hidden tabIndex={-1} loading="lazy" className="pointer-events-none min-h-[168px] w-[168px] shrink-0 self-stretch border-0 max-sm:min-h-28 bg-ground-2 max-sm:w-28" />
-            <span className="flex min-w-0 flex-col justify-center px-5 py-5">
+            <iframe src={s.img} title="" aria-hidden tabIndex={-1} loading="lazy" className={cn("pointer-events-none min-h-[168px] w-[168px] shrink-0 self-stretch border-0 max-sm:min-h-28 bg-ground-2 max-sm:w-28", stack && "xl:h-[200px] xl:min-h-0 xl:w-full")} />
+            <span className={cn("flex min-w-0 flex-col justify-center px-5 py-5", stack && "xl:justify-start")}>
               <span className="text-sm font-bold text-ink-4 tabular-nums">{String(i + 1).padStart(2, "0")}</span>
               <span className="mt-1 block text-lg font-bold leading-snug">{s.title}</span>
               <span className="mt-1.5 block text-sm leading-[1.7] text-ink-3"><Copy as="span" text={s.desc} /></span>
             </span>
           </>
         );
-        const box = "flex overflow-hidden rounded-panel border border-line bg-ground";
+        const box = cn("flex overflow-hidden rounded-panel border border-line bg-ground", stack && "xl:flex-col");
         return (
           <li key={s.title}>
             {s.to ? <Link to={s.to} className={cn(box, "h-full transition-colors hover:bg-ground-2")}>{body}</Link> : <div className={cn(box, "h-full")}>{body}</div>}

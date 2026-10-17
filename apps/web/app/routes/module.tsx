@@ -5,8 +5,8 @@ import { Link, NavLink, Navigate, useLocation, useParams, useSearchParams } from
 import { BrandName } from "@/components/hb/brand-name";
 import { MobileCarousel } from "@/components/hb/mobile-carousel";
 import { DOWNLOAD_COUNT } from "@/modules/guide/downloads";
-import { Copy } from "@/components/hb/copy";
-import { MemberLock } from "@/components/hb/member-gate";
+import { Copy, glueDots } from "@/components/hb/copy";
+import { MemberLock, ViewOnlyNotice } from "@/components/hb/member-gate";
 import { WideToggle, useWideInlinePresent } from "@/components/hb/work-space";
 import { Button } from "@/components/ui/button";
 import { useMe } from "@/lib/auth";
@@ -25,7 +25,7 @@ const LANDING_EXTRA: Record<string, () => React.JSX.Element | null> = { assets: 
 export default function ModulePage() {
   const { pathname } = useLocation();
   const { sub = "" } = useParams();
-  const { me, member, loading } = useMe();
+  const { me, member, canView, loading } = useMe();
   const [sp] = useSearchParams();
   const m0 = MODULES.find((x) => pathname.startsWith(x.to)) ?? MODULES[0]!;
   const gov = useGuideOverrides();
@@ -35,10 +35,14 @@ export default function ModulePage() {
   // powerDeck 공유 링크(/deck/jobs?id=…)는 로그인 없이 연다 — 볼 수 있는지는 서버가 작업의 링크 권한(shared=3)으로 정한다
   const openLink = m.id === "deck" && item.slug === "jobs" && !!sp.get("id");
   // 회원 전용(2026-10-16): 랜딩(소개) 말고는 Pro·Team·임직원만 — 서버도 같은 판정으로 API 를 막는다
-  const gated = !landing && !openLink && !loading && !member;
+  // 로그인한 Free 회원은 보기만(2026-10-17) — 화면은 열고 위에 보기 전용 띠, 쓰기·내려받기는 서버가 막는다
+  const gated = !landing && !openLink && !loading && !canView;
+  const viewOnly = !landing && !openLink && !loading && canView && !member;
   // 넓게 보기 — 작업 화면(장표 변환·내 작업, 시안)에만. 랜딩·목록 소개 화면은 기본 폭 그대로
   const wideOk = !landing && !gated && ((m.id === "deck" && (item.slug === "convert" || item.slug === "jobs")) || (m.id === "mock" && item.slug === "mockups"));
   const wideInline = useWideInlinePresent();
+  // 문서 제목(h1) = 지금 화면 — 랜딩은 모듈 이름, 하위 탭은 탭 이름(2026-10-17 점검: 탭마다 h1 이 모듈 이름으로 같았다). 모양은 그대로
+  const ModTitle = landing ? "h1" : "div";
   // 옛 "최근 업데이트"·검색 주소는 둘러보기로(합침 2026-10-12) — 검색어·종류는 그대로 넘긴다
   if (m.id === "assets" && (sub === "recent" || sub === "search")) return <Navigate to={`/assets/browse${sp.toString() ? `?${sp}` : ""}`} replace />;
   return (
@@ -50,12 +54,12 @@ export default function ModulePage() {
       {/* 모바일은 아이콘·타이틀·설명글 모두 75%(2026-10-15 사용자 "25% 작게") */}
       <div className="wide-hide mt-3 flex items-center gap-4 max-sm:gap-3">
         <span className="inline-flex size-12 items-center justify-center rounded-ci bg-ink text-white max-sm:size-9"><m.icon className="size-5 max-sm:size-[15px]" aria-hidden /></span>
-        <div><h1 className="pp-module-title text-5xl max-sm:text-[calc(var(--text-5xl)*0.75)]"><BrandName name={m.name} /></h1><p className="mt-0.5 text-md text-ink-3 max-sm:text-[calc(var(--text-md)*0.75)]">{m.sub}</p></div>
+        <div><ModTitle className="pp-module-title text-5xl max-sm:text-[calc(var(--text-5xl)*0.75)]"><BrandName name={m.name} /></ModTitle><p className="mt-0.5 text-md text-ink-3 max-sm:text-[calc(var(--text-md)*0.75)]">{m.sub}</p></div>
       </div>
       <nav className="wide-hide mt-8 flex flex-wrap gap-0 border-b border-line" aria-label={`${m.name} 메뉴`}>
         {m.menu.map((i) => (
           <NavLink key={i.slug} to={menuHref(m, i)} end className={({ isActive }) => cn("relative inline-flex h-14 shrink-0 items-center gap-1.5 whitespace-nowrap px-4 text-md font-medium text-ink-4 transition-colors hover:text-ink", isActive && "font-bold text-ink after:absolute after:-bottom-px after:left-4 after:right-4 after:h-0.5 after:bg-ink")}>
-            {i.label}{i.slug !== "" && !member && <Lock className="size-3.5 opacity-60" aria-label="회원 전용" />}
+            {i.label}{i.slug !== "" && !canView && <Lock className="size-3.5 opacity-60" aria-label="회원 전용" />}
           </NavLink>
         ))}
       </nav>
@@ -67,8 +71,9 @@ export default function ModulePage() {
         </>
       ) : (
         <>
-          <div className="mt-10 flex items-center gap-3 empty:hidden [html[data-wide='1']_&]:mt-0"><h2 className="wide-hide text-[26px] font-extrabold leading-[1.25] tracking-[-0.025em]">{item.label}</h2>{wideOk && !wideInline && <WideToggle className="ml-auto" />}</div>
+          <div className="mt-10 flex items-center gap-3 empty:hidden [html[data-wide='1']_&]:mt-0"><h1 className="wide-hide text-[26px] font-extrabold leading-[1.25] tracking-[-0.025em]">{item.label}</h1>{wideOk && !wideInline && <WideToggle className="ml-auto" />}</div>
           <p className="wide-hide mt-2 max-w-[720px] text-md leading-[1.7] text-ink-3"><Copy as="span" text={item.desc} /></p>
+          {viewOnly && <ViewOnlyNotice />}
           {gated ? (
             <MemberLock reason={me ? (me.access?.reason ?? "PLAN_REQUIRED") : "UNAUTHORIZED"} />
           ) : loading && !landing && !openLink ? null : SCREENS[m.id]?.[item.slug] ? (
@@ -122,7 +127,7 @@ function ActButton({ a, primary }: { a: Act; primary?: boolean }) {
 }
 
 function ModuleBanner({ m }: { m: PlatformModule }) {
-  const { member } = useMe();
+  const { canView } = useMe();
   const b = BANNER[m.id];
   return (
     <>
@@ -136,14 +141,15 @@ function ModuleBanner({ m }: { m: PlatformModule }) {
               <ActButton a={b.secondary} />
             </div>
           )}
-          <p className="mt-4 text-balance text-sm text-ink-3">무료 범위 · {m.free}{b?.note ? ` · ${b.note}` : ""}</p>
+          {/* 가운뎃점이 줄 머리로 떨어지지 않게(모바일 "· 1GB 까지", 2026-10-17 점검) */}
+          <p className="mt-4 text-balance text-sm text-ink-3">{glueDots(`회원 전용 · ${m.free}${b?.note ? ` · ${b.note}` : ""}`)}</p>
         </div>
       </section>
       {/* 하는 일 — 하위 메뉴 카드(배너는 시안에서 더한 것, 원래 카드는 그대로 둔다). powerMock 은 자기 랜딩에 "할 수 있는 일" 카드가 따로 있다 */}
       {m.id !== "mock" && <MobileCarousel as="section" label="하는 일" className={cn("mt-5 grid grid-cols-1 gap-4 md:grid-cols-2", ({ 2: "", 3: "lg:grid-cols-3", 4: "xl:grid-cols-4", 5: "lg:grid-cols-3 xl:grid-cols-5" } as Record<number, string>)[cardsOf(m).length] ?? "lg:grid-cols-3")} aria-label="하는 일">
         {cardsOf(m).map((i) => (
           <Link key={i.slug} to={i.slug.startsWith("/") ? i.slug : menuHref(m, i)} className="rounded-panel border border-line bg-ground p-6 transition-colors hover:bg-ground-2">
-            <div className="flex items-center gap-2 text-lg font-bold">{i.label}{i.slug !== "" && !member && <Lock className="size-4 text-ink-4" aria-label="회원 전용" />}</div>
+            <div className="flex items-center gap-2 text-lg font-bold">{i.label}{i.slug !== "" && !canView && <Lock className="size-4 text-ink-4" aria-label="회원 전용" />}</div>
             <p className="mt-2 text-md leading-[1.7] text-ink-3"><Copy as="span" text={i.desc} /></p>
           </Link>
         ))}

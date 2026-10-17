@@ -16,6 +16,8 @@
  *   - 만료된 보고서(core_reports): 만료·삭제 뒤 30일 지나면 행을 지운다.
  *   - 감사 기록(core_audit): 2년 지나면 지운다.
  *   - 결제·청구(core_invoices·core_subscriptions·core_billing_events)는 전자상거래법 5년 보존이라 건드리지 않는다.
+ *   - AI 사용·비용 기록(deck_ai_usage)도 과금(크레딧·월 한도) 근거라 지우지 않는다(2026-10-17 점검 — 접속 기록이 아니다).
+ *   - 횟수 제한 카운터(core_rate_limits, IP 해시): 2일 지나면 지운다.
  *   - 서버 자원 표본(core_server_metrics)은 sample-metrics.php 가 30일로 이미 지운다.
  * 웹에서는 실행되지 않는다(CLI 만 받는다).
  */
@@ -76,6 +78,10 @@ $jobs = [
     ['감사 기록 지우기(2년)',
         'SELECT COUNT(*) FROM core_audit WHERE created_at < NOW() - INTERVAL 2 YEAR',
         'DELETE FROM core_audit WHERE created_at < NOW() - INTERVAL 2 YEAR'],
+    // 횟수 제한 카운터(0042, IP 해시) — 가장 긴 창이 하루라 이틀 지나면 쓸모없다
+    ['횟수 제한 카운터 지우기(2일)',
+        'SELECT COUNT(*) FROM core_rate_limits WHERE win_start < NOW() - INTERVAL 2 DAY',
+        'DELETE FROM core_rate_limits WHERE win_start < NOW() - INTERVAL 2 DAY'],
 ];
 
 $total = 0;

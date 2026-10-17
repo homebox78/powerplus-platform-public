@@ -450,16 +450,17 @@ const MOCK_FLOW: [string, string][] = [
 ];
 
 export function MockLandingSteps() {
-  const ex = useQuery(galleryQuery({ view: "shared", sort: "score" }));
+  const { me, loading, member, canView } = useMe();
+  // 갤러리는 로그인 뒤 보기 — 비로그인 랜딩에서는 부르지 않는다(예시 섹션은 비어 있으면 숨김, 2026-10-17 점검)
+  const ex = useQuery({ ...galleryQuery({ view: "shared", sort: "score" }), enabled: canView });
   const top = (ex.data?.items ?? []).slice(0, 3);
-  const { me, loading, member } = useMe();
   return (
     <>
       {/* 비회원 안내 — 기획·시안·컴포넌트와 MCP 는 Pro·Team·임직원 전용(2026-10-16 회원 전용 전환) */}
       {!loading && !member && (
         <section className="mt-8 flex flex-wrap items-center justify-between gap-4 rounded-panel border border-line bg-ground-2 px-6 py-5" aria-label="로그인 안내" data-testid="mock-login-cta">
-          <Copy className="text-md text-ink-2" text={me ? "기획·시안·컴포넌트는 Pro·Team 회원과 임직원이 쓸 수 있습니다. 요금제를 확인해 주세요." : "기획·시안·컴포넌트는 Pro·Team 회원과 임직원이 쓸 수 있습니다. 회원가입 후 로그인해 주세요."} />
-          <Button size="md" asChild>{me ? <Link to="/pricing">요금제 보기</Link> : <Link to="/login?next=/mock">로그인</Link>}</Button>
+          <Copy className="text-md text-ink-2" text={me ? "지금 계정은 보기만 됩니다. 기획·시안·컴포넌트 사용은 Pro 이상 회원만 됩니다." : "기획·시안·컴포넌트는 Pro 이상 회원이 씁니다. 로그인하면 볼 수 있습니다."} />
+          <Button size="md" asChild>{me ? <Link to="/contact">전환 요청</Link> : <Link to="/login?next=/mock">로그인</Link>}</Button>
         </section>
       )}
       <section className="mt-8" aria-label="할 수 있는 일">

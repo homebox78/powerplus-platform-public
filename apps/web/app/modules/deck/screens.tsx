@@ -6,6 +6,7 @@
 // 옛 Shell(사이드바)·Login 은 쓰지 않는다 — 플랫폼 틀(헤더·모듈 탭) 안에 본문만. Toaster·Asker·GlobalContextMenu 는 모듈 루트에서 한 번.
 // 화면 코드(legacy/*)의 UI/UX 는 그대로, 디자인 토큰만 플랫폼 톤(legacy/theme.css·legacy.css, 계약 §4).
 import "material-symbols/outlined.css";
+import { BadgeCheck, Link2, MessagesSquare, Users } from "lucide-react";
 import { MobileCarousel } from "@/components/hb/mobile-carousel";
 import "./legacy/legacy.css";
 import { useCallback, useEffect, useState, type ReactNode } from "react";
@@ -239,7 +240,8 @@ export function DeckLandingSteps() {
   return (
     <section className="mt-8" aria-label="사용 순서">
       <SectionHeading title="자료 정리부터 대본까지, 한 번에" />
-      <p className="mt-2 text-md text-ink-3">여섯 단계가 한 작업 안에서 이어집니다.<MBr />앞 단계 결과를 그대로 받아 쓰니 도구를 옮겨 다닐 일이 없습니다.</p>
+      {/* 문장마다 pp-sent(균형 줄바꿈) — 모바일에서 "없습니다." 만 떨어지던 꼬리 줄(2026-10-17 점검) */}
+      <p className="mt-2 text-md text-ink-3"><span className="pp-sent">여섯 단계가 한 작업 안에서 이어집니다.</span><MBr /><span className="pp-sent">앞 단계 결과를 그대로 받아 쓰니 도구를 옮겨 다닐 일이 없습니다.</span></p>
       <StepCards items={steps.map(([title, desc, to], i) => ({ title, desc, to, img: `/img/steps/deck-${i + 1}-v3.html` }))} />
       <DeckTogether />
     </section>
@@ -253,20 +255,21 @@ export function DeckLandingSteps() {
  */
 function DeckTogether() {
   const items = [
-    { icon: "link", title: "링크 하나로 공유", desc: "권한은 의견·편집·보기 중에 고릅니다. 보기 링크는 로그인 없이 열립니다." },
-    { icon: "forum", title: "장마다 의견 달기", desc: "팀원이 시안과 장표에 의견을 남깁니다. 주인은 그 의견으로 다시 만들어 반영합니다." },
-    { icon: "group", title: "같이 고치기", desc: "편집 권한을 받은 사람도 기획 글·와이어를 고치고 A·B 를 확정합니다." },
-    { icon: "verified", title: "확정한 장만 보여 주기", desc: "고르지 않은 장은 공유되지 않습니다. 크레딧이 드는 일은 주인만 합니다." },
+    { icon: Link2, title: "링크 하나로 공유", desc: "권한은 의견·편집·보기 중에 고릅니다. 보기 링크는 로그인 없이 열립니다." },
+    { icon: MessagesSquare, title: "장마다 의견 달기", desc: "팀원이 시안과 장표에 의견을 남깁니다. 주인은 그 의견으로 다시 만들어 반영합니다." },
+    { icon: Users, title: "같이 고치기", desc: "편집 권한을 받은 사람도 기획 글·와이어를 고치고 A·B 를 확정합니다." },
+    { icon: BadgeCheck, title: "확정한 장만 보여 주기", desc: "고르지 않은 장은 공유되지 않습니다. 크레딧이 드는 일은 주인만 합니다." },
   ];
   return (
     <div className="mt-11">
       <SectionHeading title="여럿이 한 장표를 함께" />
-      <p className="mt-2 text-md text-ink-3">기획자·디자이너·발표자가 같은 작업 하나를 봅니다.<MBr />파일을 메일로 주고받을 일이 없습니다.</p>
+      <p className="mt-2 text-md text-ink-3"><span className="pp-sent">기획자·디자이너·발표자가 같은 작업 하나를 봅니다.</span><MBr /><span className="pp-sent">파일을 메일로 주고받을 일이 없습니다.</span></p>
       <MobileCarousel label="함께" className="mt-5 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
         {items.map((it) => (
           <div key={it.title} className="rounded-panel border border-line bg-ground p-6">
             <div className="flex items-center gap-2.5">
-              <span className="material-symbols-outlined flex-none text-[26px] text-ink-2" aria-hidden>{it.icon}</span>
+              {/* 공개 랜딩 아이콘 4개는 lucide 로 — Material Symbols 글꼴(3.9MB)을 랜딩에서 받지 않게(2026-10-17 점검). 옛 화면(legacy)은 그대로 */}
+              <it.icon className="size-[26px] flex-none text-ink-2" strokeWidth={1.75} aria-hidden />
               <span className="text-lg font-bold">{it.title}</span>
             </div>
             <p className="mt-2 text-md leading-[1.7] text-ink-3"><Copy as="span" text={it.desc} /></p>

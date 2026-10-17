@@ -133,6 +133,7 @@ return static function (Router $r): void {
         $member = Access::member($a);
         $out['access'] = [
             'member' => $member,
+            'view' => $member || Access::viewer($a),   // 보기 — 로그인한 Free 회원은 화면을 볼 수 있다(쓰기·내려받기는 member 만)
             'reason' => $member ? null : Access::memberError($a)->errorCode,
             'staff_until' => $a->user !== null && ($a->user['kind'] ?? '') === 'staff' ? ($a->user['access_until'] ?? null) : null,
         ];

@@ -56,6 +56,24 @@ powerPlus 는 흩어져 있던 사내 도구 네 개를 한 플랫폼으로 합�
 모든 콘텐츠에는 공개 범위가 붙습니다(사내 전용 → 파트너 → 유료 → 무료 → 공개).
 화면에서 숨기는 것이 아니라 서버가 한 함수(`Access::can()`)로 판정합니다.
 
+### 이용 자격 — 회원 전용
+
+당분간은 임직원 전용으로 운영합니다.
+서비스를 쓰려면 로그인하고 Pro 이상이어야 합니다.
+
+| 구분 | 할 수 있는 일 |
+|:---:|---|
+| 로그인 안 함 | 모듈 소개(랜딩) 화면, 요금·도움말·약관, 공유 링크로 받은 시안·장표 보기 |
+| Free 회원 | 임직원 기간이 끝난 계정도 같습니다. 웹 화면 보기만 됩니다. 저장·생성·챗봇·내려받기·내보내기·애드인 설치 파일·장표 재료는 막힙니다 |
+| Pro · Team | 모든 모듈 사용, 챗봇, PowerPoint 애드인, powerMCP 키 |
+| 임직원 | 회사 메일(solideos.com) 인증으로 가입하면 Pro 와 같은 권한. 가입일부터 1년간 |
+
+- 협력사·계약직은 아무 이메일로 가입합니다. 관리자가 **회원·설정 › 사용자·역할**에서 플랜을 Pro 로 바꾸고 기한과 전환 근거 메모(예: 컨소시엄 업체·계약 끝 날짜)를 남깁니다(`PATCH /api/v1/admin/users/{id}/plan`).
+- 키 호출(powerMCP·애드인)은 곧 '사용'이라 Free 계정 키는 쓸 수 없습니다.
+- 3개월 넘게 로그인하지 않으면 휴면으로 바뀝니다. 로그인을 시도하면 관리자에게 승인 요청이 가고, 승인 뒤 다시 씁니다.
+- 판정은 서버 관문 한 곳(`Router::dispatch` → `Access::member`·`Access::viewAllowed`)에서 합니다. 열린 경로는 `Router::OPEN_PATHS` 목록에만 둡니다.
+- 화면은 `GET /api/v1/me` 의 `access`(member·view·reason·staff_until)로 잠금 안내를 고릅니다.
+
 ## 3. 핵심 장점 — 말로 시키는 플랫폼
 
 ### 메인과 서브, 어느 화면에서든 챗봇으로 바로 지시
@@ -69,7 +87,7 @@ powerPlus 는 흩어져 있던 사내 도구 네 개를 한 플랫폼으로 합�
   챗봇이 말의 의도를 판정해 powerAssets·powerDeck·powerMock·powerGuide·도움말 중 맞는 곳으로 보냅니다.
 - **제안서는 사업명 한 줄로 시작합니다.**
   사업명이나 제안요청서를 말하면 powerDeck 장표 작업이 만들어지고, 같은 대화 안에서 기획 → 시안 단계를 이어 갑니다.
-- **로그인 전에도 써 볼 수 있습니다.** 비회원은 답까지만 받고, 로그인하면 결과를 저장하고 장표 작업으로 이어 갑니다.
+- **챗봇은 회원 전용입니다.** Pro 이상 회원이 쓰고, 결과를 저장해 장표 작업으로 이어 갑니다(2장 이용 자격).
 
 | 메인 — 말 한 줄로 에셋 찾기 | 서브 — 떠 있는 AI 버튼, 대화가 이어짐 |
 |:---:|:---:|
@@ -131,7 +149,8 @@ flowchart TB
 > 장표 한 벌을 만드는 데 글 호출이 수십 번 일어나서, 개발 중에는 비용이 아주 낮은 Muse Spark 로 시험하고 있습니다.
 > 정식 운영에서는 글 작업 모델을 Claude Opus 5.5 로 바꿉니다. 코드 수정 없이 장표 설정의 모델 칸만 바꾸면 됩니다.
 
-**추론 강도는 작업 종류로 정해집니다** — 자료 요약 low, 기획 xhigh, 제작 high.
+**추론 강도는 작업 종류로 정해집니다** — 자료 요약 low, 기획 xhigh, 제작 high(Muse Spark 기준).
+다른 모델이면 기획 high, 제작 medium 입니다.
 생각에 토큰을 다 써서 답이 비는 일을 막으려고, 생각 몫(`reasoning.max_tokens`)과 답 몫을 나눠 잡습니다.
 모델이 받지 않는 인자는 OpenRouter 모델 목록(6시간 캐시)을 보고 빼고 보냅니다.
 
@@ -202,7 +221,8 @@ flowchart LR
 | 잔액 확인 | OpenRouter 잔액이 없으면 시안 그림을 막음 |
 | 이력·과금 | 모든 호출을 모델·작업·토큰·비용으로 기록, 관리자 화면에서 확인 |
 | MCP 호출 한도 | 키별 하루 호출 수, 모든 응답에 남은 횟수 표시 |
-| 재시도 | 추론 인자 거절이면 빼고 다시, 시간 초과면 한 번 더, 한도 초과면 즉시 멈춤 |
+| 재시도(서버) | 추론 인자 때문에 거절(400·422)되면 추론을 빼고 한 번 더 |
+| 재시도(엔진) | 기획 호출이 시간 초과(502·503·504)면 한 번 더. 제작 에이전트는 실패하면 5초부터 최대 60초씩 기다리며 5번까지 다시. 예산·한도 초과(402)면 즉시 멈춤 |
 | Claude 사용 추정 | 관리자가 적은 월 크레딧·갱신일로 이번 기간 사용액·남은 추정을 표시 |
 | Claude 자동 전환 | Claude 크레딧이 떨어지거나 키가 거절되면 그 호출부터 OpenRouter 로 이어서, 30분 뒤 다시 Claude 시도 |
 
@@ -261,7 +281,7 @@ flowchart TB
 | 장표 제작 | `claude-opus-5-5` | powerDeck 칸의 장표 제작 모델 |
 | 기획 · 대본 · 와이어 | `claude-sonnet-5-5` | powerDeck 칸의 글 모델 |
 | 자료 정리 | `claude-sonnet-5-5` | powerDeck 칸의 자료 정리 모델 |
-| AI 답변(챗봇) | 답변 모델이 Claude 면 그 모델(기본 Haiku 4.5) | 답변 칸의 모델 |
+| AI 답변(챗봇) | 답변 모델이 Claude 면 그 모델(기본 Haiku 4.5), 아니면 `claude-sonnet-5-5` | 답변 칸의 모델 |
 | 시안 그림 · Jev | OpenRouter 그대로 | OpenRouter |
 
 - 분기는 서버 두 곳에서만 합니다. 장표 쪽은 `Deck\AiKeys::sendText`, 답변은 `Core\Llm::chat` 입니다.
@@ -332,14 +352,15 @@ flowchart TB
 ### 6.1 들어가는 법
 - 주소: https://powerplus.hom2box.com/admin
 - 로그인한 계정에 운영 역할이 있어야 들어갈 수 있습니다. 역할이 없으면 관리자 로그인 화면에서 막힙니다.
-- 오른쪽 위 「이동」 메뉴로 사이트를 새 창으로 열고, 라이트·다크 테마를 바꿀 수 있습니다.
+- 오른쪽 위 「사용자모드」로 사이트를 새 창으로 엽니다.
+- 오른쪽 위 사용자 메뉴에서 테마(라이트·다크·시스템)를 바꿉니다.
 
 ### 6.2 역할
 
 | 역할 | 할 수 있는 일 |
 |:---:|---|
 | superadmin | 한 계정 고정. 결제·구독 화면, 서버 자원 등 최상위 설정. 화면에서 부여·해제 불가 |
-| admin | 사용자·역할, 포인트, 메일 서식, AI 설정, 장표 작업·과금, 시안, 콘텐츠·정책 전체 |
+| admin | 사용자·역할·플랜 지정·휴면 승인, 포인트, 메일 서식, AI 설정, 장표 작업·과금, 시안, 콘텐츠·정책 전체 |
 | curator | 에셋 등록·수정, 검색 품질, powerGuide 현황, 모듈별 개선 체크리스트 |
 | support | 문의, 삭제 요청, 자료 요청 처리 |
 
@@ -361,7 +382,7 @@ flowchart TB
 | 품질 검수 | 통합 검수 | 여섯 개선 체크리스트를 한 절차로 — 다시 걸림 → 고치는 중 → 많이 걸린 순 |
 | | 개선 체크리스트 | 사이트 공통 · powerAssets · powerDeck · powerMock · powerGuide · powerMCP. 같은 결함은 한 줄에 횟수·근거로 쌓임 |
 | 콘텐츠 | 커뮤니티 · 도움말 · 변경 이력 · 약관·정책 · 메일 서식 | 공개 콘텐츠와 메일 문구 관리 |
-| 회원·설정 | 사용자·역할 | 회원 검색, 구분(임직원·외부)·상태·역할 관리 |
+| 회원·설정 | 사용자·역할 | 회원 검색, 구분(임직원·외부)·상태·역할 관리. 협력사·계약직 플랜 지정(Pro·Team·기한), 휴면 계정 승인 |
 | | 포인트 규칙 · 구독·결제 | 포인트 지급 규칙, 요금제(superadmin) |
 | | AI 설정 | OpenRouter 연결, Claude API 키(있으면 글 작업 Claude 먼저)·이번 기간 사용·남은 추정, 챗봇 모델·하루 상한, Jev 켜기·사용처별 끄기, 30일 사용량(4.6절) |
 
@@ -396,7 +417,7 @@ flowchart TB
 | 로그인 위치 | https://powerplus.hom2box.com/login 아래쪽 「테스트 계정으로 로그인」 |
 | 아이디·비밀번호 | 제출 서류에 별도로 적어 드립니다(저장소에는 적지 않습니다) |
 | 권한 | 관리자 화면까지 볼 수 있는 **읽기 전용** 계정 |
-| 이용 기간 | 정해진 기간이 지나면 자동으로 로그인이 막힙니다 |
+| 이용 기간 | 만들 때 정합니다(기본 15일, 최장 30일). 지나면 로그인 경로가 닫히고, 열려 있던 세션·키도 끊깁니다 |
 
 로그인 뒤 볼 수 있는 화면: 내 장표 작업, 내 시안, 저장한 에셋 묶음, API 키 관리, 관리자 전체 메뉴.
 
@@ -404,9 +425,11 @@ flowchart TB
 - 저장·수정·삭제 요청은 모두 거절됩니다(로그아웃만 허용).
 - 응답에 다른 회원의 이메일·이름·연락처가 있으면 가려서 보여 줍니다.
 - 관리자 화면을 연 기록은 감사 로그에 남습니다.
-- 비밀번호를 20번 틀리면 기간 안이라도 잠깁니다.
+- 무차별 대입을 막으려고 실패 횟수를 셉니다. 한 IP 가 하루 20번 틀리면 그 IP 만, 사이트 전체가 하루 200번 틀리면 그날 로그인만 막습니다(429).
+- 계정 자체는 잠그지 않습니다. 남이 일부러 틀려서 심사용 계정을 못 쓰게 만들 수 없도록 바꿨습니다.
+- 로그인 성공·실패는 모두 감사 로그에 남습니다.
 
-> **AI 챗봇은 로그인하지 않은 상태에서 써 보세요.** 테스트 계정은 읽기 전용이라 챗봇 요청도 막힙니다.
+> **AI 챗봇은 회원 전용이고, 테스트 계정은 읽기 전용이라 챗봇 요청이 막힙니다.** 챗봇 동작은 3장의 캡처로 봐 주세요.
 
 구현: [`api/src/Core/TestLogin.php`](api/src/Core/TestLogin.php) · [`api/src/Core/Mask.php`](api/src/Core/Mask.php) · 서버 CLI [`api/bin/test-account.php`](api/bin/test-account.php)
 
@@ -414,14 +437,14 @@ flowchart TB
 
 | 영역 | 사용 기술 |
 |:---:|---|
-| 웹 화면 | React 19 · TypeScript · Vite 8 · React Router 7 · Tailwind CSS v4 · shadcn/ui |
+| 웹 화면 | React 19 · TypeScript · Vite 8 · React Router 8 · Tailwind CSS v4 · shadcn/ui |
 | API | PHP 8.4 (프레임워크 없음, PDO prepared statement) · REST JSON |
 | DB | MariaDB 10.11 |
-| AI | OpenRouter(서버 프록시) — Claude Opus 5.5 · Claude Haiku 4.5 · Muse Spark 1.3 · gpt-image · Gemini Image · Jev |
+| AI | OpenRouter(서버 프록시) — Claude Opus 5.5 · Claude Haiku 4.5 · Muse Spark 1.3 · gpt-image · Gemini Image · Jev. Claude API 키가 있으면 글 작업은 Claude API 로 먼저(4.6절) |
 | MCP | Node 22 · TypeScript · MCP SDK (Streamable HTTP) |
 | 장표 엔진 | Python · python-pptx · LibreOffice(렌더) |
 | 애드인 | Office.js PowerPoint 애드인 · Webpack 5 |
-| 서버 | Ubuntu · Apache · systemd(엔진·MCP 상주) |
+| 서버 | Ubuntu · Apache · systemd(엔진·MCP 상주) · cron(정기 작업·백업) |
 
 ## 9. 시스템 구조
 
@@ -437,6 +460,7 @@ flowchart LR
   R --> D
   A <--> E[장표 엔진<br/>engine/]
   A --> O[OpenRouter]
+  A -.->|키가 있을 때 글 작업| CL[Claude API]
   E -->|서버 프록시 경유| A
 ```
 
@@ -446,6 +470,82 @@ flowchart LR
 - **DB 설계** — [`docs/db-design.md`](docs/db-design.md) 를 먼저 쓰고 검토한 뒤 [`db/schema.sql`](db/schema.sql) 과 증분 마이그레이션으로 옮겼습니다.
 
 자세한 설계는 [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md), 기획은 [`docs/PLAN.md`](docs/PLAN.md) 에 있습니다.
+
+### 9.1 보안
+
+**횟수 제한** — 로그인 없이 부르는 경로는 `api/src/Core/RateLimit.php` 가 셉니다.
+IP 는 원문 대신 해시로 묶습니다. 넘으면 429 를 돌려줍니다.
+
+| 대상 | 제한 | 구현 |
+|:---:|---|:---:|
+| 이메일 인증 코드 | 같은 이메일 60초에 한 번. IP 하나당 1시간 10번·하루 30번. 사이트 전체 하루 1,000번(설정값). 코드는 10분 유효, 5번 틀리면 다시 요청 | `Otp.php` |
+| 문의 | IP 하나당 1시간 5번·하루 20번. 비로그인 문의의 AI 분류는 사이트 전체 하루 50건까지 | `routes/info.php` |
+| 삭제요청 | IP 하나당 1시간 3번·하루 10번 | `routes/info.php` |
+| 테스트 계정 로그인 | 실패가 IP 하나당 하루 20번, 사이트 전체 하루 200번이면 그날 막음 | `TestLogin.php` |
+| API 키(MCP·애드인) | 키별 하루 호출 수, 모든 응답에 남은 횟수 표시 | `Keys.php` |
+
+**요청 위조(CSRF) 차단** — `api/public/index.php`
+- 상태를 바꾸는 요청(POST·PUT·PATCH·DELETE)은 JSON 본문이나 `X-Requested-With` 머리가 있어야 받습니다.
+- 쿠키 세션 요청은 `Origin` 호스트가 같아야 합니다. 브라우저가 `Sec-Fetch-Site: cross-site` 로 표시한 요청도 막습니다.
+- 키·엔진 요청은 쿠키를 쓰지 않으므로 이 검사에서 뺍니다.
+
+**보안 머리** — `scripts/platform.htaccess`
+
+| 머리 | 값 |
+|:---:|---|
+| Strict-Transport-Security | `max-age=31536000` (https 요청에만) |
+| X-Frame-Options · frame-ancestors | 같은 사이트만 iframe 허용. PowerPoint 가 띄우는 `/addin/` 만 뺌 |
+| Permissions-Policy | 카메라·마이크·위치·결제·USB 끔 |
+| X-Content-Type-Options · Referrer-Policy | `nosniff` · `strict-origin-when-cross-origin` |
+
+**화면 주소 404·검색엔진** — `api/public/spa.php` · `api/src/Core/SpaRoutes.php`
+- 웹 화면 주소에 있는 경로만 200 으로 줍니다. 없는 주소는 같은 껍데기를 404 로 줍니다.
+- 공개 화면은 화면마다 제목·설명·공유 미리보기(og)를 서버가 넣습니다.
+- `robots.txt`·`sitemap.xml` 도 같은 공개 화면 목록 하나로 만듭니다.
+- `SpaRoutes` 의 경로 목록은 `apps/web/app/routes.ts` 와 같아야 합니다. 어긋나면 배포 전 자가 검사가 배포를 막습니다.
+
+**목업 레퍼런스 API** — `services/mockref-api/public/index.php`
+- 레퍼런스 데이터는 powerMCP 키나 관리자만 볼 수 있습니다. 키 없이 부르면 401 입니다.
+- 상태 확인·결제 웹훅·공유 시안 미리보기(그 안의 그림 포함)만 열려 있습니다.
+
+### 9.2 운영 — 정기 작업·백업
+
+**정기 작업** — `scripts/deploy.sh` 가 배포 때 없는 것만 등록합니다.
+
+| 작업 | 주기 | 하는 일 |
+|:---:|:---:|---|
+| `sample-metrics.php` | 5분 | 서버 자원 표본(관리자 대시보드 '서버 자원') |
+| `deck-reaper.php` | 5분 | 멈춘 장표 작업 정리(아래) |
+| `scan-queue.php` | 10분 | 업로드 파일 바이러스 검사(설정 시 동작) |
+| `health-alert.php` | 10분 | 운영 경보(아래) |
+| `prewarm-wm.php` | 매일 03:30 | 공개 에셋 워터마크 판 미리 만들기 |
+| `retention.php` | 매일 04:10 | 개인정보처리방침 보유 기간에 맞춰 오래된 기록 정리 |
+| `qa-feed.php` | 매일 05:20 | 결과 0건 검색어를 powerAssets 개선 체크리스트에 쌓기 |
+
+**운영 경보** — `api/bin/health-alert.php`
+- 장표 엔진 심장박동이 10분 넘게 없으면 알립니다.
+- 데이터 디스크 사용률이 85% 를 넘으면 알립니다.
+- 야간 DB 백업이 26시간 넘게 없거나 실패하면 알립니다.
+- 관리자 사이트 알림과 운영 메일로 보냅니다. 같은 문제는 6시간에 한 번만 알립니다.
+
+**장표 작업 정리** — `Deck\Jobs::reap`
+- 취소를 요청했는데 엔진이 90초 넘게 소식이 없으면 취소로 끝냅니다.
+- 15분 넘게 소식 없는 작업은 대기열로 돌립니다. 이미 3번 잡혔던 작업이면 실패로 끝내고 주인에게 알립니다.
+- 엔진이 꺼진 채 30분 넘게 기다린 작업에는 안내를 한 번 남깁니다.
+
+**백업**
+
+| 백업 | 시각 | 보존 | 구현 |
+|:---:|:---:|:---:|:---:|
+| 야간 DB 덤프 | 매일 02:40 | 14일 | `scripts/db-backup.sh` |
+| 배포 직전 DB 덤프 | 배포마다 | 7일 | `scripts/deploy.sh` |
+| 서버 밖 백업(GCS) | 매일 03:30 | 버킷 규칙 | `scripts/offsite-backup.sh` |
+| 바로 전 배포판 | 배포마다 | 1판 | `scripts/deploy.sh` |
+
+- 덤프는 끝나면 압축 파일이 깨지지 않았는지 확인합니다.
+- 서버 밖 백업은 그날 DB 덤프와 데이터 폴더를 버킷에 올립니다. 설정 파일을 넣었을 때만 동작합니다.
+- 배포는 옆 폴더에 새 판을 만든 뒤 이름만 바꿉니다. 바로 전 판을 하나 남겨 두어 바로 되돌릴 수 있습니다.
+- 복구 훈련은 `scripts/db-restore-drill.sh` 로 합니다.
 
 ## 10. 폴더 구조
 
@@ -486,7 +586,7 @@ powerplus-platform/
 **apps/**
 ```
 apps/
-├─ web/                      웹 화면 (React Router 7 SPA · Vite)
+├─ web/                      웹 화면 (React Router 8 SPA · Vite)
 │  ├─ app/
 │  │  ├─ routes/             화면 하나 = 파일 하나 (홈·모듈·계정·관리자·문서·약관)
 │  │  ├─ modules/            모듈 화면 — assets · deck · mock · guide
@@ -496,7 +596,7 @@ apps/
 │  │  │  ├─ chat/            메인 챗봇
 │  │  │  └─ admin/           관리자 공통 (제목·정렬 머리)
 │  │  ├─ lib/                API 호출·로그인 상태·관리자 API·페이지 제목
-│  │  ├─ hooks/ · data/ · styles/
+│  │  ├─ hooks/ · data/ · styles/ · fonts/
 │  │  └─ routes.ts           주소 → 화면 연결표
 │  └─ public/                정적 파일 — powerGuide 키트·토큰 산출물 (kit-files · guide-files)
 └─ addin/                    PowerPoint 애드인 (Office.js · Webpack)
@@ -507,17 +607,22 @@ apps/
 **api/ · services/**
 ```
 api/
-├─ public/index.php          진입점 — routes/*.php 를 읽어 경로 등록
+├─ public/
+│  ├─ index.php              진입점 — CSRF 검사, routes/*.php 를 읽어 경로 등록
+│  └─ spa.php                화면 주소 응답 — 없는 주소 404, 화면별 제목·og, robots·sitemap
 ├─ routes/                   경로 묶음 (core · chat · assets · deck · mock · guide · admin* …)
 ├─ src/
-│  ├─ Core/                  인증·권한(Access)·감사 로그·메일·포인트·가림(Mask)·Jev·powerLLM
+│  ├─ Core/                  인증·권한(Access)·관문(Router)·감사 로그·메일·포인트·가림(Mask)·Jev·powerLLM
+│  │                         Claude.php(Claude API 형식 변환) · RateLimit.php(횟수 제한) · SpaRoutes.php(화면 주소 목록)
 │  ├─ Assets/                검색(동의어·오타 교정)·문맥 고르기
-│  ├─ Deck/                  AI 키·모델·예산(AiKeys)·와이어 배치·대본·개선 체크리스트
+│  ├─ Deck/                  AI 키·모델·예산(AiKeys)·작업 대기열(Jobs)·와이어 배치·대본·개선 체크리스트
 │  ├─ Mock/                  와이어 초안·다듬기·개선 체크리스트
 │  ├─ Guide/                 부품·토큰·KRDS 자료 읽기·코드 점검
+│  ├─ Qa/                    모듈별 개선 체크리스트·통합 검수
 │  └─ Site/                  사이트 품질 체크리스트
 ├─ data/                    서버가 읽는 자료 (KRDS 사본 data/guide 는 배포 때 build-guide-data 가 만듦)
-├─ bin/                      서버 CLI (테스트 계정·정리 작업)
+├─ bin/                      서버 CLI — 테스트 계정·정리 작업·정기 작업
+│                            deck-reaper.php(멈춘 장표 작업 정리) · health-alert.php(운영 경보) · retention.php …
 └─ config.example.php        설정 예시 (실제 config.php 는 저장소에 없음)
 
 services/mockref-api/        powerMock 레퍼런스 API — 수집 화면 분석·재현 묶음·섹션 코드·시안 보관
@@ -555,20 +660,23 @@ engine/                      powerDeck 장표 엔진 (Python)
 db/
 ├─ schema.sql                전체 스키마 (멱등)
 ├─ migrations/               증분 마이그레이션 (번호 순)
-├─ scripts/                  migrate · seed
+├─ scripts/                  migrate · seed-demo(시험용 가상 데이터) · build-wire-patterns
+├─ data/ · fixes/            에셋 일괄 보정 자료 · 한 번만 돌린 데이터 보정 SQL
 └─ migrate-legacy/           기존 서비스 4개 → 새 DB 이관
 
 scripts/
 ├─ deploy.sh                 웹·API 배포 (첫 줄에서 preflight.sh 자가 검사)
 ├─ deploy-engine.sh · deploy-mcp.sh · deploy-mockref.sh   엔진·MCP·레퍼런스 API 따로 배포
-├─ preflight.sh · preflight/ 배포 전 자가 검사
-├─ db-backup*.sh · db-restore-drill.sh                     백업·복구 훈련
+├─ preflight.sh · preflight/ 배포 전 자가 검사 (PHP 클로저 · 화면 주소 목록 대조 …)
+├─ db-backup*.sh · db-restore-drill.sh                     야간·배포 직전 DB 백업, 복구 훈련
+├─ offsite-backup*.sh        서버 밖 백업(GCS) — 설정 파일이 있을 때만 동작
+├─ platform.htaccess         웹 루트 재작성 규칙·보안 머리
 ├─ build-*.mjs               powerGuide 자료·Tailwind 테마·설치 프로그램 빌드
 └─ leak-audit.mjs · responsive-audit.mjs                   권한 누출·반응형 점검
 
 docs/
 ├─ PLAN.md · ARCHITECTURE.md · db-design.md                기획·설계
-├─ 오류-재발방지-체크리스트.md · 장표-기본규칙-오류체크리스트.md   재발 방지 기록
+├─ 오류-재발방지-체크리스트.md · 장표-기본규칙-오류체크리스트.md · MCP-개선-체크리스트.md   재발 방지 기록
 ├─ *-테스트보고서-*.md · 사이트-품질-*.md                   기능·MCP·사이트 품질 점검 결과
 ├─ inventory/                기존 저장소 4개 기능 인벤토리
 ├─ rfp-분석결과/              공개 입찰 공고 분석
@@ -577,16 +685,17 @@ docs/
 
 ## 11. 로컬 실행
 
-필요한 것: Node 22.12 이상 · pnpm 11 · PHP 8.4 · MariaDB 10.11
+필요한 것: Node 22.22 이상(웹 화면의 React Router 8 요구) · pnpm 11 · PHP 8.4 · MariaDB 10.11
 
 ```bash
 # 1) 의존성
 pnpm install
 
 # 2) DB 와 API 설정
+cp .env.example .env                          # DATABASE_URL 입력(마이그레이션 스크립트가 읽음)
 cp api/config.example.php api/config.php     # DB 접속 정보 입력
-pnpm db:migrate                               # 스키마 + 마이그레이션 적용
-pnpm db:seed                                  # 기본 데이터
+pnpm db:migrate                               # 스키마 + 마이그레이션 적용(요금제·포인트 규칙 기본값 포함)
+node db/scripts/seed-demo.mjs                 # (선택) 시험용 가상 회원·활동
 
 # 3) API 서버
 php -S 127.0.0.1:8090 -t api/public
@@ -597,6 +706,7 @@ pnpm dev
 ```
 
 - 로컬 개발용 로그인: `GET /api/v1/auth/dev?email=…` (debug 설정이고 127.0.0.1 에서만 동작)
+- 회원 전용 기능을 시험하려면 임직원 도메인 이메일로 로그인하거나, 관리자 화면에서 그 계정의 플랜을 Pro 로 바꿉니다. 그냥 가입한 계정은 Free 라 보기만 됩니다.
 - 이메일 인증번호는 debug 설정이면 응답의 `dev_code` 로 받습니다.
 - AI 기능은 관리자 AI 설정에 OpenRouter 키를 넣어야 동작합니다. 키가 없으면 규칙 기반으로만 돕니다.
 - 장표 엔진은 [`engine/README.md`](engine/README.md), MCP 는 `/docs` 화면을 참고하세요.

@@ -49,8 +49,10 @@ printf '%s\n' '<?php' "return require '/var/www/platform_conf/config.php';" > "$
 cp "$ROOT/scripts/platform.htaccess" "$B/.htaccess"
 cp "$ROOT/scripts/platform-api.htaccess" "$B/api/.htaccess"
 grep -rlE "config\.php\.|\.pem$|\.env$" "$B" >/dev/null 2>&1 && { echo "❌ 번들에 민감 파일 — 중단"; exit 1; }
-mkdir -p "$WORK/deploy/db/migrations"
+mkdir -p "$WORK/deploy/db/migrations" "$WORK/deploy/ops"
 cp "$ROOT/db/schema.sql" "$WORK/deploy/db/"; cp "$ROOT"/db/migrations/*.sql "$WORK/deploy/db/migrations/"
+# 서버 운영 스크립트(웹루트 밖) — 마이그레이션 직전 백업·야간 백업이 같은 db-backup.sh 를 쓴다
+cp "$ROOT/scripts/db-backup.sh" "$WORK/deploy/ops/"
 if [ "$SEED" = 1 ]; then
   # 기준 데이터만(사용자와 무관한 표). FK 가 사용자를 가리키는 표는 넣지 않는다.
   SEED_T="asset_items asset_files asset_tags asset_tag_dict asset_sets core_files core_plans core_point_rules core_feature_flags"
@@ -58,7 +60,7 @@ if [ "$SEED" = 1 ]; then
     --no-create-info --skip-triggers --skip-comments --replace --skip-add-locks powerplus $SEED_T > "$WORK/deploy/db/seed.sql"
   echo "seed $(du -h "$WORK/deploy/db/seed.sql" | cut -f1)"
 fi
-(cd "$WORK/deploy" && tar -czf bundle.tgz platform db)
+(cd "$WORK/deploy" && tar -czf bundle.tgz platform db ops)
 echo "bundle $(du -h "$WORK/deploy/bundle.tgz" | cut -f1)"
 [ "$DRY" = 1 ] && { echo "dry-run 종료"; exit 0; }
 
@@ -68,6 +70,17 @@ ssh -i "$KEY" -o BatchMode=yes "$HOST" "SEED=$SEED bash -s" <<'EOF'
 set -e
 sudo test -f /var/www/platform_conf/config.php || { echo "❌ 서버 설정 없음 — scripts/server-setup.sh 먼저"; exit 1; }
 T=$(mktemp -d); tar -xzf /tmp/pp-bundle.tgz -C "$T"; rm -f /tmp/pp-bundle.tgz
+# 백업 스크립트를 ~/bin 에 새로 놓는다(야간 크론이 같은 판을 쓴다 — 상태 파일을 쓰는 판, 2026-10-17)
+mkdir -p "$HOME/bin" "$HOME/db-backup/predeploy"; install -m 700 "$T/ops/db-backup.sh" "$HOME/bin/db-backup.sh"
+crontab -l 2>/dev/null | grep -q db-backup.sh || echo "⚠ 야간 DB 백업 크론이 없다 — 서버에서 scripts/db-backup-install.sh 를 한 번"
+# 경보(health-alert.php)가 처음부터 판정할 수 있게 — 상태 파일이 없으면 마지막 야간 덤프 시각으로 한 번 채운다
+ST=/var/www/platform_data/db-backup.status
+if ! sudo test -f "$ST"; then
+  LASTF=$(ls -t "$HOME"/db-backup/nightly/pp_platform-*.sql.gz 2>/dev/null | head -1 || true)
+  [ -n "$LASTF" ] && echo "$(stat -c %Y "$LASTF") ok seed-from-deploy" | sudo tee "$ST" >/dev/null && echo "백업 상태 파일 채움"
+fi
+# 마이그레이션 직전 백업 — 실패하면 set -e 로 여기서 멈춘다(마이그레이션·교체 안 함). 7일 보존
+BACKUP_DIR="$HOME/db-backup/predeploy" KEEP_DAYS=7 DBS=pp_platform STATUS= bash "$T/ops/db-backup.sh"
 # DB: schema.sql(멱등) → 미적용 마이그레이션만 순서대로
 DB="sudo mariadb pp_platform"
 $DB < "$T/db/schema.sql"
@@ -76,23 +89,36 @@ for f in $(ls "$T/db/migrations" | sort); do
   if [ "$n" = "0" ]; then $DB < "$T/db/migrations/$f" && $DB -e "INSERT INTO schema_migrations (name) VALUES ('$f')" && echo "migrated $f"; fi
 done
 [ "$SEED" = 1 ] && [ -f "$T/db/seed.sql" ] && { $DB < "$T/db/seed.sql"; echo "seed 적용"; }
-# 무중단 교체: 옆 폴더에 권한까지 맞춘 뒤 이름만 바꾼다
+# 무중단 교체: 옆 폴더에 권한까지 맞춘 뒤 이름만 바꾼다.
+# 바로 전 판은 platform.old 로 다음 배포까지 남긴다(딱 하나). 되돌리기:
+#   sudo mv /var/www/platform /var/www/platform.bad && sudo mv /var/www/platform.old /var/www/platform
+#   (DB 는 ~/db-backup/predeploy 의 배포 직전 덤프 — 마이그레이션이 표를 바꿨을 때만)
 NEW=/var/www/platform.new; OLD=/var/www/platform.old
-sudo rm -rf "$NEW" "$OLD"; sudo mkdir -p "$NEW"; sudo cp -r "$T/platform/." "$NEW/"
+sudo rm -rf "$NEW"; sudo mkdir -p "$NEW"; sudo cp -r "$T/platform/." "$NEW/"
 sudo chown -R www-data:www-data "$NEW"; sudo find "$NEW" -type d -exec chmod 755 {} +; sudo find "$NEW" -type f -exec chmod 644 {} +
-sudo mv /var/www/platform "$OLD" && sudo mv "$NEW" /var/www/platform && sudo rm -rf "$OLD"
+sudo rm -rf "$OLD" && sudo mv /var/www/platform "$OLD" && sudo mv "$NEW" /var/www/platform
 rm -rf "$T"
 # 서버 자원 표본(관리자 대시보드 '서버 자원') — www-data crontab 에 5분마다, 없을 때만 등록.
 # 설정 파일이 root:www-data 640 이라 www-data 로 돌린다. php8.4 우선(8.5 CLI 에는 pdo_mysql 이 없을 수 있다).
 PHPB=$(command -v php8.4 || command -v php || true)
 if [ -n "$PHPB" ]; then
-  if ! sudo crontab -u www-data -l 2>/dev/null | grep -q sample-metrics.php; then
-    { sudo crontab -u www-data -l 2>/dev/null || true; echo "*/5 * * * * $PHPB /var/www/platform/api/bin/sample-metrics.php >/dev/null 2>&1"; } | sudo crontab -u www-data - && echo "크론 등록: sample-metrics ($PHPB)"
-  fi
+  # 없을 때만 한 줄 더한다(이미 있으면 사람이 고친 시간·경로를 그대로 둔다). $1 = 찾을 스크립트 이름, $2 = 크론식, $3 = 뒤에 붙일 인자·로그
+  # api/bin 머리 주석에 크론이 적힌 스크립트는 전부 여기 있어야 한다 — preflight 가 빠진 것을 막는다(R47)
+  addcron() {
+    if ! sudo crontab -u www-data -l 2>/dev/null | grep -qF "$1"; then
+      { sudo crontab -u www-data -l 2>/dev/null || true; echo "$2 $PHPB /var/www/platform/api/bin/$1 $3"; } | sudo crontab -u www-data - && echo "크론 등록: $1 ($2)"
+    fi
+  }
+  L=/var/www/platform_data
+  addcron sample-metrics.php '*/5 * * * *' '>/dev/null 2>&1'
   # powerAssets 개선 체크리스트 자가 고리 — 결과 0건 검색어를 매일 쌓고, 결과가 생기면 자동 '고침'(qa-feed.php 머리 주석에만 있고 등록이 빠져 있었다, 2026-10-15 점검)
-  if ! sudo crontab -u www-data -l 2>/dev/null | grep -q qa-feed.php; then
-    { sudo crontab -u www-data -l 2>/dev/null || true; echo "20 5 * * * $PHPB /var/www/platform/api/bin/qa-feed.php assets-search >/dev/null 2>&1"; } | sudo crontab -u www-data - && echo "크론 등록: qa-feed assets-search ($PHPB)"
-  fi
+  addcron qa-feed.php '20 5 * * *' 'assets-search >/dev/null 2>&1'
+  # 2026-10-17: 머리 주석에만 있던 셋 + 새 둘 — 보유 기간 정리·업로드 검사·워터마크 예열·멈춘 장표 작업 정리·운영 경보
+  addcron retention.php '10 4 * * *' ">> $L/retention.log 2>&1"
+  addcron scan-queue.php '*/10 * * * *' ">> $L/scan.log 2>&1"
+  addcron prewarm-wm.php '30 3 * * *' ">> $L/prewarm.log 2>&1"
+  addcron deck-reaper.php '*/5 * * * *' ">> $L/deck-reaper.log 2>&1"
+  addcron health-alert.php '*/10 * * * *' ">> $L/health-alert.log 2>&1"
   sudo -u www-data "$PHPB" /var/www/platform/api/bin/sample-metrics.php || echo "⚠ 서버 자원 표본 실패(error_log 확인)"
 fi
 echo "설치 완료"
@@ -116,9 +142,19 @@ chk https://powerplus.hom2box.com/api/src/Core/Config.php 403
 H=$(curl -s https://powerplus.hom2box.com/api/v1/health); echo "health: $H"
 echo "$H" | grep -q '"db":true' || { echo "✗ DB 연결 실패"; ok=0; }
 chk https://powerplus.hom2box.com/mockref/api/health 200
+# SPA 주소 판정(api/public/spa.php): 모르는 주소는 404, 공개 화면은 화면별 제목, robots·sitemap 은 PHP 가 만든다
+chk https://powerplus.hom2box.com/no-such-page-zz9 404
+chk https://powerplus.hom2box.com/robots.txt 200
+chk https://powerplus.hom2box.com/sitemap.xml 200
+curl -s https://powerplus.hom2box.com/pricing | grep -q '<title>요금제 — powerPlus</title>' && echo "✓ /pricing 제목 주입" || { echo "✗ /pricing 제목 주입 안 됨"; ok=0; }
+# 보안 헤더: 일반 화면은 같은 사이트에서만 iframe, 애드인(/addin/)은 Office 가 iframe 으로 띄우므로 X-Frame-Options 가 없어야 한다
+curl -sI https://powerplus.hom2box.com/about | grep -qi '^x-frame-options: SAMEORIGIN' && echo "✓ X-Frame-Options" || { echo "✗ X-Frame-Options 없음"; ok=0; }
+curl -sI https://powerplus.hom2box.com/addin/taskpane.html | grep -qi '^x-frame-options' && { echo "✗ 애드인에 X-Frame-Options — Office 에서 안 열린다"; ok=0; } || echo "✓ 애드인 iframe 허용"
 # PERF-003: 배포 직후 첫 요청이 느리지 않게 웹이 실제로 부르는 주소를 한 번씩 불러 예열(DB 버퍼·opcache).
 #   주소는 프론트 호출부와 같게(apps/web/app/lib/assets.ts·home.tsx·search.ts) — 다르면 예열 효과가 없다.
-for p in "home/stats" "assets/categories" "assets/sets" "assets/items?page=1&limit=36" "assets/items?category=icon&page=1&limit=36" "changelog" "help/docs"; do
+#   2026-10-16 회원 전용 전환 뒤 assets/* 는 비로그인 401 이라 예열이 안 된다 → 열린 경로(Router OPEN_PATHS)만 부른다.
+#   plans 는 결제 숨김(billing_visible) 동안 일부러 404 라 뺀다.
+for p in "home/stats" "changelog" "help/docs" "removal/stats"; do
   t=$(curl -s -o /dev/null -w "%{http_code} %{time_total}" "https://powerplus.hom2box.com/api/v1/$p")
   echo "예열 /api/v1/$p → $t"
 done

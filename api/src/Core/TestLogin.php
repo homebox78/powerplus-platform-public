@@ -9,11 +9,13 @@ namespace Pp\Core;
  *  - 값은 core_settings 에만: auth.test.user(아이디) · auth.test.hash(password_hash) · auth.test.until(만료 시각) · auth.test.user_id.
  *    만드는·지우는 건 api/bin/test-account.php(서버 CLI) 하나뿐 — 화면·API 로는 못 만든다.
  *  - 만료가 지나면 로그인 경로는 404, 이미 열린 세션·키도 Auth 가 끊는다.
- *  - 실패 20번이면 만료 전이라도 잠근다(무차별 대입 방지). 성공·실패 모두 감사 로그.
+ *  - 무차별 대입 방지: 한 IP 가 하루 20번 틀리면 그 IP 만, 사이트 전체가 하루 200번 틀리면 그날 로그인만 막는다(429).
+ *    예전엔 전역 실패 20번에 계정을 잠가 아무나 심사용 계정을 잠글 수 있었다(2026-10-17). 성공·실패 모두 감사 로그.
  */
 final class TestLogin
 {
     private const MAX_FAIL = 20;
+    private const MAX_FAIL_ALL = 200;
 
     /** @return array<string,string> */
     private static function settings(): array
@@ -41,8 +43,7 @@ final class TestLogin
         $s = self::settings();
         $until = $s['auth.test.until'] ?? '';
         return ($s['auth.test.hash'] ?? '') !== ''
-            && $until !== '' && strtotime($until) > time()
-            && (int) ($s['auth.test.fail'] ?? 0) < self::MAX_FAIL;
+            && $until !== '' && strtotime($until) > time();
     }
 
     public static function userId(): ?int
@@ -124,10 +125,19 @@ final class TestLogin
         if (!self::active()) {
             throw HttpError::notFound('경로');
         }
+        // 실패가 쌓인 IP·사이트 전체는 그날 시도를 막는다 — 계정 자체는 잠그지 않는다(남이 일부러 틀려 심사용 계정을 못 잠그게)
+        $ip = RateLimit::ipKey();
+        if (RateLimit::count("testlogin.fail.ip:{$ip}", RateLimit::DAY) >= self::MAX_FAIL
+            || RateLimit::count('testlogin.fail.all', RateLimit::DAY) >= self::MAX_FAIL_ALL) {
+            throw HttpError::tooMany('로그인 시도가 너무 많습니다. 내일 다시 시도해 주세요.');
+        }
         $s = self::settings();
         $ok = hash_equals((string) ($s['auth.test.user'] ?? ''), $user) && password_verify($pass, (string) $s['auth.test.hash']);
         $uid = self::userId();
         if (!$ok || !$uid) {
+            RateLimit::take("testlogin.fail.ip:{$ip}", self::MAX_FAIL, RateLimit::DAY);
+            RateLimit::take('testlogin.fail.all', self::MAX_FAIL_ALL, RateLimit::DAY);
+            // 누적 실패 수(관리 CLI test-account.php 가 보여 준다) — 잠금 판정에는 더 이상 쓰지 않는다
             Db::exec("INSERT INTO core_settings (k, v) VALUES ('auth.test.fail', '1') ON DUPLICATE KEY UPDATE v = CAST(v AS UNSIGNED) + 1");
             Audit::log(null, 'auth.test_login.fail', 'core_users:' . ($uid ?? 0));
             throw new HttpError('LOGIN_FAILED', '아이디 또는 비밀번호가 맞지 않습니다.', 401);

@@ -57,7 +57,7 @@ export function NotificationBell() {
   return (
     <Popover open={open} onOpenChange={(o) => { setOpen(o); if (!o) endPick(); }}>
       <PopoverTrigger asChild>
-        <button type="button" className="relative hidden size-10 items-center justify-center rounded-full text-ink hover:bg-ground-3 sm:inline-flex" aria-label={unread ? `알림 ${unread}개 안 읽음` : "알림"}>
+        <button type="button" className="relative hidden size-9 items-center justify-center rounded-full text-ink hover:bg-ground-3 sm:inline-flex" aria-label={unread ? `알림 ${unread}개 안 읽음` : "알림"}>
           <Bell className="size-5" aria-hidden />
           {unread > 0 && (
             <span className="absolute top-0.5 right-0.5 flex h-5 min-w-5 items-center justify-center rounded-full border-2 border-white bg-point px-1 pt-px text-xs font-bold leading-none text-white">

@@ -1,4 +1,4 @@
-// powerGuide 작업 단위 화면 — 토큰·부품·KRDS 대응표·접근성·변경 이력. 전부 무료(기획 §13.2-1 "외부 유입 입구").
+// powerGuide 작업 단위 화면 — 토큰·부품·KRDS 대응표·접근성·변경 이력. 회원 전용(2026-10-16 결정 — 옛 "전부 무료·외부 유입 입구"는 뒤집힘).
 // 출처: D:\solideos (Solid Flow) 의 tokens/tokens.json·app/src/data/krds*.ts·dist 산출물(downloads.ts, 종 수는 배열 길이) + packages/kit(KRDS 77종 React·Vue, 체크리스트 274항목).
 // 디자인 = 기존 홈박스 값 그대로(ChoiceButton 알약 44·SectionHeading 26/800·표 규칙: 헤더 가운데·가변 텍스트 왼쪽·비교 숫자 오른쪽·그 외 가운데).
 // 회사 종속 표현(솔리데오·CI 크림슨)은 "예시 스킨"으로 내린다(기획 §4). 토큰 원본 이름(solideo-*)은 파일명이라 그대로 둔다.
@@ -421,7 +421,7 @@ function GuideChangelog() {
 // ───────────────────────── 랜딩 보강 ─────────────────────────
 /** 시작하기 '적용 순서' 원본 — 관리자 덮어쓰기(copy.steps[i])가 있으면 그 칸만 바꾼다 */
 export const GUIDE_STEPS = [
-  ["토큰을 가져온다", "CSS 변수 한 파일이면 어떤 스택이든 시작됩니다. Tailwind·shadcn·Spring 용도별 형식이 따로 있습니다.", "/guide/tokens"],
+  ["토큰을 가져온다", "CSS 변수 한 파일이면 어떤 스택이든 시작됩니다. Tailwind·shadcn·Spring 형식도 있습니다.", "/guide/tokens"],
   ["부품을 고른다", "KRDS 77종이 React·Vue 두 판으로 있습니다. 미리보기에서 눌러 보고 코드를 복사합니다.", "/guide/components"],
   ["KRDS 로 대조한다", "검수가 KRDS 분류로 오므로 대응표에서 빠진 것부터 챙깁니다.", "/guide/krds"],
   ["접근성 결과를 본다", "자체 검증 체크리스트 판정표에서 사이트 담당 항목을 확인합니다.", "/guide/a11y"],

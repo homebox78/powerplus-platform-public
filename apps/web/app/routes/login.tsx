@@ -55,7 +55,7 @@ export default function LoginPage() {
           {!codeStep && <TestLogin onDone={() => navigate(next, { replace: true })} />}
           {codeStep && <div className="flex w-full items-center gap-3 text-[13px] text-ink-4"><Separator className="flex-1" />비밀번호 없이 이메일 인증으로 로그인합니다<Separator className="flex-1" /></div>}
           <p className="text-center text-xs leading-[1.6] text-ink-4">회사 메일로 로그인하면 임직원 계정으로 분류됩니다.<br />계속하면 <Link to="/legal/terms" className="pp-hit underline underline-offset-2">이용약관</Link>과 <Link to="/legal/privacy" className="pp-hit underline underline-offset-2">개인정보처리방침</Link>에 동의하는 것입니다.</p>
-          <p className="text-sm text-ink-4">{signup ? <>이미 계정이 있으신가요? <Link to={`/login?next=${encodeURIComponent(next)}`} className="pp-hit font-semibold text-ink underline underline-offset-4">로그인</Link></> : <>처음이신가요? <Link to={`/signup?next=${encodeURIComponent(next)}`} className="pp-hit font-semibold text-ink underline underline-offset-4">무료로 시작하기</Link></>}</p>
+          <p className="text-sm text-ink-4">{signup ? <>이미 계정이 있으신가요? <Link to={`/login?next=${encodeURIComponent(next)}`} className="pp-hit font-semibold text-ink underline underline-offset-4">로그인</Link></> : <>처음이신가요? <Link to={`/signup?next=${encodeURIComponent(next)}`} className="pp-hit font-semibold text-ink underline underline-offset-4">가입하기</Link></>}</p>
         </div>
       </div>
       {/* 오른쪽 그림 — 디자인 점검 리포트 2026-10-08(시안 06): 그림 + 한 줄 + 모듈 칩 4 */}

@@ -3,7 +3,7 @@ import { NavLink } from "react-router";
 import { EXTRA_NAV, MODULES } from "@/lib/modules";
 import { cn } from "@/lib/utils";
 
-const TABS = [...MODULES.map((m) => ({ to: m.to, label: m.name.replace("power", ""), Icon: m.icon })), ...EXTRA_NAV.map((n) => ({ to: n.to, label: n.short, Icon: n.icon }))];
+const TABS = [...MODULES.map((m) => ({ to: m.to, label: m.name.replace("power", ""), Icon: m.icon })), ...EXTRA_NAV.map((n) => ({ to: n.to, label: n.tab, Icon: n.icon }))];
 
 export function BottomTabBar() {
   return (

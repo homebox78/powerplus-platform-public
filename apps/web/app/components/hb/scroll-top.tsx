@@ -1,5 +1,5 @@
 import { ArrowUp, Bot, MessageCircle, MessagesSquare, X } from "lucide-react";
-import { lazy, Suspense, useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { Link, useLocation } from "react-router";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
@@ -18,6 +18,26 @@ export function ScrollTop() {
   const [menu, setMenu] = useState(false);
   const { pathname } = useLocation();
   const home = pathname === "/";
+  // 바닥글이 화면에 들어오면 버튼 묶음을 바닥글 위로 올린다 — 1440×900 에서 "개인정보처리방침"·"© 2026 SOLIDEO." 를 덮었다(2026-10-17 점검)
+  const dock = useRef<HTMLDivElement>(null);
+  const [lift, setLift] = useState(0);
+  useEffect(() => {
+    const on = () => {
+      const f = document.querySelector("[data-site-footer]");
+      const el = dock.current;
+      // 모바일은 바닥글 아래 여백(pb-28)이 버튼 자리라 올리지 않는다 — 올리면 바로 위 띠의 버튼을 덮는다
+      if (!f || !el || window.innerWidth < 768) { setLift(0); return; }
+      const over = window.innerHeight - f.getBoundingClientRect().top; // 바닥글이 화면 아래에서 올라온 높이
+      const bottom = parseFloat(getComputedStyle(el).bottom) || 0; // 버튼 묶음 아래 여백(모바일 탭바 위 96 · PC 32)
+      setLift(Math.max(0, Math.round(over - bottom + 16)));
+    };
+    on();
+    window.addEventListener("scroll", on, { passive: true });
+    window.addEventListener("resize", on);
+    const ro = new ResizeObserver(on); // 본문이 늦게 채워져 바닥글 위치가 바뀌는 경우
+    ro.observe(document.body);
+    return () => { window.removeEventListener("scroll", on); window.removeEventListener("resize", on); ro.disconnect(); };
+  }, [pathname]);
   useEffect(() => {
     const on = () => setShow(window.scrollY > 400);
     on(); window.addEventListener("scroll", on, { passive: true });
@@ -42,7 +62,7 @@ export function ScrollTop() {
           <Suspense fallback={<p className="p-5 text-sm text-ink-4">불러오는 중…</p>}><MainChat variant="dock" onClose={() => setBot(false)} /></Suspense>
         </div>
       )}
-      <div className="pointer-events-none fixed bottom-24 right-5 z-40 flex flex-col items-center gap-3 md:bottom-8 md:right-8">
+      <div ref={dock} style={lift ? { transform: `translateY(-${lift}px)` } : undefined} className="pointer-events-none fixed bottom-24 right-5 z-40 flex flex-col items-center gap-3 md:bottom-8 md:right-8">
         <button type="button" onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })} aria-label="맨 위로" tabIndex={show ? 0 : -1}
           className={cn(BTN, show ? "pointer-events-auto translate-y-0 opacity-100" : "translate-y-3 opacity-0")}>
           <ArrowUp className="size-5" aria-hidden />

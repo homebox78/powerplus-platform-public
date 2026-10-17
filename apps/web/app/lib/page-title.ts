@@ -51,7 +51,7 @@ export function descForPath(pathname: string): string | null {
     case "contact": return "서비스 이용·제휴·오류 문의를 남기면 운영팀이 메일로 답합니다.";
     case "removal": return "게시된 화면·자료의 삭제를 요청하고 접수번호로 처리 상태를 확인합니다.";
     case "legal": return "이용약관·개인정보처리방침 등 powerPlus 정책 문서와 버전별 이력입니다.";
-    case "pricing": return "Free·Pro·Team 플랜과 모듈별 제공 범위, 크레딧 안내입니다.";
+    case "pricing": return "회원 전용 서비스의 이용 범위와 Pro·Team 요금제 안내입니다.";
     case "search": return "에셋·가이드 문서·커뮤니티 글·내 장표와 시안을 한 번에 찾습니다.";
     case "notice": case "changelog": return "powerPlus 공지사항과 서비스 변경 이력입니다.";
     case "login": case "signup": return "이메일 인증 또는 소셜 계정으로 powerPlus 에 로그인합니다.";

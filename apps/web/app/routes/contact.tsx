@@ -76,7 +76,8 @@ export default function ContactPage() {
   return (
     <div className="container-page grid grid-cols-1 gap-16 pb-14 pt-16 lg:grid-cols-2 lg:gap-20">
       <div className="min-w-0">
-        <h1 className="text-5xl font-extrabold leading-[1.15] tracking-[-0.03em]">무엇을 도와드릴까요?</h1>
+        {/* 도움말 센터 첫 화면과 h1 이 같았다(2026-10-17 점검) — 문의 화면은 하는 일을 제목으로 */}
+        <h1 className="text-5xl font-extrabold leading-[1.15] tracking-[-0.03em]">문의를 남겨 주세요</h1>
         <Copy className="mt-5 max-w-[480px] text-lg leading-[1.7] text-ink-3" text="서비스 이용, 사업제휴, 자료 정정, 삭제요청까지 한 곳에서 받습니다. 영업일 기준 1~2일 안에 답장 드립니다." />
         <dl className="mt-12 flex flex-col gap-6 text-md">
           <div><dt className="font-semibold">바로가기</dt><dd className="mt-2 flex flex-wrap gap-2">

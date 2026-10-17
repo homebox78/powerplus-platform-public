@@ -61,7 +61,7 @@ final class AiKeys
         $out['text_model'] = self::setting('text_model') ?? self::DEFAULT_TEXT;
         $out['text_effort'] = self::textEffort();
         $out['text_provider'] = self::textProvider();
-        $out['claude'] = ['set' => self::setting('claude_key_enc') !== null, 'model' => self::claudeModel(), 'models' => Claude::MODELS];
+        $out['claude'] = ['set' => self::setting('claude_key_enc') !== null, 'fixed' => Claude::FIXED];
         if ($admin) {
             $out['claude']['hint'] = self::setting('claude_key_hint');
             $out['company']['hint'] = $companyHint;
@@ -77,19 +77,12 @@ final class AiKeys
     }
 
     /**
-     * 글 작업이 가는 곳 — openrouter(전부 OpenRouter, 기본) | claude(시안 그림만 OpenRouter, 나머지 글 작업은 Claude API 직접).
-     * 2026-10-17 사용자 지시: 관리자 AI 설정에서 고른다. 빠른 판단(Jev)은 어느 쪽이든 OpenRouter 그대로.
+     * 글 작업이 가는 곳 — Claude API 키가 있으면 claude(시안 그림만 OpenRouter, 나머지 글 작업은 Claude API 직접), 없으면 openrouter(기존 설정 그대로).
+     * 2026-10-17 사용자 지시: "Claude API 키 값이 있으면 이것 먼저, 없으면 오픈라우터 기존 설정대로 — 탭으로 조정할 필요 없이". 빠른 판단(Jev)은 늘 OpenRouter.
      */
     public static function textProvider(): string
     {
-        return self::setting('text_provider') === 'claude' && self::setting('claude_key_enc') !== null ? 'claude' : 'openrouter';
-    }
-
-    /** Claude 글 모델 — OpenRouter 쪽에서 Claude 가 아닌 모델(muse-spark 등)을 고른 자리에 쓴다. Claude 모델을 고른 자리는 그 모델 그대로 */
-    public static function claudeModel(): string
-    {
-        $m = (string) (self::setting('claude_model') ?? '');
-        return isset(Claude::MODELS[$m]) ? $m : Claude::DEFAULT_MODEL;
+        return self::setting('claude_key_enc') !== null ? 'claude' : 'openrouter';
     }
 
     /** 서버가 쓰는 Claude API 키 — 없거나 풀 수 없으면 null */
@@ -100,33 +93,23 @@ final class AiKeys
         try { return self::dec($enc); } catch (Throwable) { return null; }
     }
 
-    /** 관리자 — 글 작업 경로·Claude 키·Claude 글 모델 */
+    /** 관리자 — Claude 키(있으면 글 작업이 Claude 로, 모델은 Claude::forKind 고정) */
     public static function saveProvider(array $b): array
     {
-        $key = trim((string) ($b['claude_key'] ?? ''));
+        $key = (string) preg_replace('/\s+/', '', (string) ($b['claude_key'] ?? ''));   // 붙여 넣다 섞인 줄바꿈·공백
         if ($key !== '') {
-            if (!preg_match('/^sk-ant-api\d*-[A-Za-z0-9_-]{20,300}$/', $key)) Legacy::fail('Claude API 키는 sk-ant-api 로 시작합니다. 관리자 키(sk-ant-admin)는 쓸 수 없습니다.');
+            // 꼴은 앞머리만 본다 — 진짜 확인은 아래 Claude::verify(모델 목록 호출)
+            if (str_starts_with($key, 'sk-ant-admin')) Legacy::fail('관리자 키(sk-ant-admin)는 쓸 수 없습니다. 일반 API 키를 넣어 주세요.');
+            if (!preg_match('/^sk-ant-[A-Za-z0-9_-]{20,300}$/', $key)) Legacy::fail('Claude API 키는 sk-ant- 로 시작합니다. 키 전체를 붙여 넣어 주세요.');
             Claude::verify($key);
             self::setSetting('claude_key_enc', self::enc($key));
             self::setSetting('claude_key_hint', substr($key, 0, 10) . '…' . substr($key, -4));
         }
-        if (!empty($b['remove_claude_key'])) {
-            if (self::textProvider() === 'claude') Legacy::fail('Claude API 로 돌고 있어 키를 지울 수 없습니다. 먼저 OpenRouter 하나로 바꿔 주세요.');
+        if (!empty($b['remove_claude_key'])) {   // 지우면 바로 OpenRouter 기존 설정으로 돌아간다
             self::setSetting('claude_key_enc', null);
             self::setSetting('claude_key_hint', null);
         }
-        if (isset($b['claude_model'])) {
-            $m = (string) $b['claude_model'];
-            if (!isset(Claude::MODELS[$m])) Legacy::fail('Claude 글 모델은 ' . implode('·', array_keys(Claude::MODELS)) . ' 중 하나입니다.');
-            self::setSetting('claude_model', $m);
-        }
-        if (isset($b['provider'])) {
-            $p = (string) $b['provider'];
-            if (!in_array($p, ['openrouter', 'claude'], true)) Legacy::fail('글 작업 경로는 openrouter 또는 claude 입니다.');
-            if ($p === 'claude' && self::setting('claude_key_enc') === null) Legacy::fail('Claude API 로 바꾸려면 Claude API 키를 먼저 넣어 주세요.');
-            self::setSetting('text_provider', $p === 'claude' ? 'claude' : null);
-        }
-        return ['ok' => true, 'provider' => self::textProvider(), 'claude_model' => self::claudeModel(), 'claude_hint' => self::setting('claude_key_hint')];
+        return ['ok' => true, 'provider' => self::textProvider(), 'claude_hint' => self::setting('claude_key_hint')];
     }
 
     /**
@@ -138,7 +121,7 @@ final class AiKeys
         if (self::textProvider() === 'claude') {
             $key = self::claudeKey();
             if ($key === null) Legacy::fail('Claude API 키를 풀 수 없습니다. 관리자 AI 설정에서 키를 다시 넣어 주세요.', 409);
-            $model = Claude::modelFor((string) ($b['model'] ?? ''), self::claudeModel());
+            $model = Claude::forKind($kind);   // 고르지 않는다 — 장표 제작 Opus 5.5, 나머지 Sonnet 5.5 고정
             $effort = (string) ($b['reasoning']['effort'] ?? '') ?: match ($kind) { 'digest' => 'low', 'plan' => 'high', default => 'medium' };
             unset($b['_answer_tokens']);
             [$status, $raw] = Claude::chat($key, $model, $b, $timeout, $effort);

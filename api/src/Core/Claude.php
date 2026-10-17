@@ -14,9 +14,15 @@ final class Claude
 {
     private const URL = 'https://api.anthropic.com/v1';
     private const VERSION = '2023-06-01';
-    public const DEFAULT_MODEL = 'claude-opus-5-5';
-    /** 관리자가 고르는 글 모델 — OpenRouter 의 Claude 가 아닌 모델(muse-spark 등)을 고른 자리에 대신 쓴다 */
-    public const MODELS = ['claude-opus-5-5' => 'Claude Opus 5.5', 'claude-sonnet-5-5' => 'Claude Sonnet 5.5', 'claude-haiku-5-5' => 'Claude Haiku 5.5'];
+    public const DEFAULT_MODEL = 'claude-sonnet-5-5';
+    /** 키가 있으면 모델은 고르지 않고 고정(2026-10-17 사용자 지시) — 장표 제작 Opus 5.5, 기획·대본·와이어·자료 정리 Sonnet 5.5. 화면 표시용 [이름, 모델] */
+    public const FIXED = [['장표 제작', 'claude-opus-5-5'], ['기획 · 대본 · 와이어', 'claude-sonnet-5-5'], ['자료 정리', 'claude-sonnet-5-5']];
+
+    /** 작업 종류 → 고정 모델 */
+    public static function forKind(string $kind): string
+    {
+        return $kind === 'build' ? 'claude-opus-5-5' : 'claude-sonnet-5-5';
+    }
     /** 1M 토큰당 달러 [입력, 출력, 캐시 읽기] — 사용 기록·작업 한도 계산용(2026-10 공식 가격). 캐시 쓰기는 입력 ×1.25 */
     private const PRICE = [
         'claude-fable-5-1' => [10.0, 50.0, 1.0], 'claude-fable-5' => [10.0, 50.0, 1.0],

@@ -43,6 +43,17 @@ const qs = (o: Record<string, string | number | undefined>) => {
 };
 
 export const fetchStats = () => apiFetch<AdminStats>("/admin/stats");
+
+/** 운영 현황판 — 관리자 메뉴 묶음마다 손이 가야 하는 수(api/routes/admin.php GET /admin/ops) */
+interface ChkCount { open: number; regressed: number }
+export interface AdminOps {
+  requests: { contacts: number; contacts_oldest: string | null; asset_requests: number; asset_requests_oldest: string | null; removals: number; removals_overdue: number };
+  modules: { deck_queue: number; deck_running: number; deck_stalled: number; deck_failed24: number; deck_review: number; ai_month_usd: number; assets_new7: number; zero_searches: Array<{ q: string; n: number }>; zero_search_total: number; mock_new7: number };
+  quality: Record<"site" | "assets" | "deck" | "mock" | "guide" | "mcp", ChkCount>;
+  content: { posts7: number; comments7: number; changelog_last: string | null };
+  members: { signups7: number; dormant_requests: number; dormant: number; expiring30: number; free_viewers: number };
+}
+export const fetchOps = () => apiFetch<AdminOps>("/admin/ops");
 export const fetchContacts = (o: { status?: string; q?: string; page?: number }) => apiList<AdminContact>(`/admin/contacts${qs(o)}`);
 export const fetchRemovals = (o: { status?: string; q?: string; page?: number }) => apiList<AdminRemoval>(`/admin/removals${qs(o)}`);
 export const fetchUsers = (o: { kind?: string; role?: string; q?: string; page?: number }) => apiList<AdminUser>(`/admin/users${qs(o)}`);

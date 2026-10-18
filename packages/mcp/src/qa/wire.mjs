@@ -110,10 +110,22 @@ export function wireMatch(meas, wire, opt = {}) {
   // 줄 순서 — 찾은 줄의 y 가 와이어 순서대로 커지는가(뒤바뀐 쌍 수)
   const ys = out.filter((r) => r.y != null).map((r) => r.y);
   let inv = 0; for (let i = 0; i < ys.length; i++) for (let j = i + 1; j < ys.length; j++) if (ys[i] > ys[j]) inv++;
-  const orderOk = inv === 0;
-  const extra = [...got.keys()].filter((no) => !exp.some((e) => e.no === no));
+  // 번호는 차례대로 달았는데 내용이 다른 줄 것인 경우 — 칸 종류가 다른 와이어 줄과 똑같으면 순서가 바뀐 것으로 본다
+  // (2026-10-18 w10 음성 대조: 4~7줄 내용을 뒤섞고 번호만 1·2·3 차례로 달자 order_ok=true, 안내는 '칸 종류 불일치'뿐이었다)
+  const kindsOf = (cols) => cols.map((c) => c.k).sort().join(",");
+  const moved = [];
+  for (const e of exp) {
+    const g = got.get(e.no); if (!g || !g.cells.length) continue;
+    const gk = kindsOf(g.cells); if (gk === kindsOf(e.cols)) continue;
+    const other = exp.find((o) => o.no !== e.no && kindsOf(o.cols) === gk);
+    if (other) moved.push(`${e.no}번 줄 자리에 ${other.no}번 줄(${other.cols.map((c) => c.k).join("·")}) 내용`);
+  }
+  const orderOk = inv === 0 && !moved.length;
+  // 와이어에 있는 줄 번호면 구역(top·bottom 의 경로·쪽 제목·만족도 등)과 상관없이 '없는 줄'이 아니다(w07·w08: 그 줄에 번호를 달자 지우라는 안내)
+  const allNo = new Set((wire?.rows ?? []).map((r, i) => Number(r.no ?? i + 1)));
+  const extra = [...got.keys()].filter((no) => !allNo.has(no));
   let score = exp.length ? Math.round((sum / exp.length) * 100) : 0;
-  if (!orderOk) score = Math.max(0, score - Math.min(40, inv * 10));
+  if (!orderOk) score = Math.max(0, score - Math.min(40, (inv + moved.length) * 10));
   const missing = out.filter((r) => r.got === null);
   const hard = [];
   if (!exp.length) hard.push("와이어에 본문 줄이 없음");
@@ -124,9 +136,38 @@ export function wireMatch(meas, wire, opt = {}) {
   const pass = exp.length > 0 && score >= 80 && !hard.length && missing.length === 0 && out.every((r) => r.ok);
   if (!(meas?.marks > 0)) fixes.push("와이어 일치 · 본문 줄마다 data-wire-row=\"줄 번호\", 칸마다 data-wire-cell=\"칸 종류\" 를 단다(reference.wire.markup). 표시가 없으면 와이어와 대조할 수 없어 와이어를 따르지 않은 것으로 본다.");
   for (const r of out.filter((x) => !x.ok).slice(0, 8)) fixes.push(`와이어 일치 · ${r.no}번 줄(${r.expected}) — ${r.issues.join(" / ")}`);
-  if (!orderOk) fixes.push(`와이어 일치 · 줄 순서가 와이어와 다르다(뒤바뀐 쌍 ${inv}) — wire.rows 순서대로 위에서 아래로 쌓는다.`);
+  if (!orderOk) fixes.push(`와이어 일치 · 줄 순서가 와이어와 다르다(${[inv ? `뒤바뀐 쌍 ${inv}` : "", ...moved.slice(0, 4)].filter(Boolean).join(" / ")}) — wire.rows 순서대로 위에서 아래로 쌓고, 줄 번호는 그 줄 내용의 wire.rows[].no 를 단다.`);
   if (extra.length) fixes.push(`와이어 일치 · 와이어에 없는 줄 번호 ${extra.slice(0, 6).join("·")} 에 표시가 있다 — 번호는 wire.rows[].no 를 그대로 쓴다.`);
   return { score, pass, expected: exp.length, found: exp.length - missing.length, order_ok: orderOk, rows: out, fixes, hard };
+}
+
+/**
+ * 와이어 도식 SVG — 판정의 '나란히' 왼쪽(와이어 묶음엔 레퍼런스 캡처가 없어 비교 이미지가 빠졌다, 2026-10-18 시험 4건).
+ * 본문 줄은 시안에서 찾은 같은 번호 줄의 y·높이에 맞춰 그려 오른쪽 시안과 나란히 읽힌다. 못 찾은 줄은 빨간 점선으로 아래에 쌓는다.
+ * 글자는 칸 종류 id(영문)만 — 서버 글꼴에 한글이 없어도 깨지지 않게.
+ */
+export function wireSchematicSvg(meas, wire, { width = 1920, height = 2000, match = null } = {}) {
+  const got = new Map((meas?.rows ?? []).map((r) => [r.no, r]));
+  const okBy = new Map((match?.rows ?? []).map((r) => [r.no, r.ok]));
+  const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
+  const parts = []; let tail = Math.max(0, ...[...got.values()].map((r) => r.y + r.h)) + 40;
+  (wire?.rows ?? []).forEach((r, i) => {
+    const no = Number(r.no ?? i + 1); if ((r.zone ?? "body") !== "body") return;
+    const cols = (r.cols ?? []).filter((c) => c && c.k && c.k !== "lnb"); if (!cols.length) return;
+    const g = got.get(no);
+    const x0 = g ? g.x : Math.round(width * 0.135), w0 = g ? g.w : Math.round(width * 0.73);
+    const y = g ? g.y : tail, h = g ? Math.max(60, g.h) : 120; if (!g) tail += h + 24;
+    const tot = cols.reduce((a, c) => a + c.span, 0) || 12; const gap = 16; let x = x0;
+    const bad = !g || okBy.get(no) === false;
+    cols.forEach((c) => {
+      const cw = Math.max(20, Math.round(((w0 - gap * (cols.length - 1)) * c.span) / tot));
+      parts.push(`<rect x="${x}" y="${y}" width="${cw}" height="${h}" fill="${bad ? "#fdecec" : "#eef1f5"}" stroke="${bad ? "#d33" : "#8a94a6"}" stroke-width="4"${g ? "" : ' stroke-dasharray="16 10"'}/>`,
+        `<text x="${x + 20}" y="${y + 52}" font-family="sans-serif" font-size="40" fill="${bad ? "#b00" : "#3b4352"}">${esc(`${no}. ${c.k} ${c.span}`)}</text>`);
+      x += cw + gap;
+    });
+  });
+  const H = Math.max(height, tail);
+  return { svg: `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${H}" viewBox="0 0 ${width} ${H}"><rect width="100%" height="100%" fill="#fff"/>${parts.join("")}</svg>`, height: H };
 }
 
 /** 와이어 묶음의 판정 기준 줄 — 시안의 표시 줄을 레퍼런스 줄처럼 넘겨 가로 틀·간격 검사(measure)가 시안 자신의 줄로 돌게 한다 */

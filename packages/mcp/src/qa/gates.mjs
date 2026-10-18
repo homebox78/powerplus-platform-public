@@ -108,7 +108,10 @@ export async function gates(p) {
       if (kids.some((k) => k.matches("figure") && (k.innerText || "").trim().length < 40)) continue; // [인물 사진 | 본문] 도 높이가 다른 게 정상
       const tops = kids.map((k) => Math.round(k.getBoundingClientRect().top)); if (Math.max(...tops) - Math.min(...tops) > 8) continue;
       const bots = kids.map((k) => k.getBoundingClientRect().bottom); const diff = Math.max(...bots) - Math.min(...bots);
-      if (diff > 8) out.rowMismatch.push(`${Math.round(diff)}px (${kids.length}칸)`);
+      // 짧은 칸·긴 칸을 이름으로 — 차이만 주니 반대 칸을 늘려 38→76px 로 벌어졌다(2026-10-18 운영 시험 w06)
+      const cn = (k) => { const w = k.getAttribute("data-wire-cell") || k.querySelector("[data-wire-cell]")?.getAttribute("data-wire-cell") || ""; const h = (k.querySelector("h2, h3, h4, strong")?.textContent || "").trim().slice(0, 12); const e = k.tagName.toLowerCase() + (typeof k.className === "string" && k.className.trim() ? "." + k.className.trim().split(/\s+/)[0] : ""); return `'${h || e}'(${w ? w + " · " : ""}${e})`; };
+      const iS = bots.indexOf(Math.min(...bots)), iL = bots.indexOf(Math.max(...bots)); const hh = (k) => Math.round(k.getBoundingClientRect().height);
+      if (diff > 8) out.rowMismatch.push(`${Math.round(diff)}px (${kids.length}칸, y ${Math.round(kids[0].getBoundingClientRect().top + scrollY)}) — 짧은 칸 ${cn(kids[iS])} 높이 ${hh(kids[iS])} · 긴 칸 ${cn(kids[iL])} 높이 ${hh(kids[iL])}: 짧은 칸을 늘리거나(align-items:stretch·내용 추가) 긴 칸을 줄여 바닥을 맞춘다`);
     }
     // 안 보이는 글자(C14): 글자색과 실제 뒤 배경색 대비 < 1.6 — 흰 면에 흰 글자면 '빈 카드'로 보인다
     const rgb = (c) => { const v = (c.match(/[\d.]+/g) || []).map(Number); return c.startsWith("color(") ? [v[0] * 255, v[1] * 255, v[2] * 255, v[3] ?? 1] : v; }; // color-mix 결과는 color(srgb 0~1)
@@ -179,7 +182,7 @@ export async function gates(p) {
   chk(!r.dateOrder.length, "날짜 순서", r.dateOrder);
   chk(!r.dupIcons.length, "아이콘 중복", r.dupIcons);
   chk(!r.gaps.length, "200px+ 빈 공간", r.gaps);
-  chk(!r.rowMismatch.length, "같은 행 높이 차", r.rowMismatch);
+  chk(!r.rowMismatch.length, "같은 행 높이 차", r.rowMismatch.slice(0, 3));
   chk(!r.placeholders.length, "남은 자리표시", r.placeholders);
   chk(!r.symbols.length, "글자 기호(아이콘으로 바꿀 것)", r.symbols);
   chk(!r.iconOffset.length, "글·아이콘 세로 중심 어긋남", r.iconOffset);

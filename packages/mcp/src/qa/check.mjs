@@ -4,13 +4,14 @@
 // 렌더러는 호출부가 넘긴다(서버 = chromium, 로컬 = firefox). 한 번에 한 장씩 처리한다(서버 메모리).
 import { behavior } from "./behavior.mjs";
 import { gates } from "./gates.mjs";
-import { layoutChecks, deviceChecks } from "./layout.mjs";
+import { layoutChecks, deviceChecks, overlapChecks } from "./layout.mjs";
 import { composeChecks } from "./compose.mjs";
 import { measureDesign, designFixes, colorShare } from "./design.mjs";
 import { measureVisual, visualFixes, capByKinds } from "./visual.mjs";
 import { guardContext } from "./netguard.mjs";
 import { collectOverlayText, overlayContrast, collectNames, nameFixes, contrastFixes } from "./extra.mjs";
-import { measureWire, wireMatch, wireRefRows } from "./wire.mjs";
+import { measureWire, wireMatch, wireRefRows, wireSchematicSvg } from "./wire.mjs";
+import { eyeChecks } from "./eye.mjs";
 
 let browserP = null;
 let idleTimer = null;
@@ -52,14 +53,26 @@ async function measure(p, ref) {
       boxes.push({ el, x: x1, w: x2 - x1, y: b.top + scrollY, h: b.height });
     }
     const hOv = (a, b) => Math.max(0, Math.min(a.x + a.w, b.x + b.w) - Math.max(a.x, b.x));
-    const colsIn = (y1, y2) => {
+    // cells=true (칸 사이 간격 잴 때만): ① 옆에 나란한 형제 칸이 있는 상자는 안에 2단(사진|목록)이 있어도 칸이다 — 껍데기로 보고 빼면
+    // 안쪽 2단 사이·카드 padding 이 '칸 간격 24·57px'로 잡혔다(2026-10-18 운영 시험 w03·w04·w06). 형제가 없는 상자(줄 감싸개)만 뺀다.
+    // ② 시안이 data-wire-cell 로 칸을 표시했으면 그 칸 상자 하나로 잰다 — 한 칸(히어로) 안 사진·글 사이 56px 를 칸 간격으로 잰 오탐(w05).
+    // 칸 수 대조(rows)는 그대로 둔다(cells=false) — 레퍼런스 칸 수와 견주는 기준을 바꾸지 않는다.
+    const colsIn = (y1, y2, cells = false) => {
       const bh = y2 - y1;
       let c = boxes.filter((b) => b.w <= W * 0.92 && b.h >= bh * 0.35 && b.h <= bh * 1.7 && Math.max(0, Math.min(b.y + b.h, y2) - Math.max(b.y, y1)) >= b.h * 0.5);
-      c = c.filter((b) => { const inner = c.filter((o) => o !== b && b.el.contains(o.el)); return !inner.some((o, i) => inner.some((q, j) => j > i && hOv(o, q) < Math.min(o.w, q.w) * 0.2)); });
+      const vOv = (a, b) => Math.max(0, Math.min(a.y + a.h, b.y + b.h) - Math.max(a.y, b.y));
+      const sibling = (b) => c.some((o) => o !== b && !b.el.contains(o.el) && !o.el.contains(b.el) && hOv(b, o) < Math.min(b.w, o.w) * 0.2 && vOv(b, o) >= Math.min(b.h, o.h) * 0.5 && o.w >= W * 0.15);
+      c = c.filter((b) => { if (cells && sibling(b)) return true; const inner = c.filter((o) => o !== b && b.el.contains(o.el)); return !inner.some((o, i) => inner.some((q, j) => j > i && hOv(o, q) < Math.min(o.w, q.w) * 0.2)); });
       c.sort((a, b) => b.w * b.h - a.w * a.h);
       const picked = [];
       for (const b of c) if (!picked.some((q) => hOv(b, q) > Math.min(b.w, q.w) * 0.4)) picked.push(b);
-      return picked;
+      if (!cells) return picked;
+      const out = []; const seenCell = new Set();
+      for (const b of picked) { const cell = b.el.closest("[data-wire-cell]");
+        if (!cell) { out.push(b); continue; } if (seenCell.has(cell)) continue; seenCell.add(cell);
+        const q = cell.getBoundingClientRect(); out.push({ el: cell, x: q.left, w: q.width, y: q.top + scrollY, h: q.height }); }
+      // 칸 상자끼리 겹치면(한 칸 안 조각과 그 칸) 큰 쪽만 남긴다
+      return out.filter((b) => !out.some((o) => o !== b && o.el.contains(b.el)));
     };
     const refCols = (cells) => { const cl = []; for (const c of [...cells].sort((a, b) => a.x - b.x)) { const g = cl.find((g) => hOv(g, c) > Math.min(24, Math.min(g.w, c.w) * 0.5)); /* 실제 칸은 겹치지 않는다 — 24px 넘게 겹치면 자동 분해가 잘못 나눈 것(2026-10-05 R1: banner_zone 이 양옆 칸과 100px+ 겹쳐 4칸으로 셈) */ if (g) { const x2 = Math.max(g.x + g.w, c.x + c.w); g.x = Math.min(g.x, c.x); g.w = x2 - g.x; } else cl.push({ x: c.x, w: c.w }); } return cl.length; };
     const sub = ref.sub;
@@ -99,7 +112,7 @@ async function measure(p, ref) {
         const inner = (c) => { if (!c.el || painted(c.el)) return c; const card = cardOf(c.el); if (card) return { ...c, x: card.x, w: card.w }; const s = getComputedStyle(c.el); const pl = parseFloat(s.paddingLeft) || 0, pr = parseFloat(s.paddingRight) || 0; return { ...c, x: c.x + pl, w: Math.max(1, c.w - pl - pr) }; };
         const span = [...inBand, ...cs].map(inner); // 높이가 달라 줄 자리가 조금 밀린 시안에서는 칸 상자가 띠 밖에 걸친다 — 둘 다 본다
         const L = Math.round(Math.min(...span.map((c) => c.x))), R = Math.round(Math.max(...span.map((c) => c.x + c.w)));
-        const big = cs.filter((c) => c.w >= W * 0.15); // 좁은 조각(세로 탭 띠·단추)은 칸으로 세지 않는다
+        const big = colsIn(y1, y2, true).sort((a, b) => a.x - b.x).filter((c) => c.w >= W * 0.15); // 좁은 조각(세로 탭 띠·단추)은 칸으로 세지 않는다
         const gaps = []; for (let i = 1; i < big.length; i++) { const g = Math.round(big[i].x - (big[i - 1].x + big[i - 1].w)); if (g >= 8 && g <= 160) gaps.push(g); }
         // 끝선을 만든 요소 이름(2026-10-05 R6: "x 0~1920" 만으로는 어느 요소인지 몰랐다)
         const nm0 = (x) => x ? x.tagName.toLowerCase() + ((typeof x.className === "string" && x.className.trim()) ? "." + x.className.trim().split(" ")[0] : "") : "";
@@ -175,7 +188,12 @@ async function measure(p, ref) {
     const hostOf = (u) => { try { return new URL(u, location.href).host; } catch { return ""; } };
     const foreign = [...new Set([...srcs.map((s) => s.src), ...bg].filter((u) => u && !u.startsWith("data:") && !u.startsWith("about:")).map(hostOf).filter((h) => h && !/(^|\.)hom2box\.com$|^localhost|^127\.0\.0\.1|fonts\.(googleapis|gstatic)\.com$|cdn\.jsdelivr\.net$/.test(h)))];
     const broken = [...new Set(srcs.filter((s) => s.vis && !s.ok && s.src).map((s) => { const p = s.src.split("?")[0].split("/").filter(Boolean); const n = p.pop() || ""; return (/^(original|web|thumb|card)$/.test(n) ? `${p.pop()}/${n}` : n).slice(0, 60); }))];
-    return { height: H, body: { from: Math.round(bodyFrom), to: Math.round(bodyTo) }, rows, frame, spill, leaks, foreign, broken, images: srcs.length };
+    // 깨진 아이콘: svg path 의 d 가 경로 명령(M·m)으로 시작하지 않거나 [object Object]·undefined·NaN 이 든 것 — 빈 원·빈 단추로 보인다.
+    // 객체를 문자열 자리에 넣은 d="[object Object]" SNS 아이콘 3개가 100점 통과(2026-10-18 운영 시험 w05, R10 과 같은 원인)
+    const badSvg = [];
+    for (const pa of document.querySelectorAll("svg path")) { const sv = pa.closest("svg"); if (!sv || !vis(sv)) continue; const d = (pa.getAttribute("d") ?? "").trim(); if (!pa.hasAttribute("d")) continue;
+      if (!/^[Mm]/.test(d) || /\[object|undefined|NaN|null/.test(d)) { const host = sv.closest("a, button") || sv.parentElement; const lab = (host?.getAttribute("aria-label") || host?.textContent || "").trim().slice(0, 16); badSvg.push(`d="${d.slice(0, 20)}"${lab ? ` (${lab})` : ""}`); } }
+    return { height: H, body: { from: Math.round(bodyFrom), to: Math.round(bodyTo) }, rows, frame, spill, leaks, foreign, broken, badSvg, images: srcs.length };
   }, ref);
 }
 
@@ -233,6 +251,10 @@ async function doCheck({ html, ref, refImage, launch, sharp, width = 1920, peers
   const blockedNet = await guardContext(ctx, { allowLoopback: /^https?:\/\/(127\.|localhost)/.test(process.env.HOMEBOX_API ?? "http://127.0.0.1") });
   const p = await ctx.newPage();
   const errors = []; p.on("pageerror", (e) => errors.push(String(e.message || e).slice(0, 120)));
+  // 콘솔 오류(잡히지 않은 예외가 아닌 것 — 잘못된 svg 속성 등). 그림·요청 실패는 '안 뜨는 이미지'·'막힌 요청'이 따로 세므로 뺀다(2026-10-18 w05 콘솔 오류 3건 100점)
+  const consoleErr = []; p.on("console", (msg) => { if (msg.type() !== "error") return; const t = String(msg.text() || "");
+    // 샘플 그림 응답의 쿠키 거절(Firefox 'Cookie “pp_sid” has been rejected')처럼 시안 밖(서버 응답)이 낸 것도 뺀다 — 양성 대조에서 모든 시안이 걸렸다
+    if (/Failed to load resource|net::ERR_|NS_ERROR|NS_BINDING|blocked|Content[ -]Security[ -]Policy|CORS|favicon|ERR_BLOCKED|Cookie|SameSite/i.test(t) || /\/assets\/samples\//.test(String(msg.location()?.url || ""))) return; consoleErr.push(t.replace(/\s+/g, " ").slice(0, 120)); });
   try {
     // 그림이 많아 load 가 40초를 넘으면 실패하던 것(2026-10-15 일괄 수정 2장) — DOM 이 섰으면 그대로 잰다
     await p.setContent(html, { waitUntil: "load", timeout: 60_000 }).catch(async (e) => { if (!(await p.evaluate(() => !!document.body).catch(() => false))) throw e; });
@@ -252,9 +274,9 @@ async function doCheck({ html, ref, refImage, launch, sharp, width = 1920, peers
     if (width >= 800) lay.fails.push(...(await composeChecks(p, { sharp }).catch(() => ({ fails: [] }))).fails);
     // 와이어 묶음(2026-10-18): 줄·칸 대조 기준을 레퍼런스가 아니라 와이어로. 시안의 data-wire-row·data-wire-cell 을 읽어 와이어와 견주고,
     // 가로 틀·세로 간격 검사(measure)는 시안 자신의 와이어 줄로 돌린다(레퍼런스 줄 좌표에 맞추라고 하지 않는다). 높이는 참고만.
-    let wm = null; const kitH = Number(ref.height ?? 0);
+    let wm = null; let wmeas = null; const kitH = Number(ref.height ?? 0);
     if (wire) {
-      const wmeas = await measureWire(p).catch(() => ({ rows: [], marks: 0 }));
+      wmeas = await measureWire(p).catch(() => ({ rows: [], marks: 0 }));
       wm = wireMatch(wmeas, wire, { mobile: width < 800 });
       const H0 = await p.evaluate(() => document.documentElement.scrollHeight);
       ref = { ...ref, rows: ref.sub || width < 800 ? [] : wireRefRows(wmeas, wire), height: ref.sub ? ref.height : H0 };
@@ -265,6 +287,8 @@ async function doCheck({ html, ref, refImage, launch, sharp, width = 1920, peers
     const overBad = await overlayContrast(sharp, shot, await collectOverlayText(p), Math.min(m.height, 16000)).catch(() => []);
     const names = await collectNames(p);
     const hasHb = await p.evaluate(() => !!document.querySelector("[data-hb],[data-hb-open]"));
+    // 사람 눈 점검(eye.mjs, 2026-10-18 w02 96점 통과 미탐): 날짜 줄바꿈·나란한 상자 빈 면·글자 그림 잘림·펼침판 글자 대비. behavior 가 판을 열기 전에, 연 것은 되돌린다
+    const eye = await eyeChecks(p, { textKeys }).catch(() => ({ items: [] }));
     const beh = await behavior(p, { force: hasHb, errors });
     // data-hb 가 없어도 표준 접근성 속성(role=tab·aria-controls)으로 만든 조작이 실제로 움직이면 감점하지 않는다
     // — 홈박스 자체 조립(메인·서브 키트)은 자기 스크립트를 쓰는데 매번 -10 이었다(2026-10-12 MCP 예시 시험)
@@ -342,6 +366,10 @@ async function doCheck({ html, ref, refImage, launch, sharp, width = 1920, peers
       }
       // calc(100vw - 32px) 같은 안전한 max-width 는 빼고, 폭(width·min-width)을 100vw 로 준 것만(일괄 수정 배치3 오탐)
       if (/(?:^|[;{\s])(?:min-)?width\s*:\s*100vw/.test(html)) pc.vw = true;
+      await p.setViewportSize({ width, height: 1080 }); await p.waitForTimeout(250);
+      // 겹침: 클릭 대상끼리·글끼리(2026-10-18 사용자 지적 w02 — 단추와 캐러셀 조작 막대 14px 겹침, 1024 이상에서만). PC 두 폭
+      pc.overlap = [await overlapChecks(p)];
+      await p.setViewportSize({ width: 1280, height: 1080 }); await p.waitForTimeout(300); pc.overlap.push(await overlapChecks(p));
       await p.setViewportSize({ width, height: 1080 }); await p.waitForTimeout(250);
       // 섹션 제목이 내용과 떨어져 있나 — 제목만 따로 모은 띠(2026-10-02 사용자 지적: 제목 줄이 색 띠에 따로, 내용은 75px 아래)
       pc.titles = await p.evaluate(() => {
@@ -523,10 +551,15 @@ async function doCheck({ html, ref, refImage, launch, sharp, width = 1920, peers
       const schoolOrg = /학교|초등|중학|고등|유치원|어린이|복지|도서관|아동|청소년/.test(want || (html.match(/<title[^>]*>([^<]*)/i) || [])[1] || ""); // layout.mjs darkBand 와 같은 대상
       sim = await similarity(sharp, refImage, refBox, shot, mockBox, { skipDark: schoolOrg });
       compare = await sideBySide(sharp, refImage, shot);
+    } else if (wm && wmeas) {
+      // 와이어 묶음: 왼쪽 = 와이어 도식(시안 줄 위치에 맞춤, 안 맞는 줄은 빨강) · 오른쪽 = 시안 (2026-10-18 시험 4건 '비교 이미지 없음')
+      const sch = wireSchematicSvg(wmeas, wire, { width, height: Math.min(m.height, 16000), match: wm });
+      const png = await sharp(Buffer.from(sch.svg), { limitInputPixels: false }).png().toBuffer().catch(() => null);
+      if (png) compare = await sideBySide(sharp, png, shot).catch(() => null);
     }
 
     // ---- 점수·고칠 목록
-    const fixes = []; let score = 100; const hard = [];
+    const fixes = []; let score = 100; const hard = []; const preNotes = [];
     // 와이어 일치가 맨 앞 — 와이어와 다르면 다른 점수가 좋아도 통과하지 않는다(치명)
     if (wm) {
       if (!wm.pass) { hard.push(...(wm.hard.length ? wm.hard : ["와이어와 줄·칸이 다름"])); score -= Math.min(30, Math.max(8, Math.round((100 - wm.score) / 2))); }
@@ -536,6 +569,15 @@ async function doCheck({ html, ref, refImage, launch, sharp, width = 1920, peers
     if (m.leaks.length) { hard.push("레퍼런스 기관 정보 노출"); score -= 30; fixes.push(`레퍼런스 기관 정보가 시안에 남아 있다: ${m.leaks.join(", ")} — persona 의 가상 값으로 바꾼다.`); }
     if (blockedNet.length) { score -= 10; fixes.push(`막힌 요청 ${blockedNet.length}개(내부 주소·허용 안 하는 방식): ${blockedNet.slice(0, 3).join(" | ")} — 공개 https 주소만 쓴다.`); }
     if (errors.length) { hard.push("스크립트 오류"); score -= 10; fixes.push(`스크립트 오류: ${errors.slice(0, 3).join(" | ")}`); }
+    if (pc.overlap?.length) {
+      // 클릭 대상끼리 겹치면 누를 수 없는 자리가 생긴다 — 치명. 글끼리 겹침은 감점
+      const cl = [...new Set(pc.overlap.flatMap((o) => o.click.map((t) => `${o.w}폭 ${t}`)))], tx = [...new Set(pc.overlap.flatMap((o) => o.text.map((t) => `${o.w}폭 ${t}`)))];
+      if (cl.length) { hard.push("클릭 대상 겹침"); score -= Math.min(12, cl.length * 6); fixes.push(`겹침 · 클릭 대상끼리 겹친다: ${cl.slice(0, 3).join(" | ")} — 한쪽 위치(bottom·top·margin)를 옮기거나 단추 묶음 아래 여백을 늘려 떼어 놓는다.`); }
+      if (tx.length) { score -= Math.min(12, tx.length * 4); fixes.push(`겹침 · 글끼리 겹친다: ${tx.slice(0, 3).join(" | ")} — 줄 높이·절대 위치·음수 margin 을 고쳐 글이 서로 덮지 않게 한다.`); }
+    }
+    if (m.badSvg?.length) { hard.push("깨진 아이콘(svg 경로)"); score -= Math.min(12, 4 + m.badSvg.length * 2); fixes.push(`깨진 아이콘 ${m.badSvg.length}개: ${m.badSvg.slice(0, 3).join(" | ")} — svg path 의 d 에 경로 글자(예: icons.brand 의 .d)를 넣는다. 객체를 그대로 넣으면 [object Object] 가 되어 빈 모양이 된다.`); }
+    if (consoleErr.length) { score -= Math.min(8, consoleErr.length * 2); fixes.push(`콘솔 오류 ${consoleErr.length}건: ${[...new Set(consoleErr)].slice(0, 3).join(" | ")} — 브라우저 개발자 도구 콘솔에 오류가 없게 고친다(잘못된 속성 값·없는 요소 참조).`); }
+    if (!textKeys.length) preNotes.push("글자 든 샘플 목록(textKeys)을 받지 못해 글자 그림 잘림·'배너 자리에 글자 없는 사진' 판정을 건너뛰었다 — 판정기 설정 문제(시안 탓 아님).");
     if (m.broken.length) { score -= Math.min(20, m.broken.length * 4); fixes.push(`안 뜨는 이미지 ${m.broken.length}개: ${m.broken.slice(0, 5).join(", ")} — samples 의 url 을 그대로 쓴다.`); }
     if (m.foreign.length) { score -= 10; fixes.push(`홈박스 밖 이미지 주소: ${m.foreign.join(", ")} — 사진은 samples 만 쓴다(레퍼런스 사이트 이미지·외부 이미지 금지).`); }
     const miss = wm ? [] : m.rows.filter((r) => r.mock_cols < r.ref_cols); // 와이어 묶음은 칸 수를 와이어 일치에서 본다(같은 것을 두 번 깎지 않는다)
@@ -567,6 +609,8 @@ async function doCheck({ html, ref, refImage, launch, sharp, width = 1920, peers
     if (!ref.sub && diffPct < -2 && pc.blanks.length) fixes.push("높이·빈칸 같이 걸림 · 높이를 맞추려 여백을 늘린 것으로 보인다 — 여백을 원래대로 줄이고, 레퍼런스보다 납작한 칸(사진·카드·목록 줄 수)을 sections 의 h 만큼 키운다.");
     if (g.fails.length) { score -= Math.min(35, g.fails.length * 5); for (const f of g.fails.slice(0, 10)) fixes.push(`게이트 · ${f}`); }
     if (lay.fails.length) { score -= Math.min(30, lay.fails.length * 4); for (const f of lay.fails.slice(0, 12)) fixes.push(`구성 · ${f}`); }
+    { const ef = eye.items.filter((x) => !(x.key && lay.fails.some((f) => f.includes(x.key)))); // 보이는 글자 그림 잘림은 구성 ⑦ 이 이미 감점 — 같은 그림을 두 번 깎지 않는다
+      if (ef.length) { score -= Math.min(16, ef.length * 4); for (const x of ef.slice(0, 8)) fixes.push(`눈 점검 · ${x.msg}`); } }
     if (dev.length) { score -= Math.min(16, dev.length * 3); for (const f of dev.slice(0, 8)) fixes.push(`반응형 · ${f}`); }
     if (beh.fails.length) { score -= Math.min(30, beh.fails.length * 5); for (const f of beh.fails.slice(0, 10)) fixes.push(`동작 · ${f}`); }
     if (beh.hard?.length) { score -= Math.min(10, beh.hard.length * 5); for (const h of beh.hard.slice(0, 5)) { hard.push(`주 메뉴 · ${h}`); fixes.push(`동작 · ${h} — 펼친 판에 z-index 를 주고 머리 띠 위로 올린다.`); } }
@@ -575,7 +619,7 @@ async function doCheck({ html, ref, refImage, launch, sharp, width = 1920, peers
     if (!hasHb && !ownOk) { score -= 10; fixes.push("동작 규약(data-hb)이 없다 — get_behavior_kit 의 script 를 넣고 캐러셀·탭·메뉴·레이어·검색에 data-hb 속성을 붙인다."); }
     if (sim && sim.sim < 70 && !wm) { score -= Math.min(15, Math.round((70 - sim.sim) / 2)); } // 와이어 묶음은 레퍼런스 밝기 구성과 달라도 감점하지 않는다(참고 notes 만)
     // 밝기 구간은 감점이 있을 때(유사도 70 미만)만 고칠 목록에 — 그 밖엔 참고(notes). 참고 이미지가 없는 섞기 조각·서브 비주얼 차이로 고칠 방법이 없는 경고가 남던 것(2026-10-03 시험)
-    const notes = [...segNotes];
+    const notes = [...segNotes, ...preNotes];
     // 서브는 sub_shell(서브 비주얼 띠·왼쪽 흰 메뉴)을 쓰라고 지시하므로 레퍼런스와 밝기 구성이 다른 게 정상이다 — 감점이 없으면 메모도 내지 않는다(2026-10-05 R3·R4·R5·R6: 100점에도 계속 떠 혼란)
     if (sim && !(ref.sub && sim.sim >= 70)) for (const [a, b] of sim.bands.slice(0, 4)) (sim.sim < 70 && !wm ? fixes : notes).push(`밝기 구성이 크게 다른 구간: ${ref.sub ? "본문" : "화면"} ${Math.round(a * 100)}~${Math.round(b * 100)}% 지점 — 어두운 띠·사진 면·흰 면의 위치가 레퍼런스와 다르다(나란히 이미지 확인).`);
     score = Math.max(0, Math.min(100, score));

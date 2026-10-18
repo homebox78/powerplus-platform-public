@@ -23,6 +23,7 @@ import { apiFetch, postJson } from "@/lib/api";
 import { useMe } from "@/lib/auth";
 import { cn } from "@/lib/utils";
 import { BrowserBar, SectionArt } from "./wire-art";
+import { SectionMock } from "./wire-mock";
 
 // ---------------------------------------------------------------- 형
 /** 칸 근거 — 같은 화면 × 기관 묶음 레퍼런스에서 이 섹션을 두는 비율(adopt %)·위치(pos %, 위에서)·폭·높이·표본 수(서버 Wire::evOf) */
@@ -45,7 +46,7 @@ interface WireBasis {
 interface WireOptions { screens: { id: string; label: string; desc: string; samples: number }[]; orgs: { id: string; label: string }[]; styles?: { id: string; label: string; desc: string; main_only: boolean }[]; types: { k: string; name: string; scope: string; group?: string; kit?: boolean; h?: number }[] }
 interface GenResult { wire: Wire; check: WireCheck; source: "rule" | "ai"; note: string | null; basis: WireBasis; prompt: string }
 /** 내용 보기 — 칸마다 예시 글(서버 WireContent::fill, 가상 기관) */
-interface ContentCol extends WireCol { s?: string; items?: string[]; img?: { kind: string; label: string }; label?: string }
+interface ContentCol extends WireCol { s?: string; items?: string[]; desc?: string[]; sign?: string; img?: { kind: string; label: string }; label?: string }
 interface ContentWire { rows: { cols: ContentCol[] }[]; persona?: { org: string; kind: string; title: string; name?: string; head?: string; source?: string } }
 interface SavedWire { id: string; title: string; screen: string; screen_label: string; org: string; score: number | null; pass: boolean; rows: number; source: string; updated_at: string }
 
@@ -231,7 +232,7 @@ function WirePreview({ wire, names, device, sel, onSelect, onRow, onDrop, adoptO
                 dragging && "opacity-40",
                 on ? "outline-2 outline-offset-1 outline-ink" : "hover:shadow-[0_2px_10px_rgba(0,0,0,.12)]")}>
               <span className={cn("pointer-events-none absolute inset-x-0 bottom-0 block", hh >= 60 ? "top-[18px]" : "top-0")}>
-                {shown ? <ContentArt c={shown} narrow={mobile || span <= 4} /> : <SectionArt k={c.k} span={mobile ? 12 : span} mobile={mobile} />}
+                {shown ? (SectionMock({ c: shown, span: mobile ? 12 : span, mobile }) ?? <ContentArt c={shown} narrow={mobile || span <= 4} />) : <SectionArt k={c.k} span={mobile ? 12 : span} mobile={mobile} />}
               </span>
               {/* 레퍼런스 채택률 — 오른쪽 위 작은 숫자(같은 화면 레퍼런스 중 이 섹션을 두는 비율) */}
               {pct != null && hh >= 30 && (
@@ -242,7 +243,9 @@ function WirePreview({ wire, names, device, sel, onSelect, onRow, onDrop, adoptO
               {/* 칸 이름 — 와이어 표기처럼 왼쪽 위 작은 꼬리표 */}
               <span className={cn("pointer-events-none absolute left-0 top-0 truncate rounded-br-md px-1.5 py-[2px] text-[11px] font-semibold leading-tight",
                 pct != null ? "max-w-[calc(100%-44px)]" : "max-w-full",
-                on ? "bg-ink text-white" : "bg-white/95 text-ink-3 ring-1 ring-line-3")}>
+                on ? "bg-ink text-white" : "bg-white/95 text-ink-3 ring-1 ring-line-3",
+                // 내용 보기의 낮은 칸(경로·쪽 제목·띠)은 이름표가 글을 가린다 — 올리거나 고를 때만
+                shown && hh < 60 && !on && "opacity-0 transition-opacity group-hover/cell:opacity-100")}>
                 {names.get(c.k) ?? c.k}{c.t && !shown ? ` · ${c.t}` : ""}{!mobile && span < 12 ? ` · ${span}/12` : ""}
               </span>
               {/* 폭 조절 손잡이 — 오른쪽 끝, 12칸 격자에 붙는다 */}

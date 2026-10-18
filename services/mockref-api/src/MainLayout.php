@@ -20,8 +20,10 @@ final class MainLayout
     private const SKIP = ['header', 'gnb', 'footer', 'footer_links', 'skip_nav', 'main_search', 'breadcrumb', 'page_title', 'floating_quick'];
 
     /** @param array<int, array<string, mixed>> $secs  reference sections (type,x,y,w,h,structure) */
-    public static function render(array $secs, array $p, callable $take, int $vw, int $container): array
+    public static function render(array $secs, array $p, callable $take, int $vw, int $container, bool $wire = false): array
     {
+        // $wire(2026-10-18 와이어 고도화 2단계): 섹션이 사용자 와이어 순서로 놓인 배치(ReplicaKit::wirePlan)다 — 빠진 필수 블록을 더하지 않고,
+        // 긴 사이드 열로 다시 묶지 않으며, 줄·칸에 data-wire-row·data-wire-cell 표시를 단다(판정이 와이어와 대조한다).
         $e = static fn ($s) => htmlspecialchars((string) $s, ENT_QUOTES, 'UTF-8');
         $gov = in_array($p['kind'], ['gov', 'corp'], true) || !SampleContent::isCivic((string) $p['kind']);
         $dec = static fn ($v) => is_string($v) ? (json_decode($v, true) ?: []) : (array) $v;
@@ -34,7 +36,7 @@ final class MainLayout
             if ($t === 'stat_cards') { $t = 'stats'; } // 통계 카드형 콘텐츠(전주의 하루) = 통계 칸으로 그린다 (2026-09-26)
             // 제목이 있는 넓은 '검색' 칸 = 안내 띠 (서천군 '서천 맞춤 관광지' 1600×189 — 버튼 두 개 달린 관광 안내, C35)
             if ($t === 'main_search' && $w >= $vw * 0.6 && $h >= 120 && $h <= 320 && is_string($dec($s['structure'])['title'] ?? null) && !preg_match('/검색|찾/u', (string) $dec($s['structure'])['title'])) { $t = 'text_band'; }
-            if ((in_array($t, self::SKIP, true) && !($t === 'main_search' && $w < $vw * 0.6)) || $w < 150 || $h < 50) { continue; } // 옆 칸 검색창은 칸으로(예산군 첫 줄 오른쪽 573px 검색, 2026-09-26)
+            if ((in_array($t, self::SKIP, true) && !($t === 'main_search' && ($wire || $w < $vw * 0.6))) || $w < 150 || $h < 50) { continue; } // 옆 칸 검색창은 칸으로(예산군 첫 줄 오른쪽 573px 검색, 2026-09-26)
             $st = $dec($s['structure']);
             // 폭 넓은 미분류 글 띠 = 안내 문구 띠 / 짧으면 앱·서비스 안내 띠 (한국장학재단 '국가예산…'·'모바일로 간편하게', 2026-09-26 자가 검증 C33)
             $txU = trim((string) ($st['text'] ?? ''));
@@ -86,7 +88,8 @@ final class MainLayout
             if (in_array($t, ['banner_zone', 'promo_banner', 'hero'], true) && $h >= 350 && (($w >= 800 && (int) $s['y'] < 900) || ($w >= 500 && (int) $s['y'] < 400))) { // 첫 화면 위 590px 배너도(장학재단)
                 $t = 'main_visual'; $st['style']['photo'] = 'inline';
             }
-            $cells[] = ['type' => $t, 'x' => (int) $s['x'], 'y' => (int) $s['y'], 'w' => $w, 'h' => $h, 'st' => $st, 'ref' => [(int) $s0['x'], (int) $s0['y'], (int) $s0['w'], (int) $s0['h']]];
+            $cells[] = ['type' => $t, 'x' => (int) $s['x'], 'y' => (int) $s['y'], 'w' => $w, 'h' => $h, 'st' => $st, 'ref' => [(int) $s0['x'], (int) $s0['y'], (int) $s0['w'], (int) $s0['h']],
+                'wire' => $wire && isset($s0['wire_row']) ? [(int) $s0['wire_row'], (string) $s0['type']] : null];
         }
         // 다른 칸 안에 70% 이상 들어간 칸 = 숨은 슬라이드·겹친 조각 (장학재단 1466px 조각이 공지사항 칸 안에)
         $cells = array_values(array_filter($cells, static function ($c) use ($cells) {
@@ -109,11 +112,11 @@ final class MainLayout
         $bigPopup = (bool) array_filter($cells, static fn ($c) => $c['type'] === 'popup_zone' && $c['w'] >= 800 && $c['y'] < 900);
         // 첫 화면에 큰 인사·비전 덩어리(폭 1,000+·높이 400+)가 있으면 그게 첫 화면이다 — 히어로를 더 얹으면 높이만 늘었다(서울 339, 2026-10-12 D7)
         $bigTop = (bool) array_filter($cells, static fn ($c) => $c['y'] < 600 && $c['w'] >= 1000 && $c['h'] >= 400 && in_array($c['type'], ['greeting_vision', 'banner_zone', 'popup_zone', 'news_tabs'], true));
-        if (!$bigPopup && !$bigTop && !$has('main_visual') &&!array_filter($cells, static fn ($c) => ($c['st']['style']['text_on_photo'] ?? false) && $c['w'] > 800)) {
+        if (!$wire && !$bigPopup && !$bigTop && !$has('main_visual') &&!array_filter($cells, static fn ($c) => ($c['st']['style']['text_on_photo'] ?? false) && $c['w'] > 800)) {
             array_unshift($cells, ['type' => 'main_visual', 'x' => 0, 'y' => -1, 'w' => $vw, 'h' => 560, 'st' => ['style' => ['photo' => 'full_bleed']]]); $added[] = 'main_visual';
         }
         $maxY = max(array_map(static fn ($c) => $c['y'] + $c['h'], $cells));
-        foreach (['quick_links' => 0.30, 'news_tabs' => 0.45, 'banner_zone' => 0.9] as $t => $pos) {
+        foreach ($wire ? [] : ['quick_links' => 0.30, 'news_tabs' => 0.45, 'banner_zone' => 0.9] as $t => $pos) {
             if (!$has($t)) { $cells[] = ['type' => $t, 'x' => 0, 'y' => (int) ($maxY * $pos) + 1, 'w' => $t === 'banner_zone' ? 1300 : 1300, 'h' => $t === 'news_tabs' ? 320 : 200, 'st' => ['cols' => 8, 'items' => 8], 'added' => true]; $added[] = $t; }
         }
         usort($cells, static fn ($a, $b) => [$a['y'], $a['x']] <=> [$b['y'], $b['x']]);
@@ -126,7 +129,7 @@ final class MainLayout
         $cL = (int) (($vw - $container) / 2); $cR = $cL + $container;
         $side = array_values(array_filter($cells, static fn ($c) => empty($c['added']) && $c['w'] <= 440 && $c['x'] + $c['w'] >= $cR - 60 && $c['x'] >= $cL + $container * 0.6));
         $region = null;
-        if (count($side) >= 3) {
+        if (!$wire && count($side) >= 3) {
             $sy = min(array_map(static fn ($c) => $c['y'], $side)); $sy2 = max(array_map(static fn ($c) => $c['y'] + $c['h'], $side));
             $sx = min(array_map(static fn ($c) => $c['x'], $side));
             if ($sy2 - $sy >= 1000) {
@@ -211,7 +214,10 @@ final class MainLayout
                 $stack = count($col['cells']) > 1; $part = '';
                 foreach ($col['cells'] as $c) {
                     [$cell, $variant] = self::cell($c, $p, $take, $e, $gov, ++$uid, $n, $stack ? $c['h'] : $rowH, $full, $k);
-                    $part .= self::skin($cell, $c, $rowBgCache[$ri] ??= self::rowBg($r['cells'], $full));
+                    $cell = self::skin($cell, $c, $rowBgCache[$ri] ??= self::rowBg($r['cells'], $full));
+                    // 와이어 칸 표시 — 칸의 첫 태그에(종류 = 와이어 칸 종류, 모양을 바꿔 그려도 와이어 이름으로)
+                    if (!empty($c['wire'])) { $cell = (string) preg_replace('/^(\s*<[a-zA-Z]+)/', '$1 data-wire-cell="' . $e($c['wire'][1]) . '"', $cell, 1); }
+                    $part .= $cell;
                     $comp[] = ['row' => $ri + 1, 'type' => $c['type'], 'variant' => $variant, 'ref_box' => $c['ref'] ?? [$c['x'], $c['y'], $c['w'], $c['h']],
                         'source' => !empty($c['added']) ? 'added (채택률 ' . (MainMockup::ADOPTION[$c['type']] ?? '-') . '%, 레퍼런스에 없음)' : 'reference'];
                 }
@@ -224,9 +230,12 @@ final class MainLayout
             $bg = self::rowBg($r['cells'], $full);
             $style = '--rh:' . max(150, min((int) round($rowH * ($full ? 1 : 0.9)), 760)) . 'px' . ($bg ? ';background:' . $bg : '')
                 . ($full ? '' : ';padding-top:' . $gapTop . 'px;padding-bottom:' . ($ri === $lastRi ? 40 : 0) . 'px');
+            // 와이어 줄 표시 — 줄의 칸이 모두 같은 와이어 줄일 때만(섞이면 칸 표시만 남긴다)
+            $wrs = array_values(array_unique(array_map(static fn ($c) => (int) ($c['wire'][0] ?? 0), $r['cells'])));
+            $wattr = count($wrs) === 1 && $wrs[0] > 0 ? ' data-wire-row="' . $wrs[0] . '"' : '';
             $html .= $full
-                ? '<div class="mm-row mm-row--full" style="' . $style . '">' . $inner . '</div>'
-                : '<div class="mm-row" style="' . $style . '"><div class="mm-wrap mm-grid" style="grid-template-columns:' . $cols . '">' . $inner . '</div></div>';
+                ? '<div class="mm-row mm-row--full"' . $wattr . ' style="' . $style . '">' . $inner . '</div>'
+                : '<div class="mm-row"' . $wattr . ' style="' . $style . '"><div class="mm-wrap mm-grid" style="grid-template-columns:' . $cols . '">' . $inner . '</div></div>';
         }
         return ['html' => $html, 'composition' => $comp, 'added' => $added];
     }

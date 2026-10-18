@@ -4,7 +4,7 @@
 import { ArrowDown, ArrowUp, ChevronLeft, ChevronRight, Copy as CopyIcon, Columns2, ExternalLink, GripVertical, Minus, Monitor, Plus, Smartphone, Sparkles, Trash2 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { Link } from "react-router";
+import { Link, useSearchParams } from "react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { ChoiceButton } from "@/components/hb/choice-button";
@@ -450,6 +450,11 @@ export function WireframeScreen() {
   const [view, setView] = useState<"structure" | "content">("structure");
   const [content, setContent] = useState<ContentWire | null>(null);
   const firstCheck = useRef(true);
+  // 저장한 뒤 고쳤는가 — 요청문의 wire_id 는 저장본을 가리키므로, 고친 채로 복사하면 시안이 옛 와이어로 나온다(2026-10-18 고도화 2단계)
+  const [savedSig, setSavedSig] = useState<string | null>(null);
+  const sigOf = (w: Wire | null) => (w ? JSON.stringify({ s: w.screen, o: w.org, l: w.lnb, r: w.rows.map((r) => [r.zone, r.cols.map((c) => [c.k, c.span, c.h ?? 0])]) }) : "");
+  const dirty = !!savedId && savedSig !== sigOf(wire);
+  const [params] = useSearchParams();
 
   // 내용 보기·요청문 — 지금 와이어로 예시 글을 받는다(결정적·비용 0, 편집하면 묶어서 다시)
   useEffect(() => {
@@ -565,22 +570,25 @@ export function WireframeScreen() {
   const setCell = (patch: Partial<WireCol>) => sel && edit((rows) => { const r = rows[sel.r]; const c = r?.cols[sel.c]; if (r && c) r.cols[sel.c] = { ...c, ...patch }; return rows; });
   const delCell = () => { if (!sel) return; edit((rows) => { const r = rows[sel.r]; if (!r) return rows; if (r.cols.length <= 1) return rows.filter((_, k) => k !== sel.r); r.cols.splice(sel.c, 1); return rows; }); setSel(null); };
 
-  const save = async () => {
-    if (!wire) return;
+  const save = async (quiet = false): Promise<string | null> => {
+    if (!wire) return null;
     try {
       // 근거 요약(표본 수·안내·스타일·AI 가 바꾼 점)을 같이 저장 — 다시 열 때 근거가 0 으로 사라지지 않게(분포·추천은 서버가 다시 계산)
       const basis = gen ? { samples: gen.basis.samples, pattern: gen.basis.pattern, note: gen.basis.note, style: gen.basis.style, org_fallback: gen.basis.org_fallback, skipped: gen.basis.skipped, merged: gen.basis.merged, refine: gen.basis.refine } : undefined;
-      const body = { title, wire: { ...wire, title, basis }, request, source: gen?.source ?? "rule" };
+      const t = title.trim() || `${opt.data?.orgs.find((o) => o.id === wire.org)?.label ?? ""} ${opt.data?.screens.find((s) => s.id === wire.screen)?.label ?? ""} 와이어`.trim();
+      const body = { title: t, wire: { ...wire, title: t, basis }, request, source: gen?.source ?? "rule" };
       const r = savedId ? await postJson<{ id: string }>(`/mock/wireframes/${savedId}`, body, "PUT") : await postJson<{ id: string }>("/mock/wireframes", body);
-      setSavedId(r.id); void qc.invalidateQueries({ queryKey: ["mock", "wire", "mine"] });
-      toast.success(savedId ? "고친 내용을 저장했습니다." : "내 와이어에 저장했습니다.");
-    } catch (e) { toastError(e); }
+      setSavedId(r.id); setSavedSig(sigOf(wire)); if (!title.trim()) setTitle(t);
+      void qc.invalidateQueries({ queryKey: ["mock", "wire", "mine"] });
+      if (!quiet) toast.success(savedId ? "고친 내용을 저장했습니다." : "내 와이어에 저장했습니다.");
+      return r.id;
+    } catch (e) { toastError(e); return null; }
   };
   const open = async (id: string) => {
     try {
       const r = await apiFetch<{ id: string; title: string; request: string; source?: string; wire: Wire; check: WireCheck; prompt: string; basis?: WireBasis }>(`/mock/wireframes/${id}`);
       firstCheck.current = true;
-      setWire(r.wire); setCheck(r.check); setTitle(r.title); setRequest(r.request); setSavedId(r.id); setSel(null);
+      setWire(r.wire); setCheck(r.check); setTitle(r.title); setRequest(r.request); setSavedId(r.id); setSavedSig(sigOf(r.wire)); setSel(null);
       setScreen(r.wire.screen); setOrg(r.wire.org);
       if (r.wire.style) { setStyle(r.wire.style); setVariant(r.wire.variant ?? 0); }
       // 저장해 둔 근거 요약 + 서버가 다시 계산한 분포·닮음(옛 저장본은 표본 수만이라도 서버 값으로)
@@ -592,7 +600,8 @@ export function WireframeScreen() {
     try { await apiFetch(`/mock/wireframes/${id}`, { method: "DELETE" }); if (savedId === id) setSavedId(null); void qc.invalidateQueries({ queryKey: ["mock", "wire", "mine"] }); toast.success("지웠습니다."); } catch (e) { toastError(e); }
   });
   // 고친 와이어 기준 요청문 — 서버 prompt 는 처음 만든 구성 기준이라, 편집 뒤엔 여기서 다시 쓴다
-  const prompt = useMemo(() => {
+  // 와이어 id 가 있으면(저장했고 그 뒤 안 고침) 요청문이 mock_get_replica_kit(wire_id=…) 를 부르게 한다 — 배치 기준이 와이어가 되고 판정도 와이어와 대조
+  const promptFor = useMemo(() => (wid: string | null) => {
     if (!wire) return "";
     const sc = opt.data?.screens.find((s) => s.id === wire.screen)?.label ?? wire.screen;
     const og = opt.data?.orgs.find((o) => o.id === wire.org)?.label ?? "";
@@ -606,8 +615,34 @@ export function WireframeScreen() {
       `아래 와이어프레임의 줄 순서와 칸 폭(12칸 격자)을 지켜 줘.${wire.lnb ? " 본문 왼쪽에 LNB(왼쪽 메뉴)를 둔다." : ""}${evMap ? " 괄호 끝 %는 같은 화면 레퍼런스에서 그 섹션을 두는 비율이다." : ""}`,
       ...lines,
       ...(contentLines.length ? ["", `칸별 예시 내용(가상 기관 '${filled?.persona?.org ?? ""}' 기준 — 실제 기관이면 이름만 바꿔 쓴다):`, ...contentLines] : []),
-      "순서: mock_get_replica_kit 으로 재료를 받고 → 이 구성대로 만들고 → mock_check_mockup 으로 판정 → 통과하면 mock_publish_mockup."].join("\n");
+      ...(wid
+        ? ["", `와이어 id: ${wid}`,
+          `순서: mock_get_replica_kit(wire_id="${wid}") 으로 재료를 받고(배치 기준 = 이 와이어, 칸마다 레퍼런스 재료·예시 내용이 붙는다) → 와이어 줄·칸 그대로 만들고(본문 줄·칸에 data-wire-row·data-wire-cell) → mock_check_mockup 으로 판정(와이어와 대조) → 통과하면 mock_publish_mockup.`]
+        : ["", "순서: 이 와이어를 저장해 받은 wire_id 로 mock_get_replica_kit(wire_id=…) 을 불러 재료를 받고(배치 기준 = 이 와이어) → 와이어 줄·칸 그대로 만들고 → mock_check_mockup 으로 판정(와이어와 대조) → 통과하면 mock_publish_mockup."])].join("\n");
   }, [wire, names, opt.data, request, gen, content]);
+  const liveId = savedId && !dirty ? savedId : null;
+  const prompt = promptFor(liveId);
+  const wireLink = liveId && typeof window !== "undefined" ? `${window.location.origin}/mock/plan?wire=${encodeURIComponent(liveId)}` : null;
+  // 요청문 복사 — 저장 안 했거나 저장 뒤 고쳤으면 먼저 저장하고 그 id 로 쓴 요청문을 복사한다(로그인 필요)
+  const copyPrompt = async () => {
+    if (liveId || !me) { copyText(prompt, liveId ? "와이어 id 가 든 요청문을 복사했습니다." : "요청문을 복사했습니다. 로그인해 저장하면 와이어 id 가 들어갑니다."); return; }
+    const id = await save(true);
+    if (id) copyText(promptFor(id), "저장하고 와이어 id 가 든 요청문을 복사했습니다.");
+  };
+  // 주소의 ?wire=<id> 로 저장한 와이어를 연다(요청문·MCP 응답의 wire_link) — 한 번만
+  const opened = useRef<string | null>(null);
+  useEffect(() => {
+    const id = params.get("wire");
+    if (!id || !me || opened.current === id) return;
+    opened.current = id;
+    void open(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [params, me]);
+  // 화면·기관을 바꾸면 추천 3안은 그 화면 것이 아니다 — 메인 추천(포털형 등 원형)을 서브 화면에서 눌러 원형이 섞이던 것(1단계 시험 결함)
+  useEffect(() => {
+    if (screen !== "main" && opt.data?.styles?.some((x) => x.id === style && x.main_only)) setStyle("auto");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [screen]);
 
   if (opt.isPending) return <Skeleton className="mt-6 h-64 rounded-card" />;
   const screens = (opt.data?.screens ?? []).map((s) => ({ id: s.id, label: s.label, hint: s.desc }));
@@ -621,7 +656,7 @@ export function WireframeScreen() {
   const adoptOf = (k: string): number | null => (!dist || k.startsWith("kit_") ? null : dist.ev[k]?.adopt ?? 0);
   const has = new Set((wire?.rows ?? []).flatMap((r) => r.cols.map((c) => c.k)));
   const fitNow = check?.fit ?? gen?.basis.fit;
-  const recs = gen?.basis.recommended ?? [];
+  const recs = gen && gen.wire.screen === screen && gen.wire.org === org ? gen.basis.recommended ?? [] : [];
 
   return (
     <div className="mt-6 grid gap-8">
@@ -735,7 +770,7 @@ export function WireframeScreen() {
                   <Label htmlFor="wire-title" className="text-sm font-semibold">제목</Label>
                   <div className="mt-1.5 flex gap-2">
                     <Input id="wire-title" value={title} onChange={(e) => setTitle(e.target.value)} maxLength={200} placeholder="예: 한빛시 메인 1안" className="h-9 text-sm" />
-                    <Button size="sm" className="h-9" onClick={save} disabled={!title.trim()}>{savedId ? "고친 것 저장" : "저장"}</Button>
+                    <Button size="sm" className="h-9" onClick={() => void save()} disabled={!title.trim()}>{savedId ? "고친 것 저장" : "저장"}</Button>
                   </div>
                 </div>
               ) : <p className="mt-2 text-sm text-ink-3"><Link to="/login?next=/mock/plan" className="font-semibold underline underline-offset-4">로그인</Link>하면 내 와이어에 저장합니다.</p>}
@@ -743,10 +778,25 @@ export function WireframeScreen() {
 
             <div className="rounded-card border border-line p-5">
               <h4 className="text-md font-bold">이 와이어로 시안 받기</h4>
-              <Copy className="mt-1 text-sm text-ink-3" text="powerMCP 를 연결한 AI 도구에 아래 요청문을 붙여 넣으면 이 구성대로 시안을 만들고 판정까지 합니다." />
+              <Copy className="mt-1 text-sm text-ink-3" text="powerMCP 를 연결한 AI 도구에 아래 요청문을 붙여 넣으면 이 와이어대로 시안을 만들고 판정까지 합니다. 판정도 이 와이어와 대조합니다." />
+              {/* 와이어 id — 요청문이 이 id 로 재현 묶음을 부른다. 저장 안 했거나 저장 뒤 고쳤으면 복사할 때 먼저 저장한다 */}
+              <div className="mt-3 rounded-md border border-line px-3 py-2.5 text-sm">
+                {liveId ? (
+                  <>
+                    <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                      <span className="font-semibold text-ink-2">와이어 id</span>
+                      <code className="rounded bg-ground-3 px-1.5 py-0.5 font-mono text-xs text-ink">{liveId}</code>
+                    </span>
+                    {wireLink && <a href={wireLink} className="mt-1 block break-all text-xs text-ink-4 underline underline-offset-2">{wireLink}</a>}
+                  </>
+                ) : (
+                  <Copy className="text-ink-3" text={!me ? "로그인해 저장하면 와이어 id 가 요청문에 들어갑니다. id 가 없으면 AI 가 와이어를 받지 못해 레퍼런스 배치로 만들 수 있습니다." : dirty ? "저장한 뒤 고쳤습니다. 요청문을 복사하면 고친 것을 먼저 저장하고 그 id 를 넣습니다." : "아직 저장하지 않았습니다. 요청문을 복사하면 먼저 저장하고 와이어 id 를 넣습니다."} />
+                )}
+              </div>
               <pre className="mt-3 max-h-none whitespace-pre-wrap break-words rounded-md bg-ground-2 p-3 text-xs leading-[1.6] text-ink-2">{prompt}</pre>
               <div className="mt-3 flex flex-wrap gap-2">
-                <Button size="sm" variant="outline" onClick={() => copyText(prompt, "요청문을 복사했습니다.")}><CopyIcon aria-hidden />요청문 복사</Button>
+                <Button size="sm" variant="outline" onClick={() => void copyPrompt()}><CopyIcon aria-hidden />{liveId || !me ? "요청문 복사" : "저장하고 요청문 복사"}</Button>
+                {liveId && <Button size="sm" variant="outline" onClick={() => copyText(liveId, "와이어 id 를 복사했습니다.")}><CopyIcon aria-hidden />id 복사</Button>}
                 <Button size="sm" variant="outline" asChild><Link to="/powermcp"><ExternalLink aria-hidden />연결 방법</Link></Button>
               </div>
             </div>

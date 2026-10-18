@@ -39,7 +39,7 @@ import { z } from "zod";
 import { AssemblyResult, taxonomy } from "@pp/shared";
 import { registerGuideTools } from "./tools/guide.ts";
 import { registerDeckKitTools } from "./tools/deck-kit.ts";
-import { registerMockWireTools } from "./tools/mock-wire.ts";
+import { registerMockWireTools, resolveWire, wireContent, mergeWireKit, compactWire, wireArg, wireIdArg, type WireDoc } from "./tools/mock-wire.ts";
 
 // ---------------------------------------------------------------- [공통] 설정·별칭·백엔드 호출
 /** 새 플랫폼 REST v1 (끝에 /api/v1) */
@@ -300,11 +300,12 @@ const INSTRUCTIONS = [
   "★ 시안·목업·홈페이지를 만들어 달라는 요청은 mock_get_replica_kit 이 기본이다(가장 품질이 높다).",
   "  - 메인: mock_get_replica_kit(org_type, org_name, primary?) → 참고 이미지와 같은 배치로 직접 HTML 한 파일을 만든다. 글·사진·로고·색은 persona·samples·theme 로 전부 바꾸고, </body> 앞에 <script data-hb-behavior></script> 한 줄을 넣어(스크립트는 mock_check_mockup 이 채운다) 캐러셀·탭·메뉴·레이어·검색이 실제로 동작하게 한다.",
   "  - 서브: 같은 org_type·org_name·primary·rank 에 page=board_list|board_view|greeting|content… 를 붙여 한 장씩 받는다. 가상 기관·색이 메인과 같게 나온다. 머리·바닥·공통 스타일은 다시 쓰지 않는다 — mock_check_mockup 에 base_token(메인 시안 token)을 주고 <!--hb:use style--> · <!--hb:use header--> · <!--hb:use footer--> 를 적으면 홈박스가 메인 것을 넣는다.",
+  "  - ★ 와이어가 있으면 와이어대로 — 사용자가 powerMock 기획 화면에서 만든 와이어(id·링크) 또는 mock_get_wireframe 의 wire 가 있으면 mock_get_replica_kit(wire_id=… 또는 wire=…) 로 받는다. 배치의 기준이 와이어(줄 순서·칸 수·12칸 폭·칸 종류)가 되고, 레퍼런스는 칸마다 그리는 법의 재료다. 본문 줄·칸에 data-wire-row·data-wire-cell 을 달고(reference.wire.markup), 칸마다 content(예시 글·그림 종류)를 채운다. 와이어를 두고 레퍼런스 배치로 만들지 않는다. 판정(mock_check_mockup)도 레퍼런스가 아니라 와이어와 대조한다(wire_match).",
   "  - 시안을 여러 개 만들 때는 rank 를 1·2·3 으로 바꿔 서로 다른 레퍼런스를 받는다.",
   "  - 글자 크기나 칸 안쪽이 안 읽히면 zoom=true 로 한 번 더 불러 본문 폭 확대 이미지를 받는다.",
   "  - rows·sections·columns 는 자동 분해라 틀릴 수 있다. 참고 이미지와 다르면 이미지가 우선이다.",
   "  - 메인 묶음은 레퍼런스 여러 곳(A·B·C)의 줄을 섞은 배치다(reference.mix) — 한 사이트를 통째로 베끼지 않기 위해서다. 줄마다 출처가 달라도 한 사이트처럼 보이게 제목·둥글기·간격을 통일하고, 섹션 제목은 새로 짓는다. 색은 theme.primary(레퍼런스와 다른 색)를 쓴다.",
-  "  - 다 만들면 mock_check_mockup(ref_id=reference.ref_id, html) 을 반드시 부른다. 홈박스가 시안을 보관하고 실제로 렌더해 레퍼런스와 줄·칸·높이·밝기를 대조하고 동작을 눌러 본 뒤 점수·fixes·token 을 준다(85점 이상·치명 0 이 통과). 스스로 다 됐다고 판단하지 않고, 통과할 때까지 고쳐 다시 판정한다(미통과 시안은 결과로 남지 않는다).",
+  "  - 다 만들면 mock_check_mockup(ref_id=reference.ref_id, html) 을 반드시 부른다. 홈박스가 시안을 보관하고 실제로 렌더해 레퍼런스와 줄·칸·높이·밝기를(와이어 묶음이면 와이어와 줄 순서·칸 수·칸 폭·칸 종류를) 대조하고 동작을 눌러 본 뒤 점수·fixes·token 을 준다(85점 이상·치명 0 이 통과). 스스로 다 됐다고 판단하지 않고, 통과할 때까지 고쳐 다시 판정한다(미통과 시안은 결과로 남지 않는다).",
   "  - 미통과면 HTML 을 처음부터 다시 쓰지 않는다. mock_check_mockup(token, edits=[{find, replace}]) 로 고친 부분만 보낸다(ref_id 는 보관된 것을 쓴다. 전체를 다시 쓰면 10분씩 걸린다).",
   "  mock_build_homepage·mock_get_main_mockup 은 빠른 초안용이다(자동 조립이라 레퍼런스 수준에는 못 미친다). 사용자가 초안을 직접 요청하지 않았으면 쓰지 않는다.",
   "  - 사진·배너·아이콘은 samples·icons 에 있는 것을 그대로 쓴다. 그림을 SVG 로 직접 그려 대신하지 않는다(만화처럼 보여 시안 품질이 크게 떨어진다).",
@@ -323,7 +324,7 @@ const INSTRUCTIONS = [
   "4-4) mock_get_page_code(screen_id) — exemplars 화면 한 장을 바로 열리는 HTML 문서로 조립(LNB 2단 배치·샘플 사진 포함, Pro). 화면 한 장을 참고할 때 쓴다(시안 제작은 mock_get_replica_kit(page=…)).",
   "4-5) mock_get_sample_images(kind|section_type, tags?) — 목업 사진·배너 자리에 넣을 샘플 이미지. mock_get_section_code 는 이미 사진 자리에 넣어 준다.",
   "4-6) mock_assemble_screen(keyword, screen_type, org_type?) — 디자인 조립 명세(Assembly Spec JSON). 후보 화면 → 섹션 → 패턴(PatternSummary) → 컴포넌트(ComponentPlan) → 슬롯 배치를 거쳐, 슬롯마다 원본 section_id(ref)와 근거(rationale)를 붙이고 품질 게이트 7종(근거·복제 방지·원본 색 금지·KRDS·접근성·출처·삭제요청) 결과를 준다. 목업·코드는 이 명세의 슬롯 순서·영역·칸 수대로 만들고, 스타일은 spec.theme(KRDS 또는 고객 주색)만 쓴다 — 원본 기관 색을 쓰지 않는다. 각 슬롯의 근거 화면은 ref → mock_get_section_code·mock_get_screen 으로 본다. 응답 code 의 Page.tsx·Page.vue·theme.css 가 그 명세의 키트 구현이다(글·연락처는 가상 값).",
-  "4-7) mock_get_replica_kit(org_type, org_name?, rank?, page?, primary?) — 시안·목업의 품질이 중요할 때(\"홈페이지 시안\", \"실제 사이트처럼\")는 이것을 쓴다. 레퍼런스 캡처와 줄·칸 좌표, 샘플 이미지, 아이콘, 동작 스크립트, 제작 절차를 한 번에 받고 직접 HTML 을 만든다: 배치는 레퍼런스와 같게(칸을 비우거나 넓게 늘이지 않는다), 글·이미지·색은 전부 바꾸고, 조작 요소는 전부 실제로 동작하게. 시안이 2종이면 rank 1·2 로 두 번 부른다. 빠른 초안은 mock_get_main_mockup·mock_build_homepage.",
+  "4-7) mock_get_replica_kit(org_type, org_name?, rank?, page?, primary?, wire_id?|wire?) — 와이어가 있으면 wire_id(또는 wire)를 꼭 넘긴다(배치 = 와이어). 시안·목업의 품질이 중요할 때(\"홈페이지 시안\", \"실제 사이트처럼\")는 이것을 쓴다. 레퍼런스 캡처와 줄·칸 좌표, 샘플 이미지, 아이콘, 동작 스크립트, 제작 절차를 한 번에 받고 직접 HTML 을 만든다: 배치는 레퍼런스와 같게(칸을 비우거나 넓게 늘이지 않는다), 글·이미지·색은 전부 바꾸고, 조작 요소는 전부 실제로 동작하게. 시안이 2종이면 rank 1·2 로 두 번 부른다. 빠른 초안은 mock_get_main_mockup·mock_build_homepage.",
   "4-8) mock_get_behavior_kit — 캐러셀·탭·메뉴·레이어·검색을 움직이게 하는 스크립트와 규약. 직접 만든 시안은 반드시 이것으로 동작을 넣는다(모양만 있는 시안은 미완성).",
   "4-9) mock_get_design_preferences — 디자이너 A/B 투표로 더 낫다고 고른 UI 방식(두 번째 근거). mock_get_replica_kit 응답의 preferences 와 mock_check_mockup 의 preference_tips 에도 실린다. 요소를 어떻게 그릴지(스테퍼냐 드롭다운이냐 등)는 이 규칙을 따르고, 배치는 레퍼런스를 따른다.",
   "5) guide_krds — KRDS 컴포넌트 공식 가이드 링크. 관공서는 KRDS 준수가 평가 요소다.",
@@ -592,10 +593,14 @@ function buildServer(key: string | null): McpServer {
   server.registerTool("mock_get_main_mockup", {
     title: "메인 목업(조립형)",
     description: "[빠른 초안 전용 — 사용자가 초안을 직접 요청했을 때만. 시안·홈페이지 요청은 mock_get_replica_kit] 관공서 메인을 한 장으로 조립한다. 본문 = 레퍼런스 메인 화면의 행 구성(칸 너비 비율·섹션 모양: 최근 게시물 사진 히어로·알림판 캐러셀·분야 탭 띠·달력·인물 띠·배너 롤링…)을 그대로 따른다 — 같은 유형이라도 rank 를 바꾸면 다른 레퍼런스(다른 구성)가 나온다. 레퍼런스에 없는 필수 블록은 메인 118곳 채택률(바로가기 99%·소식 탭 92%·푸터 87%·배너모음 81%·전자정부 표지 75%·캐러셀 제어 70%…, composition 에 근거), 디자인 토큰 = 레퍼런스 사이트, 메뉴·바로가기·탭 이름 = 레퍼런스 화면 수집값. 메인 비주얼·알림판·배너 캐러셀(자동 재생·이전·정지·다음), 소식 탭(방향키), 메가 메뉴, 통합검색·전체메뉴 레이어, 관련사이트 드롭다운이 실제로 동작한다. 기관·인물·글은 가상 샘플. org_type 만 주면 가중 점수 1위 레퍼런스, ref(slug)로 지정 가능. Pro 이상.",
-    inputSchema: { org_type: z.string().optional(), org_name: z.string().max(30).optional().describe("고객 기관명(예: 청주시청) — 기관 종류(시·군·구·도·청…)에 맞는 가상 기관(한빛시·새솔군·푸른구…)으로 만든다. 레퍼런스가 구청이어도 시청 요청은 시로 나온다. 실제 기관명·로고로 바꾸는 것은 받은 HTML 에서"), ref: z.string().optional(), rank: z.number().int().min(1).max(50).optional().describe("1=가중 점수 1위 레퍼런스, 2·3…=다음 순위(다른 구성)") },
+    inputSchema: { org_type: z.string().optional(), org_name: z.string().max(30).optional().describe("고객 기관명(예: 청주시청) — 기관 종류(시·군·구·도·청…)에 맞는 가상 기관(한빛시·새솔군·푸른구…)으로 만든다. 레퍼런스가 구청이어도 시청 요청은 시로 나온다. 실제 기관명·로고로 바꾸는 것은 받은 HTML 에서"), ref: z.string().optional(), rank: z.number().int().min(1).max(50).optional().describe("1=가중 점수 1위 레퍼런스, 2·3…=다음 순위(다른 구성)"),
+      wire_id: wireIdArg.optional().describe("메인 와이어 id(저장한 와이어) — 주면 본문 줄을 와이어 순서·칸 폭으로 놓는다(빠진 블록을 더하지 않는다). 서브 화면 와이어는 mock_get_replica_kit"),
+      wire: wireArg.optional().describe("메인 와이어 JSON — wire_id 가 없을 때(내 와이어에 저장해 id 를 만든다)") },
   }, async (a) => {
     const g = await guard("mock_get_main_mockup"); if (g) return g;
-    const r = await get<Record<string, unknown> & { html?: string; sample_images?: SampleImage[]; site_slug?: string; screen_id?: number }>(`/mockups/main?${qs({ org_type: a.org_type, org_name: a.org_name, ref: a.ref, rank: a.rank })}`);
+    let wd: { id: string | null; wire: WireDoc } | null = null;
+    if (a.wire_id || a.wire) { const rw = await resolveWire({ pp, key, ppMsg }, { wire: a.wire, wire_id: a.wire_id }, true); if (!rw.ok) return err(rw.message, rw.code); wd = rw; }
+    const r = await get<Record<string, unknown> & { html?: string; sample_images?: SampleImage[]; site_slug?: string; screen_id?: number }>(`/mockups/main?${qs({ org_type: a.org_type, org_name: a.org_name, ref: a.ref, rank: a.rank, wire: wd ? JSON.stringify(compactWire(wd.wire)) : undefined, wire_ref: wd?.id ?? undefined })}`);
     const html = (r.html ?? "").replace(/src="(\/[^"]*\/api\/samples\/file\/|\/api\/samples\/file\/)/g, (_m, p: string) => `src="${PUBLIC_ORIGIN}${p}`);
     return { content: [{ type: "text" as const, text: JSON.stringify({ ...r, html, sample_images: (r.sample_images ?? []).map(absSample), attribution: ATTRIBUTION }) }] };
   });
@@ -611,10 +616,14 @@ function buildServer(key: string | null): McpServer {
       pages: listOf(z.enum(pageTypes)).optional().describe(`서브페이지 유형 목록(쉼표), 기본 board_list,content,greeting. ${pageTypeDesc}`),
       primary: z.string().regex(/^#[0-9A-Fa-f]{6}$/).optional().describe("고객 주색 — 모든 페이지에 적용"),
       font: z.string().max(40).optional().describe("고객 글꼴 이름 — 예 Noto Sans KR, Nanum Gothic"),
+      wire_id: wireIdArg.optional().describe("메인 와이어 id(저장한 와이어) — 주면 메인 본문을 와이어 순서·칸 폭으로 놓는다. 서브는 그대로(서브 와이어는 mock_get_replica_kit)"),
+      wire: wireArg.optional().describe("메인 와이어 JSON — wire_id 가 없을 때"),
     },
   }, async (a) => {
     const g = await guard("mock_build_homepage"); if (g) return g;
-    const r = await get<{ main?: { html?: string; sample_images?: SampleImage[] }; pages?: { html?: string; sample_images?: SampleImage[] }[] } & Record<string, unknown>>(`/mockups/site?${qs({ org_type: a.org_type, org_name: a.org_name, ref: a.ref, rank: a.rank, pages: a.pages, primary: a.primary, font: a.font })}`);
+    let wd: { id: string | null; wire: WireDoc } | null = null;
+    if (a.wire_id || a.wire) { const rw = await resolveWire({ pp, key, ppMsg }, { wire: a.wire, wire_id: a.wire_id }, true); if (!rw.ok) return err(rw.message, rw.code); wd = rw; }
+    const r = await get<{ main?: { html?: string; sample_images?: SampleImage[] }; pages?: { html?: string; sample_images?: SampleImage[] }[] } & Record<string, unknown>>(`/mockups/site?${qs({ org_type: a.org_type, org_name: a.org_name, ref: a.ref, rank: a.rank, pages: a.pages, primary: a.primary, font: a.font, wire: wd ? JSON.stringify(compactWire(wd.wire)) : undefined, wire_ref: wd?.id ?? undefined })}`);
     const abs = (h?: string) => (h ?? "").replace(/src="(\/[^"]*\/api\/samples\/file\/|\/api\/samples\/file\/)/g, (_m, p: string) => `src="${PUBLIC_ORIGIN}${p}`);
     const main = r.main ? { ...r.main, html: abs(r.main.html), sample_images: (r.main.sample_images ?? []).map(absSample) } : r.main;
     const pages = (r.pages ?? []).map((p) => ({ ...p, html: abs(p.html), sample_images: (p.sample_images ?? []).map(absSample) }));
@@ -623,7 +632,7 @@ function buildServer(key: string | null): McpServer {
 
   server.registerTool("mock_get_replica_kit", {
     title: "재현 묶음(실제 사이트 수준 시안을 직접 만들 재료)",
-    description: "[시안·목업·홈페이지 제작 요청의 기본 도구] 실제 관공서 사이트 수준의 시안이 필요할 때 쓴다. 레퍼런스 화면 한 장의 캡처(여러 장으로 잘라 첨부)·줄 묶음(rows)·섹션 좌표와 구성(sections)과 함께, 가상 기관(persona)·색(theme)·샘플 이미지 전체(samples)·머티리얼 아이콘(icons)·동작 스크립트와 규약(behavior)·제작 절차(procedure)·검사 기준(acceptance)을 한 번에 준다. 받은 AI 가 직접 HTML 한 파일을 만든다 — 배치(줄·칸·크기·간격·밀도)는 레퍼런스와 같게, 글·이미지·색은 전부 바꾸고, 캐러셀·탭·메뉴·레이어·검색은 behavior 규약으로 실제 동작하게. mock_get_main_mockup(자동 조립)보다 품질이 높지만 만드는 데 시간이 든다. 서브페이지는 page 에 유형을 준다(같은 사이트의 화면을 먼저 고른다).",
+    description: "[시안·목업·홈페이지 제작 요청의 기본 도구] 실제 관공서 사이트 수준의 시안이 필요할 때 쓴다. 레퍼런스 화면 한 장의 캡처(여러 장으로 잘라 첨부)·줄 묶음(rows)·섹션 좌표와 구성(sections)과 함께, 가상 기관(persona)·색(theme)·샘플 이미지 전체(samples)·머티리얼 아이콘(icons)·동작 스크립트와 규약(behavior)·제작 절차(procedure)·검사 기준(acceptance)을 한 번에 준다. 받은 AI 가 직접 HTML 한 파일을 만든다 — 배치(줄·칸·크기·간격·밀도)는 레퍼런스와 같게, 글·이미지·색은 전부 바꾸고, 캐러셀·탭·메뉴·레이어·검색은 behavior 규약으로 실제 동작하게. mock_get_main_mockup(자동 조립)보다 품질이 높지만 만드는 데 시간이 든다. 서브페이지는 page 에 유형을 준다(같은 사이트의 화면을 먼저 고른다). 사용자 와이어(wire_id 또는 wire)를 주면 배치의 기준이 와이어가 된다 — 줄 순서·칸 수·12칸 폭·칸 종류는 와이어 그대로(reference.wire.rows), 칸마다 같은 종류를 그린 레퍼런스 섹션(참고 이미지 조각)·예시 내용(content)·근거(ev)가 붙고, 판정도 와이어와 대조한다. 와이어가 있는데 빼고 부르지 않는다.",
     inputSchema: {
       org_type: z.string().optional().describe("기관 유형 id — 예 local_basic·central_ministry·public_corp·edu_univ_private·edu_school·etc_welfare·etc_assoc·private_corp·private_culture. 비우면 org_name 으로 짐작한다(대학교·학교·복지관·재단·협회·미술관·회사 등). 게시 레퍼런스가 없는 종류는 가까운 종류로 넓혀 고른다"),
       org_name: z.string().max(30).optional().describe("고객 기관명(예: 청운군청·한빛대학교·한빛복지관·한빛문화재단·한빛솔루션) — 관공서·대학·학교·복지관·재단·협회·문화시설·기업 어느 종류든 된다. 기관장 직함(시장·총장·교장·관장·이사장·대표이사)·주 메뉴·문구가 그 종류에 맞게 나온다. 없으면 레퍼런스 종류에 맞는 가상 기관"),
@@ -636,21 +645,36 @@ function buildServer(key: string | null): McpServer {
       lang: z.enum(["ko", "en", "ja", "zh", "fr", "es", "de", "vi"]).optional().describe("제작 언어(허용값: ko·en·ja·zh·fr·es·de·vi) — 생략하면 한국어. 영어·일본어 등이면 응답 language.rule 대로 메뉴·본문·기관 이름까지 그 언어로 만든다"),
       zoom: z.boolean().optional().describe("true 면 참고 이미지를 본문 폭만 잘라 더 크게 준다(좌우 여백 제외). 처음엔 생략해 전체를 보고, 글자 크기·칸 안쪽이 안 읽히면 true 로 한 번 더 부른다"),
       icon_style: z.string().max(40).optional().describe(iconStyleDesc),
+      wire_id: wireIdArg.optional().describe("사용자가 저장한 와이어 id(powerMock 기획 화면·mock_get_wireframe 저장본) — 주면 시안 배치의 기준이 와이어가 된다(줄 순서·칸 수·12칸 폭·칸 종류). 화면 종류(page)는 와이어 것을 쓴다. 내 와이어만 읽는다"),
+      wire: wireArg.optional().describe("와이어 JSON(mock_get_wireframe 의 wire 꼴) — wire_id 가 없을 때. 받은 와이어는 내 와이어에 저장해 id 를 만든다(판정이 그 id 로 와이어를 다시 찾는다)"),
     },
   }, async (a) => {
     const g = await guard("mock_get_replica_kit"); if (g) return g;
-    const r = await get<Record<string, unknown> & { reference?: { capture_url?: string | null; site_slug?: string; screen_id?: number; width?: number; height?: number } }>(`/mockups/replica?${qs({ org_type: a.org_type, org_name: a.org_name, ref: a.ref, rank: a.rank, page: a.page, primary: a.primary, width: a.width, font: a.font, lang: a.lang, icon_style: a.icon_style })}`);
+    // 와이어 묶음(2026-10-18): 와이어를 읽어(근거 ev 포함) 레퍼런스 엔진에 넘기고, 칸마다 예시 내용을 붙인다. 와이어가 없으면 예전 그대로
+    let wd: { id: string | null; wire: WireDoc; note?: string } | null = null;
+    if (a.wire_id || a.wire) {
+      const rw = await resolveWire({ pp, key, ppMsg }, { wire: a.wire, wire_id: a.wire_id }, true);
+      if (!rw.ok) return err(rw.message, rw.code, "wire_id 는 내 와이어 id, wire 는 {screen, org, rows:[{zone, cols:[{k, span}]}]} 꼴");
+      wd = rw;
+    }
+    const r = await get<Record<string, unknown> & { reference?: { capture_url?: string | null; site_slug?: string; screen_id?: number; width?: number; height?: number } }>(`/mockups/replica?${qs({ org_type: a.org_type, org_name: a.org_name, ref: a.ref, rank: a.rank, page: wd ? wd.wire.screen : a.page, primary: a.primary, width: a.width, font: a.font, lang: a.lang, icon_style: a.icon_style, wire: wd ? JSON.stringify(compactWire(wd.wire)) : undefined, wire_ref: wd?.id ?? undefined })}`);
     const ref = r.reference ?? {};
     const cbox = (ref as { content?: { x: number; w: number } }).content;
     const zoom = a.zoom && cbox ? { x: cbox.x, w: cbox.w, vw: ref.width ?? 1920 } : undefined;
-    type Piece = { src: string; screen_id: number; src_y: number; src_h: number; y: number; h: number; capture_url?: string | null; image_withheld?: string | null };
-    const mix = (ref as { mix?: { pieces?: Piece[] } | null }).mix ?? null;
-    let slices: Array<{ block: ImageBlock; from: number; to: number; scale: number; src?: string }> = [];
+    type Piece = { src: string; screen_id: number; src_y: number; src_h: number; y: number; h: number; capture_url?: string | null; image_withheld?: string | null; src_x?: number; src_w?: number; wire_row?: number; wire_col?: number };
+    const wref = (ref as { wire?: { pieces?: Piece[]; rows?: Array<{ no: number; cells: Array<Record<string, unknown>> }>; wire_ref?: string } | null }).wire ?? null;
+    if (wd && wref?.rows) {
+      const content = await wireContent({ pp, key }, wd.wire);
+      mergeWireKit(wref.rows, wd.wire, content, String((r.persona as { org?: string } | undefined)?.org ?? "") || null);
+    }
+    // 와이어 묶음의 참고 이미지는 칸마다 그 재료 섹션만 잘라 준다(src_x·src_w) — 섞기 조각과 같은 길로 싣는다
+    const mix = (ref as { mix?: { pieces?: Piece[] } | null }).mix ?? wref ?? null;
+    let slices: Array<{ block: ImageBlock; from: number; to: number; scale: number; src?: string; cell?: string }> = [];
     if (pro && mix?.pieces?.length) {
       // 섞기: 조각마다 공평하게 — A가 앞쪽이라 14장 상한을 다 먹는 문제(B조각 누락) 방지.
       // 각 조각 최대 6장씩 먼저 다 받아온 뒤 라운드로빈으로 14장까지만 싣는다(조각당 최소 1장 보장).
       const perPiece = await Promise.all(mix.pieces.map((p) =>
-        refSlices(p.capture_url, `mix ${p.src}`, 900, 1500, 6, zoom, { y: p.src_y, h: p.src_h }),
+        refSlices(p.capture_url, `${wref ? "wire" : "mix"} ${p.src}`, 900, 1500, 6, p.src_x != null && p.src_w ? { x: p.src_x, w: p.src_w, vw: ref.width ?? 1920 } : zoom, { y: p.src_y, h: p.src_h }),
       ));
       const pieces = mix.pieces;
       const missing: string[] = [];
@@ -668,7 +692,7 @@ function buildServer(key: string | null): McpServer {
           const s = part[round];
           const p = pieces[i];
           if (s && p && slices.length < 14 && (round === 0 || bytes + s.block.data.length <= 380_000)) {
-            slices.push({ ...s, from: p.y + s.from, to: p.y + s.to, src: p.src });
+            slices.push({ ...s, from: p.y + s.from, to: p.y + s.to, src: p.src, cell: p.wire_row ? `와이어 ${p.wire_row}번 줄${p.wire_col && p.src_w ? ` ${p.wire_col}번 칸` : ""}` : undefined });
             bytes += s.block.data.length;
           }
         });
@@ -689,9 +713,13 @@ function buildServer(key: string | null): McpServer {
     const singleWithheld = !mix ? koglWithheld((ref as { kogl?: KoglInfo }).kogl, ref.capture_url) : null;
     if (singleWithheld) (ref as Record<string, unknown>).images_missing = { withheld: [`${ref.site_slug ?? "?"} screen ${ref.screen_id ?? "?"} — ${singleWithheld}`], withheld_reason: "공공누리 제한(2~4유형)으로 원본 이미지를 제공하지 않는다 — 오류가 아니다. 이미지가 필요하면 rank 를 바꿔 다른 레퍼런스를 받는다." };
     const scale = slices[0]?.scale ?? null;
-    const data = { ...r, reference: { ...ref, capture_url: undefined, images: slices.length ? { count: slices.length, width: 900, scale, x_offset: zoom ? zoom.x : 0, note: `${zoom ? `본문 폭만 자른 확대본이다(원본 x ${zoom.x}~${zoom.x + zoom.w}). 원본 x = 이미지 x ÷ scale + x_offset. ` : ""}참고 이미지는 원본의 ${scale ? Math.round(scale * 100) : "?"}% 크기다. 이미지에서 잰 px ÷ scale = 원본 px. sections 의 x·y·w·h(원본 px)는 자동 분해라 칸이 빠지거나 합쳐졌을 수 있다 — 이미지와 다르면 이미지가 우선이다.` } : null }, attribution: ATTRIBUTION };
+    const data = { ...r, reference: { ...ref, capture_url: undefined, images: slices.length ? { count: slices.length, width: 900, scale, x_offset: zoom ? zoom.x : 0, note: `${zoom ? `본문 폭만 자른 확대본이다(원본 x ${zoom.x}~${zoom.x + zoom.w}). 원본 x = 이미지 x ÷ scale + x_offset. ` : ""}참고 이미지는 원본의 ${scale ? Math.round(scale * 100) : "?"}% 크기다. 이미지에서 잰 px ÷ scale = 원본 px. sections 의 x·y·w·h(원본 px)는 자동 분해라 칸이 빠지거나 합쳐졌을 수 있다 — 이미지와 다르면 이미지가 우선이다.` } : null }, attribution: ATTRIBUTION,
+      ...(wd ? { wire_id: wd.id, wire_link: wd.id ? `${PP_PUBLIC}/mock/plan?wire=${encodeURIComponent(wd.id)}` : null, ...(wd.note ? { wire_save_note: wd.note } : {}),
+        wire_next: `다 만들면 mock_check_mockup(ref_id=reference.ref_id, html${wd.id ? "" : ", wire=같은 와이어"}) — 레퍼런스가 아니라 이 와이어와 줄 순서·칸 수·칸 폭·칸 종류를 대조한다(와이어 일치 wire_match).` } : {}) };
     const content: Array<TextBlock | ImageBlock> = [{ type: "text", text: JSON.stringify(data) }];
-    slices.forEach((s, i) => content.push({ type: "text", text: `[참고 이미지 ${i + 1}/${slices.length}] ${s.src ? `출처 ${s.src} · 시안 y ${s.from}~${s.to}px 구간` : `레퍼런스 캡처 y ${s.from}~${s.to}px (원본 px 기준)`} — 이 구간의 줄·칸·글자 크기·둥글기·겹침을 그대로 따른다${s.src ? "(가로는 본문 폭 container_w 에 맞춘다)" : ""}` }, s.block));
+    slices.forEach((s, i) => content.push({ type: "text", text: s.cell
+      ? `[참고 이미지 ${i + 1}/${slices.length}] ${s.cell} 재료 — 출처 ${s.src} · 시안 y ${s.from}~${s.to}px. 칸 안 구성·밀도·글자 크기·둥글기만 읽는다(배치·폭은 reference.wire.rows 대로)`
+      : `[참고 이미지 ${i + 1}/${slices.length}] ${s.src ? `출처 ${s.src} · 시안 y ${s.from}~${s.to}px 구간` : `레퍼런스 캡처 y ${s.from}~${s.to}px (원본 px 기준)`} — 이 구간의 줄·칸·글자 크기·둥글기·겹침을 그대로 따른다${s.src ? "(가로는 본문 폭 container_w 에 맞춘다)" : ""}` }, s.block));
     if (!slices.length) content.push({ type: "text", text: singleWithheld
       ? `참고 이미지 미제공 — 공공누리 제한: ${singleWithheld} rank 를 바꾸면 이미지가 있는 다른 레퍼런스를 받을 수 있습니다.`
       : pro
@@ -766,7 +794,7 @@ function buildServer(key: string | null): McpServer {
   const checkOrg = new Map<string, string>();
   server.registerTool("mock_check_mockup", {
     title: "시안 판정(보관·렌더·대조·고칠 목록)",
-    description: "mock_get_replica_kit 으로 만든 시안을 홈박스가 보관하고 실제 브라우저로 렌더해 판정한다 — 레퍼런스와 줄·칸 수·높이·밝기 구성 대조, 레퍼런스 기관 정보 노출, 안 뜨는 이미지·외부 이미지, 빈 칸·글자 기호·세로 중심 게이트, 캐러셀·탭·메뉴·레이어·검색 실제 동작. 점수(100)·고칠 목록(fixes)·token 을 주고, Pro 면 레퍼런스|시안 나란히 이미지도 준다. 85점 이상·치명 항목 0 이 통과. ① 처음: mock_check_mockup(ref_id, html). ② 미통과: HTML 을 처음부터 다시 쓰지 말고 mock_check_mockup(token, edits=[{find, replace}]) 로 고친 부분만 보낸다(find 는 시안 원문에 한 번만 나오는 글자 그대로). ③ 통과: mock_publish_mockup(token). 미통과인 채로 끝내지 않는다(미통과 시안은 목록·갤러리에 남지 않는다). 받아쓰기 줄이기: 동작 스크립트는 <script data-hb-behavior></script> 한 줄만 적으면 채워지고, 서브 페이지는 base_token 과 <!--hb:use style|header|footer--> 로 메인의 공통 부분을 채운다. 한 번에 수십 초 걸린다. 부르기 전에 mock_get_replica_kit 응답 맨 앞의 preflight 10가지(가로 스크롤·반응형·본문 폭·세로 간격·높이·동작·주 메뉴·호버·서브 비주얼·게이트)를 직접 확인하면 한 번에 통과한다.",
+    description: "mock_get_replica_kit 으로 만든 시안을 홈박스가 보관하고 실제 브라우저로 렌더해 판정한다 — 레퍼런스와 줄·칸 수·높이·밝기 구성 대조(와이어 묶음 ref_id(wire1:…)이거나 wire_id·wire 를 주면 레퍼런스 대신 와이어와 줄 순서·칸 수·칸 폭·칸 종류를 대조하는 wire_match — 와이어와 다르면 치명, 높이는 참고만), 레퍼런스 기관 정보 노출, 안 뜨는 이미지·외부 이미지, 빈 칸·글자 기호·세로 중심 게이트, 캐러셀·탭·메뉴·레이어·검색 실제 동작. 점수(100)·고칠 목록(fixes)·token 을 주고, Pro 면 레퍼런스|시안 나란히 이미지도 준다. 85점 이상·치명 항목 0 이 통과. ① 처음: mock_check_mockup(ref_id, html). ② 미통과: HTML 을 처음부터 다시 쓰지 말고 mock_check_mockup(token, edits=[{find, replace}]) 로 고친 부분만 보낸다(find 는 시안 원문에 한 번만 나오는 글자 그대로). ③ 통과: mock_publish_mockup(token). 미통과인 채로 끝내지 않는다(미통과 시안은 목록·갤러리에 남지 않는다). 받아쓰기 줄이기: 동작 스크립트는 <script data-hb-behavior></script> 한 줄만 적으면 채워지고, 서브 페이지는 base_token 과 <!--hb:use style|header|footer--> 로 메인의 공통 부분을 채운다. 한 번에 수십 초 걸린다. 부르기 전에 mock_get_replica_kit 응답 맨 앞의 preflight 10가지(가로 스크롤·반응형·본문 폭·세로 간격·높이·동작·주 메뉴·호버·서브 비주얼·게이트)를 직접 확인하면 한 번에 통과한다.",
     inputSchema: {
       ref_id: z.string().max(400).optional().describe("mock_get_replica_kit 응답의 reference.ref_id 를 그대로"),
       screen_id: z.number().int().optional().describe("(이전 방식) reference.screen_id — ref_id 가 없을 때만"),
@@ -777,6 +805,8 @@ function buildServer(key: string | null): McpServer {
       title: z.string().max(120).optional().describe("시안 이름"),
       device: z.enum(["pc", "mobile"]).optional().describe("기본 pc(1920). mobile 은 390 폭"),
       org_name: z.string().max(80).optional().describe("재현 묶음의 persona.org(시안에 쓴 기관명) — 주면 title·로고·h1 에 그 이름이 있는지 확인한다. 다시 판정(token)할 때는 생략해도 앞서 준 값을 쓴다"),
+      wire_id: wireIdArg.optional().describe("와이어 판정 — 저장한 와이어 id. 와이어 묶음(ref_id 가 wire1: 로 시작)은 생략해도 ref_id 의 와이어를 쓴다. 주면 줄·칸 대조를 레퍼런스 대신 이 와이어로 한다"),
+      wire: wireArg.optional().describe("와이어 판정 — 와이어 JSON(저장하지 않은 와이어). wire_id 와 같은 뜻"),
     },
   }, async (a) => {
     const g = await guard("mock_check_mockup"); if (g) return g;
@@ -788,6 +818,16 @@ function buildServer(key: string | null): McpServer {
     if (!d.ok || !d.json?.token) return err(d.json?.error?.message ?? `시안을 보관하지 못했습니다(HTTP ${d.status}).`, d.json?.error?.code ?? "ERROR");
     if (!refId) refId = String(d.json.ref_id ?? "");
     if (!refId) return err("이 시안에는 보관된 ref_id 가 없습니다. ref_id 를 함께 보내세요(mock_get_replica_kit 응답의 reference.ref_id).", "INVALID_ARGS", undefined, { field: "ref_id" });
+    // 와이어 판정(2026-10-18): 인자 wire·wire_id 가 먼저, 없으면 와이어 묶음 ref_id(wire1:{와이어 id}:…)의 와이어. 다시 판정(token)도 보관된 ref_id 로 같은 와이어를 찾는다
+    let judgeWire: WireDoc | null = null;
+    const wid = a.wire_id ?? (refId.match(/^wire1:([A-Za-z0-9_-]{1,40}):/)?.[1] ?? "");
+    if (a.wire || (wid && wid !== "-")) {
+      const rw = await resolveWire({ pp, key, ppMsg }, a.wire ? { wire: a.wire } : { wire_id: wid }, false);
+      if (!rw.ok) return err(`와이어 판정 기준을 읽지 못했습니다 — ${rw.message}`, rw.code, "wire_id 는 내 와이어 id, 또는 wire 에 와이어 JSON 을 보낸다", { field: a.wire ? "wire" : "wire_id" });
+      judgeWire = rw.wire;
+    } else if (refId.startsWith("wire1:")) {
+      return err("와이어 묶음 시안인데 와이어가 저장돼 있지 않습니다 — mock_check_mockup 에 같은 wire(JSON)를 함께 보내세요.", "INVALID_ARGS", "mock_get_replica_kit 응답 wire_save_note 참고", { field: "wire" });
+    }
     type Piece = { capture_url?: string | null; judge_url?: string | null; src_y: number; src_h: number; y: number; width: number };
     type Ref = { capture_url?: string | null; judge_url?: string | null; site_slug?: string; height?: number; pieces?: Piece[] } & Record<string, unknown>;
     let ref: Ref;
@@ -815,11 +855,11 @@ function buildServer(key: string | null): McpServer {
       // 판정 브라우저는 사용자 HTML 을 그리므로 샌드박스를 켠다(O-34). Playwright 는 chromiumSandbox:true 를 줘야 --no-sandbox 를 안 붙인다(args 에서 빼는 것만으론 안 켜진다). 서버는 AppArmor 프로필(scripts/apparmor-pw-headless-shell)이 있어야 뜬다 —
       // 프로필이 없는 서버(이관 직후 등)에선 PP_JUDGE_NO_SANDBOX=1 로 예전처럼 끌 수 있다
       const judgeArgs = engine === "chromium" ? [...(process.env.PP_JUDGE_NO_SANDBOX === "1" ? ["--no-sandbox"] : []), "--disable-dev-shm-usage"] : [];
-      const { result, compare, thumb } = await checkMockup({ html, ref, refImage, sharp, want, textKeys: await textSampleKeys(), iconKeys: textKeyCache.icons, peers: Array.isArray(d.json.peers) ? d.json.peers : [], width: a.device === "mobile" ? 390 : 1920, launch: () => pw[engine].launch({ args: judgeArgs, chromiumSandbox: engine === "chromium" && process.env.PP_JUDGE_NO_SANDBOX !== "1" }) });
-      const rec = await internal(`mockup-pages/${token}/check`, { score: result.score, pass: result.pass, ref_id: refId, result: { ...result, rows: undefined }, thumb: thumb ? thumb.toString("base64") : undefined, device: a.device ?? "pc", page: refId.startsWith("mix1:") ? "main" : String((ref as { page_type?: string }).page_type ?? "") }).catch(() => null);
+      const { result, compare, thumb } = await checkMockup({ html, ref, refImage, sharp, want, textKeys: await textSampleKeys(), iconKeys: textKeyCache.icons, peers: Array.isArray(d.json.peers) ? d.json.peers : [], width: a.device === "mobile" ? 390 : 1920, wire: judgeWire, launch: () => pw[engine].launch({ args: judgeArgs, chromiumSandbox: engine === "chromium" && process.env.PP_JUDGE_NO_SANDBOX !== "1" }) });
+      const rec = await internal(`mockup-pages/${token}/check`, { score: result.score, pass: result.pass, ref_id: refId, result: { ...result, rows: undefined }, thumb: thumb ? thumb.toString("base64") : undefined, device: a.device ?? "pc", page: refId.startsWith("mix1:") ? "main" : judgeWire?.screen ?? String((ref as { page_type?: string }).page_type ?? "") }).catch(() => null);
       // 기록이 안 되면 점수·통과가 DB 에 NULL 로 남아 게시가 막힌다 — 조용히 넘기지 않고 로그에 남긴다(PP_JUDGE_SECRET 누락이 흔한 원인)
       if (!rec?.ok) console.error(`[mcp] 판정 기록 실패 token=${token.slice(0, 8)} status=${rec?.status ?? "-"} ${rec?.json?.error?.message ?? ""}${JUDGE_SECRET ? "" : " (PP_JUDGE_SECRET 없음)"}`);
-      console.log(`[mcp] mock_check_mockup key=${keyId} token=${token.slice(0, 8)} ref=${refId.slice(0, 40)} score=${result.score} pass=${result.pass} fixes=${result.fixes.length}[${result.fixes.map((f: string) => String(f).split(/[ ·:(—]/)[0]).join(",")}] n=${a.token ? "re" : 1} bytes=${html.length}${a.edits ? ` edits=${a.edits.length}` : ""}`);
+      console.log(`[mcp] mock_check_mockup key=${keyId} token=${token.slice(0, 8)} ref=${refId.slice(0, 40)} score=${result.score} pass=${result.pass}${result.wire_match ? ` wire=${result.wire_match.score}${result.wire_match.pass ? "" : "x"}` : ""} fixes=${result.fixes.length}[${result.fixes.map((f: string) => String(f).split(/[ ·:(—]/)[0]).join(",")}] n=${a.token ? "re" : 1} bytes=${html.length}${a.edits ? ` edits=${a.edits.length}` : ""}`);
       const next = result.pass
         ? `통과 — mock_publish_mockup(token="${token}") 으로 게시한다. HTML 을 다시 보내지 않는다.`
         : `미통과(${result.score}점) — fixes 를 위에서부터 고친다. HTML 전체를 다시 보내지 말고 mock_check_mockup(token="${token}", edits=[{find, replace}]) 로 고친 부분만 보낸다(ref_id 는 다시 안 줘도 된다). 85점 이상·치명 0 이 통과. 통과할 때까지 반복한다 — 미통과 시안은 사용자 목록·갤러리에 남지 않고 하루 뒤 지워지므로, 미통과인 채로 작업을 끝내거나 결과로 내놓지 않는다.`;

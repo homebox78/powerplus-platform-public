@@ -50,7 +50,7 @@ return static function (Router $r): void {
             $out['wire'] = Wire::annotate($w);
             $out['request'] = (string) ($x['request'] ?? '');
             $out['check'] = json_decode((string) ($x['check_result'] ?? 'null'), true);
-            $out['prompt'] = Wire::prompt($w, (string) ($x['request'] ?? ''));
+            $out['prompt'] = Wire::prompt($w, (string) ($x['request'] ?? ''), (string) $x['public_id']); // 저장본은 wire_id 로 시안 재료를 받게
             // 근거 — 저장해 둔 요약(wire.basis) + 지금 패턴으로 다시 계산한 분포·닮음(패턴을 다시 만들면 최신 값)
             $dist = Wire::distribution((string) $w['screen'], (string) $w['org']);
             $out['basis'] = (is_array($w['basis'] ?? null) ? $w['basis'] : []) + ['samples' => $dist['n'], 'pattern' => $dist['pattern']]

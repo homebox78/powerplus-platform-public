@@ -7,7 +7,8 @@
   "scripts": {
     "dev": "node --experimental-strip-types --no-warnings=ExperimentalWarning --watch src/index.ts",
     "start": "node --experimental-strip-types --no-warnings=ExperimentalWarning src/index.ts",
-    "typecheck": "tsc"
+    "typecheck": "tsc",
+    "test": "node --experimental-strip-types --no-warnings=ExperimentalWarning --test --test-timeout=600000 \"test/**/*.test.{mjs,ts}\""
   },
   "dependencies": {
     "@pp/shared": "workspace:*",

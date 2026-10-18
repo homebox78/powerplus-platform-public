@@ -537,7 +537,7 @@ return static function (Router $r): void {
         $set = $base !== '' ? $base : (string) ($g['token'] ?? '');
         return [
             'id' => (int) $g['id'], 'title' => (string) $g['title'] ?: '제목 없는 시안', 'score' => (int) $g['score'], 'device' => $g['device'],
-            'kind' => str_starts_with($ref, 'mix1:') ? 'mix' : 'single',
+            'kind' => str_starts_with($ref, 'mix1:') ? 'mix' : (str_starts_with($ref, 'wire1:') ? 'wire' : 'single'), // wire = 사용자 와이어로 만든 시안(2026-10-18)
             'role' => $isSub ? 'sub' : 'main', 'page' => $isSub ? ($pg !== '' && $pg !== 'main' ? $pg : null) : 'main',
             'set' => $set, 'set_size' => (int) ($setSize[$set] ?? 1),
             'thumb_url' => '/api/v1/mock/gallery/' . $g['id'] . '/thumb?v=' . strtotime((string) $g['updated_at']),

@@ -43,6 +43,9 @@ final class Router
         '/health', '/auth/', '/me', '/plans', '/policies/', '/help/', '/changelog', '/contact', '/removal', '/home/',
         '/billing', '/notifications', '/files/avatars/', '/files/works/', '/admin', '/reports', '/keys',
         '/addin/login', '/addin/logout', '/addin/announcements', '/p/', '/c/',
+        // 시안 <img> 용 샘플 그림 — 핸들러(MockSamples::sendFile)가 샘플 라이브러리 행·서명 맞는 Pro 후보만 내준다.
+        // 2026-10-16 회원 전용 전환 때 빠져 공개 시안(/p)·판정 렌더에서 그림이 전부 401 로 깨졌다(2026-10-18 운영 시험에서 발견, R71)
+        '/assets/samples/',
     ];
 
     public static function isOpen(string $method, string $path): bool

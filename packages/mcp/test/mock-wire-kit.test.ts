@@ -67,7 +67,19 @@ test("mergeWireKit — 칸마다 ev·예시 내용·샘플 종류, 가상 기관
   assert.deepEqual(c0.ev, { adopt: 88, n: 200 });
   assert.equal((c0.content as { t: string }).t, "새솔군 소식");
   assert.deepEqual((c0.content as { items: string[] }).items, ["새솔군 공지"]);
-  assert.equal((c1.content as { img: { sample_kind: string } }).img.sample_kind, "news-thumb");
+  assert.equal((c1.content as { img: { sample_kind: string } }).img.sample_kind, "video-thumb"); // 영상 썸네일 샘플이 따로 있다(MC-104)
   assert.equal(c1.label, "영상");
-  assert.equal(SAMPLE_KIND["pattern-bg"], null);
+  assert.equal(SAMPLE_KIND["pattern-bg"], "pattern-bg"); // 무늬 바탕 샘플이 따로 있다(MC-104)
+});
+
+test("mergeWireKit — 묶음 samples.for_wire 가 있으면 그 값이 먼저(null = 그 기관 대상에 없음, MC-104)", () => {
+  const kitRows = [{ no: 1, cells: [{}] }];
+  const w = { screen: "main", org: "culture", rows: [{ cols: [{ k: "banner_zone", span: 12 }] }] } as const;
+  const content = { org: null, rows: [{ cols: [{ k: "banner_zone", t: "배너", img: { kind: "banner", label: "배너" } }] }] };
+  const rows = JSON.parse(JSON.stringify(kitRows));
+  mergeWireKit(rows, w as never, content, null, { banner: null });
+  assert.equal((rows[0].cells[0].content as { img: { sample_kind: string | null } }).img.sample_kind, null);
+  const rows2 = JSON.parse(JSON.stringify(kitRows));
+  mergeWireKit(rows2, w as never, content, null);
+  assert.equal((rows2[0].cells[0].content as { img: { sample_kind: string | null } }).img.sample_kind, "strip-banner");
 });

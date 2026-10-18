@@ -82,3 +82,25 @@ test("wireRefRows — 시안 자신의 와이어 줄을 레퍼런스 줄 꼴로(
   assert.deepEqual(rows[1].cells.map((c) => c.type), ["news_tabs", "quick_links"]);
   assert.equal(rows[1].gap_above, 780 - 700);
 });
+
+test("음성 대조 — 번호는 차례대로인데 내용이 다른 줄 것이면 순서 바뀜(2026-10-18 w10)", () => {
+  // 2번 자리에 배너, 4번 자리에 비주얼 — y 는 2·3·4 차례라 예전엔 order_ok=true 였다
+  const swap = { marks: 9, rows: [
+    { ...follow.rows[0], cells: [cell("banner_zone", 0, 1920, 200, 500)] },
+    follow.rows[1],
+    { ...follow.rows[2], cells: [cell("main_visual", 260, 1400, 1260, 160)] },
+  ] };
+  const r = wireMatch(swap, wire);
+  assert.equal(r.order_ok, false);
+  assert.equal(r.pass, false);
+  assert.ok(r.fixes.some((f) => f.includes("2번 줄 자리에 4번 줄")), r.fixes.join("\n"));
+});
+
+test("머리·바닥 구역의 와이어 줄에 번호를 달아도 '없는 줄'로 안내하지 않는다(2026-10-18 w07·w08)", () => {
+  const top = { marks: 11, rows: [{ no: 1, x: 0, y: 0, w: 1920, h: 150, cells: [cell("header", 0, 1920, 0, 150)] }, ...follow.rows] };
+  const r = wireMatch(top, wire);
+  assert.equal(r.pass, true);
+  assert.ok(!r.fixes.some((f) => f.includes("와이어에 없는 줄 번호")), r.fixes.join("\n"));
+  const bogus = { marks: 11, rows: [...follow.rows, { no: 9, x: 0, y: 1500, w: 1920, h: 100, cells: [] }] };
+  assert.ok(wireMatch(bogus, wire).fixes.some((f) => f.includes("와이어에 없는 줄 번호 9")));
+});

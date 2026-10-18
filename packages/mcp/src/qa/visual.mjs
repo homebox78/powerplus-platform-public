@@ -34,8 +34,10 @@ export async function measureVisual(p) {
     if (f) {
       let last = 0; for (const k of ink) if (k.b <= ft + 1 && k.b > last && !(k.kind === "bg" && k.r - k.l > W * 0.95)) last = k.b;
       // 바닥글 바로 위 폭 가득 색 띠가 붙어 있으면 그 띠가 내용이다(띠 안쪽 여백은 띠의 몫)
-      let band = 0; for (const k of ink) if (k.kind === "bg" && k.r - k.l > W * 0.95 && k.b <= ft + 1 && k.b > ft - 4 && k.b - k.t >= 40) band = k.b;
-      out.foot = { y: Math.round(ft), gap: Math.round(ft - Math.max(last, band)) };
+      let band = null; for (const k of ink) if (k.kind === "bg" && k.r - k.l > W * 0.95 && k.b <= ft + 1 && k.b > ft - 4 && k.b - k.t >= 40) band = k;
+      // 붙은 띠면 바닥글 위 간격은 띠 안 내용 끝 → 띠 아래 끝(띠 padding)이다. 전에는 max(last, 띠 바닥)=바닥글 윗변이라 늘 0px 로
+      // "바닥글에 붙어 있다"를 냈다 — 절차 7-9 ① 대로 hb-foot-flush 로 붙인 시안이 감점(2026-10-18 운영 시험 w01)
+      out.foot = band ? { y: Math.round(ft), gap: Math.round(ft - Math.max(last, band.t)), band: true } : { y: Math.round(ft), gap: Math.round(ft - last) };
     }
     // D38 잉크 없는 빈 세로 띠(머리 아래 ~ 바닥글 위, 폭 가득 배경 면은 잉크로 안 침)
     { const step = 4, n = Math.ceil(ft / step), cov = new Uint8Array(n);
@@ -206,12 +208,19 @@ export function visualFixes(v, { sub = false, peers = [] } = {}) {
   if (!v) return { minus, hard, fixes };
   if (v.foot) {
     const g = v.foot.gap;
+    if (v.foot.band) {
+      // 폭 가득 색 띠 + hb-foot-flush: 띠와 바닥글이 붙는 게 맞다. 띠 안 아래 여백만 본다(같은 묶음 다른 장과 비교하지 않는다 — 재는 것이 다르다)
+      if (g <= 2) { minus += 8; fixes.push(`바닥글 여백 · 바닥글 바로 위 색 띠 안 내용이 띠 아래 끝(y ${v.foot.y})에 붙어 있다 — 띠 안쪽 아래 여백(padding-bottom)을 48~80px 로 둔다.`); }
+      else if (g < 24) { minus += 4; fixes.push(`바닥글 여백 · 바닥글 바로 위 색 띠 안 아래 여백이 ${g}px 로 좁다 — 48~80px 로 둔다.`); }
+      else if (g > 300) { minus += 8; fixes.push(`바닥글 여백 · 바닥글 바로 위 색 띠 안 내용 아래로 ${g}px 가 비어 있다 — 띠의 고정 높이·큰 아래 여백을 걷어 낸다.`); }
+    } else {
     if (g <= 2) { minus += 8; fixes.push(`바닥글 여백 · 마지막 내용이 바닥글(y ${v.foot.y})에 붙어 있다(간격 ${g}px) — 바닥글 위에 80px(모바일 48px) 여백을 둔다(바닥글 margin-top 또는 마지막 섹션 아래 여백).`); }
     else if (g < 40) { minus += 4; fixes.push(`바닥글 여백 · 마지막 내용과 바닥글 사이가 ${g}px 로 좁다 — 80px 안팎으로 띄운다.`); }
     else if (g > 300) { minus += 8; fixes.push(`바닥글 여백 · 마지막 내용 아래로 바닥글까지 ${g}px 가 비어 있다 — 마지막 섹션의 고정 높이·min-height·큰 아래 여백을 걷어 내고 80px 안팎으로.`); }
     else if (g > 120) { minus += 4; fixes.push(`바닥글 여백 · 마지막 내용과 바닥글 사이가 ${g}px 로 넓다 — 80px 안팎으로 줄인다.`); }
-    const pg = peers.map((x) => x?.visual?.foot?.gap).filter((x) => Number.isFinite(x));
+    const pg = peers.filter((x) => !x?.visual?.foot?.band).map((x) => x?.visual?.foot?.gap).filter((x) => Number.isFinite(x));
     if (pg.length) { const med = pg.sort((a, b) => a - b)[Math.floor(pg.length / 2)]; if (Math.abs(med - g) > 40) { minus += 4; fixes.push(`바닥글 여백 · 같은 시안 다른 장은 바닥글 위 여백이 ${med}px 인데 이 장은 ${g}px 이다 — 한 값으로 맞춘다.`); } }
+    }
   }
   if (v.bands?.length) {
     const big = v.bands.filter((b) => b.h >= 400);

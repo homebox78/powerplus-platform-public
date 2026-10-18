@@ -10,6 +10,8 @@ export async function layoutChecks(p, o = {}) {
     const vis = (el) => { const s = getComputedStyle(el); const q = el.getBoundingClientRect(); return s.display !== "none" && s.visibility !== "hidden" && +s.opacity > 0.05 && q.width > 0 && q.height > 0; };
     const nm = (el) => el.tagName.toLowerCase() + (typeof el.className === "string" && el.className.trim() ? "." + el.className.trim().split(/\s+/)[0] : "");
     const Y = (q) => Math.round(q.top + scrollY);
+    // 칸 이름: 와이어 칸 종류(data-wire-cell) + 칸 제목 + 요소 이름 — 고칠 칸을 찾을 수 있게
+    const cellName = (k) => { const w = k.getAttribute("data-wire-cell") || k.querySelector("[data-wire-cell]")?.getAttribute("data-wire-cell") || ""; const h = (k.querySelector("h2, h3, h4, strong")?.textContent || "").trim().slice(0, 12); return `'${h || nm(k)}'(${w ? w + " · " : ""}${nm(k)})`; };
     const transparent = (c) => !c || /rgba\(0, 0, 0, 0\)|transparent/.test(c);
     // 위·아래 어느 테두리든 칠한 것으로 — 행 선이 border-bottom 인 게시판 표가 '넓은 목록 성김'으로 걸리던 것(일괄 수정 배치3)
     const painted = (el) => { const s = getComputedStyle(el); return !transparent(s.backgroundColor) || s.backgroundImage !== "none" || parseFloat(s.borderTopWidth) > 0 || parseFloat(s.borderBottomWidth) > 0 || s.boxShadow !== "none"; };
@@ -36,10 +38,13 @@ export async function layoutChecks(p, o = {}) {
       if (Math.max(...rs.map((q) => q.top)) - Math.min(...rs.map((q) => q.top)) > 120) continue;
       const lnb = kids.some((k) => k.matches("nav, aside, [class*=lnb], [class*=snb]")); if (lnb) continue;
       const bots = rs.map((q) => q.bottom), hs = rs.map((q) => q.height), d = Math.max(...bots) - Math.min(...bots);
-      if (d > 60 && d > Math.max(...hs) * 0.15 && !seen.has(Y(rs[0]))) { seen.add(Y(rs[0])); out.balance.push(`${nm(p)} y${Y(rs[0])} 나란한 칸 바닥 차 ${Math.round(d)}px(${hs.map(Math.round).join("/")})`); }
+      // 어느 칸이 짧은지까지 말한다 — 차이만 알려 줘 반대 칸을 늘려 83→96→194px 로 벌어졌다(2026-10-18 운영 시험 w06)
+      const iS = bots.indexOf(Math.min(...bots)), iL = bots.indexOf(Math.max(...bots));
+      if (d > 60 && d > Math.max(...hs) * 0.15 && !seen.has(Y(rs[0]))) { seen.add(Y(rs[0])); out.balance.push(`${nm(p)} y${Y(rs[0])} 나란한 칸 바닥 차 ${Math.round(d)}px(${hs.map(Math.round).join("/")}) — 짧은 칸 ${cellName(kids[iS])}(높이 ${Math.round(hs[iS])}) 이 긴 칸 ${cellName(kids[iL])}(높이 ${Math.round(hs[iL])}) 보다 ${Math.round(d)}px 짧다: 짧은 칸에 항목·사진을 더하거나 긴 칸 내용을 줄인다`); }
       // 높이가 같은 나란한 카드인데 안쪽 내용이 끝나는 높이가 크게 다름(지적: '이달의 추천' 왼쪽 카드만 아래가 빔)
       if (d <= 60 && kids.every(painted)) { const ends = kids.map((k) => { let e = 0; for (const z of leaves) if (z.el !== k && k.contains(z.el) && z.b > e) e = z.b; return e; }); const de = Math.max(...ends) - Math.min(...ends);
-        if (de > 40 && de > Math.max(...hs) * 0.07) out.balance.push(`${nm(p)} y${Y(rs[0])} 나란한 카드 안 내용 끝 높이 차 ${Math.round(de)}px — 항목 수·사진 크기를 맞춘다`); }
+        const eS = ends.indexOf(Math.min(...ends)), eL = ends.indexOf(Math.max(...ends));
+        if (de > 40 && de > Math.max(...hs) * 0.07) out.balance.push(`${nm(p)} y${Y(rs[0])} 나란한 카드 안 내용 끝 높이 차 ${Math.round(de)}px — 짧은 칸 ${cellName(kids[eS])} 의 내용이 긴 칸 ${cellName(kids[eL])} 보다 ${Math.round(de)}px 먼저 끝난다(아래가 빈다): 짧은 칸에 항목·사진을 더하거나 긴 칸 항목을 줄여 내용 끝을 맞춘다`); }
       for (const k of kids) { const k0 = k.getBoundingClientRect(); const q = { left: k0.left, right: k0.right, top: pr.top, bottom: pr.bottom }; if (k0.width < W * 0.3 || pr.height < 300) continue;
         const f = fill(p, q); if (f < 0.3) out.sparse.push(`칸 ${nm(k)} y${Y(pr)} ${Math.round(k0.width)}×${Math.round(pr.height)} 내용 ${Math.round(f * 100)}%`); }
     }
@@ -48,6 +53,30 @@ export async function layoutChecks(p, o = {}) {
       if (box.querySelectorAll("a[href]").length >= 4) continue; // 링크 목록 카드(사이트맵 분야)는 짧은 링크 글이라 면적이 작아도 비지 않았다(배치9 오탐)
       const f = fill(box); if (f < 0.12) out.cardEmpty.push(`${nm(box)} y${Y(q)} ${Math.round(q.width)}×${Math.round(q.height)} 내용 ${Math.round(f * 100)}%`); }
     out.cardEmpty = out.cardEmpty.slice(0, 6); out.sparse = [...new Set(out.sparse)].slice(0, 6);
+    // ①' 한 칸 안 가로로 나란한 단(사진 카드 묶음 | 목록)의 보이는 내용 끝이 다름 — '나란한 칸 높이 차'는 칸끼리만 봐서
+    // 소식 칸(.box) 안 왼쪽 사진 묶음 끝 1993 · 오른쪽 목록 끝 2035(42px) 가 96점 통과(2026-10-18 사용자 지적, w02)
+    // 단 = 같은 부모의 형제, 폭 200 이상, 세로로 겹치는 구간 70% 이상. 끝 = 칠한 단이면 상자 바닥, 아니면 안쪽 내용 조각 바닥.
+    out.colEnd = [];
+    { const inCell = (el) => !!el.closest("[data-wire-cell]") || (() => { for (let a = el; a && a !== document.body; a = a.parentElement) if (painted(a) && a.getBoundingClientRect().width < W * 0.95) return true; return false; })();
+      const seenP = new Set();
+      for (const par of all) {
+        if (!vis(par) || seenP.has(par) || par.closest("header, footer, nav, [data-hb=menu], [hidden]") || !inCell(par)) continue;
+        const kids = [...par.children].filter((k) => vis(k) && !/^(SCRIPT|STYLE)$/.test(k.tagName) && !["absolute", "fixed"].includes(getComputedStyle(k).position) && k.getBoundingClientRect().width >= 200);
+        if (kids.length < 2 || kids.some((k) => k.hasAttribute("data-wire-cell") || k.matches("nav, aside, [role=tablist], [class*=lnb], [class*=snb]"))) continue;
+        const rs = kids.map((k) => k.getBoundingClientRect());
+        if (!rs.every((q, i) => i === 0 || q.left >= rs[i - 1].right - 4)) continue; // 가로로 나란해야
+        const vo = (a, b) => Math.max(0, Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top));
+        if (!rs.every((q, i) => i === 0 || vo(q, rs[i - 1]) >= Math.min(q.height, rs[i - 1].height) * 0.7)) continue;
+        if (kids.every(painted)) continue; // 칠한 카드끼리는 ① 이 본다
+        if (/center/.test(getComputedStyle(par).alignItems)) continue; // 세로 가운데 맞춤(소개 글 | 카드)은 끝이 다른 게 의도(w05 양성 대조)
+        // 사진 한 장뿐인 단([인물 사진 | 인사 글])은 높이가 다른 게 정상
+        if (kids.some((k) => (k.matches("img, picture, figure, video") || k.querySelectorAll("img, video").length === 1) && (k.innerText || "").trim().length < 40)) continue;
+        const ends = kids.map((k) => { if (painted(k)) return k.getBoundingClientRect().bottom + scrollY; let e = null; for (const z of leaves) if (z.el !== k && k.contains(z.el) && (e === null || z.b > e)) e = z.b; return e; });
+        if (ends.some((e) => e === null)) continue;
+        const d = Math.max(...ends) - Math.min(...ends); if (d <= 16) continue;
+        seenP.add(par); const iL = ends.indexOf(Math.max(...ends)), iS = ends.indexOf(Math.min(...ends));
+        out.colEnd.push(`${cellName(par.closest("[data-wire-cell]") || par)} 안 y${Y(rs[0])} — 단 ${cellName(kids[iL])} 이 단 ${cellName(kids[iS])} 보다 ${Math.round(d)}px 길다(내용 끝 ${Math.round(ends[iL])} / ${Math.round(ends[iS])}): 긴 단의 항목을 줄이거나 짧은 단의 사진·항목을 키워 끝선을 맞춘다`);
+        if (out.colEnd.length >= 4) break; } }
     // ⑥ 넓은 목록: 본문 폭 가득한 게시판 목록인데 글이 왼쪽에 몰려 가운데가 빔(지적: 알림사항 5줄이 1400px 를 다 씀)
     // 옆으로 옮겨진 캐러셀 트랙(transform)은 게시판 목록이 아니다(배치5 오탐 — 걸렸다 안 걸렸다)
     const moved = (el) => { for (let a = el; a && a !== document.body; a = a.parentElement) { const t = getComputedStyle(a).transform; if (t && t !== "none" && !/^matrix\(1, 0, 0, 1, 0, 0\)$/.test(t)) return true; } return false; };
@@ -127,7 +156,9 @@ export async function layoutChecks(p, o = {}) {
     for (const h of document.querySelectorAll("h2, h3, strong")) { if (!vis(h) || !/배너/.test(h.textContent || "") || /팝업/.test(h.textContent || "")) continue;
       const sec = h.closest("section, article, [class*=banner], [class*=bn]") || h.parentElement; const imgs = [...sec.querySelectorAll("img")].filter(vis).filter((im) => im.getBoundingClientRect().width >= 160);
       if (!imgs.length) continue;
-      const plain = imgs.filter((im) => { if (tk.has(key(im.currentSrc || im.src))) return false; const box = im.closest("a, li, figure, div") || im.parentElement; const t = (box.innerText || "").trim(); return t.length < 4; });
+      // 글자 든 샘플 목록(textKeys)이 비면 샘플 그림에 글자가 있는지 모른다 — '글자 없는 사진'으로 가정하지 않는다(R07).
+      // 운영 판정이 목록을 못 받아(10-16 회원 전용 전환 뒤 /assets/mock-samples 401) 글자 든 띠 배너를 감점하던 오탐(2026-10-18 w01·w02·w10)
+      const plain = imgs.filter((im) => { const src = im.currentSrc || im.src; if (tk.has(key(src))) return false; if (!tk.size && /\/assets\/samples\//.test(src)) return false; const box = im.closest("a, li, figure, div") || im.parentElement; const t = (box.innerText || "").trim(); return t.length < 4; });
       if (plain.length && plain.length === imgs.length) out.bannerPlain.push(`'${(h.textContent || "").trim().slice(0, 10)}' y${Y(h.getBoundingClientRect())} — 글자 없는 사진 ${plain.length}장(배너 샘플 banner·strip-banner 를 쓰거나 사진 위에 제목·단추를 얹는다)`); }
     // 팝업존은 한 장씩 굴러가는 캐러셀(이전·다음·정지)이어야 한다 — 사진 갤러리 3칸을 팝업존이라 부르지 않는다
     for (const h of document.querySelectorAll("h2, h3, strong")) { if (!vis(h) || !/팝업\s?존|popup\s?zone/i.test(h.textContent || "")) continue;
@@ -196,6 +227,7 @@ export async function layoutChecks(p, o = {}) {
   const fails = [];
   const chk = (ok, name, v) => { if (!ok) fails.push(`${name}: ${v.join(" | ")}`); };
   chk(!r.balance.length, "나란한 칸 높이·내용 불균형", r.balance);
+  chk(!(r.colEnd ?? []).length, "한 칸 안 나란한 단 끝선 불일치", r.colEnd ?? []);
   chk(!r.cardEmpty.length, "카드 안이 거의 빔", r.cardEmpty);
   chk(!r.sparse.length, "공간에 비해 성긴 구성", r.sparse);
   chk(!r.straddle.length, "제목·더보기가 상자 테두리에 걸침", r.straddle);
@@ -305,4 +337,47 @@ export async function deviceChecks(p, w, pcFont = null, textKeys = []) {
   if (r.textCrop.length) fails.push(`${tag} 글자 든 그림 잘림: ${r.textCrop.join(" | ")} — 칸에 aspect-ratio 를 그림 비율로 주거나 object-fit:contain`);
   if (r.font.length) fails.push(`${tag} 글자 크기가 PC 와 같음: ${r.font.join(" | ")} — @media 로 PC>태블릿>모바일 단계별로 줄인다`);
   return { r, fails };
+}
+
+// 겹침(2026-10-18 사용자 지적, w02 게시본 96점): 메인 비주얼 '주요 정책 보기' 단추와 캐러셀 조작 막대가 14px 겹쳤는데 통과.
+// 보이는 클릭 대상끼리 · 글끼리 상자가 겹치면 잡는다. 그림 위 글·배지(작은 절대 위치 글)·고정(fixed) 요소·조상/자손 관계는 뺀다.
+// 넘침을 자르는 조상(캐러셀 트랙) 밖 부분은 보이지 않으므로 잘린 상자로 잰다. 폭마다 따로 부른다(PC 1920·1280).
+/** @param {import("playwright-core").Page} p */
+export async function overlapChecks(p) {
+  return p.evaluate(() => {
+    const W = innerWidth;
+    const vis = (el) => { const s = getComputedStyle(el); const q = el.getBoundingClientRect(); return s.display !== "none" && s.visibility !== "hidden" && +s.opacity > 0.05 && q.width > 2 && q.height > 2; };
+    const shown = (el) => { for (let a = el; a && a !== document.body; a = a.parentElement) { const s = getComputedStyle(a); if (s.display === "none" || s.visibility === "hidden" || +s.opacity <= 0.05 || a.hasAttribute("hidden") || a.getAttribute("aria-hidden") === "true" || s.position === "fixed") return false; } return true; };
+    const clip = (el, q) => { let l = q.left, t = q.top, r = q.right, b = q.bottom; for (let a = el.parentElement; a && a !== document.body; a = a.parentElement) { const s = getComputedStyle(a); if (s.overflowX === "visible" && s.overflowY === "visible") continue; const c = a.getBoundingClientRect(); if (s.overflowX !== "visible") { l = Math.max(l, c.left); r = Math.min(r, c.right); } if (s.overflowY !== "visible") { t = Math.max(t, c.top); b = Math.min(b, c.bottom); } } return r - l > 2 && b - t > 2 ? { l, t: t + scrollY, r, b: b + scrollY } : null; };
+    const nm = (el) => el.tagName.toLowerCase() + (typeof el.className === "string" && el.className.trim() ? "." + el.className.trim().split(/\s+/)[0] : "");
+    const label = (el) => ((el.getAttribute("aria-label") || el.innerText || el.getAttribute("alt") || "").trim().replace(/\s+/g, " ").slice(0, 14));
+    // 클릭 대상: 링크·단추·입력. 바깥 클릭 대상 안에 든 것(링크 안 단추)은 바깥 것 하나로
+    const clicks = [];
+    for (const el of document.querySelectorAll("a[href], button, [role=button], input:not([type=hidden]), select, textarea")) {
+      if (!vis(el) || !shown(el) || el.closest("header [data-hb=menu] [hidden]")) continue;
+      if (el.parentElement && el.parentElement.closest("a[href], button, [role=button]")) continue;
+      const q = clip(el, el.getBoundingClientRect()); if (!q || q.r - q.l < 8 || q.b - q.t < 8) continue; clicks.push({ el, ...q });
+    }
+    // 글: 글자 노드의 줄 상자. 아이콘 글꼴·화면 밖 숨김 글(1px)·작은 절대 위치 배지는 뺀다
+    const texts = [];
+    { const tw = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT); let n;
+      while ((n = tw.nextNode())) { const pe = n.parentElement; if (!n.nodeValue.trim() || !pe || pe.closest("script, style, noscript") || !vis(pe) || !shown(pe)) continue;
+        if (/material|icon/i.test(getComputedStyle(pe).fontFamily)) continue;
+        { let badge = false; for (let a = pe; a && a !== document.body; a = a.parentElement) { const s = getComputedStyle(a); if (s.position === "absolute") { const q = a.getBoundingClientRect(); if (q.width < 160 && q.height < 48) badge = true; break; } } if (badge) continue; }
+        const rg = document.createRange(); rg.selectNodeContents(n);
+        for (const r of rg.getClientRects()) { if (r.width < 3 || r.height < 3) continue; const q = clip(pe, r); if (q) texts.push({ el: pe, ...q }); } } }
+    const ov = (a, b) => ({ x: Math.min(a.r, b.r) - Math.max(a.l, b.l), y: Math.min(a.b, b.b) - Math.max(a.t, b.t) });
+    const rel = (a, b) => a === b || a.contains(b) || b.contains(a);
+    const out = { click: [], text: [] }; const seen = new Set();
+    for (let i = 0; i < clicks.length; i++) for (let j = i + 1; j < clicks.length; j++) { const a = clicks[i], b = clicks[j]; if (rel(a.el, b.el)) continue; const o = ov(a, b); if (o.x < 4 || o.y < 4) continue;
+      // 큰 링크(슬라이드·카드) 위에 통째로 올린 작은 단추(캐러셀 이전·다음)는 의도된 겹침 — 일부만 걸친 것만 잡는다(w06·w10 양성 대조)
+      { const ar = (z) => (z.r - z.l) * (z.b - z.t); const [sm, lg] = ar(a) <= ar(b) ? [a, b] : [b, a]; if (o.x * o.y >= ar(sm) * 0.95 && ar(lg) >= ar(sm) * 4) continue; }
+      const k = `${nm(a.el)}|${nm(b.el)}`; if (seen.has(k)) continue; seen.add(k);
+      out.click.push(`'${label(a.el) || nm(a.el)}'(${nm(a.el)}, y ${Math.round(a.t)}~${Math.round(a.b)}) 와 '${label(b.el) || nm(b.el)}'(${nm(b.el)}, y ${Math.round(b.t)}~${Math.round(b.b)}) 가 ${Math.round(o.x)}×${Math.round(o.y)}px 겹친다`); }
+    for (let i = 0; i < texts.length; i++) for (let j = i + 1; j < texts.length; j++) { const a = texts[i], b = texts[j]; if (a.el === b.el) continue;
+      const o = ov(a, b); if (o.x < 4 || o.y < Math.min(a.b - a.t, b.b - b.t) * 0.3) continue;
+      const k = `${nm(a.el)}|${nm(b.el)}`; if (seen.has(k)) continue; seen.add(k);
+      out.text.push(`'${(a.el.textContent || "").trim().slice(0, 12)}'(${nm(a.el)}) 와 '${(b.el.textContent || "").trim().slice(0, 12)}'(${nm(b.el)}) 글이 y ${Math.round(Math.max(a.t, b.t))} 에서 ${Math.round(o.y)}px 겹친다`); }
+    return { w: W, click: out.click.slice(0, 4), text: out.text.slice(0, 4) };
+  }).catch(() => ({ w: 0, click: [], text: [] }));
 }

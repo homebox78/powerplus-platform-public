@@ -5,7 +5,7 @@ import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 
 /** 그림·사진 자리 — 대각선 두 줄 */
-function XFill({ className }: { className?: string }) {
+export function XFill({ className }: { className?: string }) {
   return (
     <svg className={cn("pointer-events-none text-line-3", className)} width="100%" height="100%" preserveAspectRatio="none" viewBox="0 0 100 100" aria-hidden>
       <path d="M0 0L100 100M100 0L0 100" stroke="currentColor" strokeWidth="1" vectorEffect="non-scaling-stroke" fill="none" />
@@ -14,18 +14,18 @@ function XFill({ className }: { className?: string }) {
 }
 
 /** 글 한 줄 자리 */
-const Bar = ({ w = "100%", dark, h = 5, className }: { w?: string | number; dark?: boolean; h?: number; className?: string }) => (
+export const Bar = ({ w = "100%", dark, h = 5, className }: { w?: string | number; dark?: boolean; h?: number; className?: string }) => (
   <span className={cn("block shrink-0 rounded-[1px]", dark ? "bg-ink-4" : "bg-line-3", className)} style={{ width: w, height: h }} />
 );
-const Img = ({ className, children }: { className?: string; children?: ReactNode }) => (
+export const Img = ({ className, children }: { className?: string; children?: ReactNode }) => (
   <span className={cn("relative block overflow-hidden border border-line-3 bg-white", className)}><XFill className="absolute inset-0" />{children}</span>
 );
-const Lines = ({ n, last = "60%" }: { n: number; last?: string }) => (
+export const Lines = ({ n, last = "60%" }: { n: number; last?: string }) => (
   <span className="flex flex-col gap-[5px]">{Array.from({ length: n }).map((_, i) => <Bar key={i} w={i === n - 1 ? last : "100%"} />)}</span>
 );
 const Title = ({ w = "34%" }: { w?: string }) => <Bar w={w} dark h={7} />;
-const Btn = ({ w = 44, dark }: { w?: number; dark?: boolean }) => <span className={cn("block h-[14px] shrink-0 rounded-[2px] border", dark ? "border-ink-4 bg-ink-4" : "border-ink-4 bg-white")} style={{ width: w }} />;
-const Dot = ({ on }: { on?: boolean }) => <span className={cn("block size-[5px] rounded-full", on ? "bg-ink-4" : "bg-line-3")} />;
+export const Btn = ({ w = 44, dark }: { w?: number; dark?: boolean }) => <span className={cn("block h-[14px] shrink-0 rounded-[2px] border", dark ? "border-ink-4 bg-ink-4" : "border-ink-4 bg-white")} style={{ width: w }} />;
+export const Dot = ({ on }: { on?: boolean }) => <span className={cn("block size-[5px] rounded-full", on ? "bg-ink-4" : "bg-line-3")} />;
 const Tabs = ({ n = 4 }: { n?: number }) => (
   <span className="flex border-b border-line-3">
     {Array.from({ length: n }).map((_, i) => <span key={i} className={cn("flex h-[16px] flex-1 items-center justify-center", i === 0 && "border-b-2 border-ink-4")}><Bar w="54%" dark={i === 0} h={4} /></span>)}

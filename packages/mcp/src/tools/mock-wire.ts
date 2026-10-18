@@ -11,7 +11,7 @@ import { codeOf, type DeckKitCtx } from "./deck-kit.ts";
 
 /** 칸 하나·와이어 하나 — 플랫폼 /mock/wire… 응답 꼴(칸마다 ev 근거) */
 export type WireCell = { k: string; span: number; h?: number; t?: string; ev?: Record<string, unknown> };
-export type WireDoc = { screen: string; org: string; lnb?: boolean; title?: string; rows: Array<{ id?: string; zone?: string; cols: WireCell[] }> };
+export type WireDoc = { screen: string; org: string; lnb?: boolean; title?: string; org_name?: string; rows: Array<{ id?: string; zone?: string; cols: WireCell[] }> };
 type ContentCell = { k: string; t?: string; s?: string; items?: string[]; label?: string; img?: { kind: string; label: string } };
 
 /** 인자 — 와이어 JSON(mock_get_wireframe 의 wire 꼴) */
@@ -29,9 +29,9 @@ export const wireIdArg = z.string().regex(/^[A-Za-z0-9_-]{4,40}$/);
 
 /** 와이어 내용(WireContent)의 그림 종류 → 시안 샘플 종류(mock_get_sample_images kind). 샘플에 없는 종류는 가까운 것, 없으면 null(그림 대신 면·무늬) */
 export const SAMPLE_KIND: Record<string, string | null> = {
-  "hero-city": "hero-city", "hero-nature": "hero-nature", "sub-visual": "sub-visual", leader: "leader", "news-thumb": "news-thumb", banner: "banner", popup: "popup",
+  "hero-city": "hero-city", "hero-nature": "hero-nature", "sub-visual": "sub-visual", leader: "leader", "news-thumb": "news-thumb", banner: "strip-banner", popup: "popup",
   "icon-set": "icon-set", infographic: "infographic", place: "place", citizen: "citizen",
-  "video-thumb": "news-thumb", "building-illust": "place", "archive-photo": "place", tour: "place", "pattern-bg": null,
+  "video-thumb": "video-thumb", "building-illust": "place", "archive-photo": "place", tour: "place", "pattern-bg": "pattern-bg",
 };
 
 /** 레퍼런스 엔진에 넘길 최소 꼴(칸 종류·폭·높이만) */
@@ -65,8 +65,14 @@ export async function resolveWire(ctx: Pick<DeckKitCtx, "pp" | "key" | "ppMsg">,
 }
 
 /** 칸마다 예시 내용(WireContent — 가상 기관 기준). 실패하면 빈 표 */
-export async function wireContent(ctx: Pick<DeckKitCtx, "pp" | "key">, w: WireDoc): Promise<{ rows: Array<{ cols: ContentCell[] }>; org: string | null }> {
-  const r = await ctx.pp("/mock/wire/content", ctx.key, { method: "POST", body: { wire: w } }).catch(() => null);
+export async function wireContent(ctx: Pick<DeckKitCtx, "pp" | "key">, w: WireDoc, kit?: { persona?: unknown; menu?: unknown; org_name?: string }): Promise<{ rows: Array<{ cols: ContentCell[] }>; org: string | null }> {
+  // 재현 묶음의 persona·menu 를 넘기면 예시 글의 기관명·기관장 직함·이름·조사·메뉴가 묶음과 같게 나온다
+  // (2026-10-18 시험: 이름만 바꿔 붙여 "새솔교육청 교장 최서연"·"청운군가" — 묶음 기관장은 교육감 이준호·군수)
+  const body: Record<string, unknown> = { wire: w };
+  if (kit?.persona && typeof kit.persona === "object") body.persona = kit.persona;
+  if (kit?.menu && typeof kit.menu === "object") body.menu = kit.menu;
+  if (kit?.org_name) body.org_name = kit.org_name;
+  const r = await ctx.pp("/mock/wire/content", ctx.key, { method: "POST", body }).catch(() => null);
   const d = (r?.data as { wire?: { rows?: Array<{ cols: ContentCell[] }>; persona?: { org?: string } } } | null)?.wire;
   return { rows: d?.rows ?? [], org: d?.persona?.org ?? null };
 }
@@ -75,7 +81,9 @@ export async function wireContent(ctx: Pick<DeckKitCtx, "pp" | "key">, w: WireDo
  * 재현 묶음의 reference.wire.rows 칸마다 와이어 근거(ev)·예시 내용(content)·샘플 그림 종류를 붙인다.
  * 예시 내용의 가상 기관 이름은 묶음 persona.org 로 바꾼다(와이어 내용 보기와 시안의 기관 이름이 달랐다).
  */
-export function mergeWireKit(kitRows: Array<{ no: number; cells: Array<Record<string, unknown>> }>, w: WireDoc, content: { rows: Array<{ cols: ContentCell[] }>; org: string | null }, org: string | null) {
+export function mergeWireKit(kitRows: Array<{ no: number; cells: Array<Record<string, unknown>> }>, w: WireDoc, content: { rows: Array<{ cols: ContentCell[] }>; org: string | null }, org: string | null, forWire?: Record<string, string | null> | null) {
+  // 그림 종류 → 샘플 종류: 묶음 samples.for_wire(그 기관 대상에 실제 있는 종류, null = 없음)가 먼저, 없으면 고정 표(2026-10-18 MC-104)
+  const kindOf = (k: string) => (forWire && k in forWire ? forWire[k] ?? null : SAMPLE_KIND[k] ?? null);
   const swap = (s?: string) => (s && content.org && org ? s.split(content.org).join(org) : s);
   for (const r of kitRows) {
     const wr = w.rows[r.no - 1]; const cr = content.rows[r.no - 1];
@@ -85,7 +93,7 @@ export function mergeWireKit(kitRows: Array<{ no: number; cells: Array<Record<st
       if (wc?.t) c.label = wc.t;
       if (cc) {
         c.content = { t: swap(cc.t), ...(cc.s ? { s: swap(cc.s) } : {}), ...(cc.items?.length ? { items: cc.items.map((x) => swap(x) ?? x) } : {}),
-          ...(cc.img ? { img: { kind: cc.img.kind, label: cc.img.label, sample_kind: SAMPLE_KIND[cc.img.kind] ?? null } } : {}) };
+          ...(cc.img ? { img: { kind: cc.img.kind, label: cc.img.label, sample_kind: kindOf(cc.img.kind) } } : {}) };
       }
     });
   }
@@ -114,9 +122,10 @@ export function registerMockWireTools(server: McpServer, ctx: DeckKitCtx): void 
       variant: z.number().int().min(0).max(50).optional().describe("변형 번호(0부터) — reference 는 다른 레퍼런스 화면, 원형은 줄 순서·좌우 바꿈"),
       request: z.string().max(800).optional().describe("요청 글(넣을 것·뺄 것·강조할 것)"),
       title: z.string().max(120).optional().describe("와이어 제목"),
+      org_name: z.string().max(30).optional().describe("고객 기관명(예: 청운군청·새솔교육청) — 예시 내용·요청문의 기관명·기관장 직함이 그 기관에 맞게 나오고, 와이어에 실려 재현 묶음까지 간다"),
       ai: z.boolean().optional().describe("서버 AI 로 요청 글에 맞춰 한 번 더 다듬기(로그인 키 필요, 판정 미달이면 초안 그대로)"),
     },
-  }, async (a) => call("mock_get_wireframe", "/mock/wire/generate", { method: "POST", body: { screen: a.screen, org: a.org ?? "all", style: a.style ?? "auto", variant: a.variant ?? 0, request: a.request ?? "", title: a.title, ai: a.ai ?? false } }));
+  }, async (a) => call("mock_get_wireframe", "/mock/wire/generate", { method: "POST", body: { screen: a.screen, org: a.org ?? "all", style: a.style ?? "auto", variant: a.variant ?? 0, request: a.request ?? "", title: a.title, org_name: a.org_name, ai: a.ai ?? false } }));
 
   server.registerTool("mock_check_wireframe", {
     title: "홈페이지 와이어프레임 판정",

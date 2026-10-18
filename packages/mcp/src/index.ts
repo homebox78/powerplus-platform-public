@@ -151,9 +151,13 @@ const qs = (o: Record<string, unknown>) => Object.entries(o).filter(([, v]) => v
 const ORIGIN = new URL(API).origin;
 // 글자 든 샘플(배너·팝업·포스터) 열쇠 — 판정이 그 그림의 잘림을 잡는다(2026-10-15 팝업존 배너 아래 잘림). 10분 캐시
 let textKeyCache: { at: number; keys: string[]; icons: string[] } = { at: 0, keys: [], icons: [] };
-async function textSampleKeys(): Promise<string[]> {
-  if (Date.now() - textKeyCache.at < 600_000) return textKeyCache.keys;
-  try { const r = await fetch(`${PP_API}/assets/mock-samples`); const j = (await r.json()) as { data?: { items?: Array<{ id: string; file?: string; has_text?: boolean; kind?: string }> } }; const it = j.data?.items ?? [];
+// 판정을 부른 사람의 키로 받는다 — 10-16 회원 전용 전환 뒤 키 없이 부르면 401 이라 목록이 비고, 판정이 글자 든 배너를 '글자 없는 사진'으로 감점하고
+// 글자 그림 잘림을 못 잡았다(2026-10-18 와이어 시험 w01·w02·w10). 빈 목록은 10분 캐시하지 않고 30초 뒤 다시 받는다.
+async function textSampleKeys(key?: string | null): Promise<string[]> {
+  if (Date.now() - textKeyCache.at < (textKeyCache.keys.length ? 600_000 : 30_000)) return textKeyCache.keys;
+  try { const r = await fetch(`${PP_API}/assets/mock-samples`, { headers: { ...(key ? { Authorization: `Bearer ${key}` } : {}), "X-Requested-With": "powerMCP" } });
+    if (!r.ok) { console.error(`[powerMCP] 글자 샘플 목록 ${r.status} — 판정이 글자 그림을 가리지 못한다`); textKeyCache.at = Date.now(); return textKeyCache.keys; }
+    const j = (await r.json()) as { data?: { items?: Array<{ id: string; file?: string; has_text?: boolean; kind?: string }> } }; const it = j.data?.items ?? [];
     // 열쇠는 그림 주소의 …/samples/{열쇠}/… — id 는 옛 이름(banner-03-festival-promo)이라 주소와 안 맞아 글자 그림 잘림을 하나도 못 잡았다(2026-10-15)
     const keyOf = (x: { id: string; file?: string }) => (String(x.file ?? "").match(/\/samples\/([a-z0-9]{8,32})\//) ?? [])[1] ?? String(x.id).replace(/^pa-/, "");
     textKeyCache = { at: Date.now(), keys: it.filter((x) => x.has_text).map(keyOf), icons: it.filter((x) => String(x.kind ?? "").startsWith("icon")).map(keyOf) }; } catch { textKeyCache.at = Date.now(); }
@@ -657,15 +661,15 @@ function buildServer(key: string | null): McpServer {
       if (!rw.ok) return err(rw.message, rw.code, "wire_id 는 내 와이어 id, wire 는 {screen, org, rows:[{zone, cols:[{k, span}]}]} 꼴");
       wd = rw;
     }
-    const r = await get<Record<string, unknown> & { reference?: { capture_url?: string | null; site_slug?: string; screen_id?: number; width?: number; height?: number } }>(`/mockups/replica?${qs({ org_type: a.org_type, org_name: a.org_name, ref: a.ref, rank: a.rank, page: wd ? wd.wire.screen : a.page, primary: a.primary, width: a.width, font: a.font, lang: a.lang, icon_style: a.icon_style, wire: wd ? JSON.stringify(compactWire(wd.wire)) : undefined, wire_ref: wd?.id ?? undefined })}`);
+    const r = await get<Record<string, unknown> & { reference?: { capture_url?: string | null; site_slug?: string; screen_id?: number; width?: number; height?: number } }>(`/mockups/replica?${qs({ org_type: a.org_type, org_name: a.org_name ?? wd?.wire.org_name, ref: a.ref, rank: a.rank, page: wd ? wd.wire.screen : a.page, primary: a.primary, width: a.width, font: a.font, lang: a.lang, icon_style: a.icon_style, wire: wd ? JSON.stringify(compactWire(wd.wire)) : undefined, wire_ref: wd?.id ?? undefined })}`);
     const ref = r.reference ?? {};
     const cbox = (ref as { content?: { x: number; w: number } }).content;
     const zoom = a.zoom && cbox ? { x: cbox.x, w: cbox.w, vw: ref.width ?? 1920 } : undefined;
     type Piece = { src: string; screen_id: number; src_y: number; src_h: number; y: number; h: number; capture_url?: string | null; image_withheld?: string | null; src_x?: number; src_w?: number; wire_row?: number; wire_col?: number };
     const wref = (ref as { wire?: { pieces?: Piece[]; rows?: Array<{ no: number; cells: Array<Record<string, unknown>> }>; wire_ref?: string } | null }).wire ?? null;
     if (wd && wref?.rows) {
-      const content = await wireContent({ pp, key }, wd.wire);
-      mergeWireKit(wref.rows, wd.wire, content, String((r.persona as { org?: string } | undefined)?.org ?? "") || null);
+      const content = await wireContent({ pp, key }, wd.wire, { persona: r.persona, menu: r.menu, org_name: a.org_name ?? wd.wire.org_name });
+      mergeWireKit(wref.rows, wd.wire, content, String((r.persona as { org?: string } | undefined)?.org ?? "") || null, (r.samples as { for_wire?: Record<string, string | null> } | undefined)?.for_wire ?? null);
     }
     // 와이어 묶음의 참고 이미지는 칸마다 그 재료 섹션만 잘라 준다(src_x·src_w) — 섞기 조각과 같은 길로 싣는다
     const mix = (ref as { mix?: { pieces?: Piece[] } | null }).mix ?? wref ?? null;
@@ -794,7 +798,7 @@ function buildServer(key: string | null): McpServer {
   const checkOrg = new Map<string, string>();
   server.registerTool("mock_check_mockup", {
     title: "시안 판정(보관·렌더·대조·고칠 목록)",
-    description: "mock_get_replica_kit 으로 만든 시안을 홈박스가 보관하고 실제 브라우저로 렌더해 판정한다 — 레퍼런스와 줄·칸 수·높이·밝기 구성 대조(와이어 묶음 ref_id(wire1:…)이거나 wire_id·wire 를 주면 레퍼런스 대신 와이어와 줄 순서·칸 수·칸 폭·칸 종류를 대조하는 wire_match — 와이어와 다르면 치명, 높이는 참고만), 레퍼런스 기관 정보 노출, 안 뜨는 이미지·외부 이미지, 빈 칸·글자 기호·세로 중심 게이트, 캐러셀·탭·메뉴·레이어·검색 실제 동작. 점수(100)·고칠 목록(fixes)·token 을 주고, Pro 면 레퍼런스|시안 나란히 이미지도 준다. 85점 이상·치명 항목 0 이 통과. ① 처음: mock_check_mockup(ref_id, html). ② 미통과: HTML 을 처음부터 다시 쓰지 말고 mock_check_mockup(token, edits=[{find, replace}]) 로 고친 부분만 보낸다(find 는 시안 원문에 한 번만 나오는 글자 그대로). ③ 통과: mock_publish_mockup(token). 미통과인 채로 끝내지 않는다(미통과 시안은 목록·갤러리에 남지 않는다). 받아쓰기 줄이기: 동작 스크립트는 <script data-hb-behavior></script> 한 줄만 적으면 채워지고, 서브 페이지는 base_token 과 <!--hb:use style|header|footer--> 로 메인의 공통 부분을 채운다. 한 번에 수십 초 걸린다. 부르기 전에 mock_get_replica_kit 응답 맨 앞의 preflight 10가지(가로 스크롤·반응형·본문 폭·세로 간격·높이·동작·주 메뉴·호버·서브 비주얼·게이트)를 직접 확인하면 한 번에 통과한다.",
+    description: "mock_get_replica_kit 으로 만든 시안을 홈박스가 보관하고 실제 브라우저로 렌더해 판정한다 — 레퍼런스와 줄·칸 수·높이·밝기 구성 대조(와이어 묶음 ref_id(wire1:…)이거나 wire_id·wire 를 주면 레퍼런스 대신 와이어와 줄 순서·칸 수·칸 폭·칸 종류를 대조하는 wire_match — 와이어와 다르면 치명, 높이는 참고만), 레퍼런스 기관 정보 노출, 안 뜨는 이미지·외부 이미지, 빈 칸·글자 기호·세로 중심 게이트, 캐러셀·탭·메뉴·레이어·검색 실제 동작. 점수(100)·고칠 목록(fixes)·token 을 주고, Pro 면 레퍼런스|시안 나란히 이미지도 준다(와이어 묶음이면 와이어 도식|시안). 85점 이상·치명 항목 0 이 통과. ① 처음: mock_check_mockup(ref_id, html). ② 미통과: HTML 을 처음부터 다시 쓰지 말고 mock_check_mockup(token, edits=[{find, replace}]) 로 고친 부분만 보낸다(find 는 시안 원문에 한 번만 나오는 글자 그대로). ③ 통과: mock_publish_mockup(token). 미통과인 채로 끝내지 않는다(미통과 시안은 목록·갤러리에 남지 않는다). 받아쓰기 줄이기: 동작 스크립트는 <script data-hb-behavior></script> 한 줄만 적으면 채워지고, 서브 페이지는 base_token 과 <!--hb:use style|header|footer--> 로 메인의 공통 부분을 채운다. 한 번에 수십 초 걸린다. 부르기 전에 mock_get_replica_kit 응답 맨 앞의 preflight 항목(가로 스크롤·반응형·본문 폭·세로 간격·높이·동작·주 메뉴·호버·서브 비주얼·게이트 등 — 개수는 응답 preflight 그대로)을 직접 확인하면 한 번에 통과한다.",
     inputSchema: {
       ref_id: z.string().max(400).optional().describe("mock_get_replica_kit 응답의 reference.ref_id 를 그대로"),
       screen_id: z.number().int().optional().describe("(이전 방식) reference.screen_id — ref_id 가 없을 때만"),
@@ -855,7 +859,7 @@ function buildServer(key: string | null): McpServer {
       // 판정 브라우저는 사용자 HTML 을 그리므로 샌드박스를 켠다(O-34). Playwright 는 chromiumSandbox:true 를 줘야 --no-sandbox 를 안 붙인다(args 에서 빼는 것만으론 안 켜진다). 서버는 AppArmor 프로필(scripts/apparmor-pw-headless-shell)이 있어야 뜬다 —
       // 프로필이 없는 서버(이관 직후 등)에선 PP_JUDGE_NO_SANDBOX=1 로 예전처럼 끌 수 있다
       const judgeArgs = engine === "chromium" ? [...(process.env.PP_JUDGE_NO_SANDBOX === "1" ? ["--no-sandbox"] : []), "--disable-dev-shm-usage"] : [];
-      const { result, compare, thumb } = await checkMockup({ html, ref, refImage, sharp, want, textKeys: await textSampleKeys(), iconKeys: textKeyCache.icons, peers: Array.isArray(d.json.peers) ? d.json.peers : [], width: a.device === "mobile" ? 390 : 1920, wire: judgeWire, launch: () => pw[engine].launch({ args: judgeArgs, chromiumSandbox: engine === "chromium" && process.env.PP_JUDGE_NO_SANDBOX !== "1" }) });
+      const { result, compare, thumb } = await checkMockup({ html, ref, refImage, sharp, want, textKeys: await textSampleKeys(key), iconKeys: textKeyCache.icons, peers: Array.isArray(d.json.peers) ? d.json.peers : [], width: a.device === "mobile" ? 390 : 1920, wire: judgeWire, launch: () => pw[engine].launch({ args: judgeArgs, chromiumSandbox: engine === "chromium" && process.env.PP_JUDGE_NO_SANDBOX !== "1" }) });
       const rec = await internal(`mockup-pages/${token}/check`, { score: result.score, pass: result.pass, ref_id: refId, result: { ...result, rows: undefined }, thumb: thumb ? thumb.toString("base64") : undefined, device: a.device ?? "pc", page: refId.startsWith("mix1:") ? "main" : judgeWire?.screen ?? String((ref as { page_type?: string }).page_type ?? "") }).catch(() => null);
       // 기록이 안 되면 점수·통과가 DB 에 NULL 로 남아 게시가 막힌다 — 조용히 넘기지 않고 로그에 남긴다(PP_JUDGE_SECRET 누락이 흔한 원인)
       if (!rec?.ok) console.error(`[mcp] 판정 기록 실패 token=${token.slice(0, 8)} status=${rec?.status ?? "-"} ${rec?.json?.error?.message ?? ""}${JUDGE_SECRET ? "" : " (PP_JUDGE_SECRET 없음)"}`);
@@ -870,7 +874,7 @@ function buildServer(key: string | null): McpServer {
       const recurring = lessons.length ? { how: "다른 시안들에서 여러 번 걸린 결함이다. 이 시안에도 같은 것이 없는지 확인하고, 있으면 함께 고친다(감점 없음).", items: lessons.map((l) => `[${l.area ?? ""}] ${l.text ?? ""}`) } : undefined;
       const content: Array<TextBlock | ImageBlock> = [{ type: "text", text: JSON.stringify({ token, ref_id: refId, reference: ref.site_slug, ...result, summary: undefined, preference_tips, recurring, next }) }];
       if (usedJudge && compare?.slices?.length) content.push({ type: "text", text: "레퍼런스에 공공누리 제한(2~4유형) 구간이 있어 판정은 원본으로 대조했지만, 레퍼런스|시안 나란히 이미지는 제공하지 않습니다. fixes 를 따라 고치세요." });
-      else if (pro && compare?.slices?.length) compare.slices.slice(0, 6).forEach((s, i) => content.push({ type: "text", text: `[나란히 ${i + 1}] 왼쪽 레퍼런스 · 오른쪽 시안 (y ${s.from}~${s.to})` }, { type: "image", data: s.jpeg.toString("base64"), mimeType: "image/jpeg" }));
+      else if (pro && compare?.slices?.length) compare.slices.slice(0, 6).forEach((s, i) => content.push({ type: "text", text: judgeWire ? `[나란히 ${i + 1}] 왼쪽 와이어 도식(빨강 = 안 맞는 줄, 점선 = 시안에 없는 줄) · 오른쪽 시안 (y ${s.from}~${s.to})` : `[나란히 ${i + 1}] 왼쪽 레퍼런스 · 오른쪽 시안 (y ${s.from}~${s.to})` }, { type: "image", data: s.jpeg.toString("base64"), mimeType: "image/jpeg" }));
       return { content };
     } catch (e) {
       return err(`판정 렌더에 실패했습니다: ${String((e as Error).message).slice(0, 200)} (시안은 token="${token}" 으로 보관돼 있다 — 같은 token 으로 다시 부른다)`, "RENDER_FAILED");

@@ -437,23 +437,20 @@ def _repair_quotes(s):
 
 
 def pptx_text(path):
-    """초안 pptx 의 장별 글(글상자·표)을 마크다운으로"""
-    from pptx import Presentation
-    prs = Presentation(path)
-    out = []
-    for i, s in enumerate(prs.slides, 1):
-        lines = []
-        for sh in s.shapes:
-            if sh.has_text_frame:
-                for p in sh.text_frame.paragraphs:
-                    t = "".join(r.text for r in p.runs).strip()
-                    if t:
-                        lines.append(("  " * min(p.level, 3)) + "- " + t)
-            if getattr(sh, "has_table", False) and sh.has_table:
-                for row in sh.table.rows:
-                    lines.append("| " + " | ".join(c.text.strip().replace("\n", " ") for c in row.cells) + " |")
-        out.append(f"## {i}쪽\n" + ("\n".join(lines) if lines else "(글 없음)"))
-    return "\n\n".join(out)
+    """초안 pptx 의 장별 글(글상자·표·차트 값)을 마크다운으로. 묶음 도형 안 글·차트의 범주·계열 값까지(2026-10-18 — 예전엔 차트가 통째로 빠졌다)"""
+    import datafacts
+    out, cur = [], None
+    for k, v in datafacts.pptx_blocks(path):
+        if k == "h":
+            cur = []
+            out.append((v, cur))
+        elif k == "p":
+            cur.append(v)
+        elif k == "table":
+            cur.append(datafacts.md_table(v))
+        elif k == "chart":
+            cur.append(f"차트: {v[0] or '(제목 없음)'}\n" + datafacts.md_table(v[1]))
+    return "\n\n".join(f"## {h}\n" + ("\n".join(ls) if ls else "(글 없음)") for h, ls in out)
 
 
 REF_DECKS = {"A": "AI시안", "B": "완성장표-기후플랫폼", "C": "완성장표", "D": "컨텐츠모음"}   # D = 실제 제안설명회 장표 540장(260116 컨텐츠 모음), 세 자리 번호
@@ -501,6 +498,7 @@ PLAN_SYSTEM = """너는 공공 SI 제안서의 장표 기획자다. 사용자가
    "scene": "그림으로 보여줄 장면 — 이 사업 자료에만 있는 대상(시설·현장·시스템·데이터·사용자 이름)으로 짠 인물의 상황, 사물의 배치, 은유",
    "ref": ["참고 번호 1~2개 — 덱 글자+번호 문자열, 예: \\"D267\\", \\"B18\\". D 덱(실제 장표 540장)·B·C 덱 가운데 이 장과 유형·헤드라인·내용이 가장 닮고, 고른 device 를 실제로 쓴 장. 참고 가치 (5)·(4) 를 먼저"], "layout": "칸 나눔·흐름을 한두 문장으로 (장면과 글이 어떻게 자리를 나누는지)",
    "content": "이 장에 들어갈 글 전부 — 마크다운. 소제목/목록/표. 원문의 항목·수치·이름·단계는 하나도 빼지 않는다",
+   "data": ["이 장이 근거로 쓰는 '자료의 실제 데이터' id — 표·시계열 D…, 낱개 수치 F…. 수치로 주장하는 장(현황·추이·비교·구성·전후·목표)은 반드시 적는다. 데이터 목록이 없거나 수치가 없는 장은 빈 배열 []"],
    "image_prompt": "시안 이미지 모델에 줄 영문 지시 2~3문장(한국어 문구는 그대로 인용). 장면(scene)을 먼저, 그 다음 글이 들어갈 자리·부품을 어디에 두는지 — 길게 쓰지 않는다(출력은 content 에 쓴다)"}
 ]}
 
@@ -531,6 +529,7 @@ PLAN_SYSTEM = """너는 공공 SI 제안서의 장표 기획자다. 사용자가
 
 사실·근거 — 제작 대행이 고객사를 뼛속까지 알 수 없듯 너도 자료 밖은 모른다. 그래서 자료에 있는 것만 쓴다:
 - 수치(금액·비율·기간·건수·점수)·고객사·인증·실적·기술 이름은 '장표에 담을 내용'과 '맥락 자료'에 있는 것만 쓴다. 없는 수치를 만들거나 반올림·환산·추정하지 않는다. 필요한데 없으면 그 자리에 '※ 보강 필요: 무엇' 으로 적는다.
+- '자료의 실제 데이터'(D·F 목록)가 있으면 수치 근거는 거기서 고르고 그 장의 data 에 id 를 적는다. 표·시계열은 그것이 말하는 것(늘어남·몫·줄어듦·격차·목표와의 거리)을 그 장의 message 로 삼고, content 에 그 값을 원래 숫자 그대로 옮긴다. 같은 데이터셋을 여러 장에 되풀이하지 않는다 — 장마다 다른 데이터·다른 관계.
 - 사업의 정체성을 넓히지 않는다 — 자료에 없는 사업 영역·기술 유행어(AI·플랫폼·ESG·빅데이터 등)를 덧붙여 커 보이게 하지 않는다. 할 수 있는 것·할 것·하고 싶은 것을 섞어 현재형으로 쓰지 않는다(계획은 '~하겠습니다').
 - 과장 카피(최초·유일·최고·혁신·패러다임·완벽)는 자료에 근거가 있을 때만, 그리고 입증할 수 있는 구체적인 꼴로("국내 최초" → "○○ 기관 최초 적용 사례(2024)"처럼 범위·출처·시점을 붙여).
 - 약속은 산출물·기한·수치로 쓴다 — "체계적으로 수행하겠습니다" 대신 "착수 2주 내 현황 분석 보고서, 6주 내 실행계획 제출", "기대효과" 대신 "민원 처리 시간 ○○% 단축(근거: …)". 수치가 자료에 없으면 '※ 보강 필요'로.
@@ -693,21 +692,18 @@ def compose_frame(job, body_png_path, s, project=""):
 
 def doc_text(path):
     """맥락 자료(pdf·docx·hwpx·xlsx·pptx·md·txt)에서 글만 뽑는다. 실패하면 빈 문자열"""
+    import datafacts   # 표를 칸 그대로 읽는 곳 — 데이터 추출(extract_facts)과 같은 읽기를 쓴다
     ext = os.path.splitext(path)[1].lower()
     try:
         if ext in (".md", ".txt", ".markdown", ".csv"):
             return open(path, encoding="utf-8", errors="replace").read()
-        if ext == ".pdf":
+        if ext == ".pdf":   # 글은 pypdf, 표는 pdfplumber 가 있으면 칸 그대로 덧붙인다(없으면 글만 — 표 칸이 한 줄로 풀린다)
             from pypdf import PdfReader
-            return "\n".join((p.extract_text() or "") for p in PdfReader(path).pages)
-        if ext == ".docx":
-            import docx
-            d = docx.Document(path)
-            out = [p.text for p in d.paragraphs]
-            for t in d.tables:
-                for row in t.rows:
-                    out.append(" | ".join(c.text.strip() for c in row.cells))
-            return "\n".join(out)
+            body = "\n".join((p.extract_text() or "") for p in PdfReader(path).pages)
+            tabs = datafacts.pdf_tables(path)
+            return body + "".join(f"\n\n### 표 ({t['where']})\n" + datafacts.md_table(t["rows"]) for t in tabs)
+        if ext == ".docx":   # 본문 순서 그대로 — 표는 제자리에 칸 그대로(마크다운 표)
+            return "\n".join(v if k == "p" else datafacts.md_table(v) for k, v in datafacts.docx_blocks(path))
         if ext == ".hwp":  # 구형 한글(5.x) — OLE 묶음 안 BodyText/Section* 의 문단 글(레코드 67)만. 한컴오피스 없이 읽는다
             import olefile, struct, zlib
             out = []
@@ -744,27 +740,10 @@ def doc_text(path):
                             out.append("".join(t).encode("utf-16-le", "surrogatepass").decode("utf-16-le", "ignore"))
                         i += size
             return "\n".join(x for x in out if x.strip())
-        if ext == ".hwpx":  # 한글 — zip 안의 section XML 에서 글만
-            import zipfile
-            from xml.etree import ElementTree as ET
-            out = []
-            with zipfile.ZipFile(path) as z:
-                for n in sorted(x for x in z.namelist() if re.match(r"Contents/section\d+\.xml$", x)):
-                    for el in ET.fromstring(z.read(n)).iter():
-                        if el.tag.endswith("}t") and el.text:
-                            out.append(el.text)
-            return "\n".join(out)
-        if ext == ".xlsx":
-            import openpyxl
-            wb = openpyxl.load_workbook(path, read_only=True, data_only=True)
-            out = []
-            for ws in wb.worksheets:
-                out.append(f"## 시트 {ws.title}")
-                for row in ws.iter_rows(values_only=True):
-                    cells = [str(c) for c in row if c is not None]
-                    if cells:
-                        out.append(" | ".join(cells))
-            return "\n".join(out)
+        if ext == ".hwpx":  # 한글 — section XML 의 문단 글 + 표(칸 주소로 격자에 놓는다). 예전엔 글(hp:t)만 이어 붙여 표 칸이 한 줄씩 풀렸다
+            return "\n".join(v if k == "p" else datafacts.md_table(v) for k, v in datafacts.hwpx_blocks(path))
+        if ext == ".xlsx":   # 시트마다 마크다운 표 — 빈 칸도 자리를 지킨다(예전엔 빠져서 열이 밀렸다, 2026-10-18)
+            return "\n\n".join(f"## 시트 {t['where']}\n" + datafacts.md_table(t["rows"], 5000) for t in datafacts.xlsx_tables(path, 5001))
         if ext == ".pptx":
             return pptx_text(path)
     except Exception as e:
@@ -786,6 +765,7 @@ def load_context(job, limit=160000):
     d = os.path.join(job.dir, "_docs")
     os.makedirs(d, exist_ok=True)
     parts = []
+    job.doc_files = []   # (이름, 경로, 글) — extract_facts 가 파일을 다시 열어 표를 칸 그대로 읽는다
     for doc in docs:
         p = os.path.join(d, doc["id"] + "_" + doc["name"])
         if not os.path.isfile(p):
@@ -800,6 +780,7 @@ def load_context(job, limit=160000):
             job.event(f"자료에서 글을 읽지 못했습니다(스캔 PDF 이거나 지원하지 않는 형식): {doc['name']}", "warn")
             continue
         parts.append((doc["name"], t))
+        job.doc_files.append((doc["name"], p, t))
         job.event(f"맥락 자료 읽음 — {doc['name']} ({len(t):,}자)")
     if not parts:
         return ""
@@ -874,6 +855,66 @@ def digest_context(job, raw):
     put_file(job.id, "mockup", p, "context.md")
     job.event(f"사업 요약 완성 — {len(text):,}자, 비용 ${job.spent - before:.3f}. 기획에는 이 요약만 넣습니다.", "done")
     return text
+
+
+FACTS_V = 1   # facts.json 형식 판 — 바꾸면 옛 사본을 다시 만든다
+
+
+def extract_facts(job):
+    """올린 자료의 실제 데이터 → {sig, v, datasets, facts} (2026-10-18 와이어 고도화 B1).
+    표·시계열(엑셀 시트·docx·hwpx·pptx 표와 차트·pdf 표)은 AI 없이 칸 그대로 읽어 데이터셋으로(datafacts.py),
+    글 속 수치는 '숫자+단위' 문장을 기계로 뽑고 싼 모델(digest)이 이름표(무엇·언제·묶음)만 붙인다 — 값은 바꾸지 못한다.
+    결과는 _docs/facts.json → 서버 mockup/facts.json. 같은 자료 목록(sig)으로 만든 사본이 있으면 다시 만들지 않는다. 실패해도 기획은 계속(빈 데이터)."""
+    import datafacts
+    files = getattr(job, "doc_files", None) or []
+    if not files:
+        return {}
+    sig = getattr(job, "doc_sig", "")
+    p = os.path.join(job.dir, "_docs", "facts.json")
+
+    def load():
+        try:
+            g = json.load(open(p, encoding="utf-8"))
+            return g if g.get("sig") == sig and g.get("v") == FACTS_V else None
+        except Exception:
+            return None
+    fx = load() if os.path.isfile(p) else None
+    if fx is None:
+        try:
+            W["download"](f"/worker/jobs/{job.id}/files/mockup/facts.json", p)
+            fx = load()
+        except Exception:
+            fx = None
+    if fx is not None:
+        job.event(f"저장된 자료 데이터를 씁니다 — 표·시계열 {len(fx.get('datasets') or [])}개 · 낱개 수치 {len(fx.get('facts') or [])}개")
+        return fx
+    try:
+        fx = datafacts.facts_from_docs(files)
+    except Exception as e:
+        job.event(f"자료에서 표·수치를 뽑지 못했습니다(기획은 계속): {str(e)[:160]}", "warn")
+        return {}
+    q = datafacts.label_prompt(fx["facts"])
+    if q:   # 글 속 수치 이름표 — 선택 단계(실패하면 기계가 붙인 이름 그대로)
+        try:
+            r = ai(job, "digest", {"messages": [{"role": "system", "content": datafacts.LABEL_SYSTEM}, {"role": "user", "content": q}],
+                                   "max_tokens": 6000, "temperature": 0}, timeout=200)
+            datafacts.apply_labels(fx["facts"], text_of(r))
+        except (Cancelled, Budget):
+            raise
+        except Exception as e:
+            job.event(f"글 속 수치에 이름을 붙이지 못해 원문 낱말 그대로 씁니다: {str(e)[:120]}", "warn")
+    fx.update(sig=sig, v=FACTS_V)
+    try:
+        os.makedirs(os.path.dirname(p), exist_ok=True)
+        json.dump(fx, open(p, "w", encoding="utf-8"), ensure_ascii=False, indent=1)
+        W["put_file"](job.id, "mockup", p, "facts.json")
+    except Exception as e:
+        job.event(f"자료 데이터를 서버에 올리지 못했습니다(진행에는 영향 없음): {str(e)[:120]}", "warn")
+    kinds_ = {}
+    for d in fx.get("datasets") or []:
+        kinds_[d["kind_hint"]] = kinds_.get(d["kind_hint"], 0) + 1
+    job.event(f"자료 데이터 — 표·시계열 {len(fx.get('datasets') or [])}개(" + ", ".join(f"{k} {n}" for k, n in sorted(kinds_.items())) + f") · 낱개 수치 {len(fx.get('facts') or [])}개. 기획·와이어가 이 값으로 그래프·표를 짭니다.", "done")
+    return fx
 
 
 def parse_plan_md(md):
@@ -1125,7 +1166,9 @@ PURPOSE = {
 }
 
 
-def make_plan(job, brief, note, context="", slide_count=0, purpose="present", raw=""):
+def make_plan(job, brief, note, context="", slide_count=0, purpose="present", raw="", facts=None):
+    """facts: extract_facts 결과 — 있으면 '자료의 실제 데이터' 목록을 기획에 넣고 장마다 data(쓰는 id)를 받는다(2026-10-18)"""
+    import datafacts
     if slide_count:
         note = (note + "\n" if note else "") + f"장 수: 정확히 {slide_count}장으로 만든다."
     cat = read(os.path.join(ref_dir(), "mockups", "CATALOG.md"), 40000)
@@ -1142,6 +1185,9 @@ def make_plan(job, brief, note, context="", slide_count=0, purpose="present", ra
                "message 는 '…평가에 답합니다'·'…요구에 부응합니다' 같은 되받기로 끝내지 말고 산출물·수치·기한으로 끝낸다. "
                "첫 본문 장은 발주처가 쓴 핵심 수치 2개 이상(예산·대상 규모·처리 건수 등)을 원문 그대로 되돌려 준다. 내용에 없는데 자료상 꼭 필요한 항목이 있으면 그 장의 content 끝에 "
                "'※ 보강 필요: …' 로 적는다(지어내지 않는다).\n\n" + context + "\n\n")
+    cat_data = datafacts.catalog_text(facts)
+    if cat_data:   # 표·시계열·낱개 수치 목록 — 요약에서 빠진 실제 값을 기획이 고를 수 있게
+        ctx += cat_data + "\n\n"
     if len(brief.strip()) < 20:
         if not context:
             raise RuntimeError("장표에 담을 내용도 맥락 자료도 없습니다.")
@@ -1182,8 +1228,18 @@ def make_plan(job, brief, note, context="", slide_count=0, purpose="present", ra
         slides.append(s)
     if not slides:
         raise RuntimeError("기획 결과에 장이 없습니다.")
+    ids = {x["id"] for x in (facts or {}).get("datasets") or []} | {x["id"] for x in (facts or {}).get("facts") or []}
     for s in slides:
         s["wire"] = clean_wire(s.get("wire"))
+        d = s.get("data")
+        d = [str(x).strip().upper() for x in (d if isinstance(d, list) else re.split(r"[,\s]+", str(d or ""))) if str(x).strip()]
+        if ids and [x for x in d if x in ids]:
+            s["data"] = [x for x in d if x in ids][:8]   # 없는 id 는 버린다
+        else:
+            s.pop("data", None)
+    if ids:
+        used = sum(1 for s in slides if s.get("data"))
+        job.event(f"기획이 자료 데이터를 쓴 장 {used}/{len(slides)}장" + ("" if used else " — 와이어 단계에서 장 글의 수치로 데이터를 짝지어 넣습니다"), "done" if used else "warn")
     seen_ch, prev_ch, split_ch = set(), None, set()
     for s in slides:   # 같은 장(章)이 떨어져 나오면 목차·간지가 둘로 갈린다
         ch = str(s.get("chapter") or str(s.get("section") or "").split(" · ")[0]).strip()
@@ -1202,6 +1258,7 @@ def make_plan(job, brief, note, context="", slide_count=0, purpose="present", ra
 
 
 import wirekinds   # noqa: E402 — 상자 종류 한 벌(engine/wire_kinds.json, 2026-10-18 단일 원본)
+import wireforms   # noqa: E402 — 2차 16종(구성도·조직도·순서도…) 읽기·그리기·지시
 WIRE_KINDS = wirekinds.KINDS
 WIRE_PIC = wirekinds.PIC   # 그림 자리(person·image·screen·map)
 # 서버가 직접 그리는 도식 틀(2026-10-12 PPT 레퍼런스 학습) — 피시본·허브·피라미드·2×2, 이어서 퍼널·순환·벤·로드맵·층 쌓기·게이지·비율 막대.
@@ -1328,6 +1385,35 @@ def wire_chart(d):
         t = "bar"
     return {"type": t, "unit": unit, "series": list(series[:n]), "rows": rows, "highlight": mt.get("highlight", ""),
             "callout": mt.get("callout", ""), "message": mt.get("message", ""), "source": mt.get("source", "")}
+
+
+def axis_keep(labels, hl=""):
+    """가로 라벨 중 찍을 것(번호 집합) — 12개 이하면 모두, 많으면 처음·끝·강조·해가 바뀌는 점(2024-01 처럼 앞 네 자리 연도가 달라지는 곳).
+    화면 WireSketch.tsx axisKeep 과 같은 규칙(E2E 742: 36개월 꺾은선에 라벨 10개만 찍혀 시안이 엇나감)"""
+    n = len(labels)
+    if n <= 12:
+        return set(range(n))
+    keep = {0, n - 1}
+    yr = lambda s: (re.match(r"^\s*((?:19|20)\d\d)", str(s)) or [None, None])[1]   # noqa: E731
+    for i in range(1, n):
+        if yr(labels[i]) and yr(labels[i]) != yr(labels[i - 1]):
+            keep.add(i)
+    for i, lab in enumerate(labels):
+        if hl and (lab == hl or hl in lab):
+            keep.add(i)
+    return keep
+
+
+def line_range(rows, n):
+    """꺾은선 세로 범위 — 값의 최소·최대에 위아래 여유 12%(바닥 0 이 아니라 실제 값 범위). 값이 모두 같으면 0~최대"""
+    vs = [v for _, r in rows for v in r[:n] if v is not None]
+    if not vs:
+        return 0.0, 1.0
+    lo, hi = min(vs), max(vs)
+    if hi - lo < 1e-9:
+        return 0.0, hi or 1.0
+    pad = (hi - lo) * 0.12
+    return lo - pad, hi + pad
 
 
 def chart_nums(ch):
@@ -1572,6 +1658,7 @@ def make_wires(job, plan, only_empty=False):
     기획 한 번에 넣으면 출력이 길어 잘리므로 나눈다. 실패한 묶음은 비워 두고(화면이 기획 내용으로 자동 배치) 계속한다.
     규칙은 prompt_wire.md — 서버(api/src/prompt_wire.md, 'AI 로 다시 짜기')와 같은 글이다. 종류 표·쓰는 법은 wire_kinds.json 에서 채운다."""
     from concurrent.futures import ThreadPoolExecutor
+    import datafacts
     system = wirekinds.prompt(read(os.path.join(W["HERE"], "prompt_wire.md")))
     todo = [s for s in plan["slides"] if not (only_empty and s.get("wire"))]
     if not system or not todo:
@@ -1580,15 +1667,21 @@ def make_wires(job, plan, only_empty=False):
     job.event(f"와이어프레임 — {len(todo)}장을 {len(groups)}묶음으로 짭니다(기획의 글·수치를 상자에 그대로, 장마다 A·B 두 안)")
     NL = chr(10)
 
-    def one(g, shape_a=None):
-        """shape_a: 쪽 → A안 배치 요약. 주면 B안 — 같은 글·수치를 A안과 다른 배치로 짠다"""
+    fx = getattr(job, "facts", None) or {}
+
+    def one(g, shape_a=None, notes=None):
+        """shape_a: 쪽 → A안 배치 요약. 주면 B안 — 같은 글·수치를 A안과 다른 배치로 짠다.
+        notes: 쪽 → 다시 짜는 까닭(덱 다양성 점검 — diversify_wires). 장마다 자료의 실제 데이터(표·수치)를 함께 넣는다(2026-10-18)"""
         src = []
         for s in g:
             b_note = ([f"[B안] A안 배치: {shape_a[s['n']]} — 이 장은 A안과 다른 배치 틀·칸 나눔으로 짠다(주인공 덩어리의 위치·비율, 그림 자리를 바꾼다). "
                        "글·수치는 A안처럼 빠짐없이 같게."] if shape_a and shape_a.get(s["n"]) else [])
+            if notes and notes.get(s["n"]):
+                b_note.append("[다시 짜기] 앞 와이어의 문제 — 이것을 고쳐 새로 짠다: " + " / ".join(notes[s["n"]]))
+            dt = datafacts.slide_data_text(s, fx)
             src.append(NL.join([f"## {s['n']}쪽 — {s.get('title', '')}", *b_note, f"전달할 것: {s.get('message', '')}",
                                 f"유형: {s.get('type', '')} · 장치: {s.get('device', '')}", f"구성: {s.get('layout', '')}",
-                                f"장면: {s.get('scene', '')}", "내용:", str(s.get("content", ""))[:5000]]))
+                                f"장면: {s.get('scene', '')}", "내용:", str(s.get("content", ""))[:5000]] + ([dt] if dt else [])))
         st = getattr(job, "style", None) or {}
         tr = (f"디자인 타입 — {st.get('name', '')}: {st['plan']}{NL}(인물 상자 person 은 이 타입이 인물을 쓸 때만. 아니면 image·chart·badge·table 로 짠다){NL}"
               f"타입 가이드(레이아웃·밀도·SI 제안서에 쓰는 법을 따른다):{NL}{styles.guide(st['id'], 5000)}{NL}{NL}") if st.get("plan") else ""
@@ -1597,6 +1690,7 @@ def make_wires(job, plan, only_empty=False):
             user += f"{NL}{NL}(이번에는 B안이다 — 장마다 적힌 A안 배치와 겹치지 않는 배치로. 같은 틀(tpl)을 다시 쓰지 않는다)"
         r = ai(job, "plan", {"messages": [{"role": "system", "content": system}, {"role": "user", "content": user}],
                              "max_tokens": 1600 * len(g) + 600, "temperature": 0.5 if shape_a else 0.2})
+        wire_reply_ok(r)   # 빈 응답(생각이 출력 한도를 다 씀)·잘린 응답은 실패 — 아래 safe() 가 장마다 다시 요청한다(E2E 382)
         raw = [x for x in (parse_json(text_of(r)).get("slides") or []) if isinstance(x, dict)]
         # AI 는 줄·칸만 정한다 — 좌표 계산과 합격 기준 검사(겹침·넘침·빠진 수치)는 서버 한 곳에서(api/src/WireLayout.php)
         by = {s["n"]: s for s in g}
@@ -1607,9 +1701,28 @@ def make_wires(job, plan, only_empty=False):
         return {int(x.get("n", 0)): (clean_wire(x.get("wire")), [str(c) for c in (x.get("wire_checks") or [])], shape.get(int(x.get("n", 0)), ""),
                                      why.get(int(x.get("n", 0)), "")) for x in laid}
 
+    def safe(g):
+        """A안 한 묶음 — 응답이 비었거나 깨졌거나(Expecting value…) 빠진 장이 있으면 그 장만 하나씩 한 번 더 요청한다(2026-10-18 E2E 382:
+        묶음 실패 뒤 4·5·6쪽 wire 가 빈 배열로 남아 시안이 와이어 없이 그려졌다). 그래도 못 받은 장은 make_wires 끝에서 자동 배치"""
+        try:
+            a = one(g)
+        except (Cancelled, Budget):
+            raise
+        except Exception as e:
+            job.event(f"와이어프레임 한 묶음({', '.join(str(s['n']) for s in g)}쪽) 응답이 비었거나 깨졌습니다 — 장마다 다시 요청합니다: {str(e)[:100]}", "warn")
+            a = {}
+        for s in [s for s in g if not (a.get(s["n"]) or ([],))[0]]:
+            try:
+                a.update({k: v for k, v in one([s]).items() if v[0]})
+            except (Cancelled, Budget):
+                raise
+            except Exception as e:
+                job.event(f"{s['n']}쪽 와이어프레임을 다시 받지 못했습니다 — 기획 내용으로 자동 배치합니다: {str(e)[:100]}", "warn")
+        return a
+
     def ab(g):
         """한 묶음 — A안을 짜고 바로 그 묶음의 B안(A안 배치를 알려 주고 다른 배치로). 묶음끼리는 동시에 돈다"""
-        a = one(g)
+        a = safe(g)
         shape = {k: v[2] or "상자 " + ", ".join(b["k"] for b in v[0]) for k, v in a.items() if v[0]}
         try:
             try:
@@ -1637,9 +1750,10 @@ def make_wires(job, plan, only_empty=False):
                 job.event(f"와이어프레임 한 묶음을 짜지 못했습니다 — 그 장은 기획 내용으로 자동 배치됩니다: {str(e)[:120]}", "warn")
     n = nb = 0
     for s in todo:
-        w, chk, _, why = got.get(s["n"]) or ([], [], "", "")
+        w, chk, shp, why = got.get(s["n"]) or ([], [], "", "")
         if w:
             s["wire"], s["wire_ai"], s["wire_checks"] = w, w, chk   # wire_ai: AI 가 짠 그대로(사람이 고친 것과 견줘 배운다)
+            set_wire_tpl(s, shp, w)
             s.pop("wire_alt", None); s.pop("wire_pick", None); s.pop("wire_why_alt", None)
             if why:
                 s["wire_why"] = why   # 이 장의 관계 판단 — 시안 확인 화면 와이어 아래에 보인다
@@ -1654,8 +1768,162 @@ def make_wires(job, plan, only_empty=False):
                 if why or wb_[3]:
                     s["wire_why_alt"] = {"a": why, "b": wb_[3]}
                 nb += 1
+    auto = [s for s in todo if not s.get("wire")]
+    for s in auto:   # 정말로 기획 내용으로 자동 배치 — 빈 wire 로 시안 단계에 넘기지 않는다(웹 autoWire 와 같은 규칙)
+        s["wire"] = auto_wire(s.get("content", ""), s.get("scene", ""))
+        s["wire_checks"] = ["AI 와이어프레임을 받지 못해 기획 내용으로 자동 배치했습니다 — 확인하고 필요하면 'AI로 다시 짜기'"]
+        s.pop("wire_ai", None); s.pop("wire_tpl", None); s.pop("wire_why", None)
+    if auto:
+        job.event(f"와이어프레임 자동 배치 — {', '.join(str(s['n']) for s in auto)}쪽(AI 응답을 받지 못한 장)", "warn")
     left = sum(1 for s in todo if s.get("wire_checks"))
     job.event(f"와이어프레임 완료 — {n}/{len(todo)}장" + (f" · B안 {nb}장" if nb else "") + (f" ({bad}묶음 실패)" if bad else "") + (f" · 확인이 필요한 장 {left}장" if left else ""), "done" if not bad else "warn")
+    if not only_empty and n >= 2:
+        try:
+            diversify_wires(job, plan, one)
+        except (Cancelled, Budget):
+            raise
+        except Exception as e:   # 선택 단계 — 실패하면 앞 와이어 그대로
+            job.event(f"와이어 다양성 다시 짜기를 건너뜁니다: {str(e)[:140]}", "warn")
+
+
+ARROW_TPL = ("bridge3", "shift")   # 단 사이 화살표가 있는 배치 틀 — api/src/Deck/wire_templates.json 의 "arrows": true 와 같다(tests/test_wire_kinds.py 가 대조)
+
+
+def set_wire_tpl(s, shape, wire):
+    """AI 가 고른 배치 틀을 장에 남긴다(화살표 틀만) — 배치(칸 나눔)가 같을 때만 wire_png·wire_text 가 단 사이 화살표를 그린다.
+    사람이 상자를 옮기거나 B안을 고르면 칸 나눔이 달라져 화살표가 저절로 빠진다"""
+    import wirediv
+    m = re.match(r"^배치 틀 (\w+)$", str(shape or ""))
+    if m and m.group(1) in ARROW_TPL:
+        s["wire_tpl"] = {"id": m.group(1), "geom": [list(g) if isinstance(g, tuple) else g for g in wirediv.geom(wire)]}
+    else:
+        s.pop("wire_tpl", None)
+
+
+def wire_arrows(s):
+    """단 사이 화살표 — [(왼쪽 상자, 오른쪽 상자)]. 화살표 틀이고 지금 배치가 그 틀 그대로일 때만(첫 줄에서 옆으로 붙은 상자끼리)"""
+    import wirediv
+    tp = s.get("wire_tpl") or {}
+    wire = [b for b in (s.get("wire") or []) if isinstance(b, dict)]
+    if tp.get("id") not in ARROW_TPL or [list(g) if isinstance(g, tuple) else g for g in wirediv.geom(wire)] != tp.get("geom"):
+        return []
+    body = [b for b in wire if b.get("k") != "band"]
+    if not body:
+        return []
+    top = min(float(b["y"]) for b in body)
+    row = sorted((b for b in body if abs(float(b["y"]) - top) < 1.0), key=lambda b: float(b["x"]))
+    return [(a, c) for a, c in zip(row, row[1:]) if 0 <= float(c["x"]) - (float(a["x"]) + float(a["w"])) <= 4.5]
+
+
+def wire_reply_ok(r):
+    """와이어 응답 판정 — 글이 없거나(생각이 출력 한도를 다 씀) 출력 한도에서 잘렸으면 ValueError(실패로 보고 다시 요청)"""
+    ch = (r.get("choices") or [{}])[0] if isinstance(r, dict) else {}
+    if str(ch.get("finish_reason") or r.get("stop_reason") or "") in ("length", "max_tokens"):
+        raise ValueError("응답이 출력 한도에서 잘렸습니다(finish_reason=length)")
+    if not text_of(r).strip():
+        raise ValueError("빈 응답(글 없음)")
+
+
+def auto_wire(content, scene=""):
+    """AI 없이 기획 내용으로 상자 배치 — 소제목(#·**제목**·'- **이름**:')마다 상자, 표는 표 상자. 웹 Wireframe.tsx autoWire 와 같은 규칙"""
+    groups, cur = [], None
+    for raw in str(content or "").splitlines():
+        l = raw.rstrip()
+        if not l.strip():
+            continue
+        h = re.match(r"^\s*#{1,6}\s+(.+)$", l) or re.match(r"^\s*\*\*([^*]+)\*\*\s*:?\s*$", l)
+        lead = re.match(r"^[-*]\s+\*\*([^*]+)\*\*\s*[:：]?\s*(.*)$", l)
+        if h:
+            cur = {"t": h.group(1).strip(), "lines": [], "table": False}
+            groups.append(cur)
+            continue
+        if lead:
+            cur = {"t": lead.group(1).strip(), "lines": [lead.group(2).strip()] if lead.group(2).strip() else [], "table": False}
+            groups.append(cur)
+            continue
+        if re.match(r"^\s*\|", l) and (cur is None or (not cur["table"] and cur["lines"])):
+            cur = {"t": "", "lines": [], "table": False}
+            groups.append(cur)
+        if re.match(r"^\s*\|", l):
+            cur["table"] = True
+        if cur is None:
+            cur = {"t": "", "lines": [], "table": False}
+            groups.append(cur)
+        cur["lines"].append(l)
+    gs = [g for g in groups if g["t"] or g["lines"]][:8]
+    out, top, bot, x0 = [], 15.0, 96.0, 2.0
+    if str(scene or "").strip():
+        out.append({"id": "a0", "k": "image", "x": 2.0, "y": top, "w": 30.0, "h": bot - top, "t": "", "d": "그림: " + str(scene).strip()[:300]})
+        x0 = 34.0
+    if not gs:
+        return clean_wire(out) or [{"id": "a1", "k": "text", "x": 2.0, "y": top, "w": 96.0, "h": 20.0, "t": "※ 보강 필요: 이 장의 내용", "d": ""}]
+    n = len(gs)
+    cols = n if n <= 3 else 2 if n <= 4 else 3
+    rows = -(-n // cols)
+    cw, ch = (98 - x0 - 2 * (cols - 1)) / cols, (bot - top - 2 * (rows - 1)) / rows
+    for i, g in enumerate(gs):
+        c, r = i % cols, i // cols
+        out.append({"id": f"a{i + 1}", "k": "table" if g["table"] else "panel" if len(g["lines"]) > 5 else "card",
+                    "x": round(x0 + c * (cw + 2), 1), "y": round(top + r * (ch + 2), 1), "w": round(cw, 1), "h": round(ch, 1),
+                    "t": g["t"] or ("표" if g["table"] else ""), "d": "\n".join(g["lines"])})
+    return clean_wire(out)
+
+
+def diversify_wires(job, plan, one):
+    """덱 다양성 점검(wirediv) → 걸린 장(덱의 30%, 최대 6장)만 문제를 알려 주고 한 번 더 짠다. 더 나은 쪽(배치 검사 + 다양성 문제 수가 적은 쪽)을 남긴다.
+    one = make_wires 안의 묶음 짜기(같은 지시문·데이터·서버 배치 계산)"""
+    import datafacts, wirediv
+    from concurrent.futures import ThreadPoolExecutor
+    fx = getattr(job, "facts", None) or {}
+    has_data = (lambda s: bool(datafacts.slide_refs(s, fx)[0])) if fx else None
+    slides = plan["slides"]
+    flags = wirediv.flag(slides, has_data)
+    body = [s for s in slides if s.get("wire")]
+    picked = wirediv.pick(flags, len(body)) if flags else []
+    if not picked:
+        job.event("와이어 다양성 점검 — 연달아 같은 배치·같은 주 시각물 반복·데이터 장의 글 상자만 구성 없음", "done")
+        return
+    by = {s["n"]: s for s in slides}
+    idx = {s["n"]: i for i, s in enumerate(body)}
+    notes = {}
+    for n in picked:
+        i = idx.get(n, -1)
+        near = [f"{body[j]['n']}쪽 {wirediv.describe(body[j]['wire'])}" for j in (i - 1, i + 1) if 0 <= j < len(body)]
+        notes[n] = flags[n] + ([f"이웃 장과 겹치지 않게 — {' · '.join(near)}"] if near else [])
+    job.event(f"와이어 다양성 점검 — {len(flags)}장에서 반복·데이터 문제, {len(picked)}장을 다시 짭니다: "
+              + "; ".join(f"{n}쪽 {flags[n][0][:60]}" for n in picked))
+    groups = [[by[n] for n in picked[i:i + WIRE_BATCH]] for i in range(0, len(picked), WIRE_BATCH)]
+    got = {}
+    with ThreadPoolExecutor(max_workers=min(par(job, 3, 6), len(groups))) as ex:
+        for f in [ex.submit(one, g, None, notes) for g in groups]:
+            try:
+                got.update(f.result())
+            except (Cancelled, Budget):
+                raise
+            except Exception as e:
+                job.event(f"다시 짜기 한 묶음 실패 — 앞 와이어 그대로: {str(e)[:120]}", "warn")
+    changed = []
+    for n in picked:
+        w, chk, shp, why = got.get(n) or ([], [], "", "")
+        s = by[n]
+        if not w:
+            continue
+        old = wirediv.score(slides, n, s["wire"], s.get("wire_checks") or [], has_data)
+        new = wirediv.score(slides, n, w, chk, has_data)
+        if new < old:
+            before = wirediv.main_key(s["wire"])
+            s["wire"], s["wire_ai"], s["wire_checks"] = w, w, chk
+            set_wire_tpl(s, shp, w)
+            if why:
+                s["wire_why"] = why
+            if isinstance(s.get("wire_alt"), dict):
+                s["wire_alt"]["a"] = w
+                if why and isinstance(s.get("wire_why_alt"), dict):
+                    s["wire_why_alt"]["a"] = why
+            changed.append(f"{n}쪽 {before or '?'} → {wirediv.main_key(w) or '?'} (문제 {old}→{new})")
+    left = wirediv.flag(slides, has_data)
+    job.event(f"와이어 다시 짜기 — {len(changed)}/{len(picked)}장 바꿈" + (": " + "; ".join(changed) if changed else " (새 안이 낫지 않아 앞 와이어 유지)")
+              + f" · 남은 반복·데이터 문제 {len(left)}장", "done" if changed else "warn")
 
 
 def wire_boxes(s):
@@ -1768,7 +2036,9 @@ def wire_png(s, size=(1600, 900)):
         """chart 한 상자 — 유형마다 회색조 스케치. 강조 항목은 파랑, 말풍선은 그 위. 이미지 모델이 모양을 베낀다"""
         GREY, BLUE, DARK = (203, 213, 225), (37, 99, 235), (71, 85, 105)
         f_s = _font(16, False)
-        t, rows, ser, unit, hl = ch["type"], ch["rows"][:10], ch["series"], ch["unit"], ch["highlight"]
+        t, ser, unit, hl = ch["type"], ch["series"], ch["unit"], ch["highlight"]
+        rows = ch["rows"][:60] if t == "line" else ch["rows"][:10]   # 꺾은선은 점이 많아도 모두(월별 36개월) — 막대류는 10개까지
+        keep = axis_keep([lab for lab, _ in rows], hl)   # 가로 라벨 — 점이 많으면 처음·끝·강조·해가 바뀌는 점만(E2E 742)
         yy = title(b, x0, y0, x1)
         ybot = y1 - (24 if ch["source"] else 0)
         if ch["source"]:
@@ -1835,13 +2105,16 @@ def wire_png(s, size=(1600, 900)):
             return
         # 세로 축이 있는 유형 — 막대·짝·누적·폭포·꺾은선·막대+선
         base = ybot - 30
-        top_y = min(yy + 44, base - 12)   # 값 글자·말풍선 자리(아주 작은 상자에서 축이 뒤집히지 않게)
+        top_y = min(yy + (22 if t == "line" and len(rows) > 12 else 44), base - 12)   # 값 글자·말풍선 자리(아주 작은 상자에서 축이 뒤집히지 않게). 점이 많은 선은 높이를 아낀다
         d.line([x0 + 10, base, x1 - 10, base], fill=LINE, width=1)
         cw = (x1 - x0 - 20) / len(rows)
         cxs = [x0 + 10 + (i + 0.5) * cw for i in range(len(rows))]
         for i, (lab, _) in enumerate(rows):
-            lw_ = d.textlength(lab, font=f_d)   # 축 이름은 그 칸 가운데
-            lines_in(cxs[i] - min(lw_, cw * 0.9) / 2, base + 6, cw * 0.9, base + 30, lab, f_d, INK if hot(lab) else SUB, 22)
+            if i not in keep:
+                continue
+            lw_ = d.textlength(lab, font=f_d)   # 축 이름은 그 칸 가운데(점이 많으면 글 폭만큼 넓게)
+            sw_ = cw * 0.9 if len(keep) == len(rows) else lw_ + 4
+            lines_in(min(x1 - sw_, max(x0, cxs[i] - min(lw_, sw_) / 2)), base + 6, sw_, base + 30, lab, f_d, INK if hot(lab) else SUB, 22)
         mark = None   # 말풍선 자리(cx, 꼭대기 y)
         if t == "waterfall":
             st = wf_steps(ch)[:len(rows)]
@@ -1866,6 +2139,9 @@ def wire_png(s, size=(1600, 900)):
             stack = t == "stacked"
             top = max([sum(val(v, j) for j in range(n)) if stack else max(val(v, j) for j in range(nb or n)) for _, v in rows] or [1]) or 1
             Y = lambda v: base - (base - top_y) * v / top   # noqa: E731
+            if t == "line":   # 꺾은선은 0 기준이 아니라 값 범위로 — 1,750~3,410 이 바닥에 평평하게 눌리지 않게(E2E 742 2쪽, 시안 일치 62점)
+                lo_, hi_ = line_range(rows, n)
+                Y = lambda v: base - (base - top_y) * (v - lo_) / ((hi_ - lo_) or 1)   # noqa: E731
             for i, (lab, vs) in enumerate(rows):
                 if nb:
                     bw = cw * 0.7 / nb
@@ -1899,9 +2175,9 @@ def wire_png(s, size=(1600, 900)):
                     d.line(pts, fill=col, width=4, joint="curve")
                     for i, (px, py) in enumerate(pts):
                         big = hot(rows[i][0]) or (not hl and i == len(pts) - 1 and j == n - 1)
-                        rr = 9 if big else 6
+                        rr = 9 if big else (6 if len(pts) <= 12 else 3)
                         d.ellipse([px - rr, py - rr, px + rr, py + rr], fill=(255, 255, 255), outline=col, width=3)
-                        if big or n == 1 or t == "combo":
+                        if big or ((n == 1 or t == "combo") and len(pts) <= 12) or (len(pts) > 12 and i in (0, len(pts) - 1) and j == n - 1):
                             d.text((px - 14, py - 34), fmtv(val(rows[i][1], j), unit), font=_font(15, big), fill=INK)
                         if big and j == (n - 1 if t == "line" else j):
                             mark = (px, py - 34)
@@ -1978,6 +2254,23 @@ def wire_png(s, size=(1600, 900)):
             chip = any(c for _, _, c in ks)
             f_n = _font(int(min(72, max(36, (ybot - yy) * (0.34 if chip else 0.42)))))
             f_c = _font(16)
+            if len(ks) >= 2 and b["w"] / len(ks) < 14:
+                # 좁은 칸 — 수치를 세로로 쌓는다(가로로 두면 "71.4%3.2점" 처럼 붙었다, E2E 382 3쪽). 서버 WireLayout::kpiStacked 와 같은 기준
+                rh = (ybot - yy) / len(ks)
+                for i, (num, cap, ch) in enumerate(ks):
+                    ry = yy + i * rh
+                    if i:
+                        d.line([x0 + 10, ry, x1 - 10, ry], fill=LINE, width=1)
+                    f_v = _font(int(max(18, min(56, rh * 0.42))))
+                    while f_v.size > 18 and d.textlength(num, font=f_v) > x1 - x0 - 16:
+                        f_v = _font(f_v.size - 2)
+                    on = bool(hl) and (hl == num or hl in num or hl == cap)
+                    nw = d.textlength(num, font=f_v)
+                    d.text((x0 + (x1 - x0 - nw) / 2, ry + 6), num, font=f_v, fill=(30, 41, 59) if on or not hl else (148, 163, 184))
+                    lines_in(x0 + 8, ry + 12 + f_v.size, x1 - x0 - 16, ry + rh, cap, _font(16, False), SUB, 20)
+                if src:
+                    d.text((x0 + 10, y1 - 22), "출처: " + src, font=_font(15, False), fill=SUB)
+                continue
             for i, (num, cap, ch) in enumerate(ks):
                 kx = x0 + i * kw
                 if i:
@@ -2513,6 +2806,11 @@ def wire_png(s, size=(1600, 900)):
                 ty = lines_in(lx + 40, ly + 2, x1 - lx - 44, ly + ch_, nm, _font(19), INK, 23)
                 lines_in(lx + 40, ty, x1 - lx - 44, ly + ch_ - 4, ds, _font(16, False), SUB, 20)
             continue
+        # 2026-10-18 실제 장표 540장 분석 §7 — 2차 16종(그리기는 wireforms.py)
+        if k in ("arch", "stepcols", "derive", "askanswer", "linkage", "org", "voices", "screenshift", "triad", "flowchart",
+                 "rowgrid", "timeline", "stairs", "consortium", "trace", "twinhub") and wireforms.ok(k, b.get("t"), body):
+            wireforms.draw(k, b, b.get("d"), (x0, y0, x1, y1), wireforms.UI(d, _font, lines_in, title, lambda tx, f, w: _wrap(d, tx, f, w)))
+            continue
         if k == "badge":
             f_n = _font(int(min(64, max(30, (y1 - y0) * 0.35))))
             tw = d.textlength(b.get("t") or "", font=f_n)
@@ -2527,6 +2825,12 @@ def wire_png(s, size=(1600, 900)):
         yy = title(b, x0, y0, x1)
         plain = "\n".join(wirekinds.meta(body)[1]) if k in wirekinds.DATA else body   # 메시지·강조 줄은 위 말풍선으로
         lines_in(x0 + 10, max(yy, y0 + 46) if b.get("t") else yy, x1 - x0 - 20, y1 - 4, plain.replace("|", "   "), f_d, SUB, 24)
+    for a, c in wire_arrows(s):   # 화살표 틀(bridge3·shift) — 단 사이 굵은 셰브런
+        ax0, ax1 = (a["x"] + a["w"]) / 100 * W_, c["x"] / 100 * W_
+        ay = (max(a["y"], c["y"]) + min(a["y"] + a["h"], c["y"] + c["h"])) / 200 * H_
+        hw = max(8, min(26, (ax1 - ax0) * 0.9))
+        cx = (ax0 + ax1) / 2
+        d.polygon([(cx - hw * 0.6, ay - 22), (cx + hw * 0.4, ay), (cx - hw * 0.6, ay + 22), (cx - hw * 0.2, ay)], fill=(71, 85, 105))
     buf = io.BytesIO()
     im.save(buf, "PNG")
     return "data:image/png;base64," + base64.b64encode(buf.getvalue()).decode()
@@ -2565,6 +2869,16 @@ def chart_text(ch):
             desc = " ; ".join(f'[{lab}] {v(vs[0])}' for lab, vs in rows)
             extra = ""
         out = f'{CHART_EN.get(t, CHART_EN["bar"])}{extra}, value labels on the marks: {desc}'
+        if t == "line" and len(rows) > 12:   # 점이 많은 꺾은선 — 모양을 정확히(E2E 742: 36개월 선이 평평하게 그려져 일치 62점)
+            n0 = (rows[0][1] + [None])[0]
+            n1 = (rows[-1][1] + [None])[0]
+            vs = [(lab, vs_[0]) for lab, vs_ in rows if vs_ and vs_[0] is not None]
+            mn, mx = min(vs, key=lambda x: x[1]), max(vs, key=lambda x: x[1])
+            hv = next((x for x in vs if hl and (x[0] == hl or hl in x[0])), None)
+            out = (f'{CHART_EN["line"]} with exactly {len(rows)} points (one per category, in this order) — first [{rows[0][0]}] {v(n0)}, last [{rows[-1][0]}] {v(n1)}, '
+                   f'lowest [{mn[0]}] {v(mn[1])}, highest [{mx[0]}] {v(mx[1])}' + (f', highlight [{hv[0]}] {v(hv[1])}' if hv else "")
+                   + '; the vertical axis spans the real value range (not from zero) so the rise and dips are clearly visible; small dots, value labels only on the first, last and highlighted points;'
+                   f' x-axis labels only at the first, the last and each year start: {desc}')
     if unit and unit != "%":
         out += f'; unit "{unit}" shown once (axis or title), not on every label'
     if not hl and t not in ("pair", "donut", "waterfall"):
@@ -2724,11 +3038,18 @@ def wire_text(s):
             ss = " ; ".join(f'pin {no} [{nm}]' + (f" — {ds}" if ds else "") + (f" placed at {p[0]:g}%,{p[1]:g}% of the screen" if p else "") for no, nm, ds, p in pins)
             rows.append(head + f': "{b.get("t", "")}" — ANNOTATED SCREEN: a clean UI screenshot mock' + (f' of {pic}' if pic else "") + ' on the left ~60% (window frame, realistic layout,'
                         f' no readable filler text), dark numbered circle pins on the relevant UI spots, and on the right a numbered legend (same numbers, bold name, one short line): {ss}')
+        elif b["k"] in ("arch", "stepcols", "derive", "askanswer", "linkage", "org", "voices", "screenshift", "triad", "flowchart",
+                        "rowgrid", "timeline", "stairs", "consortium", "trace", "twinhub") and wireforms.ok(b["k"], b.get("t"), b.get("d")):
+            rows.append(head + f': "{b.get("t", "")}" — ' + wireforms.text(b["k"], b.get("t") or "", b.get("d")))
         else:
             plain = [l for l in lines if not wirekinds.META_LINE.match(l)] if b["k"] in wirekinds.DATA else lines   # 메시지·강조는 아래 persuade_text
             rows.append(head + f': "{b.get("t", "")}"' + (f' — contents: {" / ".join(plain[:8])}' if plain else ""))
         if b["k"] in wirekinds.DATA and len(rows) > n0:
             rows[-1] += persuade_text(b.get("d"))
+    arr = wire_arrows(s)
+    if arr:   # 화살표 틀 — 읽는 순서를 화살표로
+        rows.append("- READING-FLOW ARROWS: bold right-pointing chevron arrows in the gaps between " + " → ".join(
+            f'"{b.get("t") or b["k"]}"' for b in [arr[0][0]] + [c for _, c in arr]) + " (left → right), one arrow per gap")
     return "\n".join(rows)
 
 
@@ -2871,11 +3192,43 @@ def deck_check(plan, sources):
     return out
 
 
-def fact_check(plan, sources):
+PARTICLE_TAIL = re.compile(r"(에서|으로|까지|부터|에게|보다|은|는|이|가|을|를|의|에|로|와|과|도)$")
+METRIC_STOP = {"에서", "으로", "까지", "부터", "이상", "이하", "미만", "초과", "이내", "대비", "기준", "현재", "목표", "최대", "최소", "평균", "연간", "월간",
+               "전체", "합계", "모두", "각각", "올해", "작년", "지난해", "이후", "이전", "까지는", "에서는", "으로는"}
+TARGET_CTX = re.compile(r"(목표|약속|까지|→|->|달성|개선|향상|단축|증가|감소|높이|낮추|끌어올|으로\s*올|로\s*올)")
+
+
+def _num_units(text):
+    """글 속 수치 → {값(float): {바로 뒤 단위…}} — 형식(1,240 · 95.0)이 달라도 같은 값으로 찾는다"""
+    out = {}
+    for m in re.finditer(r"(?<![\d.])(\d[\d,]*(?:\.\d+)?)\s*(%|[가-힣]{1,2})?", text or ""):
+        try:
+            v = float(m.group(1).replace(",", ""))
+        except ValueError:
+            continue
+        out.setdefault(v, set()).add(m.group(2) or "")
+    return out
+
+
+def _pair_in_source(word, vals, src_txt):
+    """자료의 한 줄(표 행)에 그 지표 이름과 서로 다른 값들이 모두 있는가 — 현재·목표처럼 같은 지표의 짝"""
+    want = {float(v) for v in vals}
+    for ln in str(src_txt or "").splitlines():
+        if word not in ln:
+            continue
+        got = {float(x.replace(",", "")) for x in re.findall(r"(?<![\d.])\d[\d,]*(?:\.\d+)?", ln)}
+        if want <= got:
+            return True
+    return False
+
+
+def fact_check(plan, sources, extra=""):
     """기획을 자료와 맞대 본다(AI 없이). 장마다 checks 에 '확인할 것'을 적는다:
-    자료에 없는 수치 · 메타 문구 · 근거 없는 과장 표현. 사람이 시안 전에 보고 고치거나 그대로 둔다."""
-    src = _norm_num(sources or "")
-    src_txt = sources or ""
+    자료에 없는 수치 · 메타 문구 · 근거 없는 과장 표현. 사람이 시안 전에 보고 고치거나 그대로 둔다.
+    extra = 원문 전체(요약 전)·자료 데이터(표·시계열 값) — 수치·표현 근거로만 본다(덱 점검 deck_check 는 sources 만, 2026-10-18)"""
+    src = _norm_num((sources or "") + "\n" + (extra or ""))
+    src_txt = (sources or "") + "\n" + (extra or "")
+    vals = _num_units(src_txt)   # 자료의 수치를 숫자로 — '95' · '95.0' · '95%' · '1,240' 이 같은 값으로 맞는다(E2E 382)
     total = 0
     for s in plan.get("slides") or []:
         txt = "\n".join(str(s.get(k) or "") for k in ("title", "message", "content")) + "\n" + "\n".join(
@@ -2893,6 +3246,17 @@ def fact_check(plan, sources):
                 if _glued(txt, m):
                     continue
                 if raw in seen or _norm_num(raw) in src or (_norm_num(core) in src and not raw.endswith("%")):
+                    continue
+                dm = re.fullmatch(r"((?:19|20)\d\d)\.(0?[1-9]|1[0-2])", core)
+                if dm:   # 날짜 2025.12 — 수치가 아니라 시점. 자료의 2025-12·2025.12·2025년 12월 가운데 하나와 맞춘다(E2E 742)
+                    y_, m_ = dm.group(1), int(dm.group(2))
+                    if re.search(rf"{y_}\s*(?:[-./]\s*0?{m_}(?!\d)|년\s*0?{m_}\s*월)", src_txt):
+                        continue
+                    seen.add(raw)
+                    checks.append(f"날짜 '{raw}' 가 올린 자료에서 보이지 않습니다 — 기간을 확인해 주세요")
+                    continue
+                fv = float(core.replace(",", ""))
+                if fv in vals and (not raw.endswith("%") or "%" in vals[fv]):   # 숫자 형식만 다른 같은 값(95 ↔ 95.0, % 는 자료에서도 % 일 때만)
                     continue
                 seen.add(raw)
                 checks.append(f"수치 '{raw}' 가 올린 자료에서 보이지 않습니다 — 근거를 확인하거나 '※ 보강 필요'로 바꿔 주세요")
@@ -2912,14 +3276,23 @@ def fact_check(plan, sources):
             checks.append(f"도구 이름·워터마크로 보이는 글: '{m.group(0)}'")
         s["checks"] = checks[:12]
         total += len(s["checks"])
-    # 덱 안 일관성 — 같은 항목(앞 낱말 + 단위)에 장마다 다른 수치
+    # 덱 안 일관성 — 같은 항목(앞 낱말 + 단위)에 장마다 다른 수치.
+    # 조사·한 낱말 꾸밈('에서'·'까지'·'약')은 지표가 아니고, 현재값 → 목표값 짝(문장에 목표·→·달성…, 또는 자료 표 한 줄에 두 값)은 다른 항목이다(E2E 382, 2026-10-18)
     seen = {}
     for s in plan.get("slides") or []:
         txt = "\n".join(str(s.get(k) or "") for k in ("title", "message", "content"))
         for m in re.finditer(r"([가-힣A-Za-z]{2,12})\s*(?:은|는|이|가|:)?\s*(\d[\d,]*(?:\.\d+)?)\s*(%|억|조|만|원|명|건|개|곳|종|개월|일|시간|배|점|회)", txt):
-            key, val = (m.group(1), m.group(3)), m.group(2).replace(",", "")
+            word = PARTICLE_TAIL.sub("", m.group(1)) if len(m.group(1)) > 2 else m.group(1)
+            if len(word) < 2 or word in METRIC_STOP:
+                continue
+            if TARGET_CTX.search(txt[max(0, m.start() - 4):m.end() + 14]):   # '95% 달성'·'3.2점 → 4.3점'·'목표 95%' — 목표·변화 쪽 값
+                continue
+            key, val = (word, m.group(3)), m.group(2).replace(",", "")
             seen.setdefault(key, {}).setdefault(val, set()).add(s.get("n"))
-    for (word, unit), vals in seen.items():
+    for (word, unit), vals_ in seen.items():
+        vals = vals_
+        if len(vals) > 1 and _pair_in_source(word, list(vals), src_txt):   # 자료 표 한 줄에 그 값들이 같이 있다 — 현재·목표 같은 짝
+            continue
         if len(vals) > 1:
             where_ = " / ".join(f"{v}{unit}({', '.join(str(n) + '쪽' for n in sorted(ns))})" for v, ns in vals.items())
             for s in plan.get("slides") or []:
@@ -2930,7 +3303,9 @@ def fact_check(plan, sources):
     return total + len(plan["deck_checks"])
 
 
-def make_mockup(job, s, feedback="", accent="#FF2A6D", anchor=None):
+def make_mockup(job, s, feedback="", accent="#FF2A6D", anchor=None, fix=""):
+    """본문 시안 한 장. fix = 와이어 일치 판정(check_mockup)이 낮을 때 다시 그리며 덧붙이는 '고칠 것'"""
+    import fidelity
     title = str(s.get("title", ""))
     kw = ", ".join(keywords_of(s)) or "(none)"
     content = "\n".join(l for l in str(s.get("content", "")).splitlines() if "보강 필요" not in l)   # '※ 보강 필요' 는 사용자 메모 — 시안에 찍지 않는다
@@ -2949,6 +3324,10 @@ def make_mockup(job, s, feedback="", accent="#FF2A6D", anchor=None):
                    "follow the wireframe, do not restore deleted items from the plan). The gray boxes and English kind labels are placeholders only: draw real slide "
                    "content (cards, people, charts, screens…) in the deck style there — never draw gray boxes, block-type names (PANEL, CARD, KEY NUMBER, BAND …) or bracketed labels. "
                    "If the wireframe has a dark full-width bar at the bottom, it is the CONCLUSION BAND: draw it as a full-width deep-navy bar with its text in white — never drop it.\n")
+        # 배치 고정을 맨 앞에도 — 뒤에만 두면 앞의 장면·장치 지시에 밀려 와이어와 상관없는 구성이 나왔다(2026-10-18 사용자 지적)
+        prompt = fidelity.layout_lock(wire_boxes(s)) + prompt
+        if fix:
+            prompt += "\n" + fix
     st = getattr(job, "style", None) or {}
     if st.get("scene"):   # 타입 A 가 아닌 디자인 타입 — 기획의 장면(인물 연기)을 그 타입의 표현으로 바꿔 그린다
         prompt += ("\nDESIGN TYPE OVERRIDES THE SCENE (highest priority after the text content): " + str(st["scene"]).replace("{accent}", accent or "#FF2A6D")
@@ -2977,6 +3356,84 @@ def make_mockup(job, s, feedback="", accent="#FF2A6D", anchor=None):
         except Exception as e:
             job.event(f"{s.get('n', '')}번 장 — 나노바나나 2 호출이 실패해 기본 시안 모델로 만듭니다: {str(e)[:160]}", "warn")
     return gen_image(job, prompt, list(s.get("ref") or []), "16:9", ([wp] if wp else []) + ([anchor] if anchor else []) or None, sref=s.get("sref"))
+
+
+def mockup_fit(job, s, png):
+    """시안이 와이어를 따랐는지 — 와이어 스케치(그림 1)와 시안(그림 2)을 글·그림 모델 하나가 함께 보고 점수(fidelity.parse). 못 재면 None.
+    서버 kind 'check'(그림 보는 글 모델 — Claude 경로면 Sonnet 5.5, OpenRouter 면 글 모델. 그림을 못 보는 모델이면 None 으로 건너뛴다)"""
+    import fidelity
+    wb = wire_boxes(s)
+    wp = wire_png(s)   # 시안 모델에 넘긴 것과 같은 스케치(1600×900) — 판정 모델에는 1024 폭 JPEG 로 줄여 보낸다(그림 토큰)
+    if not wb or not wp or not png:
+        return None
+    from PIL import Image
+
+    def small(raw):
+        im = Image.open(io.BytesIO(raw)).convert("RGB")
+        im.thumbnail((1024, 1024))
+        buf = io.BytesIO()
+        im.save(buf, "JPEG", quality=82)
+        return "data:image/jpeg;base64," + base64.b64encode(buf.getvalue()).decode()
+    wp, mk = small(base64.b64decode(wp.split(",", 1)[1])), small(png)
+    body = {"messages": [{"role": "system", "content": fidelity.SYSTEM},
+                         {"role": "user", "content": [{"type": "text", "text": fidelity.prompt(wb, fidelity.wire_numbers(wb))},
+                                                      {"type": "image_url", "image_url": {"url": wp}},
+                                                      {"type": "image_url", "image_url": {"url": mk}}]}],
+            "max_tokens": 1500, "temperature": 0}
+    try:
+        r = ai(job, "check", body, timeout=150)
+    except (Cancelled, Budget):
+        raise
+    except Exception as e:
+        if not getattr(job, "_fit_warned", False):
+            job._fit_warned = True
+            job.event(f"와이어 일치 판정을 하지 못해 건너뜁니다: {str(e)[:140]}", "warn")
+        return None
+    got = fidelity.parse(text_of(r))
+    if got is None and not getattr(job, "_fit_warned", False):
+        job._fit_warned = True
+        job.event("와이어 일치 판정 답을 읽지 못했습니다(그림을 볼 수 없는 글 모델일 수 있음) — 판정 없이 진행합니다.", "warn")
+    return got
+
+
+def check_mockup(job, s, png, make):
+    """시안 한 장 판정 → 70 미만이거나 배치가 틀리면 고칠 것을 붙여 한 번만 더 그리고, 점수가 나은 쪽을 남긴다.
+    make(fix) = 그 장 시안을 다시 그리는 함수. 반환 (png, 판정 또는 None). 한도의 90% 를 넘겼으면 판정·다시 그리기를 건너뛴다"""
+    import fidelity
+    if W["CFG"].get("mockup_fit") is False:
+        return png, None
+    if not s.get("wire"):   # 와이어가 빈 장 — 판정할 기준이 없다. 말없이 건너뛰지 않고 남긴다(E2E 382: 시안 4장 중 3장만 판정)
+        job.event(f"{s.get('n')}쪽 와이어 없음 — 와이어 일치 판정을 할 수 없습니다(와이어프레임을 짜고 다시 그려 주세요)", "warn")
+        return png, None
+    near = lambda: job.budget is not None and job.spent >= 0.9 * job.budget   # noqa: E731
+    if near():
+        return png, None
+    t0 = job.spent
+    r = mockup_fit(job, s, png)
+    if not r:
+        return png, None
+    n = s.get("n")
+    if not fidelity.need_retry(r):
+        job.event(f"{n}쪽 와이어 일치 {r['score']}점")
+        return png, r
+    if near():
+        job.event(f"{n}쪽 와이어 일치 {r['score']}점 — 한도에 가까워 다시 그리지 않습니다", "warn")
+        return png, r
+    job.event(f"{n}쪽 와이어 일치 {r['score']}점" + (" · 배치 틀림" if not r["layout_ok"] else "") + (f" · 빠짐: {', '.join(r['missing'][:3])}" if r["missing"] else "")
+              + " — 고칠 것을 붙여 한 번 더 그립니다", "warn")
+    try:
+        png2 = make(fidelity.fix_text(r))
+    except (Cancelled, Budget):
+        raise
+    except Exception as e:
+        job.event(f"{n}쪽 다시 그리기 실패 — 앞 시안을 씁니다: {str(e)[:120]}", "warn")
+        return png, r
+    r2 = mockup_fit(job, s, png2)
+    if fidelity.better(r, r2):
+        job.event(f"{n}쪽 다시 그린 시안 {r2['score']}점 — 새 시안을 씁니다(앞 {r['score']}점, 판정·다시 그리기 ${job.spent - t0:.3f})", "done")
+        return png2, r2
+    job.event(f"{n}쪽 다시 그린 시안이 낫지 않아({r2['score'] if r2 else '판정 없음'}점) 앞 시안({r['score']}점)을 씁니다", "warn")
+    return png, r
 
 
 SLOT_NOTE = ("EMPTY PICTURE SLOTS (strict — overrides every picture instruction): every PERSON / ILLUSTRATION / SCREEN / MAP block of the wireframe is drawn ONLY as an EMPTY slot — "
@@ -4038,15 +4495,18 @@ def _plan_phase(job, j):
         raw_ctx = context or ""
         if context:
             context = digest_context(job, context)
+        job.facts = extract_facts(job) if raw_ctx else {}   # 표·시계열·낱개 수치 — 기획(data id)·와이어(실제 값)·근거 확인이 쓴다(2026-10-18)
         job.push("기획", 6)
         job.event("기획 중 — 장을 나누고 구성·참고 시안을 정합니다" + (" (맥락 자료 반영)" if context else ""))
-        plan = make_plan(job, brief, note, context, int(opts.get("slides") or 0), str(opts.get("purpose") or "present"), raw=raw_ctx)
+        plan = make_plan(job, brief, note, context, int(opts.get("slides") or 0), str(opts.get("purpose") or "present"), raw=raw_ctx, facts=job.facts)
         job.event(f"기획 완료 — {len(plan['slides'])}장. 비용 ${job.spent:.3f}", "done")
         job.push("기획", 12)
         push_plan_preview(job, plan)   # 진행 화면의 '기획 미리 보기' — 시안을 기다리는 동안 읽게
         make_wires(job, plan)
         push_plan_preview(job, plan)
-        n_chk = fact_check(plan, brief + chr(10) + (context or ""))   # 자료에 없는 수치·과장·메타 문구 — AI 없이
+        import datafacts
+        # 자료에 없는 수치·과장·메타 문구 — AI 없이. 요약만이 아니라 원문 전체·자료 데이터(계산한 연도별 합계 포함)와도 맞댄다
+        n_chk = fact_check(plan, brief + chr(10) + (context or ""), raw_ctx + chr(10) + datafacts.sources_text(job.facts))
         if n_chk:
             job.event(f"근거 확인 {n_chk}곳 — 자료에서 찾지 못한 수치·강한 표현·메타 문구를 장마다 표시했습니다. 시안 전에 확인해 주세요.", "warn")
     else:
@@ -4152,7 +4612,18 @@ def _plan_phase(job, j):
             return n, "skip", ""
         try:
             fbk = " / ".join([x for x in [redo.get(n, "")] + [f"pin comment at {p}" for p in pins_by.get(n, [])] if x])
-            png = make_mockup(job, s, fbk, accent, anchor=anc if n != first_n or os.path.isfile(anchor_p) else None)
+            anc_ = anc if n != first_n or os.path.isfile(anchor_p) else None
+            png = make_mockup(job, s, fbk, accent, anchor=anc_)
+            # 와이어 일치 판정 — 낮으면 고칠 것을 붙여 한 번 더, 나은 쪽(2026-10-18 "와이어와 전혀 상관없는 시안")
+            png, fit = check_mockup(job, s, png, lambda fix, s=s, fbk=fbk, anc_=anc_: make_mockup(job, s, fbk, accent, anchor=anc_, fix=fix))
+            if fit:
+                s["mockup_fit"] = fit["score"]
+                s["mockup_fit_note"] = "; ".join(([f"빠짐 {', '.join(fit['missing'][:4])}"] if fit["missing"] else [])
+                                                 + ([f"자리 바뀜 {', '.join(fit['moved'][:4])}"] if fit["moved"] else [])
+                                                 + ([] if fit["numbers_ok"] else ["수치 다름"]))[:300]
+            else:
+                s.pop("mockup_fit", None)
+                s.pop("mockup_fit_note", None)
             if use_anchor and n == first_n and not os.path.isfile(anchor_p):
                 with open(anchor_p, "wb") as fp:
                     fp.write(png)

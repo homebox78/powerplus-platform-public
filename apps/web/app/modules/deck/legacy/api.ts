@@ -70,6 +70,9 @@ export type PlanSlide = {
   wire_at?: string;                 // 와이어프레임을 만든 시각(서버 UTC) — 엔진·AI 가 새로 짠 때
   wire_pick?: "a" | "b";            // 확정한 안(그 안이 wire 가 된다). 없으면 아직 고르지 않음 — 시안은 A안(wire)으로
   checks?: string[];                // 사실·근거 점검(AI 없이) — 자료에 없는 수치, 과장·메타 문구
+  data?: string[];                  // 이 장이 쓰는 자료 데이터 id(D=표·시계열, F=낱개 수치) — 엔진 facts.json(2026-10-18)
+  mockup_fit?: number;              // 시안이 와이어를 따른 정도 0~100(엔진 판정) — 70 밑이면 한 번 더 그린 뒤 나은 쪽
+  mockup_fit_note?: string;         // 판정이 짚은 것(빠진 상자·자리 바뀜·수치 다름)
   status?: "ok" | "failed"; error?: string;
 };
 /** 발표 예상 질문 — slide 는 근거 장, need 는 근거가 자료에 없을 때 준비할 것 */
@@ -77,7 +80,9 @@ export type PlanSlide = {
 export type ScriptSlide = { n: number; title: string; lines: string[]; sec?: number; keep?: string; screen?: string; cues?: string[]; notes?: string[]; cut?: string };
 export type QA = { q: string; a: string; slide: number; kind?: string; need?: string };
 export type WireKind = "panel" | "card" | "person" | "image" | "screen" | "chart" | "table" | "flow" | "map" | "badge" | "band" | "text" | "gantt" | "phase" | "kpi" | "fishbone" | "hub" | "pyramid" | "matrix" | "funnel" | "cycle" | "venn" | "roadmap" | "isostack" | "gauge" | "proportion" | "converge" | "ridge" | "petal" | "stage"
-  | "dodont" | "quote" | "progress" | "swimlane" | "pin";   // 목록·이름·아이콘은 data/wire_kinds.json — 여기 이름과 같은지 wireParse.test.ts 가 본다
+  | "dodont" | "quote" | "progress" | "swimlane" | "pin"
+  | "arch" | "stepcols" | "derive" | "askanswer" | "linkage" | "org" | "voices" | "screenshift" | "triad" | "flowchart"
+  | "rowgrid" | "timeline" | "stairs" | "consortium" | "trace" | "twinhub";   // 목록·이름·아이콘은 data/wire_kinds.json — 여기 이름과 같은지 wireParse.test.ts 가 본다
 /** 와이어프레임 상자 — x·y·w·h 는 본문(머리 띠·바닥 사이) 기준 %, t 제목, d 들어갈 글(줄마다) */
 export type WireBlock = { id: string; k: WireKind; x: number; y: number; w: number; h: number; t: string; d?: string };
 /** 표지·목차·간지 시안 — id: cover · toc · div1… (시안 파일은 mockup/<id>.jpg) */
@@ -109,7 +114,7 @@ export type Job = {
   est_image_usd?: number | null;
   /** 단계별 비용 — engine 은 구독 사용분의 API 환산액(실제 청구 아님). engine 행의 a = 턴 수, b = 걸린 초 */
   script?: { made_at: string; chars: number; sec?: number; goal?: number; brief?: boolean; stale?: boolean; batch?: number; none?: boolean; slides: ScriptSlide[]; qa?: QA[] } | null;
-  costs?: { kind: "digest" | "plan" | "image" | "build" | "engine" | "script" | "eplan" | "edigest" | "hf"; model: string; n: number; usd: number; a: number; b: number }[];
+  costs?: { kind: "digest" | "plan" | "image" | "check" | "build" | "engine" | "script" | "eplan" | "edigest" | "hf"; model: string; n: number; usd: number; a: number; b: number }[];
   /** 보는 사람이 관리자 — 「설정」에 실제로 쓴 모델을 보인다 */
   admin?: boolean;
   events?: JobEvent[];

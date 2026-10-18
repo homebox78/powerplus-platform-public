@@ -24,6 +24,26 @@
     { "id": "full", "name": "큰 표", "desc": "위 요약 한 줄 + 표·일정표·조직도 전체",
       "rows": [{ "h": 1, "cols": [{ "span": 12, "k": "text" }] }, { "h": 5, "cols": [{ "span": 12, "k": "table" }] }] },
     { "id": "g22", "name": "2 × 2", "desc": "네 칸 격자 — 네 가지 항목·사분면",
-      "rows": [{ "h": 1, "cols": [{ "span": 6, "k": "card" }, { "span": 6, "k": "card" }] }, { "h": 1, "cols": [{ "span": 6, "k": "card" }, { "span": 6, "k": "card" }] }] }
+      "rows": [{ "h": 1, "cols": [{ "span": 6, "k": "card" }, { "span": 6, "k": "card" }] }, { "h": 1, "cols": [{ "span": 6, "k": "card" }, { "span": 6, "k": "card" }] }] },
+    { "id": "bridge3", "name": "현황 → 장치 → 결과", "desc": "좌 현황·니즈 → 가운데 우리 장치(화면·플랫폼) → 우 결과·전략, 단 사이 화살표 + 결론", "arrows": true, "rel": "수렴·전후",
+      "rows": [{ "h": 4, "cols": [{ "span": 3, "k": "card" }, { "span": 6, "k": "screen" }, { "span": 3, "k": "card" }] }, { "h": 1, "cols": [{ "span": 12, "k": "band" }] }] },
+    { "id": "chevcols", "name": "단계 머리 + 세부 열", "desc": "위 셰브런 단계 머리, 아래 단계마다 할 일 열 + 결론", "rel": "절차(단계별 세부)",
+      "rows": [{ "h": 5, "cols": [{ "span": 12, "k": "stepcols" }] }, { "h": 1, "cols": [{ "span": 12, "k": "band" }] }] },
+    { "id": "split2", "name": "근거 + 방안", "desc": "왼쪽 근거 소도식(순환·허브·흐름), 오른쪽 방안 글과 표 (5:7)", "rel": "구성·절차 + 방안",
+      "rows": [{ "h": 4, "cols": [{ "span": 5, "k": "cycle" }, { "span": 7, "stack": [{ "h": 3, "k": "panel" }, { "h": 2, "k": "table" }] }] }] },
+    { "id": "archside", "name": "구성도 + 요점", "desc": "왼쪽 큰 구성도·연계도, 오른쪽 강조 수치와 특장점 + 결론 (8:4)", "rel": "층·연계",
+      "rows": [{ "h": 5, "cols": [{ "span": 8, "k": "arch" }, { "span": 4, "stack": [{ "h": 2, "k": "badge" }, { "h": 3, "k": "card" }] }] }, { "h": 1, "cols": [{ "span": 12, "k": "band" }] }] },
+    { "id": "screenpin", "name": "기능 목록 + 큰 화면", "desc": "왼쪽 기능 목록(·인물 질문), 오른쪽 큰 화면 시안에 번호 핀 (4:8)", "rel": "화면 설명",
+      "rows": [{ "h": 5, "cols": [{ "span": 4, "stack": [{ "h": 3, "k": "card" }, { "h": 2, "k": "person" }] }, { "span": 8, "k": "pin" }] }] },
+    { "id": "voicehero", "name": "인물 문제 제기", "desc": "왼쪽 인물과 말풍선 장면, 오른쪽 문제 카드 3개 (7:5)", "rel": "현장 목소리·문제",
+      "rows": [{ "h": 5, "cols": [{ "span": 7, "k": "voices" }, { "span": 5, "stack": [{ "h": 1, "k": "card" }, { "h": 1, "k": "card" }, { "h": 1, "k": "card" }] }] }] },
+    { "id": "askhero", "name": "질문 → 답", "desc": "질문하는 인물 ↔ 가운데 화면 ↔ 답, 아래 결론", "rel": "질문→답",
+      "rows": [{ "h": 5, "cols": [{ "span": 12, "k": "askanswer" }] }, { "h": 1, "cols": [{ "span": 12, "k": "band" }] }] },
+    { "id": "kpitop", "name": "수치 줄 + 근거", "desc": "위 큰 수치 3~4, 아래 근거 표와 요점 + 결론", "rel": "핵심 수치",
+      "rows": [{ "h": 2, "cols": [{ "span": 12, "k": "kpi" }] }, { "h": 3, "cols": [{ "span": 7, "k": "table" }, { "span": 5, "k": "card" }] }, { "h": 1, "cols": [{ "span": 12, "k": "band" }] }] },
+    { "id": "shift", "name": "화면 전 → 후", "desc": "AS-IS 화면(작게) → 바뀌는 점 → TO-BE 화면(크게), 아래 변화 수치", "arrows": true, "rel": "화면 전후",
+      "rows": [{ "h": 4, "cols": [{ "span": 3, "k": "screen" }, { "span": 2, "k": "badge" }, { "span": 7, "k": "screen" }] }, { "h": 1, "cols": [{ "span": 12, "k": "kpi" }] }] },
+    { "id": "ganttside", "name": "일정표 + 결과 기둥", "desc": "왼쪽 일정표, 오른쪽 안정화·결과 기둥 (9:3)", "rel": "일정",
+      "rows": [{ "h": 5, "cols": [{ "span": 9, "k": "gantt" }, { "span": 3, "stack": [{ "h": 2, "k": "badge" }, { "h": 3, "k": "card" }] }] }] }
   ]
 }

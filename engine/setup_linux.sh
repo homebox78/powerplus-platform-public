@@ -21,6 +21,8 @@ echo "== 2) 파이썬 환경 ($VENV)"
 python3 -m venv "$VENV"
 "$VENV/bin/pip" install -q --upgrade pip
 "$VENV/bin/pip" install -q python-pptx lxml pillow pypdf python-docx openpyxl olefile
+# pdf 표를 칸 그대로 읽기(datafacts.pdf_tables, 2026-10-18) — 없으면 pdf 는 글만 읽힌다
+"$VENV/bin/pip" install -q pdfplumber
 # 회사소개서(company.py) 렌더 — 헤드리스 크로미움. 판은 powerMCP(playwright-core 1.63)와 맞춰 브라우저 파일(~/.cache/ms-playwright)을 함께 쓴다
 "$VENV/bin/pip" install -q "playwright==1.63.0"
 "$VENV/bin/python" -m playwright install chromium-headless-shell

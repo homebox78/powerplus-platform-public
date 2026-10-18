@@ -60,7 +60,7 @@ function chartSvg(x: Box, c: P.Chart, out: ReactNode[]) {
   const hot = (lab: string) => !!hl && (hl === lab || lab.includes(hl));
   let bot = H - fs * 0.4;
   if (c.source) { out.push(<Tx key="src" x={pad} y={bot - s} w={W - pad * 2} s={s * 0.92} t={`출처: ${c.source}`} max={1} />); bot -= s * 1.4; }
-  const n = c.rows[0]?.[1].length ?? 1, rows = c.rows.slice(0, 10), t = c.type;
+  const n = c.rows[0]?.[1].length ?? 1, t = c.type, rows = c.rows.slice(0, t === "line" ? 60 : 10), keep = P.axisKeep(rows.map((r) => r[0]), hl);   // 꺾은선은 점이 많아도 모두, 라벨은 처음·끝·강조·해 바뀜(엔진 axis_keep)
   const names = c.series.length ? c.series : t === "pair" ? ["이전", "지금"] : Array.from({ length: n }, (_, i) => `계열${i + 1}`);
   const sTone = (j: number) => (t === "pair" ? (j ? G[5] : G[2]) : (t === "line" || t === "combo") && j === n - 1 ? G[6] : tone(j, n, 2, 5));
   if (["pair", "stacked", "combo"].includes(t) || (n > 1 && ["bar", "line"].includes(t))) {   // 범례
@@ -103,10 +103,10 @@ function chartSvg(x: Box, c: P.Chart, out: ReactNode[]) {
     return;
   }
   // 세로 축 유형 — 막대·짝·누적·폭포·꺾은선·막대+선
-  const base = bot - s * 1.5, yTop = top + s * 1.6, cwid = (W - pad * 2) / Math.max(1, rows.length);
+  const many = t === "line" && rows.length > 12, base = bot - s * 1.5, yTop = top + s * (many ? 0.8 : 1.6), cwid = (W - pad * 2) / Math.max(1, rows.length);
   const cx = (i: number) => pad + (i + 0.5) * cwid;
   out.push(<line key="ax" x1={pad} x2={W - pad} y1={base} y2={base} stroke={G[3]} />);
-  rows.forEach(([lab], i) => out.push(<Tx key={`xl${i}`} x={cx(i)} y={base + s * 0.3} w={cwid * 0.95} s={s * 0.9} t={lab} max={1} anchor="middle" fill={hot(lab) ? INK : SUB} bold={hot(lab)} />));
+  rows.forEach(([lab], i) => keep.has(i) && out.push(<Tx key={`xl${i}`} x={cx(i)} y={base + s * 0.3} w={many ? tw(lab, s * 0.9) + 4 : cwid * 0.95} s={s * 0.9} t={lab} max={1} anchor="middle" fill={hot(lab) ? INK : SUB} bold={hot(lab)} />));
   let mark: [number, number] | null = null;
   if (t === "waterfall") {
     const st = P.wfSteps(c).slice(0, rows.length), lo = Math.min(0, ...st.map((x) => x[1])), hi = Math.max(...st.map((x) => x[2]), 1);
@@ -121,7 +121,8 @@ function chartSvg(x: Box, c: P.Chart, out: ReactNode[]) {
   } else {
     const nb = t === "line" ? 0 : t === "combo" ? n - 1 : t === "stacked" ? 1 : n, stack = t === "stacked";
     const mx = Math.max(1, ...rows.map(([, vs]) => (stack ? vs.reduce<number>((a, v) => a + (v ?? 0), 0) : Math.max(...vs.slice(0, nb || n).map((v) => v ?? 0)))));
-    const Y = (v: number) => base - ((base - yTop) * v) / mx;
+    const [lo, hi] = t === "line" ? P.lineRange(rows, n) : [0, mx];   // 꺾은선은 값 범위로(0 기준 아님) — 엔진 line_range
+    const Y = (v: number) => base - ((base - yTop) * (v - lo)) / (hi - lo || 1);
     rows.forEach(([lab, vs], i) => {
       if (!nb) return;
       const bw = (cwid * 0.7) / nb;
@@ -144,8 +145,8 @@ function chartSvg(x: Box, c: P.Chart, out: ReactNode[]) {
         out.push(<polyline key={`l${j}`} points={pts.map((p) => p.join(",")).join(" ")} fill="none" stroke={sTone(j)} strokeWidth={2} />);
         pts.forEach(([px, py], i) => {
           const big = hot(rows[i]![0]) || (!hl && i === pts.length - 1 && j === n - 1);
-          out.push(<circle key={`p${j}${i}`} cx={px} cy={py} r={big ? s * 0.42 : s * 0.28} fill="#fff" stroke={sTone(j)} strokeWidth={2} />);
-          if (big || n === 1 || t === "combo") out.push(<Tx key={`pv${j}${i}`} x={px} y={py - s * 1.4} w={cwid} s={s * 0.82} anchor="middle" max={1} fill={INK} bold={big} t={fmt(v0(rows[i]![1], j), c.unit)} />);
+          out.push(<circle key={`p${j}${i}`} cx={px} cy={py} r={big ? s * 0.42 : many ? s * 0.14 : s * 0.28} fill="#fff" stroke={sTone(j)} strokeWidth={2} />);
+          if (big || ((n === 1 || t === "combo") && !many) || (many && (i === 0 || i === pts.length - 1) && j === n - 1)) out.push(<Tx key={`pv${j}${i}`} x={px} y={py - s * 1.4} w={cwid} s={s * 0.82} anchor="middle" max={1} fill={INK} bold={big} t={fmt(v0(rows[i]![1], j), c.unit)} />);
           if (big && j === n - 1) mark = [px, py - s * 1.4];
         });
       }
@@ -458,10 +459,366 @@ function svgFor(x: Box): ReactNode[] | null {
       });
       return out;
     }
+    // 2026-10-18 2차 16종(엔진 engine/wireforms.py 와 같은 구성)
+    case "arch": {
+      const o = P.arch(b.d);
+      if (o.zones.length < 2 && P.archNodes(o) < 2) return null;
+      const top = head(x, out), zs = o.zones, n = zs.length, vert = o.dir === "세로", gap = fs * 2;
+      const links = o.links.map((l) => [l, P.zoneOf(o, l.a), P.zoneOf(o, l.b)] as const).filter(([, a, c]) => a >= 0 && c >= 0 && a !== c);
+      const far = links.filter(([, a, c]) => Math.abs(a - c) > 1), lane = fs * 0.9 * far.length;
+      const zw = vert ? W - pad * 2 - lane : (W - pad * 2 - gap * (n - 1)) / n, zh = vert ? (H - top - pad - gap * (n - 1)) / n : H - top - pad - lane;
+      const R = zs.map((z, i) => {
+        const zx = vert ? pad : pad + i * (zw + gap), zy = vert ? top + i * (zh + gap) : top, hot = !!o.hl && z.name.includes(o.hl);
+        out.push(<rect key={`az${i}`} x={zx} y={zy} width={zw} height={zh} rx={6} fill={G[0]} stroke={hot ? G[6] : G[2]} strokeWidth={hot ? 2.5 : 1} />,
+          <Tx key={`azt${i}`} x={zx + s * 0.6} y={zy + s * 0.4} w={zw - s} s={s * 0.9} t={z.name} fill={INK} bold max={1} />);
+        const m = z.nodes.length, cols = vert ? Math.max(1, Math.min(m, Math.floor((zw - s) / (fs * 6)))) : zw > fs * 12 && m > 2 ? 2 : 1, rows = Math.ceil(m / cols) || 1;
+        const ix = zx + s * 0.5, iy = zy + s * 1.8, iw = zw - s, ih = zh - s * 2.3, nw = (iw - 4 * (cols - 1)) / cols, nh = Math.min(fs * 2.4, (ih - 4 * (rows - 1)) / rows), t0 = iy + Math.max(0, (ih - rows * nh - 4 * (rows - 1)) / 2);
+        z.nodes.forEach((nd, j) => {
+          const nx = ix + (j % cols) * (nw + 4), ny = t0 + Math.floor(j / cols) * (nh + 4);
+          out.push(nd.db ? <g key={`an${i}${j}`}><rect x={nx + nw * 0.2} y={ny + 3} width={nw * 0.6} height={nh - 6} fill="#fff" stroke={G[4]} /><ellipse cx={nx + nw / 2} cy={ny + 3} rx={nw * 0.3} ry={3} fill={G[1]} stroke={G[4]} /></g>
+            : <rect key={`an${i}${j}`} x={nx} y={ny} width={nw} height={nh} rx={3} fill="#fff" stroke={G[3]} />,
+            <Tx key={`ant${i}${j}`} x={nx + nw / 2} y={ny + nh / 2 - s * 0.45} w={nw - 6} s={s * 0.78} t={nd.name} fill={INK} bold anchor="middle" max={1} />);
+        });
+        return [zx, zy, zx + zw, zy + zh] as const;
+      });
+      links.forEach(([l, a, c], i) => {
+        const ra = R[Math.min(a, c)]!, rb = R[Math.max(a, c)]!, isFar = Math.abs(a - c) > 1, k = far.findIndex((f) => f[0] === l);
+        let dd: string, lx: number, ly: number;
+        if (!isFar) {
+          const p = vert ? pad + zw * ((i % 3) + 1) / 4 : top + zh * ((i % 3) + 1) / 4;
+          const [sx, sy, ex, ey] = vert ? [p, ra[3] + 2, p, rb[1] - 2] : [ra[2] + 2, p, rb[0] - 2, p];
+          dd = a < c ? `M${sx} ${sy}L${ex} ${ey}` : `M${ex} ${ey}L${sx} ${sy}`; lx = (sx + ex) / 2; ly = (sy + ey) / 2;
+        } else if (vert) {
+          const xx = W - pad - lane + fs * 0.5 + k * fs * 0.9, A = R[a]!, B = R[c]!;
+          dd = `M${A[2]} ${(A[1] + A[3]) / 2}H${xx}V${(B[1] + B[3]) / 2}H${B[2] + 2}`; lx = xx; ly = (A[3] + B[1]) / 2;
+        } else {
+          const yy = H - pad - lane + fs * 0.5 + k * fs * 0.9, A = R[a]!, B = R[c]!;
+          dd = `M${(A[0] + A[2]) / 2} ${A[3]}V${yy}H${(B[0] + B[2]) / 2}V${B[3] + 2}`; lx = (A[2] + B[0]) / 2; ly = yy;
+        }
+        out.push(<path key={`al${i}`} d={dd} fill="none" stroke={G[5]} strokeWidth={isFar ? 1.5 : 2.5} markerEnd="url(#wsk-arr2)" />);
+        if (l.label) out.push(<Tx key={`alt${i}`} x={lx} y={ly - s * 1.1} w={gap + fs * 4} s={s * 0.7} t={l.label} fill={SUB} anchor="middle" max={1} />);
+      });
+      out.push(ARR_DEFS);
+      return out;
+    }
+    case "stepcols": {
+      const o = P.stepcols(b.d);
+      if (o.steps.length < 2) return null;
+      const top = head(x, out), n = o.steps.length, rw = o.result ? Math.min(W * 0.17, fs * 8) : 0, ax1 = W - pad - (rw ? rw + fs : 0), gap = 4, sw = (ax1 - pad - gap * (n - 1)) / n, ch = Math.min(fs * 2.6, (H - top) * 0.22);
+      o.steps.forEach((st_, i) => {
+        const sx = pad + i * (sw + gap), col = tone(i, n, 2, 5), tip = i < n - 1 ? Math.min(fs, sw * 0.14) : 0;
+        out.push(<polygon key={`sc${i}`} points={`${sx},${top} ${sx + sw - tip + (tip ? gap + 2 : 0)},${top} ${sx + sw + (tip ? gap + 2 : 0)},${top + ch / 2} ${sx + sw - tip + (tip ? gap + 2 : 0)},${top + ch} ${sx},${top + ch}`} fill={col} />,
+          <Tx key={`sct${i}`} x={sx + sw / 2} y={top + ch / 2 - s * (st_.period ? 1 : 0.5)} w={sw - fs} s={s * 0.95} t={st_.name} fill={light(col) ? INK : "#fff"} bold anchor="middle" max={1} />);
+        if (st_.period) out.push(<Tx key={`scp${i}`} x={sx + sw / 2} y={top + ch / 2 + s * 0.1} w={sw - fs} s={s * 0.7} t={st_.period} fill={light(col) ? SUB : G[1]} anchor="middle" max={1} />);
+        out.push(<rect key={`scb${i}`} x={sx} y={top + ch + 4} width={sw} height={H - pad - top - ch - 4} rx={3} fill={G[0]} />);
+        let y = top + ch + s * 0.9;
+        st_.items.forEach((it, j) => { out.push(<Tx key={`sci${i}${j}`} x={sx + s * 0.5} y={y} w={sw - s} s={s * 0.82} t={`· ${it}`} fill={INK} max={2} />); y += linesH(`· ${it}`, sw - s, s * 0.82, 2) + s * 0.3; });
+      });
+      if (rw) out.push(<rect key="scr" x={W - pad - rw} y={top} width={rw} height={H - pad - top} rx={4} fill={G[6]} />,
+        <Tx key="scrt" x={W - pad - rw / 2} y={(top + H) / 2 - s} w={rw - s} s={s} t={o.result} fill="#fff" bold anchor="middle" max={3} />,
+        <path key="sca" d={`M${ax1 + 2} ${(top + H) / 2}H${W - pad - rw - 3}`} stroke={G[5]} strokeWidth={2} markerEnd="url(#wsk-arr2)" />, ARR_DEFS);
+      return out;
+    }
+    case "derive": {
+      const o = P.derive(b.d);
+      if (!o.strats.length || !(o.feats.length || o.imps.length)) return null;
+      const top = head(x, out), gap = fs * 1.6, Wd = W - pad * 2 - gap * 2, ws = [Wd * 0.29, Wd * 0.29, Wd * 0.42], xs = [pad, pad + ws[0]! + gap, pad + ws[0]! + ws[1]! + gap * 2], hh = s * 1.7, by = top + hh + 4;
+      [0, 1, 2].forEach((i) => out.push(<rect key={`dh${i}`} x={xs[i]} y={top} width={ws[i]} height={hh} rx={hh / 2} fill={[G[3], G[4], G[6]][i]} />,
+        <Tx key={`dht${i}`} x={xs[i]! + ws[i]! / 2} y={top + hh / 2 - s * 0.5} w={ws[i]!} s={s * 0.9} t={o.names[i]} fill="#fff" bold anchor="middle" max={1} />));
+      ([[0, o.feats], [1, o.imps]] as const).forEach(([i, items]) => {
+        out.push(<rect key={`db${i}`} x={xs[i]} y={by} width={ws[i]} height={H - pad - by} rx={4} fill={i ? "#fff" : G[0]} stroke={G[2]} />);
+        let y = by + s * 0.7;
+        items.forEach((it, j) => { out.push(<Tx key={`di${i}${j}`} x={xs[i]! + s * 0.6} y={y} w={ws[i]! - s * 1.2} s={s * 0.82} t={`${i ? "✓" : "·"} ${it}`} fill={INK} bold={i === 1} max={2} />); y += linesH(it, ws[i]! - s * 1.2, s * 0.82, 2) + s * 0.4; });
+        const my = (by + H - pad) / 2, ax = xs[i]! + ws[i]! + 3;
+        out.push(<polygon key={`da${i}`} points={`${ax},${my - fs * 0.6} ${ax + gap - fs * 0.8},${my - fs * 0.6} ${ax + gap - 4},${my} ${ax + gap - fs * 0.8},${my + fs * 0.6} ${ax},${my + fs * 0.6} ${ax + fs * 0.4},${my}`} fill={G[3]} />);
+      });
+      out.push(<rect key="dr" x={xs[2]} y={by} width={ws[2]} height={H - pad - by} rx={4} fill={G[6]} />);
+      const rh = (H - pad - by) / o.strats.length;
+      o.strats.forEach((st_, j) => {
+        const y = by + j * rh, big = Math.min(fs * 1.5, rh * 0.42);
+        out.push(<Tx key={`dsn${j}`} x={xs[2]! + s * 0.7} y={y + s * 0.6} w={fs * 3} s={big} t={st_.no} fill={G[2]} bold max={1} />,
+          <Tx key={`dst${j}`} x={xs[2]! + s * 0.9 + big * 1.4} y={y + s * 0.7} w={ws[2]! - big * 1.6 - s * 1.4} s={s * 0.9} t={st_.name} fill="#fff" bold max={1} />,
+          <Tx key={`dsd${j}`} x={xs[2]! + s * 0.9 + big * 1.4} y={y + s * 1.9} w={ws[2]! - big * 1.6 - s * 1.4} s={s * 0.72} t={st_.items.join(" · ")} fill={G[2]} max={2} />);
+      });
+      return out;
+    }
+    case "askanswer": {
+      const o = P.askanswer(b.d);
+      if (!o.qa.some((q) => q.q)) return null;
+      const sides = o.qa.length > 1 ? [o.qa.filter((_, i) => i % 2 === 0), o.qa.filter((_, i) => i % 2 === 1)] : [o.qa, []], sw = W * (sides[1]!.length ? 0.29 : 0.36);
+      const cx0 = pad + sw + fs * 0.6, cx1 = sides[1]!.length ? W - pad - sw - fs * 0.6 : W - pad;
+      sides.forEach((g, si) => g.forEach((q, gi) => {
+        const gh = (H - pad * 2) / g.length, gy = pad + gi * gh, sx = si ? W - pad - sw : pad, pcx = sx + sw / 2, r = Math.min(sw * 0.18, gh * 0.15), pcy = gy + gh * 0.58, bh = Math.min(fs * 4.5, pcy - r - gy - s);
+        out.push(<rect key={`qb${si}${gi}`} x={sx} y={pcy - r - s - bh} width={sw} height={bh} rx={s} fill="#fff" stroke={G[3]} />,
+          <Tx key={`qq${si}${gi}`} x={pcx} y={pcy - r - s - bh / 2 - s * 0.6} w={sw - s} s={s * 0.85} t={`“${q.q}”`} fill={INK} bold anchor="middle" max={2} />,
+          <circle key={`qh${si}${gi}`} cx={pcx} cy={pcy - r * 0.4} r={r * 0.45} fill={si ? G[4] : G[3]} />, <path key={`qp${si}${gi}`} d={`M${pcx - r * 0.85} ${pcy + r * 0.9}A${r * 0.85} ${r * 0.85} 0 0 1 ${pcx + r * 0.85} ${pcy + r * 0.9}Z`} fill={si ? G[4] : G[3]} />,
+          <Tx key={`qa${si}${gi}`} x={pcx} y={pcy + r + s * 0.4} w={sw} s={s * 0.9} t={q.a} fill={G[6]} bold anchor="middle" max={2} />);
+      }));
+      out.push(<rect key="qs" x={cx0} y={pad} width={cx1 - cx0} height={H - pad * 2 - fs * 2} rx={4} fill={G[0]} stroke={G[6]} strokeWidth={2} />, <rect key="qsb" x={cx0} y={pad} width={cx1 - cx0} height={s} rx={3} fill={G[1]} />);
+      if (o.pic) out.push(<Tx key="qsp" x={(cx0 + cx1) / 2} y={H / 2 - s} w={cx1 - cx0 - fs} s={s * 0.85} t={o.pic} fill={SUB} anchor="middle" max={2} />);
+      if (b.t) { const w_ = tw(b.t, s) + s * 1.6; out.push(<rect key="qt" x={(cx0 + cx1) / 2 - w_ / 2} y={H - pad - fs * 1.6} width={w_} height={s * 1.7} rx={s * 0.85} fill={G[6]} />, <Tx key="qtt" x={(cx0 + cx1) / 2} y={H - pad - fs * 1.6 + s * 0.35} w={w_} s={s} t={b.t} fill="#fff" bold anchor="middle" max={1} />); }
+      return out;
+    }
+    case "linkage": {
+      const o = P.linkage(b.d);
+      if (!o.left.length && !o.right.length) return null;
+      const lw = W * 0.22, pw = Math.max(fs * 1.3, W * 0.045), g = fs * 0.6, hasR = o.right.length > 0, cx0 = pad + lw + g + pw + g, cx1 = W - pad - (hasR ? lw + g + pw + g : 0), y0 = pad, y1 = H - pad;
+      ([["left", o.left, o.ways[0]], ["right", o.right, o.ways[1]]] as const).forEach(([side, items, way]) => {
+        if (!items.length) return;
+        const sx = side === "left" ? pad : W - pad - lw, px = side === "left" ? sx + lw + g : sx - g - pw;
+        out.push(<rect key={`lp${side}`} x={px} y={y0} width={pw} height={y1 - y0} rx={pw / 2} fill={G[3]} />);
+        [...way.replace(/\s/g, "")].slice(0, 12).forEach((ch, i, a) => out.push(<text key={`lw${side}${i}`} x={px + pw / 2} y={(y0 + y1) / 2 + (i - a.length / 2) * s * 1.1} fontSize={s * 0.9} fontWeight={700} fill="#fff" textAnchor="middle" dominantBaseline="hanging">{ch}</text>));
+        const rows = items.reduce((a, it) => a + 1 + it.items.length, 0), rh = Math.min(fs * 1.8, (y1 - y0) / rows - 3);
+        let ly = y0 + Math.max(0, ((y1 - y0) - rows * (rh + 3)) / 2);
+        items.forEach((it, i) => {
+          const gy = ly;
+          out.push(<rect key={`lg${side}${i}`} x={sx} y={ly} width={lw} height={rh} rx={2} fill={it.items.length ? G[4] : G[0]} stroke={G[2]} />,
+            <Tx key={`lgt${side}${i}`} x={sx + lw / 2} y={ly + rh / 2 - s * 0.42} w={lw - 6} s={s * 0.78} t={it.name} fill={it.items.length ? "#fff" : INK} bold anchor="middle" max={1} />);
+          ly += rh + 3;
+          it.items.forEach((t_, j) => { out.push(<rect key={`li${side}${i}${j}`} x={sx + s * 0.5} y={ly} width={lw - s} height={rh} rx={2} fill={G[0]} stroke={G[1]} />, <Tx key={`lit${side}${i}${j}`} x={sx + lw / 2} y={ly + rh / 2 - s * 0.4} w={lw - s * 1.5} s={s * 0.72} t={t_} fill={INK} anchor="middle" max={1} />); ly += rh + 3; });
+          const my = it.items.length ? (gy + ly) / 2 : gy + rh / 2, ex = side === "left" ? sx + lw : sx;
+          out.push(<line key={`ll${side}${i}`} x1={ex} x2={side === "left" ? px : px + pw} y1={my} y2={my} stroke={G[3]} />);
+        });
+        const my = (y0 + y1) / 2;
+        out.push(<path key={`la${side}`} d={side === "left" ? `M${px + pw + 1} ${my}H${cx0 - 2}` : `M${cx1 + 1} ${my}H${px - 2}`} stroke={G[5]} strokeWidth={2} markerEnd="url(#wsk-arr2)" />);
+      });
+      const hh = s * 1.8;
+      out.push(<rect key="lc" x={cx0} y={y0} width={cx1 - cx0} height={y1 - y0} rx={4} fill="#fff" stroke={G[2]} />, <rect key="lch" x={cx0} y={y0} width={cx1 - cx0} height={hh} rx={4} fill={G[6]} />,
+        <Tx key="lct" x={(cx0 + cx1) / 2} y={y0 + hh / 2 - s * 0.5} w={cx1 - cx0 - s} s={s * 0.95} t={b.t} fill="#fff" bold anchor="middle" max={1} />, ARR_DEFS);
+      let y = y0 + hh + s * 0.6;
+      o.center.forEach((c, i) => { out.push(<Tx key={`lcc${i}`} x={cx0 + s * 0.7} y={y} w={cx1 - cx0 - s * 1.4} s={s * 0.85} t={`✓ ${c}`} fill={INK} max={2} />); y += linesH(`✓ ${c}`, cx1 - cx0 - s * 1.4, s * 0.85, 2) + s * 0.3; });
+      if (o.pic) { const sh = (y1 - y) * 0.75; out.push(<rect key="lcs" x={cx0 + s} y={y1 - sh - s * 0.5} width={cx1 - cx0 - s * 2} height={sh} rx={3} fill={G[0]} stroke={G[2]} />, <Tx key="lcp" x={(cx0 + cx1) / 2} y={y1 - sh / 2 - s} w={cx1 - cx0 - s * 3} s={s * 0.8} t={o.pic} fill={SUB} anchor="middle" max={2} />); }
+      return out;
+    }
+    case "org": {
+      const o = P.org(b.d);
+      if (!o.root && o.teams.length < 2) return null;
+      const top = head(x, out), cx = W / 2, rw = Math.min(W * 0.36, fs * 16), rh = Math.min(fs * 3.6, (H - top) * 0.3), root = o.root ?? { name: "", note: "" };
+      out.push(<rect key="or" x={cx - rw / 2} y={top} width={rw} height={rh} rx={4} fill="#fff" stroke={G[6]} strokeWidth={2} />, <rect key="orh" x={cx - rw / 2} y={top} width={rw} height={s * 1.6} rx={3} fill={G[6]} />,
+        <Tx key="ort" x={cx} y={top + s * 0.3} w={rw - s} s={s * 0.95} t={root.name} fill="#fff" bold anchor="middle" max={1} />,
+        <Tx key="orn" x={cx} y={top + s * 2} w={rw - s} s={s * 0.75} t={root.note} anchor="middle" max={2} />);
+      const ts = o.teams, n = Math.max(1, ts.length), g = fs * 0.5, tw_ = (W - pad * 2 - g * (n - 1)) / n, bus = top + rh + (H - top - rh) * 0.2, ty = bus + fs;
+      out.push(<line key="otr" x1={cx} x2={cx} y1={top + rh} y2={bus} stroke={G[5]} strokeWidth={2} />);
+      if (ts.length) out.push(<line key="obus" x1={pad + tw_ / 2} x2={W - pad - tw_ / 2} y1={bus} y2={bus} stroke={G[5]} strokeWidth={2} />);
+      ts.forEach((t_, i) => {
+        const tx = pad + i * (tw_ + g);
+        out.push(<line key={`ol${i}`} x1={tx + tw_ / 2} x2={tx + tw_ / 2} y1={bus} y2={ty} stroke={G[5]} strokeWidth={2} />, <rect key={`ob${i}`} x={tx} y={ty} width={tw_} height={H - pad - ty} rx={3} fill={G[0]} stroke={G[2]} />,
+          <rect key={`obh${i}`} x={tx} y={ty} width={tw_} height={s * 1.6} rx={3} fill={G[4]} />, <Tx key={`obt${i}`} x={tx + tw_ / 2} y={ty + s * 0.3} w={tw_ - 6} s={s * 0.85} t={t_.name} fill="#fff" bold anchor="middle" max={1} />,
+          <circle key={`obc${i}`} cx={tx + tw_ / 2} cy={ty + s * 2.8} r={s * 0.7} fill="#fff" stroke={G[2]} />,
+          <Tx key={`obr${i}`} x={tx + tw_ / 2} y={ty + s * 3.8} w={tw_ - 8} s={s * 0.75} t={t_.role} anchor="middle" max={3} />,
+          <Tx key={`obn${i}`} x={tx + tw_ / 2} y={H - pad - s * 1.4} w={tw_ - 8} s={s * 0.8} t={t_.n} fill={G[6]} bold anchor="middle" max={1} />);
+      });
+      if (o.sup.length) {
+        const sw = Math.min(W * 0.22, fs * 9), sh = s * 1.4 * o.sup.length + s;
+        out.push(<rect key="os" x={pad} y={top} width={sw} height={sh} fill="none" stroke={G[3]} strokeDasharray="4 3" />, <line key="osl" x1={pad + sw} x2={cx - rw / 2} y1={top + sh / 2} y2={top + sh / 2} stroke={G[3]} strokeDasharray="4 3" />);
+        o.sup.forEach((t_, i) => out.push(<Tx key={`ost${i}`} x={pad + sw / 2} y={top + s * 0.5 + i * s * 1.4} w={sw - 6} s={s * 0.8} t={t_} fill={INK} bold anchor="middle" max={1} />));
+      }
+      return out;
+    }
+    case "voices": {
+      const o = P.voices(b.d);
+      if (!o.says.length) return null;
+      const qh = b.t ? fs * 2.4 : 0, cx = W / 2, cy = (H - qh) / 2, r = Math.min((H - qh) * 0.32, W * 0.13), bw = W / 2 - r - fs * 1.8;
+      out.push(<circle key="vc" cx={cx} cy={cy} r={r} fill={G[0]} stroke={G[2]} />, <circle key="vh" cx={cx} cy={cy - r * 0.3} r={r * 0.27} fill={G[3]} />, <path key="vb" d={`M${cx - r * 0.55} ${cy + r * 0.6}A${r * 0.55} ${r * 0.55} 0 0 1 ${cx + r * 0.55} ${cy + r * 0.6}Z`} fill={G[3]} />);
+      ([[-1, o.says.filter((_, i) => i % 2 === 0)], [1, o.says.filter((_, i) => i % 2 === 1)]] as const).forEach(([side, g]) => g.forEach((t_, i) => {
+        const gh = (H - qh - pad * 2) / g.length, bh = Math.min(gh - s, fs * 3), by = pad + i * gh + (gh - bh) / 2, bx = side < 0 ? pad : W - pad - bw, tx = side < 0 ? bx + bw : bx;
+        out.push(<rect key={`vs${side}${i}`} x={bx} y={by} width={bw} height={bh} rx={bh / 2.5} fill="#fff" stroke={G[3]} />, <polygon key={`vt${side}${i}`} points={`${tx},${by + bh / 2 - 5} ${tx},${by + bh / 2 + 5} ${tx - side * fs * 0.8},${by + bh / 2}`} fill={G[3]} />,
+          <Tx key={`vst${side}${i}`} x={bx + bw / 2} y={by + bh / 2 - s * 0.55} w={bw - s} s={s * 0.85} t={`“${t_}”`} fill={INK} bold anchor="middle" max={2} />);
+      }));
+      if (b.t) out.push(<Tx key="vq" x={cx} y={H - qh} w={W - pad * 2} s={fs * 1.2} t={b.t} fill={G[6]} bold anchor="middle" max={1} />);
+      if (o.src) out.push(<Tx key="vsrc" x={W - pad} y={H - s * 1.2} w={W} s={s * 0.75} t={`출처: ${o.src}`} anchor="end" max={1} />);
+      return out;
+    }
+    case "screenshift": {
+      const o = P.screenshift(b.d);
+      if (!o.before || !o.after) return null;
+      const top = head(x, out) + s * 1.6, ch = o.changes.length ? fs * 2.2 : 0, bot = H - pad - ch - s * 1.8, bw = W * 0.3, aw = W * 0.1, rx0 = pad + bw + aw, bh = (bot - top) * 0.62, by = top + (bot - top - bh) / 2;
+      ([[0, o.before, pad, pad + bw, by, by + bh], [1, o.after, rx0, W - pad, top, bot]] as const).forEach(([side, v, sx0, sx1, sy0, sy1]) => {
+        const w_ = tw(v.name, s * 0.8) + s * 1.4;
+        out.push(<rect key={`ssl${side}`} x={(sx0 + sx1) / 2 - w_ / 2} y={sy0 - s * 1.6} width={w_} height={s * 1.3} rx={s * 0.65} fill={side ? G[6] : G[1]} />,
+          <Tx key={`sslt${side}`} x={(sx0 + sx1) / 2} y={sy0 - s * 1.45} w={w_} s={s * 0.8} t={v.name} fill={side ? "#fff" : INK} bold anchor="middle" max={1} />,
+          <rect key={`ss${side}`} x={sx0} y={sy0} width={sx1 - sx0} height={sy1 - sy0} rx={3} fill={side ? G[0] : "#f9fafb"} stroke={side ? G[6] : G[2]} strokeWidth={side ? 2 : 1} />,
+          <rect key={`ssb${side}`} x={sx0} y={sy0} width={sx1 - sx0} height={s} rx={2} fill={G[1]} />,
+          <Tx key={`ssp${side}`} x={(sx0 + sx1) / 2} y={(sy0 + sy1) / 2} w={sx1 - sx0 - s} s={s * 0.8} t={v.pic} fill={SUB} anchor="middle" max={2} />,
+          <Tx key={`ssn${side}`} x={(sx0 + sx1) / 2} y={sy1 + s * 0.3} w={sx1 - sx0} s={s * 0.85} t={v.note} fill={side ? G[6] : SUB} bold={side === 1} anchor="middle" max={1} />);
+        if (side) [[0.28, 0.32], [0.7, 0.45], [0.45, 0.78]].forEach(([px, py], i) => out.push(<circle key={`ssc${i}`} cx={sx0 + (sx1 - sx0) * px!} cy={sy0 + (sy1 - sy0) * py!} r={s * 0.6} fill={G[6]} stroke="#fff" strokeWidth={1.5} />));
+      });
+      const my = (top + bot) / 2, ax = pad + bw + 4;
+      out.push(<polygon key="ssa" points={`${ax},${my - fs * 0.8} ${ax + aw - fs * 1.4},${my - fs * 0.8} ${ax + aw - 6},${my} ${ax + aw - fs * 1.4},${my + fs * 0.8} ${ax},${my + fs * 0.8} ${ax + fs * 0.6},${my}`} fill={G[3]} />);
+      const n = o.changes.length, cw_ = (W - pad * 2 - s * (n - 1)) / Math.max(1, n);
+      o.changes.forEach((c, i) => out.push(<rect key={`ssch${i}`} x={pad + i * (cw_ + s)} y={H - pad - ch + 4} width={cw_} height={ch - 4} rx={(ch - 4) / 2} fill={G[0]} stroke={G[2]} />,
+        <Tx key={`sscht${i}`} x={pad + i * (cw_ + s) + cw_ / 2} y={H - pad - ch / 2 - s * 0.4} w={cw_ - s} s={s * 0.85} t={`${c.label ? c.label + "  " : ""}${c.value}`} fill={G[6]} bold anchor="middle" max={1} />));
+      return out;
+    }
+    case "triad": {
+      const o = P.triad(b.d);
+      if (!o.rows.length) return null;
+      let top = head(x, out);
+      const gap = fs * 1.4, Wd = W - pad * 2 - gap * 2, ws = [Wd * 0.3, Wd * 0.36, Wd * 0.34], xs = [pad, pad + ws[0]! + gap, pad + ws[0]! + ws[1]! + gap * 2], hh = s * 1.6;
+      [0, 1, 2].forEach((i) => out.push(<rect key={`th${i}`} x={xs[i]} y={top} width={ws[i]} height={hh} rx={hh / 2} fill={[G[3], G[4], G[6]][i]} />, <Tx key={`tht${i}`} x={xs[i]! + ws[i]! / 2} y={top + hh / 2 - s * 0.5} w={ws[i]!} s={s * 0.9} t={o.head[i]} fill="#fff" bold anchor="middle" max={1} />));
+      top += hh + 4;
+      const rh = (H - pad - top) / o.rows.length;
+      o.rows.forEach((r, j) => {
+        const y = top + j * rh, hot = !!o.hl && r[0]!.includes(o.hl);
+        [0, 1, 2].forEach((i) => out.push(<rect key={`tr${j}${i}`} x={xs[i]} y={y + 2} width={ws[i]} height={rh - 4} rx={3} fill={[G[0], "#fff", G[6]][i]} stroke={i === 2 ? "none" : hot && !i ? G[6] : G[2]} strokeWidth={hot && !i ? 2 : 1} />,
+          <Tx key={`trt${j}${i}`} x={xs[i]! + ws[i]! / 2} y={y + rh / 2 - s * 0.55} w={ws[i]! - s} s={s * 0.85} t={r[i]} fill={i === 2 ? "#fff" : i || hot ? INK : SUB} bold={i > 0 || hot} anchor="middle" max={2} />));
+        [0, 1].forEach((i) => out.push(<path key={`ta${j}${i}`} d={`M${xs[i]! + ws[i]! + 3} ${y + rh / 2}H${xs[i + 1]! - 3}`} stroke={G[3]} strokeWidth={2} markerEnd="url(#wsk-arr2)" />));
+      });
+      out.push(ARR_DEFS);
+      return out;
+    }
+    case "flowchart": {
+      const nodes = P.flowchart(b.d).nodes;
+      if (nodes.length < 2) return null;
+      const top = head(x, out), vert = H - top > W * 0.55, n = nodes.length;
+      const pos = nodes.map((_, i) => vert ? [pad + (W - pad * 2) * 0.36, top + ((H - top) / n) * (i + 0.5)] as const : [pad + ((W - pad * 2) / n) * (i + 0.5), top + (H - top) * 0.34] as const);
+      const nw = vert ? Math.min(W * 0.42, fs * 12) : Math.min(((W - pad * 2) / n) * 0.8, fs * 8), nh = vert ? Math.min(fs * 2.2, ((H - top) / n) * 0.62) : Math.min(fs * 3, (H - top) * 0.26);
+      const half = nodes.map((nd) => (nd.type === "if" ? [nw * 0.49, nh * 0.65] : [nw / 2, nh / 2]) as [number, number]);
+      nodes.forEach((nd, i) => {
+        const [cx, cy] = pos[i]!, [hw, hh] = half[i]!;
+        out.push(nd.type === "if" ? <polygon key={`fn${i}`} points={`${cx},${cy - hh} ${cx + hw},${cy} ${cx},${cy + hh} ${cx - hw},${cy}`} fill={G[4]} />
+          : <rect key={`fn${i}`} x={cx - hw} y={cy - hh} width={hw * 2} height={hh * 2} rx={nd.type === "end" ? hh : 3} fill={nd.type === "end" ? G[6] : "#fff"} stroke={G[4]} />,
+          <Tx key={`fnt${i}`} x={cx} y={cy - s * 0.45} w={nd.type === "if" ? hw : hw * 2 - s} s={s * 0.8} t={nd.text} fill={nd.type === "step" ? INK : "#fff"} bold anchor="middle" max={1} />);
+        if (i < n - 1) {
+          const [nx, ny] = pos[i + 1]!, [nhw, nhh] = half[i + 1]!;
+          out.push(<path key={`fa${i}`} d={vert ? `M${cx} ${cy + hh}V${ny - nhh - 2}` : `M${cx + hw} ${cy}H${nx - nhw - 2}`} stroke={G[5]} strokeWidth={1.5} markerEnd="url(#wsk-arr2)" />);
+          if (nd.type === "if") out.push(<Tx key={`fy${i}`} x={vert ? cx + s * 0.4 : cx + hw + 3} y={vert ? cy + hh : cy - s * 1.2} w={fs * 2} s={s * 0.7} t="예" fill={SUB} max={1} />);
+        }
+      });
+      let lane = 0;
+      nodes.forEach((nd, i) => {
+        if (nd.type !== "if" || !nd.no) return;
+        const [cx, cy] = pos[i]!, [hw, hh] = half[i]!, j = P.flowIndex(nodes, nd.no);
+        lane++;
+        if (j >= 0 && j !== i) {
+          const [tx, ty] = pos[j]!, [thw, thh] = half[j]!;
+          out.push(<path key={`fno${i}`} d={vert ? `M${cx + hw} ${cy}H${cx + Math.max(hw, thw) + fs * (0.8 + lane)}V${ty}H${tx + thw + 2}` : `M${cx} ${cy + hh}V${cy + Math.max(hh, thh) + fs * (0.8 + lane)}H${tx}V${ty + thh + 2}`} fill="none" stroke={G[3]} strokeWidth={1.5} markerEnd="url(#wsk-arr2)" />);
+        } else {
+          const [sx, sy] = vert ? [Math.min(W - pad - nw * 0.4, cx + hw + fs * 1.5 + nw * 0.4), cy] : [cx, Math.min(H - pad - nh / 2, cy + hh + fs * 1.5 + nh / 2)];
+          out.push(<path key={`fno${i}`} d={vert ? `M${cx + hw} ${cy}H${sx - nw * 0.4 - 2}` : `M${cx} ${cy + hh}V${sy - nh / 2 - 2}`} stroke={G[3]} strokeWidth={1.5} markerEnd="url(#wsk-arr2)" />,
+            <rect key={`fns${i}`} x={sx - nw * 0.4} y={sy - nh / 2} width={nw * 0.8} height={nh} rx={3} fill={G[0]} stroke={G[3]} />, <Tx key={`fnst${i}`} x={sx} y={sy - s * 0.45} w={nw * 0.8 - s} s={s * 0.78} t={nd.no} fill={INK} bold anchor="middle" max={1} />);
+        }
+        out.push(<Tx key={`fnl${i}`} x={vert ? cx + hw + 3 : cx + 3} y={vert ? cy - s * 1.1 : cy + hh + 2} w={fs * 3} s={s * 0.7} t="아니오" fill={SUB} max={1} />);
+      });
+      out.push(ARR_DEFS);
+      return out;
+    }
+    case "rowgrid": {
+      const o = P.rowgrid(b.d);
+      if (!o.rows.length) return null;
+      let top = head(x, out);
+      const lw = W * 0.18, gx = pad + lw + s * 0.5, nc = Math.max(o.head.length, ...o.rows.filter((r) => !r.chips).map((r) => r.cells.length), 1), cwid = (W - pad - gx) / nc;
+      const hot = (h?: string) => !!o.hl && !!h && h.includes(o.hl);
+      if (o.head.length) {
+        o.head.forEach((h, j) => { const col = hot(h) ? G[6] : tone(j, o.head.length, 2, 5); out.push(<polygon key={`rh${j}`} points={`${gx + j * cwid},${top} ${gx + (j + 1) * cwid - 4},${top} ${gx + (j + 1) * cwid + 4},${top + s * 0.8} ${gx + (j + 1) * cwid - 4},${top + s * 1.6} ${gx + j * cwid},${top + s * 1.6}`} fill={col} />, <Tx key={`rht${j}`} x={gx + (j + 0.5) * cwid} y={top + s * 0.3} w={cwid - s} s={s * 0.85} t={h} fill={light(col) ? INK : "#fff"} bold anchor="middle" max={1} />); });
+        top += s * 2.1;
+      }
+      const rh = (H - pad - top) / o.rows.length;
+      o.rows.forEach((r, i) => {
+        const y = top + i * rh;
+        out.push(<rect key={`rr${i}`} x={pad} y={y + 2} width={lw} height={rh - 4} rx={3} fill={G[4]} />, <Tx key={`rrt${i}`} x={pad + lw / 2} y={y + rh / 2 - s * 0.5} w={lw - s} s={s * 0.85} t={r.name} fill="#fff" bold anchor="middle" max={2} />);
+        if (r.chips) {
+          let cx = gx, cy = y + s * 0.4;
+          const ph = Math.min(s * 1.6, rh - s * 0.8);
+          r.cells.forEach((c, j) => { const w_ = tw(c, s * 0.8) + s * 1.4; if (cx + w_ > W - pad && cx > gx) { cx = gx; cy += ph + 4; } if (cy + ph > y + rh) return; out.push(<rect key={`rc${i}${j}`} x={cx} y={cy} width={w_} height={ph} rx={ph / 2} fill={G[0]} stroke={G[2]} />, <Tx key={`rct${i}${j}`} x={cx + w_ / 2} y={cy + ph / 2 - s * 0.45} w={w_} s={s * 0.8} t={c} fill={INK} anchor="middle" max={1} />); cx += w_ + 4; });
+        } else r.cells.forEach((c, j) => out.push(<rect key={`rc${i}${j}`} x={gx + j * cwid + 2} y={y + 2} width={cwid - 4} height={rh - 4} rx={3} fill={hot(o.head[j]) ? G[1] : G[0]} />, <Tx key={`rct${i}${j}`} x={gx + (j + 0.5) * cwid} y={y + rh / 2 - s * 0.45} w={cwid - s} s={s * 0.8} t={c} fill={INK} bold={hot(o.head[j])} anchor="middle" max={2} />));
+      });
+      return out;
+    }
+    case "timeline": {
+      const o = P.timeline(b.d);
+      if (o.ev.length < 2) return null;
+      const top = head(x, out), n = o.ev.length, gw = o.goal ? Math.min(W * 0.16, fs * 8) : 0, ax1 = W - pad - gw - s, my = (top + H) / 2, sw = (ax1 - pad - fs) / n, stem = (H - top) * 0.12;
+      out.push(<path key="tla" d={`M${pad} ${my}H${ax1}`} stroke={G[5]} strokeWidth={4} markerEnd="url(#wsk-arr2)" />, ARR_DEFS);
+      o.ev.forEach((e, i) => {
+        const px = pad + fs * 0.5 + sw * (i + 0.5), up = e.side ? e.side === "up" : i % 2 === 0, cw_ = Math.min(sw * 1.7, fs * 10), chh = up ? my - stem - top - 2 : H - pad - my - stem, cy0 = up ? my - stem - chh : my + stem;
+        out.push(<circle key={`tc${i}`} cx={px} cy={my} r={s * 0.5} fill={tone(i, n, 3, 6)} stroke="#fff" strokeWidth={1.5} />, <line key={`ts${i}`} x1={px} x2={px} y1={up ? my - s * 0.5 : my + s * 0.5} y2={up ? my - stem : my + stem} stroke={G[3]} />,
+          <rect key={`tb${i}`} x={px - cw_ / 2} y={cy0} width={cw_} height={chh} rx={3} fill={G[0]} stroke={G[1]} />,
+          <Tx key={`tp${i}`} x={px} y={cy0 + s * 0.4} w={cw_ - 6} s={s * 0.85} t={e.p} fill="#2563eb" bold anchor="middle" max={1} />,
+          <Tx key={`tt${i}`} x={px} y={cy0 + s * (e.p ? 1.5 : 0.4)} w={cw_ - 6} s={s * 0.85} t={e.t} fill={INK} bold anchor="middle" max={2} />,
+          <Tx key={`td${i}`} x={px} y={cy0 + s * (e.p ? 2.7 : 1.6)} w={cw_ - 6} s={s * 0.72} t={e.d} anchor="middle" max={2} />);
+      });
+      if (gw) out.push(<path key="tf" d={`M${W - pad - gw + s} ${my - fs * 2.6}v${fs * 2.4}M${W - pad - gw + s} ${my - fs * 2.6}l${fs * 1.4} ${fs * 0.5}l${-fs * 1.4} ${fs * 0.5}`} stroke={G[6]} strokeWidth={2} fill={G[6]} />,
+        <Tx key="tg" x={W - pad - gw + s} y={my + s * 0.3} w={gw - s} s={s * 0.9} t={o.goal} fill={G[6]} bold max={3} />);
+      return out;
+    }
+    case "stairs": {
+      const o = P.stairs(b.d);
+      if (o.steps.length < 2) return null;
+      const n = o.steps.length, top = pad + fs * 2.6, sw = (W - pad * 2 - s) / n, sh = (H - pad - top) / (n + 0.2);
+      o.steps.forEach((st_, i) => {
+        const sx = pad + i * sw, sy = H - pad - (i + 1) * sh, col = tone(i, n, 1, 5);
+        out.push(<rect key={`st${i}`} x={sx} y={sy} width={sw - 3} height={(i + 1) * sh} fill={col} />, <line key={`stl${i}`} x1={sx} x2={sx + sw - 3} y1={sy} y2={sy} stroke={G[5]} strokeWidth={2} />,
+          <Tx key={`stp${i}`} x={sx + sw / 2} y={sy + s * 0.4} w={sw - s} s={s * 0.75} t={st_.p} fill={light(col) ? "#2563eb" : G[1]} bold anchor="middle" max={1} />,
+          <Tx key={`stt${i}`} x={sx + sw / 2} y={sy + s * (st_.p ? 1.4 : 0.4)} w={sw - s} s={s * 0.9} t={st_.t} fill={light(col) ? INK : "#fff"} bold anchor="middle" max={2} />,
+          <Tx key={`std${i}`} x={sx + sw / 2} y={sy + s * (st_.p ? 2.6 : 1.6)} w={sw - s} s={s * 0.72} t={st_.d} fill={light(col) ? SUB : G[1]} anchor="middle" max={2} />);
+      });
+      const fx = pad + n * sw - fs * 1.2, fy = H - pad - n * sh;
+      out.push(<path key="stf" d={`M${fx} ${fy}v${-fs * 2}l${fs * 1.2} ${fs * 0.4}l${-fs * 1.2} ${fs * 0.4}`} stroke={G[6]} strokeWidth={2} fill={G[6]} />);
+      if (b.t) out.push(<Tx key="stg" x={fx - s * 0.5} y={pad} w={W - pad * 2} s={fs * 0.95} t={b.t} fill={G[6]} bold anchor="end" max={1} />);
+      return out;
+    }
+    case "consortium": {
+      const o = P.consortium(b.d);
+      if (o.cos.length < 2) return null;
+      const cos = o.cos.some((c) => c.lead) ? o.cos : o.cos.map((c, i) => ({ ...c, lead: i === 0 })), top = head(x, out), pg = fs * 1.6, wts = cos.map((c) => (c.lead ? 1.35 : 1)), unit = (W - pad * 2 - pg * (cos.length - 1)) / wts.reduce((a, v) => a + v, 0), sh = cos.some((c) => c.share) ? fs * 2 : 0;
+      let cx = pad;
+      cos.forEach((c, i) => {
+        const w_ = unit * wts[i]!, ty = top + sh + (c.lead ? 0 : fs * 0.8), by = H - pad - (c.lead ? 0 : fs * 0.8);
+        if (c.share) out.push(<Tx key={`cs${i}`} x={cx + w_ / 2} y={top + (c.lead ? 0 : fs * 0.6)} w={w_} s={c.lead ? fs * 1.5 : fs * 1.2} t={c.share} fill={c.lead ? G[6] : SUB} bold anchor="middle" max={1} />);
+        out.push(<rect key={`cb${i}`} x={cx} y={ty} width={w_} height={by - ty} rx={5} fill={c.lead ? G[0] : "#fff"} stroke={c.lead ? G[6] : G[2]} strokeWidth={c.lead ? 2.5 : 1} />,
+          <rect key={`ch${i}`} x={cx} y={ty} width={w_} height={s * 1.8} rx={5} fill={c.lead ? G[6] : G[3]} />, <Tx key={`cn${i}`} x={cx + w_ / 2} y={ty + s * 0.4} w={w_ - s} s={s * 0.95} t={`${c.lead ? "★ " : ""}${c.name}`} fill="#fff" bold anchor="middle" max={1} />,
+          <Tx key={`cr${i}`} x={cx + w_ / 2} y={ty + s * 2.5} w={w_ - s * 1.4} s={s * 0.85} t={c.role} fill={INK} bold anchor="middle" max={2} />,
+          <Tx key={`co${i}`} x={cx + w_ / 2} y={ty + s * 4.8} w={w_ - s * 1.4} s={s * 0.75} t={c.note} anchor="middle" max={2} />);
+        if (i < cos.length - 1) out.push(<text key={`cp${i}`} x={cx + w_ + pg / 2} y={(ty + by) / 2} fontSize={fs * 1.3} fill={G[3]} textAnchor="middle" dominantBaseline="middle">+</text>);
+        cx += w_ + pg;
+      });
+      return out;
+    }
+    case "trace": {
+      const o = P.trace(b.d);
+      if (!o.left.length || !o.right.length) return null;
+      const top = head(x, out), three = o.mid.length > 0, Wd = W - pad * 2, ws = three ? [Wd * 0.24, Wd * 0.31, Wd * 0.29] : [Wd * 0.3, Wd * 0.42], xs = three ? [pad, pad + Wd * 0.355, pad + Wd * 0.71] : [pad, pad + Wd * 0.58];
+      const groups = three ? [o.left, o.mid, o.right] : [o.left, o.right], hh = s * 1.7, by = top + hh + s * 0.5, centers: Record<string, number>[] = [];
+      o.head.forEach((h, i) => out.push(<rect key={`th${i}`} x={xs[i]} y={top} width={ws[i]} height={hh} rx={hh / 2} fill={i === groups.length - 1 ? G[6] : i ? G[4] : G[3]} />, <Tx key={`tht${i}`} x={xs[i]! + ws[i]! / 2} y={top + hh / 2 - s * 0.5} w={ws[i]!} s={s * 0.9} t={h} fill="#fff" bold anchor="middle" max={1} />));
+      groups.forEach((items, i) => {
+        const rh = (H - pad - by) / Math.max(1, items.length), bh = Math.min(rh - 4, fs * 2.6), last = i === groups.length - 1, cs: Record<string, number> = {};
+        items.forEach((it, j) => { const cy = by + rh * (j + 0.5); cs[it] = cy; out.push(<rect key={`tb${i}${j}`} x={xs[i]} y={cy - bh / 2} width={ws[i]} height={bh} rx={3} fill="#fff" stroke={last ? G[6] : G[2]} strokeWidth={last ? 2 : 1} />, <Tx key={`tbt${i}${j}`} x={xs[i]! + ws[i]! / 2} y={cy - s * 0.45} w={ws[i]! - s} s={s * 0.8} t={it} fill={INK} bold anchor="middle" max={1} />); });
+        centers.push(cs);
+      });
+      const pairs = new Set<string>();
+      for (const [a, m, rs] of o.rows) { if (three) { if (m) { pairs.add(`0\u0001${a}\u0001${m}`); for (const r of rs) pairs.add(`1\u0001${m}\u0001${r}`); } } else for (const r of rs) pairs.add(`0\u0001${a}\u0001${r}`); }
+      [...pairs].forEach((p, k) => {
+        const [i_, a, c] = p.split("\u0001"), i = +i_!, ya = centers[i]?.[a!], yc = centers[i + 1]?.[c!];
+        if (ya === undefined || yc === undefined) return;
+        out.push(<line key={`tl${k}`} x1={xs[i]! + ws[i]!} y1={ya} x2={xs[i + 1]!} y2={yc} stroke="#60a5fa" strokeDasharray="3 2" />, <circle key={`tla${k}`} cx={xs[i]! + ws[i]!} cy={ya} r={2.5} fill="#2563eb" />, <circle key={`tlb${k}`} cx={xs[i + 1]!} cy={yc} r={2.5} fill={G[5]} />);
+      });
+      return out;
+    }
+    case "twinhub": {
+      const o = P.twinhub(b.d);
+      if (o.hubs.length < 2) return null;
+      const top = head(x, out), lw = W * 0.38, aw = W * 0.08, rw = W - lw - aw;
+      o.hubs.forEach((h, i) => {
+        const big = i === 1, hx = big ? lw + aw : 0, w_ = big ? rw : lw, t0 = top + (h.label ? s * 1.8 : 0), cx = hx + w_ / 2, cy = (t0 + H) / 2, rx = w_ * 0.38, ry = (H - t0) * (big ? 0.4 : 0.34), r = Math.min(rx * 0.34, ry * 0.5), nw = Math.min(rx * 0.95, fs * 7), nh = s * 1.5;
+        if (h.label) { const lw_ = tw(h.label, s * 0.8) + s * 1.4; out.push(<rect key={`hl${i}`} x={cx - lw_ / 2} y={top} width={lw_} height={s * 1.3} rx={s * 0.65} fill={big ? G[6] : G[1]} />, <Tx key={`hlt${i}`} x={cx} y={top + s * 0.15} w={lw_} s={s * 0.8} t={h.label} fill={big ? "#fff" : INK} bold anchor="middle" max={1} />); }
+        h.nodes.forEach((nd, j) => {
+          const a = -Math.PI / 2 + (2 * Math.PI * j) / h.nodes.length, px = cx + rx * Math.cos(a), py = cy + ry * Math.sin(a);
+          out.push(<line key={`hn${i}${j}`} x1={cx} y1={cy} x2={px} y2={py} stroke={G[3]} />, <rect key={`hr${i}${j}`} x={px - nw / 2} y={py - nh / 2} width={nw} height={nh} rx={nh / 2} fill={G[0]} stroke={G[2]} />, <Tx key={`ht${i}${j}`} x={px} y={py - s * 0.42} w={nw - 6} s={s * 0.78} t={nd} fill={INK} bold anchor="middle" max={1} />);
+        });
+        out.push(<circle key={`hc${i}`} cx={cx} cy={cy} r={r} fill={big ? G[6] : G[4]} />, <Tx key={`hct${i}`} x={cx} y={cy - s * 0.5} w={r * 1.6} s={s * 0.85} t={h.center} fill="#fff" bold anchor="middle" max={2} />);
+      });
+      const ax = lw + 4, my = (top + H) / 2 + fs * 0.6;
+      out.push(<polygon key="ha" points={`${ax},${my - fs * 0.7} ${ax + aw - fs * 1.2},${my - fs * 0.7} ${ax + aw - 4},${my} ${ax + aw - fs * 1.2},${my + fs * 0.7} ${ax},${my + fs * 0.7} ${ax + fs * 0.5},${my}`} fill={G[3]} />);
+      return out;
+    }
     default:
       return null;
   }
 }
+
+/** 2차 도식이 함께 쓰는 화살촉 */
+const ARR_DEFS = <defs key="arrdefs"><marker id="wsk-arr2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0L10 5L0 10z" fill={G[5]} /></marker></defs>;
 
 /** 단계 흐름(쉐브론) — 줄마다 '단계명: 설명' */
 function Flow({ b, fs }: { b: WireBlock; fs: number }) {
@@ -535,15 +892,17 @@ function Phase({ b, fs }: { b: WireBlock; fs: number }) {
 /** 큰 수치 줄 — '수치 | 설명', 강조 수치는 밑줄 */
 function Kpi({ b, fs, boxH }: { b: WireBlock; fs: number; boxH: number }) {
   const ks = P.kpis(b.d).filter((k) => !/^(출처|자료)/.test(k.v)).slice(0, 4), hl = P.meta(b.d)[0].highlight;
-  const big = Math.max(fs * 1.1, Math.min(fs * 2.6, boxH * 0.38));
+  // 좁은 칸(수치 하나당 본문 폭 14% 미만)은 세로로 쌓는다 — 서버 WireLayout::kpiStacked · 엔진 wire_png 와 같은 기준(E2E 382 3쪽 "71.4%3.2점")
+  const stacked = ks.length >= 2 && b.w / ks.length < 14;
+  const big = Math.max(fs * 1.1, Math.min(fs * 2.6, (stacked ? boxH / ks.length : boxH) * 0.38));
   return (
     <div className="flex-1 min-h-0 flex flex-col px-[0.7em] pt-[0.5em] pb-[0.4em]">
       {b.t && <div className="font-bold text-[var(--color-ink)] leading-tight whitespace-pre-line break-words mb-[0.3em]" style={{ fontSize: fs * 1.02 }}>{b.t}</div>}
-      <div className="flex-1 min-h-0 flex items-center">
+      <div className={cn("flex-1 min-h-0 flex", stacked ? "flex-col justify-around" : "items-center")}>
         {ks.map((k, i) => {
           const on = !!hl && (hl === k.v || k.v.includes(hl) || k.c === hl);
           return (
-            <div key={i} className={cn("flex-1 min-w-0 text-center px-[0.3em] [container-type:inline-size]", i > 0 && "border-l border-[var(--color-line-3)]")}>
+            <div key={i} className={cn("flex-1 min-w-0 text-center px-[0.3em] [container-type:inline-size]", i > 0 && (stacked ? "border-t border-[var(--color-line-3)] pt-[0.3em]" : "border-l border-[var(--color-line-3)]"))}>
               <div className={cn("font-extrabold leading-none tracking-[-.02em] whitespace-nowrap", hl && !on ? "text-[var(--color-ink-4)]" : "text-[var(--color-ink)]", on && "underline decoration-[0.08em] underline-offset-[0.18em]")} style={{ fontSize: fitBig(big, k.v) }}>{k.v}</div>
               {k.c && <div className="mt-[0.35em] leading-snug text-[var(--color-ink-3)]" style={{ fontSize: fs * 0.8 }}>{k.c}</div>}
             </div>

@@ -6,7 +6,7 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { codeOf, type DeckKitCtx } from "./deck-kit.ts";
 
 const SCREENS = ["main", "board_list", "board_gallery", "board_view", "form", "content", "greeting", "org_chart", "location", "history", "vision", "procedure", "faq", "search", "sitemap", "info_disclosure"] as const;
-const ORGS = ["all", "local", "central", "public", "education", "university", "civic", "private"] as const;
+const ORGS = ["all", "local", "central", "public", "education", "university", "civic", "culture", "private"] as const;
 const STYLES = ["auto", "standard", "reference", "portal", "llm", "landing", "campus", "magazine", "minimal"] as const;
 
 export function registerMockWireTools(server: McpServer, ctx: DeckKitCtx): void {
@@ -20,10 +20,10 @@ export function registerMockWireTools(server: McpServer, ctx: DeckKitCtx): void 
 
   server.registerTool("mock_get_wireframe", {
     title: "홈페이지 기획 와이어프레임",
-    description: "홈페이지 한 화면의 기획 와이어프레임(위에서 아래로 줄, 줄마다 12칸 기준 칸, 칸 종류 = 섹션 유형)을 만든다. 수집한 홈페이지 레퍼런스(관공서·대학·교육·단체·일반 기업)에서 그 화면 종류·기관 묶음에 섹션이 얼마나 자주·어느 순서·폭으로 놓이는지를 따라 결정적으로 짜고. style 로 짜임을 바꾼다 — standard(평균)·reference(실제 레퍼런스 화면 하나의 줄 구성, variant 로 다른 화면)·메인 원형 portal(포털형)·llm(AI 검색 중심)·landing(랜딩)·campus(대학)·magazine(사진 중심)·minimal(단정한 기업형). auto 면 요청 글 낱말로 고른다. 같은 화면을 여러 안으로 받으려면 style·variant 를 바꿔 여러 번 부른다(basis.alternatives 에 고를 수 있는 스타일과 변형 수), 요청 글에서 넣을 것·뺄 것(예: '챗봇 넣고 팝업은 빼고')을 반영한다. 돌려주는 것: wire(JSON), check(점수·고칠 곳), basis(근거 표본 수), prompt(이 와이어로 시안을 받는 요청문). 와이어를 고친 뒤 mock_check_wireframe 으로 다시 판정하고, 통과하면 prompt 대로 mock_get_replica_kit → 시안 제작 → mock_check_mockup 으로 넘어간다.",
+    description: "홈페이지 한 화면의 기획 와이어프레임(위에서 아래로 줄, 줄마다 12칸 기준 칸, 칸 종류 = 섹션 유형)을 만든다. 수집한 홈페이지 레퍼런스(관공서·대학·교육·단체·일반 기업)에서 그 화면 종류·기관 묶음에 섹션이 얼마나 자주·어느 순서·폭으로 놓이는지를 따라 결정적으로 짜고. style 로 짜임을 바꾼다 — standard(평균)·reference(실제 레퍼런스 화면 하나의 줄 구성, variant 로 다른 화면)·메인 원형 portal(포털형)·llm(AI 검색 중심)·landing(랜딩)·campus(대학)·magazine(사진 중심)·minimal(단정한 기업형). auto 면 요청 글 낱말로 고르고, 낱말이 없으면 메인은 기관에 맞춰(대학=campus·민간=minimal·문화=magazine) 고른다. 같은 화면을 여러 안으로 받으려면 basis.recommended(추천 3안: 평균·가장 많이 쓰는 실제 구성·기관에 맞는 원형, 각 style·variant·이유)에서 골라 style·variant 로 다시 부른다(basis.alternatives 는 고를 수 있는 스타일 전체와 변형 수). 요청 글에서 넣을 것·뺄 것(예: '챗봇 넣고 팝업은 빼고')을 반영한다. 돌려주는 것: wire(JSON, 칸마다 ev = 같은 화면 레퍼런스에서 그 섹션을 두는 비율 adopt%·위치 pos%·폭·높이·표본 n), check(점수·고칠 곳·fit), basis(표본 수·fit 레퍼런스 닮음 0~100·dist 채택률 분포·recommended), prompt(이 와이어로 시안을 받는 요청문 — 칸별 예시 내용 포함). 와이어를 고친 뒤 mock_check_wireframe 으로 다시 판정하고, 통과하면 prompt 대로 mock_get_replica_kit → 시안 제작 → mock_check_mockup 으로 넘어간다.",
     inputSchema: {
       screen: z.enum(SCREENS).describe("화면 종류 — main(메인)·board_list(게시판 목록)·board_gallery(사진 게시판)·board_view(게시글)·form(신청 폼)·content(일반 안내)·greeting(인사말)·org_chart(조직도)·location(찾아오시는 길)·history(연혁)·vision(비전)·procedure(절차 안내)·faq·search(검색 결과)·sitemap·info_disclosure(정보공개)"),
-      org: z.enum(ORGS).optional().describe("기관 묶음 — local(지자체)·central(중앙부처)·public(공공기관)·education(교육청·학교)·university(대학)·civic(단체·협회·복지)·private(일반 기업·민간)·all(기본)"),
+      org: z.enum(ORGS).optional().describe("기관 묶음 — local(지자체)·central(중앙부처)·public(공공기관)·education(교육청·학교)·university(대학)·civic(단체·협회·복지)·culture(문화·관광·체육 기관)·private(일반 기업·민간)·all(기본)"),
       style: z.enum(STYLES).optional().describe("짜임 스타일(기본 auto). 허용값: auto·standard·reference·portal·llm·landing·campus·magazine·minimal. 원형(portal·llm·landing·campus·magazine·minimal)은 메인 화면용, 서브 화면은 reference 로 바뀐다"),
       variant: z.number().int().min(0).max(50).optional().describe("변형 번호(0부터) — reference 는 다른 레퍼런스 화면, 원형은 줄 순서·좌우 바꿈"),
       request: z.string().max(800).optional().describe("요청 글(넣을 것·뺄 것·강조할 것)"),
@@ -34,7 +34,7 @@ export function registerMockWireTools(server: McpServer, ctx: DeckKitCtx): void 
 
   server.registerTool("mock_check_wireframe", {
     title: "홈페이지 와이어프레임 판정",
-    description: "홈페이지 와이어프레임을 결정적으로 판정한다(필수 섹션 누락·순서·줄의 칸 합계 12·빈 줄·좁은 칸·같은 역할 중복·화면 종류에 맞지 않는 섹션). 점수(score)·통과(pass: 오류 0이고 80점 이상)·고칠 곳(issues: 심각도·줄·문제·고치는 법)과 정리한 wire 를 돌려준다. pass 가 true 가 될 때까지 고쳐 다시 보낸다.",
+    description: "홈페이지 와이어프레임을 결정적으로 판정한다(필수 섹션 누락·순서·줄의 칸 합계 12·빈 줄·좁은 칸·같은 역할 중복·화면 종류에 맞지 않는 섹션). 공공 기관 묶음이면 KRDS 공식 배너도 본다. 점수(score)·통과(pass: 오류 0이고 80점 이상)·고칠 곳(issues: 심각도·줄·문제·고치는 법)·레퍼런스 닮음(fit, 점수와 무관한 참고)과 정리한 wire(칸마다 ev)를 돌려준다. pass 가 true 가 될 때까지 고쳐 다시 보낸다.",
     inputSchema: {
       wire: z.object({
         screen: z.string().optional(),

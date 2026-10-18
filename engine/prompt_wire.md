@@ -15,9 +15,14 @@
   - 추이(시간에 따른 변화) → `chart` line·bar · 비교(항목끼리 크기) → `chart` hbar(순위)·bar, 기준이 여럿이면 `table`
   - 구성비(전체를 나눔) → `proportion`·`chart` donut · 증감 내역(무엇이 더하고 뺐나) → `chart` waterfall
   - 전/후·현행/개선 → `dodont`(항목마다 짝), 수치면 `chart` pair, 화면이면 좌우 대비
-  - 절차(순서) → `flow` · 주체별 역할(누가 언제 무엇을) → `swimlane` · 반복 → `cycle`
-  - 인과(원인 → 문제) → `fishbone` · 수렴(문제들 → 우리 답 → 해결) → `converge`
-  - 우선순위(두 기준) → `matrix` · 위계(비전 → 과제) → `pyramid` · 층(시스템 구조) → `isostack`·`stage`
+  - 절차(순서) → `flow`(단계당 한 줄) · 단계마다 할 일이 여럿 → `stepcols` · 판정(예/아니오)으로 갈라지는 절차 → `flowchart` · 주체별 역할(누가 언제 무엇을) → `swimlane` · 반복 → `cycle`
+  - 인과(원인 → 문제) → `fishbone` · 수렴(문제들 → 우리 답 → 해결) → `converge`(가운데가 화면·플랫폼 그림이면 배치 틀 `bridge3`) · 특성 → 시사점 → 전략 → `derive`
+  - 위험·시사점(문제 → 대응 → 효과를 행마다) → `triad`, 도출 근거가 있으면 `derive`
+  - 우선순위(두 기준) → `matrix` · 위계(비전 → 과제) → `pyramid` · 층(시스템 구조) → `isostack`·`stage` · 시스템 구성(영역·노드·연결) → `arch`
+  - 연계(시스템·기관 간 데이터 흐름·인터페이스) → `linkage`(안팎 기관 → 우리 시스템), 노드·영역 구조가 주인공이면 `arch` · 요구사항 ↔ 방안 대응 → `trace`
+  - 범위(사업 범위·대상, 영역 × 단계) → `rowgrid` · 조직·역할(누가 책임지고 어떤 팀이 무엇을) → `org`, 참여 회사·지분 → `consortium`
+  - 질문 → 답(수요자의 불편을 우리 장치가 답으로) → `askanswer` · 현장 목소리(설문·인터뷰의 불편한 말) → `voices` · 화면이 바뀜 → `screenshift`
+  - 성장·성숙도(단계를 밟아 목표로) → `stairs` · 실적·이정표(연도 축) → `timeline` · 두 구조 대비(작은 허브 → 큰 허브) → `twinhub`
   - 목표 대비 달성 → `gauge`(%)·`progress`(여러 항목) · 핵심 성과 수치 → `kpi`
   - 일정·단계 범위 → `gantt`·`phase`·`roadmap`·`ridge` · 근거 인용(설문·현장의 말) → `quote` · 화면 기능 설명 → `pin`
   - 하나에 여럿이 붙음 → `hub`·`petal` · 교집합 → `venn` · 정말로 대등한 병렬 항목 → card 3~4개(이때만)
@@ -51,6 +56,17 @@
 - `c525`  전 5 → 바뀌는 점 2 → 후 5 (글, badge, 글)
 - `full`  위 요약 한 줄 + 큰 표 (text, table)
 - `g22`   2 × 2 네 칸 (글 4개)
+내용 기반 틀 — 실제 제안 장표에서 가장 많이 반복되는 짜임(읽는 순서와 장치가 정해져 있다). 관계가 맞으면 위 틀보다 먼저 쓴다. 칸에 적힌 종류와 같은 종류의 상자가 그 칸에 들어간다.
+- `bridge3`  현황 3 → 우리 장치 6 → 결과 3 + 결론 띠, 단 사이 화살표 — 수렴·전후 관계(현황·니즈 card, 가운데 screen·image·hub·flow, 결과·전략 card, band)
+- `chevcols` 단계 머리 + 세부 열 + 결론 띠 — 절차인데 단계마다 할 일이 여럿(stepcols, band)
+- `split2`   근거 소도식 5 + 방안 7(내용 위 + 표 아래) — 복합 패널의 기본형, 근거와 방안이 짝일 때(왼쪽 cycle·hub·flow 같은 도식, panel, table)
+- `archside` 구성도 8 + 요점 4(강조 수치 + 특장점) + 결론 띠 — 층·연계(arch 또는 linkage, badge, card, band)
+- `screenpin` 기능 목록 4(+ 인물 질문) + 큰 화면 8 — 화면 설명(card, person, pin)
+- `voicehero` 인물 장면 7 + 문제 카드 3개 쌓기 5 — 문제 제기(voices, card, card, card)
+- `askhero`  질문 → 답 장면 전폭 + 결론 띠 — 질문→답(askanswer, band)
+- `kpitop`   큰 수치 줄 + 근거 표 7 · 카드 5 + 결론 띠 — 핵심 수치(kpi, table, card, band)
+- `shift`    AS-IS 화면 3 → 바뀌는 점 2 → TO-BE 화면 7 + 아래 변화 수치, 단 사이 화살표 — 화면 전후(screen, badge, screen, kpi)
+- `ganttside` 일정표 9 + 안정화·결과 기둥 3 — 일정(gantt, badge, card)
 틀에 맞지 않는 장(상자 수나 구성이 다른 장)만 아래처럼 `rows` 로 직접 짠다.
 
 ## 배치를 직접 짤 때 — 실제 장표에서 자주 쓰는 구성. layout(칸 나눔)·device(메시지 장치)에 맞는 것을 고르고 필요하면 변형한다
@@ -83,6 +99,16 @@
 - 메시지의 수치는 content 에 있는 것만 쓴다 — 새 수치·증가율을 계산해 지어내지 않는다. 받칠 수치가 없으면 메시지 줄을 쓰지 않는다. 헤드라인을 그대로 되풀이하지 않는다.
 - 장의 메시지를 받치는 항목 **하나**를 "강조: 라벨"로 고른다(그래프의 막대·표의 행 첫 칸·KPI 수치·달성률 항목). 그 하나만 진하게, 나머지는 회색으로 그려진다. 강조는 상자마다 하나.
 - 수치가 셋 이상인 장을 card·panel·text 만으로 짜지 않는다 — chart·kpi·table·gauge·progress 가운데 맞는 것으로.
+- 같은 꼴 수치(기관마다 '인력 N명·일평균 N건', 해마다 '연간 N건')를 카드 3개 이상으로 늘어놓지 않는다 — table 이나 chart 하나로 묶어 비교한다.
+- 같은 범주(같은 해·같은 항목)의 두 계열은 그래프 둘로 쪼개지 않는다 — 계열 2개짜리 한 그래프(line 또는 묶음 막대, "구분 | 전화 | 온라인").
+- 점이 많은 추이(월별 13개 이상)는 line 으로, 위아래가 보이게 주인공 칸에 넉넉한 높이로 둔다(얇은 띠 칸 금지).
+
+## 자료의 실제 데이터가 붙은 장
+- 장 아래에 "데이터(올린 자료의 실제 값 …)" 덩어리가 있으면 그 장의 chart·kpi·table·gauge·progress·proportion 수치는 **그 값에서만** 가져온다. 새 수치·반올림·환산·증가율 계산 금지(데이터에 '계산값'으로 적힌 합계는 그대로 써도 된다).
+- 주 시각물과 그래프 유형은 데이터의 [유형]을 따른다: trend → chart line(점이 4개 이하면 bar) · compare → chart bar·hbar 또는 table · rank → chart hbar · share → chart donut 또는 proportion · before_after → chart pair 또는 dodont · target → progress 또는 gauge · process → flow.
+- 줄이 많으면 메시지에 맞는 구간만 고른다(예: 최근 12개월, 연도별 합계). 고른 구간의 값은 바꾸지 않는다.
+- 데이터 그림에는 "출처: 파일 이름" 줄을 적는다. 데이터가 붙은 장을 card·panel·text 만으로 짜지 않는다.
+- 장 머리에 "[다시 짜기]" 가 있으면 앞 와이어의 문제와 이웃 장 배치가 적혀 있다 — 그 문제를 고치고 이웃 장과 다른 배치·주 시각물로 짠다.
 
 ## 종류(k)별로 적는 법
 {{WIRE_KIND_FORMATS}}

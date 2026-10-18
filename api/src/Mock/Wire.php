@@ -52,11 +52,35 @@ final class Wire
         'education' => '교육청·학교·교육기관',
         'university' => '대학교·전문대학',
         'civic' => '단체·협회·복지',
+        'culture' => '문화·관광·체육 기관',
         'private' => '일반 기업·민간 홈페이지',
     ];
 
     /** 묶음 표본이 적을 때 빌려 올 묶음(가까운 순) */
-    private const ORG_FALLBACK = ['university' => ['education'], 'civic' => ['public'], 'private' => ['public']];
+    private const ORG_FALLBACK = ['university' => ['education'], 'civic' => ['public'], 'culture' => ['public'], 'private' => ['public']];
+
+    /** 공공 부문 묶음 — KRDS(범정부 디자인 시스템) 필수 요소를 본다. 중앙·지자체는 공식 배너를 경고, 나머지 공공은 참고 */
+    private const KRDS_MUST = ['central', 'local'];
+    private const KRDS_INFO = ['public', 'education', 'culture'];
+
+    /**
+     * 요청 글에 스타일 낱말이 없을 때 기관 묶음으로 고르는 메인 원형(2026-10-18 "공장처럼 같은 와이어" 지적 — 대학·기업·문화 메인이
+     * 관공서 평균과 같은 모양으로 나왔다). 관공서·공공·단체는 레퍼런스 평균(standard)이 이미 그 성격이라 그대로 둔다.
+     */
+    private const ORG_STYLE = ['university' => 'campus', 'private' => 'minimal', 'culture' => 'magazine'];
+
+    /** 추천 3안의 세 번째(기관에 맞는 원형)와 그 이유 */
+    private const ORG_ARCH = [
+        'all' => ['portal', '관공서 메인에 흔한 검색·바로가기·소식·팝업존을 촘촘히 담은 원형'],
+        'local' => ['portal', '지자체 메인에 흔한 검색·바로가기·소식·팝업존을 촘촘히 담은 원형'],
+        'central' => ['portal', '부처 메인에 흔한 검색·정책 소식·바로가기를 촘촘히 담은 원형'],
+        'public' => ['portal', '공공기관 메인에 흔한 검색·사업 바로가기·소식을 담은 원형'],
+        'education' => ['campus', '학교 메인에 흔한 학사 일정·소식 탭·사진을 앞세운 원형'],
+        'university' => ['campus', '대학 메인에 흔한 학사 바로가기·학사 일정·캠퍼스 사진을 앞세운 원형'],
+        'civic' => ['landing', '단체 메인에 맞게 소개·수치·참여 유도 띠로 이어지는 원형'],
+        'culture' => ['magazine', '문화·관광 메인에 맞게 큰 사진·명소 카드·영상을 앞세운 원형'],
+        'private' => ['minimal', '기업 메인에 흔한 비주얼·회사 소개·사업 카드 중심의 원형'],
+    ];
 
     /**
      * 화면 짜임 스타일 — standard 는 레퍼런스 평균, reference 는 실제 레퍼런스 화면 하나의 줄 구성,
@@ -170,7 +194,7 @@ final class Wire
     ];
     private const STYLE_HINTS = [
         'campus' => ['대학', '캠퍼스', '학사', '입학', '전문대'],
-        'magazine' => ['관광', '여행', '문화재단', '축제'],
+        'magazine' => ['관광', '여행', '문화재단', '축제', '미술관', '박물관', '아트센터'],
         'minimal' => ['기업', '회사 홈페이지', '스타트업', '일반 홈페이지'],
     ];
 
@@ -418,8 +442,11 @@ final class Wire
         return ['key' => '', 'list' => []];
     }
 
-    /** 요청 글 → 스타일(없으면 null) */
-    public static function detectStyle(string $req): ?string
+    /**
+     * 요청 글 → 스타일(없으면 null). 요청 글에 낱말이 없고 메인 화면이면 기관 묶음으로 고른다(ORG_STYLE) —
+     * 서브 화면은 원형이 없으므로 기관으로 고르지 않는다(고르면 '원형은 메인용' 안내만 붙고 레퍼런스 구성으로 바뀐다).
+     */
+    public static function detectStyle(string $req, string $org = 'all', string $screen = ''): ?string
     {
         $r = mb_strtolower($req);
         foreach ([self::STYLE_WORDS, self::STYLE_HINTS] as $table) {
@@ -431,14 +458,16 @@ final class Wire
                 }
             }
         }
-        return null;
+        return $screen === 'main' ? (self::ORG_STYLE[$org] ?? null) : null;
     }
 
     /**
      * 결정적 초안 — style: auto(요청 글로 고름)·standard·reference·원형(portal·llm·landing·campus·magazine·minimal).
      * variant: reference 는 레퍼런스 화면 번호(0부터), 원형은 줄 순서 섞기 정도. 같은 입력이면 늘 같은 결과.
+     * 칸마다 근거(ev)를 달고, 와이어 전체의 레퍼런스 닮음(basis.fit)·분포(basis.dist)·추천 3안(basis.recommended)을 붙인다.
+     * $extras=false 는 추천 3안을 만들 때 안쪽에서 부르는 것 — 추천·분포를 다시 만들지 않는다.
      */
-    public static function draft(string $screen, string $org = 'all', string $req = '', string $style = 'auto', int $variant = 0): array
+    public static function draft(string $screen, string $org = 'all', string $req = '', string $style = 'auto', int $variant = 0, bool $extras = true): array
     {
         if (!isset(self::SCREENS[$screen])) {
             $screen = 'main';
@@ -447,11 +476,15 @@ final class Wire
             $org = 'all';
         }
         $asked = $style;
-        if ($style === 'auto' || !isset(self::STYLES[$style])) {
-            $style = self::detectStyle($req) ?? 'standard';
-        }
         $isMain = $screen === 'main';
         $note = null;
+        if ($style === 'auto' || !isset(self::STYLES[$style])) {
+            $byWords = self::detectStyle($req);
+            $style = $byWords ?? self::detectStyle($req, $org, $screen) ?? 'standard';
+            if ($byWords === null && $style !== 'standard') {
+                $note = '요청 글에 스타일 낱말이 없습니다. 기관에 맞는 ' . self::STYLES[$style]['label'] . ' 원형입니다.';
+            }
+        }
         // 원형은 메인 화면용 — 서브 화면은 실제 레퍼런스 구성으로 다양성을 낸다
         if (!$isMain && isset(self::ARCHETYPES[$style])) {
             $note = '스타일 원형은 메인 화면용이라 서브 화면은 실제 레퍼런스 구성으로 짰습니다.';
@@ -492,9 +525,10 @@ final class Wire
                 }
                 $srcRows = array_map(static fn (array $r): array => array_map(static fn (array $c): array => [$c[0], $c[1], $c[2] ?? null, (int) ($c[3] ?? 0)], $r), $arch);
                 $w = self::fromRows($screen, $org, $pat, $srcRows, $intent, false, true);
-                $w['basis']['note'] = self::STYLES[$style]['label'] . ' 원형으로 짠 초안입니다(칸 높이는 레퍼런스 중앙값).';
+                $w['basis']['note'] = self::STYLES[$style]['label'] . ' 원형 초안입니다. 칸 높이는 레퍼런스 중앙값입니다.';
             }
         }
+        // 고를 수 있는 스타일 목록 — 예전 응답 모양 그대로(MCP 가 읽는다). 추천 3안은 recommended 에 따로.
         $alts = [];
         foreach (self::STYLES as $id => $s) {
             if (!$isMain && isset(self::ARCHETYPES[$id])) {
@@ -518,7 +552,221 @@ final class Wire
         if (trim((string) ($w['title'] ?? '')) === '') {
             $w['title'] = trim((self::ORGS[$org] ?? '') . ' ' . (self::SCREENS[$screen]['label'] ?? '') . ' 와이어');
         }
+        $w = self::annotate($w);
+        $w['basis']['fit'] = self::fit($w);
+        if ($extras) {
+            $w['basis']['dist'] = self::distribution($screen, $org);
+            $w['basis']['recommended'] = self::recommend($screen, $org, $req, $style, $w['variant']);
+        }
         return $w;
+    }
+
+    // ---------------------------------------------------------------- 근거(수집 레퍼런스 집계만 — 사이트 이름·캡처는 싣지 않는다, 기획 §20)
+
+    /** 와이어 칸으로 세지 않는 종류 — 머리·바닥 띠와 줄 밖 요소 */
+    private const NOT_BODY = ['masthead', 'header', 'footer', 'skip_nav', 'sub_visual', 'breadcrumb', 'page_title', 'satisfaction', 'lnb', 'floating_quick', 'unknown'];
+
+    /**
+     * 칸 하나의 근거 — 그 화면 × 기관 묶음 레퍼런스 n장에서 이 섹션이 몇 %의 화면에(adopt), 위에서 몇 % 지점에(pos),
+     * 몇 칸 폭(span)·몇 px 높이(h)로 놓이는가. 패턴에 없으면(채택 3% 미만·키트 부품) adopt 0 만.
+     */
+    public static function evOf(array $pat, string $k): array
+    {
+        $n = (int) ($pat['n'] ?? 0);
+        $t = $pat['types'][$k] ?? null;
+        if (!is_array($t)) {
+            return ['adopt' => 0, 'n' => $n] + (str_starts_with($k, 'kit_') ? ['kit' => true] : []);
+        }
+        return ['adopt' => (int) round((float) ($t['adopt'] ?? 0) * 100), 'pos' => (int) round((float) ($t['pos'] ?? 0) * 100),
+            'span' => (int) ($t['span'] ?? 12), 'h' => (int) ($t['h'] ?? 0), 'n' => $n];
+    }
+
+    /** 칸마다 ev 를 단다. 두 칸 이상 줄이 레퍼런스에서 같은 줄로 자주 놓이는 짝이면 ev.pair(%)도. */
+    public static function annotate(array $w): array
+    {
+        $screen = isset(self::SCREENS[(string) ($w['screen'] ?? '')]) ? (string) $w['screen'] : 'main';
+        $org = isset(self::ORGS[(string) ($w['org'] ?? '')]) ? (string) $w['org'] : 'all';
+        $pat = self::pattern($screen, $org);
+        $pairs = [];
+        foreach ((array) ($pat['pairs'] ?? []) as $pr) {
+            $ts = (array) ($pr['types'] ?? []);
+            sort($ts);
+            $pairs[implode('+', $ts)] = (int) round((float) ($pr['rate'] ?? 0) * 100);
+        }
+        foreach ((array) ($w['rows'] ?? []) as $ri => $r) {
+            if (!is_array($r) || !is_array($r['cols'] ?? null)) {
+                continue;
+            }
+            $ks = array_map(static fn ($c): string => is_array($c) ? (string) ($c['k'] ?? '') : '', $r['cols']);
+            sort($ks);
+            $pair = count($ks) > 1 ? ($pairs[implode('+', $ks)] ?? null) : null;
+            foreach ($r['cols'] as $ci => $c) {
+                if (!is_array($c)) {
+                    continue;
+                }
+                $ev = self::evOf($pat, (string) ($c['k'] ?? ''));
+                if ($pair !== null) {
+                    $ev['pair'] = $pair;
+                }
+                $w['rows'][$ri]['cols'][$ci]['ev'] = $ev;
+            }
+        }
+        return $w;
+    }
+
+    /** 이 화면에 쓰는 본문 섹션인가 — 메인에 서브용·서브에 메인용(서브에서도 흔한 것 빼고)은 분포·흔한 섹션에서 뺀다 */
+    private static function bodyEligible(string $screen, string $k): bool
+    {
+        if (in_array($k, self::NOT_BODY, true) || str_starts_with($k, 'kit_')) {
+            return false;
+        }
+        $scope = (string) (self::allTypes()[$k]['scope'] ?? 'common');
+        if ($screen === 'main') {
+            return $scope !== 'sub';
+        }
+        return $scope !== 'main' || self::subAllowsMain($screen, $k);
+    }
+
+    /**
+     * 레퍼런스 닮음(0~100) — 본문 칸 종류마다 채택률(50% 이상이면 만점)의 평균 70% + 흔한 섹션(채택 50% 이상)을 담은 비율 30%.
+     * 드문 칸(채택 10% 미만) 수·비율과 빠진 흔한 섹션을 같이 준다. 낮다고 나쁜 것이 아니라 "레퍼런스와 다른 개성"이라는 뜻 — 판정 통과와 무관.
+     */
+    public static function fit(array $w): array
+    {
+        $screen = isset(self::SCREENS[(string) ($w['screen'] ?? '')]) ? (string) $w['screen'] : 'main';
+        $org = isset(self::ORGS[(string) ($w['org'] ?? '')]) ? (string) $w['org'] : 'all';
+        $pat = self::pattern($screen, $org);
+        $T = (array) ($pat['types'] ?? []);
+        $n = (int) ($pat['n'] ?? 0);
+        $ks = [];
+        foreach ((array) ($w['rows'] ?? []) as $r) {
+            foreach ((array) (is_array($r) ? ($r['cols'] ?? []) : []) as $c) {
+                $k = is_array($c) ? (string) ($c['k'] ?? '') : '';
+                if ($k !== '' && !in_array($k, self::NOT_BODY, true)) {
+                    $ks[$k] = true;
+                }
+            }
+        }
+        $ks = array_keys($ks);
+        if (!$ks || $n === 0) {
+            return ['score' => null, 'label' => '근거로 삼을 레퍼런스가 없습니다.', 'cells' => count($ks), 'uncommon' => 0, 'uncommon_share' => 0, 'uncommon_types' => [], 'missing' => [], 'pattern' => (string) ($pat['key'] ?? ''), 'n' => $n];
+        }
+        // 그 화면을 정의하는 필수 섹션(찾아오시는 길의 지도 등)은 만점 — 수집 분류가 지도·표를 안내 블록으로 읽은 화면이 많아
+        // 채택률이 낮게 잡혀 있다(지자체 찾아오시는 길 지도 5%). 필수를 드물다고 하면 근거가 거꾸로 말한다.
+        $required = array_column(self::SCREENS[$screen]['body'], 0);
+        $sum = 0.0;
+        $rare = [];
+        foreach ($ks as $k) {
+            if (in_array($k, $required, true)) {
+                $sum += 1.0;
+                continue;
+            }
+            $a = (float) ($T[$k]['adopt'] ?? 0);
+            $sum += min(1.0, $a / 0.5);
+            if ($a < 0.1) {
+                $rare[] = $k;
+            }
+        }
+        $common = [];
+        foreach ($T as $k => $v) {
+            if ((float) ($v['adopt'] ?? 0) >= 0.5 && self::bodyEligible($screen, (string) $k)) {
+                $common[] = (string) $k;
+            }
+        }
+        $has = array_flip($ks);
+        $missing = array_values(array_filter($common, static function (string $k) use ($has): bool {
+            if (isset($has[$k])) {
+                return false;
+            }
+            if ($k === 'main_visual' && isset($has['hero'])) {
+                return false;   // 히어로가 메인 비주얼을 대신한다
+            }
+            foreach (self::SUBST[$k] ?? [] as $s) {
+                if (isset($has[$s])) {
+                    return false;
+                }
+            }
+            return true;
+        }));
+        $cov = $common ? (count($common) - count($missing)) / count($common) : 1.0;
+        $score = (int) round(100 * (0.7 * $sum / count($ks) + 0.3 * $cov));
+        $label = $score >= 75 ? '레퍼런스와 많이 닮은 구성' : ($score >= 50 ? '레퍼런스에 개성을 더한 구성' : '레퍼런스에서 드문 구성');
+        return ['score' => $score, 'label' => $label, 'cells' => count($ks), 'uncommon' => count($rare), 'uncommon_share' => (int) round(count($rare) / count($ks) * 100),
+            'uncommon_types' => $rare, 'missing' => $missing, 'pattern' => (string) ($pat['key'] ?? ''), 'n' => $n];
+    }
+
+    /**
+     * 레퍼런스 분포 — 이 화면 × 기관 묶음에서 채택률 높은 본문 섹션 상위(집계만). ev = 모든 종류의 근거표(편집한 칸에도 근거를 보여 주려고).
+     */
+    public static function distribution(string $screen, string $org, int $limit = 10): array
+    {
+        $pat = self::pattern($screen, $org);
+        $items = [];
+        $ev = [];
+        foreach ((array) ($pat['types'] ?? []) as $k => $v) {
+            $k = (string) $k;
+            if ($k === 'unknown') {
+                continue;
+            }
+            $e = self::evOf($pat, $k);
+            unset($e['n']);
+            $ev[$k] = $e;
+            if (self::bodyEligible($screen, $k)) {
+                $items[] = ['k' => $k, 'name' => self::typeName($k)] + $e;
+            }
+        }
+        usort($items, static fn ($a, $b) => $b['adopt'] <=> $a['adopt']);
+        $key = (string) ($pat['key'] ?? '');
+        $usedOrg = substr($key, strpos($key, '|') + 1);
+        return ['pattern' => $key, 'n' => (int) ($pat['n'] ?? 0), 'label' => (self::SCREENS[$screen]['label'] ?? $screen) . ' · ' . (self::ORGS[$usedOrg] ?? $usedOrg),
+            'lnb' => (int) round((float) ($pat['lnb']['adopt'] ?? 0) * 100), 'items' => array_slice($items, 0, $limit), 'ev' => $ev];
+    }
+
+    /** 미리보기 썸네일용 줄(종류·폭·높이만) */
+    private static function thumb(array $w): array
+    {
+        return array_map(static fn (array $r): array => ['zone' => $r['zone'], 'cols' => array_map(static fn (array $c): array => ['k' => $c['k'], 'span' => (int) $c['span'], 'h' => (int) ($c['h'] ?? 0)], $r['cols'])], (array) $w['rows']);
+    }
+
+    /**
+     * 추천 3안 — ① 레퍼런스 평균 ② 그 묶음에서 가장 많은 화면이 쓰는 실제 구성(묶음 크기 count) ③ 기관에 맞는 원형.
+     * 서브 화면은 원형이 없어 ③ 대신 두 번째로 많이 쓰는 실제 구성. 지금 보고 있는 안에는 current:true.
+     */
+    public static function recommend(string $screen, string $org, string $req, string $curStyle, int $curVariant): array
+    {
+        $isMain = $screen === 'main';
+        $lay = self::layouts($screen, $org);
+        $list = $lay['list'];
+        $n = (int) (self::data()['patterns'][$lay['key']]['n'] ?? 0);
+        $order = array_keys($list);
+        usort($order, static fn ($a, $b) => ((int) ($list[$b]['count'] ?? 0)) <=> ((int) ($list[$a]['count'] ?? 0)) ?: $a <=> $b);
+        $refWhy = static function (int $i) use ($list, $n, $lay): string {
+            $c = $list[$i]['count'] ?? null;
+            $grp = substr($lay['key'], strpos($lay['key'], '|') + 1);
+            if (!is_int($c) || $c < 1 || $n < 1) {
+                return '실제 레퍼런스 화면 하나의 줄 구성(묶음 크기 정보 없음 — 패턴을 다시 만들면 나옵니다)';
+            }
+            $pct = $c / $n * 100;
+            return '이 묶음(' . (self::ORGS[$grp] ?? $grp) . ') ' . number_format($n) . '장 중 ' . ($pct >= 1 ? (int) round($pct) . '%' : '1% 미만') . '(' . $c . '장)가 쓰는 구성';
+        };
+        $pat = self::pattern($screen, $org);
+        $plan = [['standard', 0, '레퍼런스 평균', '같은 화면 레퍼런스 ' . number_format((int) ($pat['n'] ?? 0)) . '장의 채택률·순서·폭 평균']];
+        if ($order) {
+            $plan[] = ['reference', $order[0], '가장 많이 쓰는 실제 구성', $refWhy($order[0])];
+        }
+        if ($isMain) {
+            [$a, $why] = self::ORG_ARCH[$org] ?? self::ORG_ARCH['all'];
+            $plan[] = [$a, 0, self::STYLES[$a]['label'], $why];
+        } elseif (isset($order[1])) {
+            $plan[] = ['reference', $order[1], '두 번째로 많이 쓰는 구성', $refWhy($order[1])];
+        }
+        $out = [];
+        foreach ($plan as [$st, $v, $label, $why]) {
+            $d = self::draft($screen, $org, $req, $st, $v, false);
+            $out[] = ['style' => $st, 'variant' => (int) $d['variant'], 'label' => $label, 'why' => $why, 'fit' => $d['basis']['fit']['score'] ?? null,
+                'current' => $d['style'] === $curStyle && (int) $d['variant'] === $curVariant, 'rows' => self::thumb($d)];
+        }
+        return $out;
     }
 
     /** 줄 목록([[k, span, 라벨, h], …])으로 와이어를 만든다 — 머리·바닥·필수 섹션·요청 넣기/빼기를 맞춘다 */
@@ -580,7 +828,9 @@ final class Wire
         }
         // 머리: (표지 띠) + 헤더 + 서브면 서브 비주얼·경로·제목
         $want = [];
-        if (isset($top['masthead']) || ($archetype && ($T['masthead']['adopt'] ?? 0) >= 0.2 && !in_array('masthead', $intent['remove'], true))) {
+        // 중앙부처·지자체는 KRDS 공식 배너가 필수라 레퍼런스에 없어도 넣는다
+        $krds = in_array($org, self::KRDS_MUST, true) && !in_array('masthead', $intent['remove'], true);
+        if (isset($top['masthead']) || $krds || ($archetype && ($T['masthead']['adopt'] ?? 0) >= 0.2 && !in_array('masthead', $intent['remove'], true))) {
             $want[] = 'masthead';
         }
         $want[] = 'header';
@@ -729,7 +979,7 @@ final class Wire
 
         // 머리
         $top = [];
-        if (($T['masthead']['adopt'] ?? 0) >= 0.2 && !in_array('masthead', $intent['remove'], true)) {
+        if ((($T['masthead']['adopt'] ?? 0) >= 0.2 || in_array($org, self::KRDS_MUST, true)) && !in_array('masthead', $intent['remove'], true)) {
             $top[] = 'masthead';
         }
         $top[] = 'header';
@@ -937,6 +1187,43 @@ final class Wire
             $out['style'] = (string) $w['style'];
             $out['variant'] = max(0, (int) ($w['variant'] ?? 0));
         }
+        // 저장할 때 근거 요약을 같이 둔다 — 다시 열었을 때 "레퍼런스 몇 장 기준"이 0 으로 사라지던 것(2026-10-18)
+        if (is_array($w['basis'] ?? null)) {
+            $b = self::cleanBasis($w['basis']);
+            if ($b) {
+                $out['basis'] = $b;
+            }
+        }
+        return $out;
+    }
+
+    /** 저장용 근거 요약 — 글은 길이를 자르고, 분포·추천·칸 근거는 다시 계산할 수 있어 담지 않는다 */
+    private static function cleanBasis(array $b): array
+    {
+        $s = static fn ($v, int $max = 300): ?string => is_string($v) && trim($v) !== '' ? mb_substr(trim(strip_tags($v)), 0, $max) : null;
+        $out = array_filter([
+            'pattern' => $s($b['pattern'] ?? null, 40),
+            'samples' => isset($b['samples']) ? max(0, (int) $b['samples']) : null,
+            'note' => $s($b['note'] ?? null),
+            'org_fallback' => $s($b['org_fallback'] ?? null),
+            'skipped' => $s($b['skipped'] ?? null),
+        ], static fn ($v) => $v !== null);
+        if (is_array($b['merged'] ?? null)) {
+            $m = array_values(array_filter(array_map(static fn ($x) => $s($x, 120), array_slice($b['merged'], 0, 5))));
+            if ($m) {
+                $out['merged'] = $m;
+            }
+        }
+        if (is_array($b['style'] ?? null)) {
+            $st = $b['style'];
+            $out['style'] = array_filter(['used' => isset(self::STYLES[(string) ($st['used'] ?? '')]) ? (string) $st['used'] : null, 'label' => $s($st['label'] ?? null, 40),
+                'variant' => isset($st['variant']) ? max(0, (int) $st['variant']) : null, 'variants' => isset($st['variants']) ? max(0, (int) $st['variants']) : null,
+                'note' => $s($st['note'] ?? null)], static fn ($v) => $v !== null);
+        }
+        if (is_array($b['refine'] ?? null)) {
+            $out['refine'] = array_filter(['why' => $s($b['refine']['why'] ?? null, 400),
+                'changes' => array_values(array_filter(array_map(static fn ($x) => $s($x, 120), array_slice((array) ($b['refine']['changes'] ?? []), 0, 8))))], static fn ($v) => $v !== null && $v !== []);
+        }
         return $out;
     }
 
@@ -994,7 +1281,7 @@ final class Wire
         $rows = array_values(array_filter((array) ($raw['rows'] ?? []), 'is_array'));
         if (!$rows) {
             $add('error', 'empty', '줄이 하나도 없습니다.', '머리·본문·바닥 줄을 넣으세요.');
-            return ['score' => 0, 'pass' => false, 'issues' => $issues, 'stats' => ['rows' => 0, 'cells' => 0, 'body_rows' => 0]];
+            return ['score' => 0, 'pass' => false, 'issues' => $issues, 'stats' => ['rows' => 0, 'cells' => 0, 'body_rows' => 0], 'fit' => null];
         }
         $seq = [];   // [rowIndex, k, zone]
         $count = [];
@@ -1147,6 +1434,32 @@ final class Wire
         if (count($rows) > 40) {
             $add('info', 'truncated', '줄이 ' . count($rows) . '개입니다 — 판정은 전부 봤지만 저장하면 앞 40줄만 남습니다.', '40줄 안으로 줄이세요.');
         }
+        // KRDS 필수 요소 — 공공 부문만. 공식 배너는 중앙·지자체 경고, 그 밖 공공은 참고. 건너뛰기·식별자는 와이어 칸보다 시안 단계 요소라 참고로만.
+        $orgK = isset(self::ORGS[(string) ($raw['org'] ?? '')]) ? (string) $raw['org'] : 'all';
+        $public = in_array($orgK, self::KRDS_MUST, true) || in_array($orgK, self::KRDS_INFO, true);
+        if ($public && empty($count['masthead'])) {
+            $add(in_array($orgK, self::KRDS_MUST, true) ? 'warn' : 'info', 'krds', '공식 배너(마스트헤드)가 없습니다.',
+                'KRDS 는 공공 누리집 맨 위에 "이 누리집은 대한민국 공식 전자정부 누리집입니다" 띠를 둡니다 — 머리 맨 위에 마스트헤드 칸을 넣으세요.');
+        }
+        if ($public) {
+            $lack = [];
+            if (empty($count['skip_nav'])) {
+                $lack[] = '건너뛰기 링크(본문 바로가기 — 시안에서 맨 앞에)';
+            }
+            if (empty($count['kit_identifier'])) {
+                $lack[] = '운영기관 식별자(푸터 안)';
+            }
+            if ($lack) {
+                $add('info', 'krds', 'KRDS 필수 요소 가운데 와이어에 없는 것: ' . implode(', ', $lack) . '.', '시안을 만들 때 빠뜨리지 마세요 — 와이어 점수와는 무관합니다.');
+            }
+        }
+        // 레퍼런스 닮음 — 점수·통과와 무관한 참고. 흔한 섹션이 빠졌거나 드문 구성일 때만 알린다.
+        $fit = self::fit($raw);
+        if ($fit['score'] !== null && ($fit['score'] < 50 || $fit['missing'])) {
+            $miss = array_map(static fn (string $k): string => self::typeName($k), $fit['missing']);
+            $add('info', 'fit', '레퍼런스 닮음 ' . $fit['score'] . ' — ' . $fit['label'] . '.' . ($miss ? ' 같은 화면 레퍼런스 절반 이상이 두는 ' . implode('·', $miss) . ' 칸이 없습니다.' : ''),
+                '의도한 개성이라면 그대로 두세요 — 판정 점수와는 무관합니다.');
+        }
         // 모은 줄 번호를 글에 채운다(10개 넘으면 "외 N줄")
         foreach ($issues as &$it) {
             if (!array_key_exists('rows', $it)) {
@@ -1172,30 +1485,52 @@ final class Wire
         $score = max(0, min(100, $score));
         $errors = count(array_filter($issues, static fn ($x) => $x['sev'] === 'error'));
         return ['score' => $score, 'pass' => $errors === 0 && $score >= 80, 'issues' => $issues,
-            'stats' => ['rows' => count($rows), 'cells' => $cells, 'body_rows' => $bodyRows]];
+            'stats' => ['rows' => count($rows), 'cells' => $cells, 'body_rows' => $bodyRows], 'fit' => $fit];
     }
 
+    /** 마지막 AI 다듬기를 버린 까닭(라우트가 안내 글로 쓴다) */
+    public static ?string $refineReason = null;
+
     /**
-     * AI 다듬기 — 요청 글을 반영해 줄 구성을 고친다. 실패하거나 판정이 나빠지면 null(초안 그대로 쓴다).
+     * AI 다듬기 — 요청 글을 반영해 줄 구성을 고친다. 실패하거나 판정 점수가 조금이라도 떨어지면 null(초안 그대로).
+     * 돌려주는 것: {wire, why(모델이 쓴 까닭), changes(서버가 비교한 바뀐 점)}.
+     * $chat 은 시험용 — 없으면 Llm::chat. 모델에게 그 화면 × 기관 묶음의 채택률·같은 줄 짝을 준다(레퍼런스에서 멀어지지 않게).
      */
-    public static function refine(array $draft, string $req): ?array
+    public static function refine(array $draft, string $req, ?callable $chat = null): ?array
     {
+        self::$refineReason = null;
         if (trim($req) === '') {
+            self::$refineReason = '요청 글이 없습니다.';
             return null;
         }
         $allowed = [];
         foreach (self::types() as $t) {
             $allowed[] = $t['k'] . '=' . $t['name'];
         }
-        $plain = ['screen' => $draft['screen'], 'lnb' => $draft['lnb'], 'rows' => $draft['rows']];
-        $sys = "너는 공공기관 홈페이지 정보설계(IA) 기획자다. 홈페이지 한 화면의 와이어프레임을 JSON 으로만 고친다.\n"
+        $pat = self::pattern((string) $draft['screen'], (string) $draft['org']);
+        $stats = [];
+        foreach (self::distribution((string) $draft['screen'], (string) $draft['org'], 14)['items'] as $it) {
+            $stats[] = $it['k'] . ' ' . $it['adopt'] . '%(위치 ' . $it['pos'] . '%, 폭 ' . $it['span'] . '/12)';
+        }
+        $pairs = [];
+        foreach (array_slice((array) ($pat['pairs'] ?? []), 0, 6) as $pr) {
+            $pairs[] = implode('+', (array) $pr['types']) . ' ' . (int) round((float) $pr['rate'] * 100) . '%';
+        }
+        $strip = static fn (array $rows): array => array_map(static fn (array $r): array => ['zone' => $r['zone'], 'cols' => array_map(static fn (array $c): array => array_diff_key($c, ['ev' => 1]), $r['cols'])], $rows);
+        $plain = ['screen' => $draft['screen'], 'lnb' => $draft['lnb'], 'rows' => $strip((array) $draft['rows'])];
+        $sys = "너는 홈페이지 정보설계(IA) 기획자다. 홈페이지 한 화면의 와이어프레임을 JSON 으로만 고친다.\n"
             . "규칙: 줄(rows)은 위에서 아래 순서, 각 줄 zone 은 top|body|bottom, cols 의 span 합은 12, k 는 아래 목록의 섹션 id 만, t 는 칸 안에 들어갈 내용을 짧은 한국어로(30자 이내).\n"
             . "헤더는 맨 위, 푸터는 맨 아래. 한 줄은 4칸까지. 요청에 없는 섹션을 함부로 지우지 말고, 레퍼런스 초안의 순서를 크게 흔들지 마라.\n"
+            . "레퍼런스 근거(같은 화면·기관 묶음 " . (int) ($pat['n'] ?? 0) . "장, 섹션별 채택률·위에서의 위치·폭): " . implode(', ', $stats) . "\n"
+            . ($pairs ? "같은 줄에 자주 놓이는 짝: " . implode(', ', $pairs) . "\n" : '')
+            . "채택률이 높은 섹션은 요청이 빼라고 하지 않는 한 남겨라. 새로 넣는 섹션은 위 위치를 참고해 자리를 정하라.\n"
             . "섹션 목록: " . implode(', ', $allowed) . "\n"
-            . "답은 {\"rows\":[...]} JSON 하나만. 설명 글 금지.";
+            . "답은 {\"rows\":[...],\"why\":\"무엇을 왜 바꿨는지 한국어 두 문장 이내\"} JSON 하나만. 설명 글 금지.";
         $user = "요청: " . mb_substr($req, 0, 800) . "\n\n초안(레퍼런스 기반):\n" . json_encode($plain, JSON_UNESCAPED_UNICODE);
-        $text = Llm::chat([['role' => 'system', 'content' => $sys], ['role' => 'user', 'content' => $user]], 1800, 45);
-        if ($text === null) {
+        $msgs = [['role' => 'system', 'content' => $sys], ['role' => 'user', 'content' => $user]];
+        $text = $chat !== null ? $chat($msgs) : Llm::chat($msgs, 1800, 45);
+        if (!is_string($text)) {
+            self::$refineReason = 'AI 를 부르지 못했습니다(꺼짐·한도).';
             return null;
         }
         if (preg_match('/\{.*\}/su', $text, $m)) {
@@ -1203,33 +1538,82 @@ final class Wire
         }
         $j = json_decode($text, true);
         if (!is_array($j) || empty($j['rows']) || !is_array($j['rows'])) {
+            self::$refineReason = 'AI 답을 와이어로 읽지 못했습니다.';
             return null;
         }
-        $cand = self::normalize(['screen' => $draft['screen'], 'org' => $draft['org'], 'lnb' => $j['lnb'] ?? $draft['lnb'], 'rows' => $j['rows']]);
+        $cand = self::normalize(['screen' => $draft['screen'], 'org' => $draft['org'], 'lnb' => $j['lnb'] ?? $draft['lnb'], 'rows' => $j['rows'],
+            'style' => $draft['style'] ?? null, 'variant' => $draft['variant'] ?? 0]);
         $c1 = self::check($cand);
         $c0 = self::check($draft);
-        if (!$c1['pass'] || $c1['score'] < $c0['score'] - 10) {
+        if (!$c1['pass'] || $c1['score'] < $c0['score']) {
+            self::$refineReason = 'AI 가 고친 안의 판정이 ' . ($c1['pass'] ? '' : '미통과이고 ') . $c1['score'] . '점으로 초안(' . $c0['score'] . '점)보다 낮아 버렸습니다.';
             return null;
         }
-        return $cand;
+        $why = trim(mb_substr(strip_tags((string) ($j['why'] ?? '')), 0, 400));
+        return ['wire' => $cand, 'why' => $why, 'changes' => self::diff($draft, $cand)];
     }
 
-    /** 시안 재료 요청문(MCP) — 이 와이어로 시안을 만들 때 AI 에게 붙여 넣는 글 */
+    /** 두 와이어의 바뀐 점(사람 말로) — 넣은 섹션·뺀 섹션·줄 수·폭이나 순서가 바뀐 줄 */
+    public static function diff(array $a, array $b): array
+    {
+        $sig = static fn (array $w): array => array_map(static fn (array $r): string => implode('+', array_map(static fn (array $c): string => $c['k'] . ':' . $c['span'], (array) $r['cols'])), (array) $w['rows']);
+        $kinds = static function (array $w): array {
+            $o = [];
+            foreach ((array) $w['rows'] as $r) {
+                foreach ((array) $r['cols'] as $c) {
+                    $o[(string) $c['k']] = ($o[(string) $c['k']] ?? 0) + 1;
+                }
+            }
+            return $o;
+        };
+        $ka = $kinds($a);
+        $kb = $kinds($b);
+        $out = [];
+        $added = array_map(static fn ($k): string => self::typeName((string) $k), array_keys(array_diff_key($kb, $ka)));
+        $removed = array_map(static fn ($k): string => self::typeName((string) $k), array_keys(array_diff_key($ka, $kb)));
+        if ($added) {
+            $out[] = '넣음: ' . implode('·', $added);
+        }
+        if ($removed) {
+            $out[] = '뺌: ' . implode('·', $removed);
+        }
+        $sa = $sig($a);
+        $sb = $sig($b);
+        if (count($sa) !== count($sb)) {
+            $out[] = '줄 수 ' . count($sa) . ' → ' . count($sb);
+        }
+        $changed = count(array_diff($sb, $sa));
+        if ($changed > 0 && ($changed > count($added) || !$added)) {
+            $out[] = '구성·폭이 바뀐 줄 ' . $changed . '개';
+        } elseif ($sa !== $sb && !$out) {
+            $out[] = '줄 순서를 바꿈';
+        }
+        return $out ?: ['바뀐 점 없음'];
+    }
+
+    /** 시안 재료 요청문(MCP) — 이 와이어로 시안을 만들 때 AI 에게 붙여 넣는 글. 칸마다 레퍼런스 채택률과 예시 내용(가상 기관)을 붙인다. */
     public static function prompt(array $w, string $req = ''): string
     {
         $lines = [];
-        foreach ($w['rows'] as $i => $r) {
+        $ann = self::annotate($w);
+        foreach ($ann['rows'] as $i => $r) {
             $parts = [];
             foreach ($r['cols'] as $c) {
-                $parts[] = self::typeName($c['k']) . "({$c['k']}, {$c['span']}/12" . (!empty($c['t']) ? ', ' . $c['t'] : '') . ')';
+                $ev = $c['ev'] ?? null;
+                $parts[] = self::typeName($c['k']) . "({$c['k']}, {$c['span']}/12" . (!empty($c['t']) ? ', ' . $c['t'] : '')
+                    . (is_array($ev) && ($ev['n'] ?? 0) > 0 && empty($ev['kit']) ? ', 레퍼런스 ' . ($ev['adopt'] > 0 ? $ev['adopt'] . '%' : '3% 미만') : '') . ')';
             }
             $lines[] = ($i + 1) . '. [' . $r['zone'] . '] ' . implode(' | ', $parts);
         }
         $screen = self::SCREENS[$w['screen']]['label'] ?? $w['screen'];
-        return "powerMock 으로 " . self::ORGS[$w['org']] . " 홈페이지의 '{$screen}' 화면 시안을 만들어 줘."
+        $content = WireContent::lines(WireContent::fill($w));
+        $p = WireContent::persona((string) $w['org']);
+        return "powerMock 으로 " . (self::ORGS[$w['org']] ?? self::ORGS['all']) . " 홈페이지의 '{$screen}' 화면 시안을 만들어 줘."
             . ($req !== '' ? "\n요청: {$req}" : '')
             . "\n아래 와이어프레임의 줄 순서와 칸 폭(12칸 격자)을 지켜 줘." . (!empty($w['lnb']) ? ' 본문 왼쪽에 LNB(왼쪽 메뉴)를 둔다.' : '')
+            . " 괄호 끝 %는 같은 화면 레퍼런스에서 그 섹션을 두는 비율이다."
             . "\n" . implode("\n", $lines)
+            . "\n\n칸별 예시 내용(가상 기관 '" . $p['org'] . "' 기준 — 실제 기관이면 이름만 바꿔 쓴다):\n" . implode("\n", $content)
             . "\n순서: mock_get_replica_kit 으로 재료를 받고 → 이 구성대로 만들고 → mock_check_mockup 으로 판정 → 통과하면 mock_publish_mockup.";
     }
 }

@@ -25,6 +25,8 @@ use Pp\Core\HttpError;
 final class WireLayout
 {
     private const X0 = 2.0, X1 = 98.0, Y0 = 15.0, Y1 = 97.0, GAP = 2.0, COLS = 12;
+    /** 그림이 위쪽에 낮게 그려지는 종류 — 이것만 든 줄은 필요한 높이만 받는다(build) */
+    private const LOW = ['flow', 'kpi', 'badge', 'text', 'progress', 'proportion', 'band', 'quote'];
     /** 기본 글자 한 줄 높이가 본문 높이의 몇 % 인가 (0.0131 ÷ (2/3 × (1 − 150/1600 − 96/1600))) */
     private const EM = 2.322;
     /** 그림 지시 줄(장 위에 찍지 않는다) — engine/design.py PIC_LINE 과 같다. 영어 작업은 Figure:·Scene:, 말풍선 문구도 그림의 일부 */
@@ -62,10 +64,20 @@ final class WireLayout
             $ch = WireKinds::chart((string) ($b['d'] ?? ''));
             $legend = count($ch['series']) > 1 || in_array($ch['type'], ['pair', 'stacked', 'combo'], true) ? 1.2 * $em : 0.0;
             $rows = $ch['type'] === 'hbar' ? max(3, count($ch['rows'])) * 1.6 * $em : 0.0;   // 가로 막대는 항목 수만큼 높아진다
+            if ($ch['type'] === 'line' && count($ch['rows']) > 12) $rows = 9.0 * $em;   // 점이 많은 꺾은선은 위아래가 보일 높이(E2E 742: 23% 칸에 36개월이 평평하게)
             return max(9 * $em, $rows + 2.6 * $em) + $legend + ($ch['source'] !== '' ? 1.0 * $em : 0) + $msg;
         }
         if ($k === 'gantt') return ($t !== '' ? 2.2 : 0.6) * $em + 1.6 * $em + max(2, count($lines) - 1) * 1.9 * $em;
-        if ($k === 'kpi') return ($t !== '' ? 2.2 : 0.6) * $em + 3.4 * $em + 1.4 * $em + (preg_grep('/^\s*[-•]?\s*(출처|자료)\s*[:：]/u', $lines) ? 1.2 * $em : 0) + $msg;
+        if ($k === 'kpi') {
+            // 좁은 칸(수치 하나당 폭 14% 미만)이면 수치를 세로로 쌓는다 — 가로로 두면 "71.4%3.2점" 처럼 붙었다(E2E 382 3쪽, 2026-10-18). 엔진 wire_png·화면 Kpi 와 같은 기준
+            $src = preg_grep('/^\s*[-•]?\s*(출처|자료)\s*[:：]/u', $lines) ? 1.2 * $em : 0;
+            $cnt = max(1, count($lines) - ($src ? 1 : 0));
+            if (self::kpiStacked($w, $cnt)) return ($t !== '' ? 2.2 : 0.6) * $em + $cnt * 3.6 * $em + $src + $msg;
+            return ($t !== '' ? 2.2 : 0.6) * $em + 3.4 * $em + 1.4 * $em + $src + $msg;
+        }
+        // 2026-10-18 실제 장표 540장 분석 §7 — 2차 16종(글 형식은 engine/wireforms.py 와 같다). 도식이 주인공이라 최소 면적 + 줄 수
+        if (in_array($k, ['arch', 'stepcols', 'derive', 'askanswer', 'linkage', 'org', 'voices', 'screenshift', 'triad', 'flowchart',
+                          'rowgrid', 'timeline', 'stairs', 'consortium', 'trace', 'twinhub'], true)) return self::needForm($k, $t, $lines, $w);
         // 2026-10-12 레퍼런스 학습 도식 — 그림이 주인공이라 글 양보다 최소 면적이 중요
         if ($k === 'fishbone') return ($t !== '' ? 1.0 : 0.6) * $em + max(10, 3.2 * (int) ceil(count($lines) / 2) + 4) * $em;
         if ($k === 'hub') return max(12, 1.6 * count($lines) + 6) * $em;
@@ -128,6 +140,85 @@ final class WireLayout
         foreach ($lines as $l) $n += max(1, (int) ceil(mb_strlen(preg_replace('/^\s*([-*•·]|\d+[.)])\s+|\*\*/u', '', $l)) / $cpl));
         $head = $k === 'panel' ? 2.0 * $em : ($t !== '' ? 1.45 * $em * max(1, (int) ceil(mb_strlen($t) / self::cpl($w, 1.08))) : 0);
         return $head + 0.9 * $em + $n * 1.22 * $em + 0.5 * $em;
+    }
+
+    /** kpi 수치를 세로로 쌓는가 — 수치 하나당 폭이 본문의 14% 미만(엔진 design.py kpi·화면 WireSketch Kpi 와 같은 기준) */
+    public static function kpiStacked(float $w, int $cnt): bool
+    {
+        return $cnt >= 2 && $w / $cnt < 14.0;
+    }
+
+    /** 2차 16종 글 세기(엔진 engine/wireforms.py 의 읽기와 같은 줄 규칙) — [영역 수, 노드 수, 연결 수, …] 필요한 것만 */
+    public static function formParts(string $k, array $lines): array
+    {
+        $p = ['zones' => 0, 'nodes' => 0, 'maxNodes' => 0, 'links' => 0, 'heads' => 0, 'items' => 0, 'maxItems' => 0, 'rows' => 0, 'ifs' => 0, 'root' => false, 'leads' => 0, 'shares' => [], 'left' => [], 'mid' => [], 'right' => [], 'emptyRight' => 0];
+        $cur = 0;
+        foreach ($lines as $l) {
+            if (str_contains($l, '보강 필요')) continue;
+            if ($k === 'arch') {
+                if (preg_match('/^\s*[-•]?\s*\[([^\]]+)\]\s*(.*)$/u', $l, $m)) {
+                    $n = count(array_filter(array_map('trim', preg_split('/[,，、]/u', $m[2])), 'strlen'));
+                    $p['zones']++; $p['nodes'] += $n; $p['maxNodes'] = max($p['maxNodes'], $n);
+                } elseif (preg_match('/(-+>|→|=>|⇒)/u', $l)) $p['links'] += max(1, preg_match_all('/(-+>|→|=>|⇒)/u', explode('|', $l)[0]));
+            } elseif ($k === 'stepcols') {
+                if (preg_match('/^\s*#/u', $l)) { $p['heads']++; $cur = 0; }
+                elseif (!preg_match('/^\s*(결과|result)\s*[:：]/iu', $l)) { $cur++; $p['items']++; $p['maxItems'] = max($p['maxItems'], $cur); }
+            } elseif ($k === 'flowchart') {
+                $p['rows']++;
+                if (preg_match('/^\s*([-•]\s*)?[?？◇]/u', $l)) $p['ifs']++;
+            } elseif ($k === 'org') {
+                if (!$p['root'] && preg_match('/^\s*[-•]?\s*(총괄|총괄\s*책임자?|PM|사업\s*책임자|사업\s*관리|책임자|대표)\s*[:：]/iu', $l)) $p['root'] = true;
+                elseif (!preg_match('/^\s*[-•]?\s*(지원|지원\s*조직|자문|자문단|협력)\s*[:：]/u', $l)) $p['rows']++;
+            } elseif ($k === 'consortium') {
+                $c = array_map('trim', explode('|', trim(trim($l), '|')));
+                $p['rows']++;
+                if (preg_match('/^[\s\-•]*★/u', $c[0])) $p['leads']++;
+                foreach (array_slice($c, 1) as $x) if (preg_match('/^(\d+(?:\.\d+)?)\s*%$/u', $x, $mm)) $p['shares'][] = (float) $mm[1];
+            } elseif ($k === 'trace') {
+                if (!str_contains($l, '|')) continue;
+                $c = array_map('trim', explode('|', trim(trim($l), '|')));
+                if (!$p['rows'] && !$p['left'] && preg_match('/^(기능\s*)?(요구(사항)?|요건|제약(사항)?|ID|구분|항목)$/iu', $c[0])) continue;
+                $p['rows']++;
+                $sol = count($c) >= 3 ? $c[2] : ($c[1] ?? '');
+                $p['left'][$c[0]] = 1;
+                if (count($c) >= 3 && $c[1] !== '') $p['mid'][$c[1]] = 1;
+                $ss = array_filter(array_map('trim', preg_split('/[,，、]/u', $sol)), 'strlen');
+                if (!$ss) $p['emptyRight']++;
+                foreach ($ss as $s) $p['right'][$s] = 1;
+            } else {
+                if (!preg_match('/^\s*[-•]?\s*(그림|장면|출처|자료|방식|강조|목표|인물|figure|scene|source)\s*[:：]/iu', $l)) $p['rows']++;
+            }
+        }
+        return $p;
+    }
+
+    /** 2차 16종의 필요한 높이(%) — 도식이 주인공이라 최소 면적 + 줄 수 */
+    private static function needForm(string $k, string $t, array $lines, float $w): float
+    {
+        $em = self::EM;
+        $th = ($t !== '' ? 2.2 : 0.6) * $em;
+        $p = self::formParts($k, $lines);
+        $n = max(1, $p['rows']);
+        switch ($k) {
+            case 'arch':
+                $vert = (bool) preg_grep('/^\s*(방향|direction)\s*[:：]\s*(세로|vertical|위)/iu', $lines);
+                return $th + ($vert ? max(14, $p['zones'] * 5.2) : max(14, 2.8 * (int) ceil(max(1, $p['maxNodes']) / 2) + 6)) * $em;
+            case 'stepcols': return $th + (3.4 + max(2, $p['maxItems']) * 1.9 + 1.0) * $em;
+            case 'derive': return $th + max(13, 2.0 + $n * 1.7) * $em;
+            case 'askanswer': return max(16, 6 + 5 * (int) ceil($n / 2)) * $em;
+            case 'linkage': return max(16, $n * 2.1 + 3) * $em;
+            case 'org': return $th + max(15, 11 + 0.6 * $n) * $em;
+            case 'voices': return max(14, 3.6 * (int) ceil($n / 2) + 4) * $em;
+            case 'screenshift': return $th + 14 * $em;
+            case 'triad': return $th + (2.2 + max(2, $n - 1) * 3.0) * $em;
+            case 'flowchart': return $th + ($w < 50 ? max(14, 2.8 * $n) : 12) * $em;
+            case 'rowgrid': return $th + (2.4 + max(2, $n) * 2.6) * $em;
+            case 'timeline': return $th + 13 * $em;
+            case 'stairs': return max(14, 3.2 * $n + 4) * $em;
+            case 'consortium': return $th + 13 * $em;
+            case 'trace': return $th + (2.4 + max(3, count($p['left']), count($p['mid']), count($p['right'])) * 2.6) * $em;
+            default: return $th + 12 * $em;   // twinhub
+        }
     }
 
     /** 몫 나누기 — 가중치대로 나누되, 필요한 높이보다 작으면 여유 있는 쪽에서 가져온다. 다 합쳐도 모자라면 비율대로 줄인다 */
@@ -194,6 +285,19 @@ final class WireLayout
         }
         $free = array_diff_key($R, $fixed);
         $hs = $fixed + array_combine(array_keys($free), self::share(array_values(array_map(static fn($r) => $r['h'], $free)), array_values(array_map(static fn($r) => $r['need'], $free)), $total - array_sum($fixed)));
+        // 낮게 그려지는 줄(흐름·수치·강조·글·진행 막대만 든 줄)은 필요한 만큼만 — 남는 높이는 큰 시각물 줄로(E2E 382 8쪽: flow 줄 아래 본문 20% 빈 띠, 2026-10-18)
+        $low = static fn(array $r): bool => (bool) array_filter($r['cols']) && !array_filter($r['cols'], static fn($c) => array_filter($c['items'], static fn($b) => !in_array((string) ($b['k'] ?? 'card'), self::LOW, true)));
+        $tall = array_values(array_filter(array_keys($free), static fn($i) => !$low($R[$i])));
+        if ($tall) {
+            $spare = 0.0;
+            foreach (array_keys($free) as $i) {
+                if (!$low($R[$i])) continue;
+                $cap = $R[$i]['need'] * 1.3 + 3.0;   // 여유 30%+3 — 수치 줄의 메시지 말풍선·출처 줄이 겹치지 않게(배치 틀 kpitop 견본)
+                if ($hs[$i] > $cap) { $spare += $hs[$i] - $cap; $hs[$i] = $cap; }
+            }
+            $tw = array_sum(array_map(static fn($i) => $R[$i]['h'], $tall)) ?: 1;
+            foreach ($tall as $i) $hs[$i] += $spare * $R[$i]['h'] / $tw;
+        }
         $out = [];
         $y = self::Y0;
         $r1 = static fn(float $v) => round($v * 2) / 2;   // 화면과 같은 0.5% 눈금
@@ -317,8 +421,17 @@ final class WireLayout
         unset($row, $col);
         $blocks = array_values(array_filter($blocks, 'is_array'));
         $left = [];
-        // 1) 같은 부류의 칸에
-        foreach ($blocks as $b) {
+        // 0) 같은 종류의 칸에 먼저(내용 기반 틀 — archside 의 arch 칸에 arch, screenpin 의 pin 칸에 pin, 2026-10-18) 1) 그다음 같은 부류의 칸에
+        $placed = [];
+        foreach ($blocks as $bi => $b) {
+            foreach ($cells as &$c) {
+                // 글 칸(panel·card·text)·그림(image)·결론 띠는 부류로만 — 같은 종류 먼저 넣으면 AI 가 적은 읽는 순서가 뒤바뀐다(c444 의 card·panel 섞임)
+                if (!isset($c['_b']) && !in_array((string) $c['k'], ['panel', 'card', 'text', 'image', 'band'], true) && (string) $c['k'] === (string) ($b['k'] ?? 'card')) { $c['_b'] = $b; $placed[$bi] = true; break; }
+            }
+            unset($c);
+        }
+        foreach ($blocks as $bi => $b) {
+            if (isset($placed[$bi])) continue;
             $cls = self::kindClass((string) ($b['k'] ?? 'card'));
             $put = false;
             foreach ($cells as &$c) {
@@ -494,6 +607,56 @@ final class WireLayout
                 $cnt = count(array_filter($items, static fn($l) => !preg_match('/^\s*[-•]?\s*(출처|자료|source)\s*[:：]/iu', $l)));
                 if ($cnt < 2 || $cnt > 4) $out[] = $name($b) . ' 수치가 ' . $cnt . '개입니다 — 큰 수치 줄은 2~4개(하나면 강조, 많으면 표)';
             }
+        }
+        // 2차 16종 형식 판정(2026-10-18) — 구성도는 노드 2·연결 1 이상, 조직도는 총괄, 순서도는 판정, 추적 매핑은 양쪽, 컨소시엄은 ★ 하나·지분 합 100
+        foreach ($wire as $b) {
+            $k = (string) $b['k'];
+            $ls = array_values(array_filter(array_map('trim', preg_split('/\R/u', (string) ($b['d'] ?? ''))), 'strlen'));
+            if (!in_array($k, ['arch', 'org', 'flowchart', 'trace', 'consortium'], true)) continue;
+            $p = self::formParts($k, $ls);
+            if ($k === 'arch' && ($p['nodes'] < 2 || $p['links'] < 1)) $out[] = $name($b) . ' 구성도에 노드 ' . $p['nodes'] . '개·연결 ' . $p['links'] . '개 — 노드 2개 이상, "A -> B | 라벨" 연결 1줄 이상이어야 구성도입니다';
+            if ($k === 'org' && !$p['root']) $out[] = $name($b) . ' 조직도에 총괄(맨 위) 줄이 없습니다 — 첫 줄 "총괄: 직책 | 경력"';
+            if ($k === 'flowchart' && $p['ifs'] < 1) $out[] = $name($b) . ' 순서도에 판정 줄("? 조건 | 예 → … | 아니오 → …")이 없습니다 — 분기가 없으면 흐름(flow)으로';
+            if ($k === 'trace' && (!$p['left'] || !$p['right'] || $p['emptyRight'])) $out[] = $name($b) . ' 추적 매핑은 요구와 방안 양쪽이 모두 있어야 합니다' . ($p['emptyRight'] ? '(방안이 빈 줄 ' . $p['emptyRight'] . '개)' : '');
+            if ($k === 'consortium') {
+                if ($p['rows'] >= 2 && $p['leads'] !== 1) $out[] = $name($b) . ' 컨소시엄의 주사업자 ★ 는 한 곳에만(지금 ' . $p['leads'] . '곳)';
+                if ($p['shares'] && count($p['shares']) === $p['rows'] && abs(array_sum($p['shares']) - 100) > 1) $out[] = $name($b) . ' 지분 합이 ' . round(array_sum($p['shares']), 1) . '% 입니다 — 합이 100% 가 되게';
+            }
+        }
+        // 같은 꼴 수치 카드 3개 이상 · 같은 범주 두 계열을 그래프 둘로(E2E 742 4쪽·3쪽) — 엔진 wirediv.same_cards·split_series 와 같은 규칙·글
+        $shape = [];
+        foreach ($wire as $b) {
+            if (!in_array((string) $b['k'], ['card', 'panel', 'text'], true)) continue;
+            $ls = array_values(array_filter(array_map('trim', preg_split('/\R/u', (string) ($b['d'] ?? ''))), 'strlen'));
+            if (!$ls || !preg_grep('/\d/u', $ls)) continue;
+            $shape[implode("\n", array_map(static fn($l) => (string) preg_replace('/\d[\d,]*(?:\.\d+)?/u', '#', $l), $ls))][] = (string) ($b['t'] ?? '');
+        }
+        $grp = [];
+        foreach ($shape as $g) if (count($g) > count($grp)) $grp = $g;
+        if (count($grp) >= 3) $out[] = '같은 꼴 수치 카드 ' . count($grp) . '개(' . mb_substr(implode(', ', array_filter($grp)), 0, 40) . ') — 표(table)나 그래프(chart) 하나로 묶어 비교하세요';
+        $sets = [];
+        foreach ($wire as $b) {
+            if ($b['k'] !== 'chart') continue;
+            $ch = WireKinds::chart((string) ($b['d'] ?? ''));
+            if (count($ch['series']) > 1 || !$ch['rows'] || count($ch['rows'][0][1]) !== 1) continue;
+            $sets[] = array_map(static fn($r) => (string) $r[0], $ch['rows']);
+        }
+        for ($i = 0, $done = false; $i < count($sets) && !$done; $i++) {
+            for ($j = $i + 1; $j < count($sets); $j++) {
+                $both = array_values(array_intersect($sets[$i], $sets[$j]));
+                if (count($both) >= 3 && count($both) >= 0.6 * min(count($sets[$i]), count($sets[$j]))) {
+                    sort($both);
+                    $out[] = '같은 범주(' . $both[0] . '~' . end($both) . ')의 두 계열을 그래프 2개로 쪼갰습니다 — 계열 2개짜리 한 그래프(line 또는 묶음 막대)로';
+                    $done = true;
+                    break;
+                }
+            }
+        }
+        // 낮게 그려지는 상자(흐름·수치)가 필요한 높이보다 훨씬 크다 — 상자 아래가 빈 띠로 보인다(E2E 382 8쪽)
+        foreach ($wire as $b) {
+            if (!in_array((string) $b['k'], ['flow', 'kpi'], true)) continue;
+            $nd = self::need($b, (float) $b['w']);
+            if ((float) $b['h'] > $nd * 1.8 + 6) $out[] = $name($b) . ' 상자가 글보다 훨씬 큽니다(필요 약 ' . (int) round($nd) . '%, 지금 ' . (int) round((float) $b['h']) . '%) — 아래가 빈 띠로 보입니다. 상자를 줄이고 그 높이를 주인공에';
         }
         // 기획의 수치가 빠졌는가 — 단위가 붙은 수치만 본다
         $content = (string) ($slide['content'] ?? '');

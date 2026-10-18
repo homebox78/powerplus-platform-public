@@ -16,14 +16,18 @@ const argDb = process.argv.indexOf("--db");
 const url = argDb > 0 ? process.argv[argDb + 1] : (process.env.MOCKREF_DATABASE_URL ?? "mysql://root:root@127.0.0.1:3306/homebox");
 
 const SCREENS = ["main", "board_list", "board_gallery", "board_view", "form", "content", "greeting", "org_chart", "location", "history", "vision", "procedure", "faq", "search", "sitemap", "info_disclosure"];
-// 묶음 — 관공서 4 + 대학 + 학교·교육 + 단체·복지 + 민간(일반 홈페이지). 사이트 수집 출처(source_kind)가 private 면 민간.
+// 묶음 — 관공서 4 + 대학 + 학교·교육 + 단체·복지 + 문화·관광·체육 + 민간(일반 홈페이지). 사이트 수집 출처(source_kind)가 private 면 민간.
+// 학교·대학은 출처가 private 여도 교육 묶음(2026-10-18 — 민간 출처 학교 메인 152장이 기업 묶음에 섞여 '민간 361장'의 40% 가 학교였다).
+// 문화·관광·체육(public_culture)은 공공기관에서 떼어 냄 — 메인 74장(n ≥ 15)이라 묶음 하나로 선다. 단체·복지(civic)는
+// 복지 메인이 7장뿐이라 더 쪼개지 않는다(협회 22 + 복지 7).
 const GROUP_OF = (t, kind) =>
-  kind === "private" || t.startsWith("private") ? "private"
+  t === "edu_univ" || t === "edu_univ_private" || t === "edu_college" ? "university"
+  : t.startsWith("edu") ? "education"
+  : kind === "private" || t.startsWith("private") ? "private"
   : t.startsWith("local_basic") || t === "local_wide" || t === "council" ? "local"
   : t.startsWith("central") ? "central"
-  : t === "edu_univ" || t === "edu_univ_private" || t === "edu_college" ? "university"
-  : t.startsWith("edu") ? "education"
   : t === "etc_assoc" || t === "etc_welfare" ? "civic"
+  : t === "public_culture" ? "culture"
   : t.startsWith("public") || t === "local_public" || t === "etc" || t === "judicial" ? "public"
   : "other";
 const SKIP_ROW = new Set(["lnb", "floating_quick", "skip_nav", "unknown", "ai_chatbot"]);
@@ -75,7 +79,18 @@ function pickLayouts(list, T, max = 12) {
     if (picked.length >= max) break;
     if (picked.every((p) => dist(p, l) >= 0.35)) picked.push(l);
   }
-  return picked;
+  // 묶음 크기 — 대표 구성과 거리 0.35 미만인 화면 수(count)와 그 화면들의 기관 종류 분포(ot_mix, 건수만).
+  // 와이어 화면이 "이 묶음 n장 중 x%가 쓰는 구성"을 근거로 보여 준다. 한 화면이 두 대표에 함께 셀 수 있다(겹침 허용).
+  return picked.map((p) => {
+    const mix = {};
+    let count = 0;
+    for (const l of list) {
+      if (dist(p, l) >= 0.35) continue;
+      count++;
+      mix[l.ot] = (mix[l.ot] ?? 0) + 1;
+    }
+    return { ...p, count, ot_mix: mix };
+  });
 }
 
 const median = (a) => { if (!a.length) return null; const s = [...a].sort((x, y) => x - y); const m = s.length >> 1; return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2; };
@@ -174,8 +189,9 @@ for (const [key, b] of buckets) {
   }
   const pairs = [...b.pair.entries()].filter(([, v]) => v / b.n >= 0.06).sort((a, c) => c[1] - a[1]).slice(0, 12)
     .map(([sig, v]) => ({ types: sig.split("+"), rate: +(v / b.n).toFixed(3) }));
-  const layouts = pickLayouts(b.rows, b.types).map((l) => ({ ref: l.ref, ot: l.ot, lnb: l.lnb, rows: l.rows }));
-  out.patterns[key] = { n: b.n, lnb: { adopt: +(b.lnb.n / b.n).toFixed(3), span: Math.round(median(b.lnb.spans) ?? 3) }, types, pairs, layouts };
+  const layouts = pickLayouts(b.rows, b.types).map((l) => ({ ref: l.ref, ot: l.ot, lnb: l.lnb, count: l.count, ot_mix: l.ot_mix, rows: l.rows }));
+  // layouts_n = 줄 구성으로 쓸 수 있었던 화면 수(미분류 많은 화면 등은 빠짐) — count 의 분모 후보
+  out.patterns[key] = { n: b.n, layouts_n: b.rows.length, lnb: { adopt: +(b.lnb.n / b.n).toFixed(3), span: Math.round(median(b.lnb.spans) ?? 3) }, types, pairs, layouts };
 }
 const dest = resolve(root, "api/data/wire-patterns.json");
 writeFileSync(dest, JSON.stringify(out, null, 1));

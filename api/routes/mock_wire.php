@@ -4,7 +4,9 @@
  *
  *   GET    /mock/wire/options                 화면 종류·기관 묶음·칸 종류(섹션 유형)
  *   POST   /mock/wire/generate                {screen, org?, request?, ai?} → {wire, check, source: rule|ai, prompt}
- *   POST   /mock/wire/check                   {wire} → {check, wire(정리본)}
+ *   POST   /mock/wire/check                   {wire} → {check(+fit), wire(정리본, 칸마다 ev)}
+ *   POST   /mock/wire/content                 {wire} → {wire(칸마다 예시 글 t·s·items·img, 원래 설명은 label)} — 보기용
+ *   generate 응답 basis: samples·note·style·alternatives(스타일 목록) + fit(레퍼런스 닮음)·dist(채택률 분포)·recommended(추천 3안)·refine(AI 가 바꾼 점)
  *   GET    /mock/wireframes                   내 와이어 목록
  *   POST   /mock/wireframes                   {title, wire, request?, source?} 저장
  *   GET    /mock/wireframes/{id}              하나(Access::can)
@@ -24,6 +26,7 @@ use Pp\Core\Ids;
 use Pp\Core\Response;
 use Pp\Core\Router;
 use Pp\Mock\Wire;
+use Pp\Mock\WireContent;
 
 return static function (Router $r): void {
     $row = static function (string $pid): array {
@@ -43,10 +46,15 @@ return static function (Router $r): void {
             'created_at' => $x['created_at'], 'updated_at' => $x['updated_at'],
         ];
         if ($full) {
-            $out['wire'] = $w;
+            $w += ['org' => 'all', 'screen' => 'main', 'rows' => []];
+            $out['wire'] = Wire::annotate($w);
             $out['request'] = (string) ($x['request'] ?? '');
             $out['check'] = json_decode((string) ($x['check_result'] ?? 'null'), true);
-            $out['prompt'] = Wire::prompt($w + ['org' => 'all', 'screen' => 'main', 'rows' => []], (string) ($x['request'] ?? ''));
+            $out['prompt'] = Wire::prompt($w, (string) ($x['request'] ?? ''));
+            // 근거 — 저장해 둔 요약(wire.basis) + 지금 패턴으로 다시 계산한 분포·닮음(패턴을 다시 만들면 최신 값)
+            $dist = Wire::distribution((string) $w['screen'], (string) $w['org']);
+            $out['basis'] = (is_array($w['basis'] ?? null) ? $w['basis'] : []) + ['samples' => $dist['n'], 'pattern' => $dist['pattern']]
+                + ['dist' => $dist, 'fit' => Wire::fit($w)];
         }
         return $out;
     };
@@ -80,10 +88,12 @@ return static function (Router $r): void {
             } else {
                 $ref = Wire::refine($draft, $req);
                 if ($ref !== null) {
-                    $draft = $ref;
+                    $draft = Wire::annotate($ref['wire']);
                     $source = 'ai';
+                    $basis['refine'] = ['why' => $ref['why'], 'changes' => $ref['changes']];
+                    $basis['fit'] = Wire::fit($draft);
                 } else {
-                    $note = 'AI 다듬기를 쓰지 못해(꺼짐·한도·판정 미달) 레퍼런스 초안을 그대로 드립니다.';
+                    $note = 'AI 다듬기를 쓰지 못해 레퍼런스 초안을 그대로 드립니다 — ' . (Wire::$refineReason ?? '판정 미달');
                 }
             }
         }
@@ -104,7 +114,18 @@ return static function (Router $r): void {
             throw HttpError::invalid('wire.rows 가 필요합니다.');
         }
         $check = Wire::check($w);
-        Response::json(['check' => $check, 'wire' => Wire::normalize($w)]);
+        Response::json(['check' => $check, 'wire' => Wire::annotate(Wire::normalize($w))]);
+    });
+
+    // 내용 보기 — 칸마다 그 기관 묶음에 맞는 예시 글·샘플 그림 종류(결정적, 가상 기관). 보기용이라 저장하지 않는다.
+    $r->post('/mock/wire/content', static function (): void {
+        $in = Response::input();
+        $w = is_array($in['wire'] ?? null) ? $in['wire'] : $in;
+        if (!is_array($w) || !isset($w['rows'])) {
+            throw HttpError::invalid('wire.rows 가 필요합니다.');
+        }
+        $n = Wire::normalize($w);
+        Response::json(['wire' => WireContent::fill($n)]);
     });
 
     $r->get('/mock/wireframes', static function (array $p, Actor $a) use ($pub): void {

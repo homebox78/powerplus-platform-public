@@ -38,7 +38,7 @@ if [ ${#PHPDIRS[@]} -gt 0 ]; then
 fi
 
 # 4. 바이너리 속성
-mapfile -t BIN < <(git ls-files -- "${PATHS[@]}" | grep -iE '\.(jpe?g|png|webp|gif|zip|pptx|ttf|otf|woff2?|pdf|ico|mp4)$')
+mapfile -t BIN < <(git ls-files -- "${PATHS[@]}" | grep -iE '\.(jpe?g|png|webp|gif|zip|pptx|xlsx|docx|hwpx?|ttf|otf|woff2?|pdf|ico|mp4)$')   # xlsx·docx·hwpx = engine/tests/fixtures 시험 자료(R64)
 if [ ${#BIN[@]} -gt 0 ]; then
   while IFS= read -r line; do bad "텍스트 규칙에 걸린 그림·글꼴(.gitattributes 에 binary 추가): $line"; done \
     < <(printf '%s\n' "${BIN[@]}" | git check-attr --stdin text | grep -E ': text: set$' | head -20)
@@ -91,6 +91,8 @@ if [ "$SCOPE" = web ] || [ "$SCOPE" = engine ]; then
     cmp -s engine/wire_kinds.json "$c" || bad "$c 가 engine/wire_kinds.json 과 다르다 — cp engine/wire_kinds.json $c (R62)"
   done
   diff -q --strip-trailing-cr engine/prompt_wire.md api/src/Deck/prompt_wire.md >/dev/null || bad "api/src/Deck/prompt_wire.md 가 engine/prompt_wire.md 와 다르다 — 둘 다 고칠 것(R62)"
+  # 배치 틀(R67) — 서버가 좌표를 계산하는 틀과 화면이 보여 주는 틀이 같아야 한다(내용 기반 틀 10개 추가, 2026-10-18)
+  cmp -s api/src/Deck/wire_templates.json apps/web/app/modules/deck/legacy/data/wire_templates.json || bad "apps/web/…/data/wire_templates.json 이 api/src/Deck/wire_templates.json 과 다르다 — cp 로 맞출 것(R67)"
 fi
 
 # 알림 — 다른 배포가 필요한지

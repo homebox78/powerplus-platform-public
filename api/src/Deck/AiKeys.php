@@ -194,7 +194,7 @@ final class AiKeys
     {
         if (self::textProvider() === 'claude') {
             $model = Claude::forKind($kind);   // 고르지 않는다 — 장표 제작 Opus 5.5, 나머지 Sonnet 5.5 고정
-            $effort = (string) ($b['reasoning']['effort'] ?? '') ?: match ($kind) { 'digest' => 'low', 'plan' => 'high', default => 'medium' };
+            $effort = (string) ($b['reasoning']['effort'] ?? '') ?: match ($kind) { 'digest', 'check' => 'low', 'plan' => 'high', default => 'medium' };
             $r = self::claudeCall($model, $b, $timeout, $effort);
             if ($r !== null) return [$r[0], $r[1], $model];
             // 키를 풀 수 없음·크레딧 소진·키 거절 — 아래 OpenRouter 기존 설정으로 이어서(작업이 멈추지 않게)
@@ -249,7 +249,7 @@ final class AiKeys
     {
         $muse = stripos($model, 'muse') !== false;
         return match ($kind) {
-            'digest' => 'low',
+            'digest', 'check' => 'low',
             'plan' => $muse ? 'xhigh' : 'high',
             'build' => $muse ? 'high' : 'medium',
             default => 'medium',
@@ -644,7 +644,8 @@ final class AiKeys
         $bi = self::budgetInfo($email);
         if ($bi['monthly_cap'] !== null && $bi['month_spent'] >= $bi['monthly_cap']) Legacy::fail(sprintf('이달 AI 비용 상한($%.2f)에 도달했습니다 (사용 $%.4f). AI 키 설정에서 상한을 올려 주세요.', $bi['monthly_cap'], $bi['month_spent']), 402);
 
-        $kind = in_array($b['kind'] ?? '', ['image', 'digest', 'build'], true) ? $b['kind'] : 'plan';
+        // check = 시안이 와이어를 따랐는지 보는 판정(와이어 스케치 + 시안 두 그림을 함께 보는 글 모델, 2026-10-18) — 사용 기록에서 따로 보이게
+        $kind = in_array($b['kind'] ?? '', ['image', 'digest', 'build', 'check'], true) ? $b['kind'] : 'plan';
         unset($b['kind']);
         // 엔진이 정한 기다릴 시간(선택 단계는 짧게) — 60~300초, 없으면 300(2026-10-07 속도 점검)
         $wait = isset($b['_timeout']) ? max(60, min(300, (int) $b['_timeout'])) : 300;
@@ -652,7 +653,8 @@ final class AiKeys
         // 글(기획·요약·제작 에이전트)은 이미지 외 전부 글 모델(muse-spark xhigh 기본, 본인·회사가 고른 글 모델이 있으면 그것)로 — 이미지는 전용 모델 그대로. build는 워커가 명시한 모델 우선.
         $b['model'] = (string) ($b['model'] ?? '') !== '' ? (string) $b['model']
             : ($kind === 'image' ? self::models($email)['image']   // 그림은 관리자가 정해 둔 이미지 모델 고정(예전엔 여기서 글 모델이 들어갔다)
-            : ($kind === 'digest' ? (self::setting('digest_model') ?: self::textModelFor($email)) : self::textModelFor($email)));
+            : ($kind === 'digest' ? (self::setting('digest_model') ?: self::textModelFor($email))
+            : ($kind === 'check' ? (self::setting('check_model') ?: self::textModelFor($email)) : self::textModelFor($email))));   // 판정 모델은 그림을 볼 수 있어야 한다 — 따로 정하지 않으면 글 모델(못 보면 엔진이 판정을 건너뛴다)
         if (!preg_match('#^[a-z0-9._-]+/[a-z0-9._:-]+$#i', $b['model'])) Legacy::fail('모델 이름이 올바르지 않습니다.');
         unset($b['stream']);
         // 그림(시안)은 늘 OpenRouter 전용 이미지 API(/images: prompt·aspect_ratio·quality·input_references → data[].b64_json),

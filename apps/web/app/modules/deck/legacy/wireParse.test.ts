@@ -4,7 +4,7 @@ import path from "node:path";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
-import { KIND_LIST, chart, chartNums } from "./wireParse";
+import { KIND_LIST, axisKeep, chart, chartNums, lineRange, timeline, triad } from "./wireParse";
 import { KindView } from "./WireSketch";
 import type { WireBlock, WireKind } from "./api";
 
@@ -28,6 +28,22 @@ describe("와이어 상자 종류 한 벌", () => {
 describe("chart 글 읽기 — 엔진 wire_chart 와 같은 답", () => {
   for (const c of CASES) it(c.name, () => expect(chart(c.d)).toEqual(c.expect));
   it("음성 대조: 값 하나는 그래프가 아니다", () => expect(chartNums(chart("유형: bar\n2025 | 120"))).toBe(1));
+});
+
+describe("E2E 742 — 엔진과 같은 규칙", () => {
+  const labs = [2023, 2024, 2025].flatMap((y) => Array.from({ length: 12 }, (_, m) => `${y}-${String(m + 1).padStart(2, "0")}`));
+  it("점 36개 라벨은 처음·끝·해 바뀜·강조만", () => {
+    expect([...axisKeep(labs)].sort((a, b) => a - b)).toEqual([0, 12, 24, 35]);
+    expect(axisKeep(labs, labs[20]).has(20)).toBe(true);
+    expect(axisKeep(labs.slice(0, 12)).size).toBe(12);   // 음성 대조
+  });
+  it("꺾은선 세로 범위는 값 범위", () => { const [lo, hi] = lineRange(labs.map((l, i) => [l, [1700 + i * 50]]), 1); expect(lo).toBeGreaterThan(1400); expect(hi).toBeLessThan(3800); });
+  it("triad 머리 줄이 행으로 안 들어감", () => {
+    const o = triad("업무 | 방안 | 효과(도입 전 → 도입 후)\n업무 | 방안 | 효과(도입 전 → 도입 후)\n전화 상담 대기 | 통합 전화 | 12.4분 → 2.1분");
+    expect(o.rows.length).toBe(1);
+    expect(triad("장애 대응 지연 | 이중화 | 중단 0분\n접속 폭주 | 자동 확장 | 응답 2초").rows.length).toBe(2);   // 음성 대조
+  });
+  it("timeline 강조 줄은 사건이 아님", () => expect(timeline("강조: 2025.12\n[2023.01] 시작\n[2025.12] 최대").ev.length).toBe(2));
 });
 
 describe("모든 종류 스케치", () => {

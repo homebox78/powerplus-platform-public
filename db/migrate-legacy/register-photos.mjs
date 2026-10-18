@@ -20,6 +20,13 @@ const SETS = {
   // 3D 글래스 키비주얼(밝은 바탕·왼쪽 글자 자리·유리 질감 아이소메트릭) — set:"glasskv", 파일·키에 접두(옛 사진 키비주얼과 파일 이름이 같다)
   // 회사소개서 테마 배경(2026-10-16 힉스필드 나노바나나 2.1, 1376×768 16:9, 파랑 계열 — 엔진이 톤 색조를 돌린다. 글자 없음, 왼쪽 글 자리) — set:"cpbg", 파일 CP1-<테마>-<역할>
   cpbg: { cat: "illust", prefix: "cpbg-", set: "cp-bg-theme", style: "cp-bg-theme", ko: ["회사소개서", "배경", "장표배경", "키비주얼", "AI이미지"], en: ["company profile", "background", "slide background", "key visual"] },
+  // 회사소개서·목업 회사 홈페이지 재료(2026-10-18, docs/회사소개서-이미지-프롬프트.md 3~6절 — 코발트 블루+무채색, 흰 바탕 JPG라 투명 아이콘 세트·목업 풀에는 넣지 않는다)
+  cpobj: { cat: "illust", prefix: "cpobj-", set: "cp-object-blue", style: "cp-object-blue-glass", ko: ["회사소개서", "오브젝트", "3D", "유리질감", "파랑", "흰배경", "AI이미지"], en: ["company profile", "object", "3d render", "glass", "blue", "white background"] },
+  cpicon: { cat: "icon", prefix: "cpicon-", set: "cp-icon-blue", style: "cp-icon-blue-glass", ko: ["회사소개서", "아이콘", "카드아이콘", "3D", "파랑", "흰배경", "AI이미지"], en: ["company profile", "icon", "card icon", "3d", "blue", "white background"] },
+  cpphoto: { cat: "photo", prefix: "cpphoto-", set: "cp-photo-editorial", style: "cp-photo-editorial", ko: ["회사소개서", "실사", "사진", "오피스", "기업", "파랑포인트", "AI이미지"], en: ["company profile", "photo", "office", "corporate", "blue accent"] },
+  cphome: { cat: "illust", prefix: "cphome-", set: "cp-homepage", style: "cp-homepage-blue", ko: ["회사홈페이지", "홈페이지", "목업", "웹디자인", "파랑", "AI이미지"], en: ["company homepage", "homepage", "mockup", "web design", "blue"] },
+  // 회사소개서 범용 배경(소프트3D·기하도형·라인아트·큰원곡선 — 파스텔 여러 색이라 톤 회전 세트 cp-bg-theme 와 나눈다)
+  cbbg: { cat: "illust", prefix: "cbbg-", set: "cp-bg-general", style: "cp-bg-general-pastel", ko: ["회사소개서", "배경", "장표배경", "범용", "파스텔", "AI이미지"], en: ["company profile", "background", "slide background", "pastel"] },
   glasskv: { cat: "illust", prefix: "glasskv-", set: "illust-keyvisual-glass", style: "keyvisual-3d-glass", ko: ["키비주얼", "히어로", "메인비주얼", "배경", "3D", "글래스", "유리질감", "아이소메트릭", "AI이미지"], en: ["key visual", "hero", "background", "3d render", "glass", "isometric"] },
   // 공공사업 플랫 키비주얼(밝은 파랑 그라데이션·왼쪽 글자 자리·평면 인물 일러스트) — set:"flatkv"
   flatkv: { cat: "illust", prefix: "flatkv-", set: "illust-keyvisual-flat", style: "keyvisual-flat", ko: ["키비주얼", "히어로", "메인비주얼", "배경", "플랫", "평면일러스트", "인물", "공공사업", "제안서", "AI이미지"], en: ["key visual", "hero", "background", "flat illustration", "people", "public project"] },

@@ -11,6 +11,7 @@ import { confirmToast, toastError } from "@/components/hb/confirm";
 import { Copy } from "@/components/hb/copy";
 import { Tag } from "@/components/hb/tag";
 import { ThumbFrame } from "@/components/hb/thumb-frame";
+import { ContrastImg } from "@/components/hb/contrast-img";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -163,7 +164,7 @@ function AssetCard({ x, picked, onPick, onOpen, trashed }: { x: AdminAsset; pick
     <div className="relative flex min-w-0 flex-col gap-2">
       <div role="button" tabIndex={0} onClick={onOpen} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onOpen(); } }} aria-label={`${x.name || x.category_ko} 상세 열기`} className="flex min-w-0 cursor-pointer flex-col gap-2 rounded-card text-left focus-visible:ring-2 focus-visible:ring-ink focus-visible:ring-offset-2">
         <ThumbFrame ratio="16/10" radius="card" className={cn("bg-ground-3", trashed && "opacity-70", picked && "border-ink opacity-100 ring-2 ring-ink")}>
-          {x.thumb_url && <img src={x.thumb_url} alt="" loading="lazy" className="absolute inset-0 m-auto max-h-[89%] max-w-[89%] object-contain" />}
+          {x.thumb_url && <ContrastImg boxClassName="absolute inset-0" plainBg="" src={x.thumb_url} loading="lazy" className="absolute inset-0 m-auto max-h-[89%] max-w-[89%] object-contain" />}
         </ThumbFrame>
         <span className="flex min-w-0 items-center gap-1.5"><span className="min-w-0 truncate text-sm font-semibold">{x.name || x.category_ko}</span><Tag tone={VIS_TONE[x.visibility]} className="ml-auto">{VIS_KO[x.visibility]}</Tag></span>
         <span className="truncate text-xs text-ink-4">{x.category_ko} · {trashed ? `${fmtAt(x.deleted_at ?? x.updated_at).slice(0, 10)} 삭제` : fmtAt(x.updated_at).slice(0, 10)}</span>
@@ -228,7 +229,7 @@ function AssetForm({ a, isAdmin, isSuper, onClose, onChanged }: { a: AdminAssetD
       </SheetHeader>
       <div className="flex flex-col gap-6 px-6 pb-8">
         <ThumbFrame ratio="16/10" radius="card" className="bg-ground-3">
-          {a.thumb_url && <img src={a.thumb_url} alt="" className="absolute inset-0 m-auto max-h-[89%] max-w-[89%] object-contain" />}
+          {a.thumb_url && <ContrastImg boxClassName="absolute inset-0" plainBg="" src={a.thumb_url} className="absolute inset-0 m-auto max-h-[89%] max-w-[89%] object-contain" />}
         </ThumbFrame>
         <div className="flex flex-wrap items-center gap-2">
           <Tag tone={VIS_TONE[a.visibility]}>{VIS_KO[a.visibility]}</Tag>

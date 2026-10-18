@@ -65,6 +65,7 @@ const SET_WORD_KO: Record<string, string> = {
   offset: "어긋난 채움", app: "앱", tile: "타일", thin: "가는 선", overlap: "반투명 겹침", office: "오피스", portrait: "인물",
   industry: "산업", field: "현장", finance: "금융", law: "법률", digital: "디지털", city: "도시", infra: "인프라",
   life: "생활", welfare: "복지", education: "교육", health: "보건", safety: "안전", character: "캐릭터",
+  nature: "자연", landscape: "풍경", leisure: "여가", culture: "문화",
 };
 export function setLabel(code: string): string {
   const words = code.replace(/^(icon|illust|photo|diagram|logo)-/, "").split("-").filter(Boolean);

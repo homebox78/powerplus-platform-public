@@ -28,6 +28,13 @@ const splitNum = (s: string): [string, string] => {
   const m = s.match(/^(\D*?)\s*(\d.*)$/u);
   return m && m[1] ? [m[1], m[2]!] : [s, ""];
 };
+/**
+ * 남는 높이만큼만 줄을 보인다 — 칸 높이를 넘는 줄은 반쯤 걸쳐 잘리지 않고 통째로 빠진다(2026-10-18 사용자 "왜 잘려서 나오는지",
+ * 모바일 소식 탭 셋째 줄이 반만 보이던 것). 세로 flex-wrap: 들어가지 않는 줄은 오른쪽 둘째 단으로 넘어가 overflow 로 가려진다.
+ */
+const Fit = ({ children, className }: { children: ReactNode; className?: string }) => (
+  <span className={cn("flex min-h-0 flex-1 flex-col flex-wrap content-start overflow-hidden [&>*]:w-full [&>*]:shrink-0", className)}>{children}</span>
+);
 const list = (c: MockCol) => (c.items ?? []).filter(Boolean);
 const parts = (s?: string, sep = " · ") => (s ?? "").split(sep).map((x) => x.trim()).filter(Boolean);
 
@@ -109,7 +116,7 @@ export function SectionMock({ c, span, mobile }: { c: MockCol; span: number; mob
             {(tabs.length ? tabs : ["공지사항"]).slice(0, n(4, 3)).map((x, i) => <span key={i} className={cn("truncate px-2 pb-1 text-[12px]", i === 0 ? "-mb-px border-b-2 border-ink font-bold text-ink" : "text-ink-4")}>{x}</span>)}
             <More />
           </span>
-          <span className="flex flex-1 flex-col">
+          <Fit>
             {/* 목록은 다섯 줄 — 예시 글이 모자라면 나머지 줄은 글 자리 막대(빈 띠 대신) */}
             {Array.from({ length: 5 }, (_, i) => items[i] ?? "").map((x, i) => (
               <span key={i} className="flex items-center gap-2 border-b border-line py-[5px]">
@@ -117,7 +124,7 @@ export function SectionMock({ c, span, mobile }: { c: MockCol; span: number; mob
                 {!narrow && <span className="shrink-0 text-[10.5px] tabular-nums text-ink-4">{dateOf(i)}</span>}
               </span>
             ))}
-          </span>
+          </Fit>
         </span>
       );
     }
@@ -128,7 +135,7 @@ export function SectionMock({ c, span, mobile }: { c: MockCol; span: number; mob
           <span className="flex border-y border-ink-4 bg-ground-3 py-[4px] text-[10.5px] font-bold text-ink-2">
             {(narrow ? [["번호", "16%"], ["제목", "84%"]] : [["번호", "8%"], ["제목", "58%"], ["작성일", "18%"], ["조회", "16%"]]).map(([h, w], i) => <span key={i} className="text-center" style={{ width: w }}>{h}</span>)}
           </span>
-          <span className="flex flex-1 flex-col">
+          <Fit>
             {items.slice(0, 6).map((x, i) => (
               <span key={i} className="flex items-center border-b border-line py-[5px] text-[11px]">
                 <span className="text-center tabular-nums text-ink-4" style={{ width: narrow ? "16%" : "8%" }}>{128 - i}</span>
@@ -136,7 +143,7 @@ export function SectionMock({ c, span, mobile }: { c: MockCol; span: number; mob
                 {!narrow && <><span className="text-center tabular-nums text-ink-4" style={{ width: "18%" }}>{dateOf(i)}</span><span className="text-right tabular-nums text-ink-4" style={{ width: "16%", paddingRight: "4%" }}>{(i * 137 + 212) % 900 + 40}</span></>}
               </span>
             ))}
-          </span>
+          </Fit>
           <span className="flex justify-center gap-1">{[1, 2, 3, 4, 5].map((p) => <span key={p} className={cn("flex size-[18px] items-center justify-center rounded-[2px] border text-[10px]", p === 1 ? "border-ink-3 bg-ink-3 text-white" : "border-line-3 text-ink-3")}>{p}</span>)}</span>
         </span>
       );
@@ -172,13 +179,15 @@ export function SectionMock({ c, span, mobile }: { c: MockCol; span: number; mob
             <span className="flex items-center justify-center gap-3 text-[12px] font-bold text-ink"><span className="text-ink-4">‹</span>2026. {String(month).padStart(2, "0")}<span className="text-ink-4">›</span></span>
             <span className="grid grid-cols-7 gap-[2px] text-center text-[9.5px] leading-[15px] tabular-nums">
               {["일", "월", "화", "수", "목", "금", "토"].map((d) => <span key={d} className="font-bold text-ink-3">{d}</span>)}
-              {Array.from({ length: 4 }).map((_, i) => <span key={`b${i}`} />)}
-              {Array.from({ length: 31 }).map((_, i) => <span key={i} className={cn("rounded-[2px]", days.has(i + 1) ? "bg-ink-3 font-bold text-white" : "text-ink-3")}>{i + 1}</span>)}
+              {/* 2026.10 은 목요일 시작(앞 빈칸 4). 모바일은 한 달 격자가 칸보다 높아 잘린다 → 첫 일정이 있는 주 한 줄만 */}
+              {[...Array.from({ length: 4 }, () => 0), ...Array.from({ length: 31 }, (_, i) => i + 1)]
+                .filter((_, i) => !mobile || Math.floor(i / 7) === Math.floor(((days.size ? Math.min(...days) : 1) - 1 + 4) / 7))
+                .map((d, i) => d === 0 ? <span key={`b${i}`} /> : <span key={d} className={cn("rounded-[2px]", days.has(d) ? "bg-ink-3 font-bold text-white" : "text-ink-3")}>{d}</span>)}
             </span>
           </span>
-          <span className="flex min-w-0 flex-1 flex-col gap-1">
+          <span className="flex min-h-0 min-w-0 flex-1 flex-col gap-1">
             <span className="flex items-center"><T size={12.5} lines={1}>{c.t}</T><More /></span>
-            {items.slice(0, 4).map((x, i) => <span key={i} className="truncate border-b border-line py-[3px] text-[11px] text-ink-2">{x}</span>)}
+            <Fit>{items.slice(0, 4).map((x, i) => <span key={i} className="truncate border-b border-line py-[3px] text-[11px] text-ink-2">{x}</span>)}</Fit>
           </span>
         </span>
       );
@@ -259,11 +268,11 @@ export function SectionMock({ c, span, mobile }: { c: MockCol; span: number; mob
       return (
         <span className="flex h-full flex-col gap-2 p-3">
           <T size={13} lines={1}>{c.t}</T>
-          {items.filter((x) => !/동의|제출/u.test(x)).slice(0, n(4, 3)).map((x, i) => (
+          <Fit className="gap-2">{items.filter((x) => !/동의|제출/u.test(x)).slice(0, n(4, 3)).map((x, i) => (
             <span key={i} className="flex items-center gap-2"><span className="w-[22%] shrink-0 truncate text-[11px] font-semibold text-ink-2">{x}</span><span className="h-[20px] flex-1 rounded-[3px] border border-line-3 bg-white" /></span>
-          ))}
+          ))}</Fit>
           {items.some((x) => /동의/u.test(x)) && <span className="flex items-center gap-1.5 text-[10.5px] text-ink-3"><span className="size-[10px] border border-ink-4" />개인정보 수집·이용에 동의합니다</span>}
-          <span className="mt-auto flex justify-center gap-2"><Pill>취소</Pill><Pill dark>제출</Pill></span>
+          <span className="flex justify-center gap-2"><Pill>취소</Pill><Pill dark>제출</Pill></span>
         </span>
       );
     case "org_chart":
@@ -299,8 +308,8 @@ export function SectionMock({ c, span, mobile }: { c: MockCol; span: number; mob
       );
     case "timeline":
       return (
-        <span className="flex h-full flex-col justify-around gap-1 p-3">
-          {items.slice(0, 5).map((x, i) => {
+        <span className="flex h-full flex-col p-3">
+          <Fit className="justify-around">{items.slice(0, 5).map((x, i) => {
             const m = x.match(/^(\d{4})\s*(.*)$/u);
             return (
               <span key={i} className="flex items-center gap-2">
@@ -309,7 +318,7 @@ export function SectionMock({ c, span, mobile }: { c: MockCol; span: number; mob
                 <span className="truncate text-[11px] text-ink-2">{m?.[2] ?? x}</span>
               </span>
             );
-          })}
+          })}</Fit>
         </span>
       );
     case "location_map":
@@ -327,12 +336,12 @@ export function SectionMock({ c, span, mobile }: { c: MockCol; span: number; mob
       return (
         <span className="flex h-full flex-col p-3">
           <T size={13} lines={1}>{c.t}</T>
-          {items.slice(0, 5).map((x, i) => (
+          <Fit>{items.slice(0, 5).map((x, i) => (
             <span key={i} className="flex flex-col border-b border-line-3 py-[5px]">
               <span className="flex items-center gap-2"><span className="text-[11px] font-extrabold text-ink-3">Q</span><span className={cn("min-w-0 flex-1 truncate text-[11.5px]", i === 0 ? "font-bold text-ink" : "text-ink-2")}>{x}</span><span className="text-[11px] text-ink-4">{i === 0 ? "−" : "+"}</span></span>
               {i === 0 && <span className="mt-1 flex gap-2 rounded-[2px] bg-ground-3 px-2 py-1.5"><span className="text-[11px] font-extrabold text-ink-4">A</span><span className="flex-1"><Lines n={2} /></span></span>}
             </span>
-          ))}
+          ))}</Fit>
         </span>
       );
     case "contact_info":
@@ -364,14 +373,14 @@ export function SectionMock({ c, span, mobile }: { c: MockCol; span: number; mob
       return (
         <span className="flex h-full flex-col gap-1.5 p-3">
           <T size={13} lines={1}>{c.t}</T>
-          <span className="flex flex-col">
+          <Fit>
             <span className="flex border-t-2 border-ink-3 bg-ground-3">{Array.from({ length: cols }).map((_, i) => <span key={i} className="flex-1 truncate border-r border-line-3 py-[4px] text-center text-[10.5px] font-bold text-ink-2 last:border-r-0">{head[i] ?? ""}</span>)}</span>
             {rows.slice(0, 4).map((x, r) => (
               <span key={r} className="flex border-b border-line-3">
                 {Array.from({ length: cols }).map((_, i) => <span key={i} className="flex flex-1 items-center justify-center border-r border-line-3 py-[5px] last:border-r-0">{i === 0 && x ? <span className="truncate px-1 text-[10.5px] text-ink-2">{x}</span> : <Bar w="56%" h={3} />}</span>)}
               </span>
             ))}
-          </span>
+          </Fit>
         </span>
       );
     }
@@ -391,9 +400,9 @@ export function SectionMock({ c, span, mobile }: { c: MockCol; span: number; mob
             <span className="font-bold text-ink">개인정보처리방침</span><span>이용약관</span>{!narrow && <><span>저작권정책</span><span>찾아오시는 길</span></>}
             <span className="ml-auto flex h-[20px] w-[22%] min-w-[80px] items-center rounded-[3px] border border-ink-4 bg-white px-1.5 text-[10px] text-ink-4">관련 사이트 ▾</span>
           </span>
-          <span className="flex flex-1 items-center gap-3">
-            <span className="shrink-0 text-[13px] font-extrabold text-ink-3">{c.t}</span>
-            <span className="min-w-0 flex-1"><S lines={2}>{c.s}</S><span className="block text-[10px] text-ink-4">© {c.t}. All rights reserved.</span></span>
+          <span className="flex min-h-0 flex-1 items-stretch gap-3">
+            <span className="shrink-0 self-center text-[13px] font-extrabold text-ink-3">{c.t}</span>
+            <Fit className="min-w-0 pt-1"><S lines={2}>{c.s}</S><span className="block text-[10px] text-ink-4">© {c.t}. All rights reserved.</span></Fit>
           </span>
         </span>
       );

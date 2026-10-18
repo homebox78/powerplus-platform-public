@@ -3,6 +3,8 @@ import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 
 import { api, type WireBlock, type WireKind } from "./api";
 import { cn, Modal, Ms, Select, toast, ask } from "./ui";
 import tplData from "./data/wire_templates.json";
+import { KIND_INFO, KIND_LIST, isData, meta } from "./wireParse";
+import { KindView, fitBig } from "./WireSketch";
 
 /** 미리 만들어 둔 배치 틀 — 서버(api/src/WireLayout.php)가 같은 파일로 좌표를 계산한다 */
 type TplCell = { span?: number; h?: number; k?: string; stack?: TplCell[] };
@@ -21,53 +23,12 @@ const TITLE_CLS = "px-1 py-0.5 text-center font-extrabold leading-[1.3] text-[va
 const FS = 0.0131;   // 기본 글자 = 캔버스 폭 × 이 값
 const HEAD =150 / 1600, FOOT = 96 / 1600;   // design.py FRAME 과 같은 비율
 
-const KINDS: { k: WireKind; label: string; hint: string }[] = [
-  { k: "panel", label: "패널", hint: "머리 띠가 있는 큰 덩어리" },
-  { k: "card", label: "카드", hint: "제목 + 항목 몇 줄" },
-  { k: "person", label: "인물", hint: "상황을 연기하는 인물" },
-  { k: "image", label: "그림", hint: "3D 일러스트·장면" },
-  { k: "screen", label: "화면", hint: "시스템 화면 캡처" },
-  { k: "chart", label: "그래프", hint: "수치 추이·비율" },
-  { k: "table", label: "표", hint: "행·열 표" },
-  { k: "flow", label: "흐름", hint: "단계 화살표(쉐브론)" },
-  { k: "gantt", label: "일정", hint: "월 격자 + 막대 + 마일스톤" },
-  { k: "phase", label: "단계", hint: "연차·단계 범위(갈수록 진하게)" },
-  { k: "kpi", label: "수치", hint: "큰 숫자 2~4개 한 줄" },
-  { k: "fishbone", label: "원인 분석", hint: "결과 하나에 원인 갈래(피시본)" },
-  { k: "hub", label: "허브", hint: "가운데 하나 + 둘레 4~8개" },
-  { k: "pyramid", label: "피라미드", hint: "위가 좁은 층 3~5개" },
-  { k: "matrix", label: "2×2", hint: "두 축 네 칸, 우리는 오른쪽 위" },
-  { k: "funnel", label: "깔때기", hint: "단계마다 좁혀지는 수(위가 넓음)" },
-  { k: "cycle", label: "순환", hint: "원 둘레 단계, 끝이 처음으로" },
-  { k: "venn", label: "벤 도식", hint: "겹친 원 2~3개, 가운데 = 우리" },
-  { k: "roadmap", label: "로드맵", hint: "구불한 길 위 연도별 이정표" },
-  { k: "isostack", label: "계층", hint: "비스듬히 쌓은 시스템 층" },
-  { k: "gauge", label: "달성률", hint: "도넛 링 + 가운데 % 1~4개" },
-  { k: "proportion", label: "비율 막대", hint: "한 막대를 비율대로 나눔" },
-  { k: "converge", label: "수렴-확산", hint: "문제 카드 → 가운데 답 → 해결 카드" },
-  { k: "ridge", label: "능선 연혁", hint: "오르는 능선 위 연도·성과" },
-  { k: "petal", label: "꽃잎 전략", hint: "가운데 큰 숫자 + 둘레 꽃잎 3~6개" },
-  { k: "stage", label: "플랫폼 무대", hint: "기단 위에 올라선 서비스들" },
-  { k: "map", label: "지도", hint: "현장·거점 분포" },
-  { k: "badge", label: "강조", hint: "큰 수치·강조 배지(강조색)" },
-  { k: "band", label: "결론 띠", hint: "아래 한 줄 결론(네이비)" },
-  { k: "text", label: "글", hint: "테두리 없는 글 묶음" },
-];
-/** 상자 종류 아이콘(Material Symbols) — 도구줄에서 한눈에 */
-const KIND_ICON: Record<WireKind, string> = {
-  panel: "web_asset", card: "crop_square", person: "person", image: "image", screen: "desktop_windows", chart: "bar_chart",
-  table: "table", flow: "double_arrow", map: "location_on", badge: "percent", band: "call_to_action", text: "notes",
-  gantt: "view_timeline", phase: "stairs", kpi: "123", fishbone: "account_tree", hub: "hub", pyramid: "change_history", matrix: "grid_view",
-  funnel: "filter_alt", cycle: "autorenew", venn: "join", roadmap: "route", isostack: "layers", gauge: "donut_large", proportion: "stacked_bar_chart", converge: "merge", ridge: "landscape", petal: "filter_vintage", stage: "deployed_code",
-};
-/** 상자를 새로 넣을 때의 기본 크기 [폭, 높이] (본문 기준 %). 본문이 가로로 넓어(약 16:9) 같은 길이로 보이려면 높이 % 가 폭 % 의 1.77배다 */
-const KIND_SIZE: Record<WireKind, [number, number]> = {
-  panel: [26, 50], card: [22, 26], person: [14, 46], image: [26, 34], screen: [32, 36], chart: [30, 34],
-  table: [44, 30], flow: [60, 20], map: [26, 44], badge: [16, 20], band: [96, 10], text: [30, 12],
-  gantt: [96, 50], phase: [64, 36], kpi: [44, 22], fishbone: [64, 44], hub: [44, 50], pyramid: [36, 50], matrix: [40, 54],
-  funnel: [36, 54], cycle: [40, 60], venn: [40, 54], roadmap: [96, 40], isostack: [44, 54], gauge: [44, 30], proportion: [60, 20], converge: [96, 54], ridge: [96, 46], petal: [70, 60], stage: [64, 56],
-};
-const KIND = Object.fromEntries(KINDS.map((x) => [x.k, x])) as Record<WireKind, (typeof KINDS)[number]>;
+/** 상자 종류 한 벌 — 이름·도구줄 설명·아이콘·새 상자 기본 크기(본문 %)는 data/wire_kinds.json(정본 engine/wire_kinds.json, 2026-10-18).
+ *  본문이 가로로 넓어(약 16:9) 같은 길이로 보이려면 높이 % 가 폭 % 의 1.77배다 */
+const KINDS = KIND_LIST;
+const KIND_ICON = Object.fromEntries(KINDS.map((x) => [x.k, x.icon])) as Record<WireKind, string>;
+const KIND_SIZE = Object.fromEntries(KINDS.map((x) => [x.k, [x.size.w, x.size.h]])) as Record<WireKind, [number, number]>;
+const KIND = KIND_INFO;
 
 /** 기본 배치 — 와이어프레임이 없는 예전 기획에 넣는다(실제 장표에 가장 흔한 좌 25 · 중 50 · 우 25 + 아래 결론 띠) */
 const defaultWire = (): WireBlock[] => [
@@ -163,141 +124,6 @@ function Body({ d, fs, light }: { d: string; fs: number; light?: boolean }) {
   );
 }
 
-/** 그래프 자료 — 줄마다 '라벨 | 값' (또는 '라벨 값'). 값은 앞의 숫자만 읽고 단위는 붙여 보인다 */
-const bars = (d?: string) => (d || "").split("\n").map((l) => {
-  const m = l.replace(/^\s*[-•]\s*/, "").match(/^(.+?)\s*(?:\||:|\s)\s*(-?[\d,]+(?:\.\d+)?)\s*([^\d|]*)$/);
-  return m ? { k: m[1]!.trim(), v: parseFloat(m[2]!.replace(/,/g, "")), u: m[3]!.trim(), raw: m[2] + m[3]!.trim() } : null;
-}).filter((x): x is { k: string; v: number; u: string; raw: string } => !!x && isFinite(x.v));
-
-function Chart({ b, fs }: { b: WireBlock; fs: number }) {
-  const rows = bars(b.d).slice(0, 8), max = Math.max(...rows.map((r) => r.v), 1);
-  return (
-    <div className="flex-1 min-h-0 flex flex-col px-[0.9em] pt-[0.6em] pb-[0.5em]">
-      {b.t && <div className="font-bold text-[var(--color-ink)] leading-tight whitespace-pre-line break-words" style={{ fontSize: fs * 1.02 }}>{b.t}</div>}
-      <div className="flex-1 min-h-0 flex items-end gap-[4%] pt-[0.5em] border-b border-[var(--color-ink-4)]">
-        {rows.map((r, i) => (
-          <div key={i} className="flex-1 h-full flex flex-col justify-end items-center min-w-0">
-            <div className="font-bold text-[var(--color-ink-2)] tabular-nums" style={{ fontSize: fs * 0.78 }}>{r.raw}</div>
-            <div className="w-[70%] rounded-t-[2px]" style={{ height: `${Math.max(3, (r.v / max) * 78)}%`, background: i === rows.length - 1 ? "var(--color-ink-4)" : "var(--color-line-3)" }} />
-          </div>
-        ))}
-      </div>
-      <div className="flex gap-[4%] pt-[0.3em]">{rows.map((r, i) => <div key={i} className="flex-1 min-w-0 text-center text-[var(--color-ink-4)] truncate" style={{ fontSize: fs * 0.72 }}>{r.k}</div>)}</div>
-    </div>
-  );
-}
-
-/** 단계 흐름 — 줄마다 '단계명: 설명' */
-const steps = (d?: string) => (d || "").split("\n").map((l) => l.replace(/^\s*([-•]|\d+[.)])\s*/, "").trim()).filter(Boolean)
-  .map((l) => { const i = l.search(/[:：]/); return i > 0 ? { t: l.slice(0, i).trim(), d: l.slice(i + 1).trim() } : { t: l, d: "" }; });
-
-function Flow({ b, fs }: { b: WireBlock; fs: number }) {
-  const ss = steps(b.d).slice(0, 7);
-  return (
-    <div className="flex-1 min-h-0 flex flex-col px-[0.7em] pt-[0.6em] pb-[0.5em]">
-      {b.t && <div className="font-bold text-[var(--color-ink)] leading-tight whitespace-pre-line break-words mb-[0.5em]" style={{ fontSize: fs * 1.02 }}>{b.t}</div>}
-      <div className="flex-1 min-h-0 flex items-stretch gap-[1.5%]">
-        {ss.map((s, i) => (
-          <div key={i} className="flex-1 min-w-0 flex flex-col">
-            <div className="flex items-center justify-center text-[var(--color-ink)] font-bold text-center leading-tight px-[8%]"
-              style={{ minHeight: fs * 2.4, fontSize: fs * 0.82, background: "var(--color-line-3)", clipPath: i < ss.length - 1 ? "polygon(0 0,88% 0,100% 50%,88% 100%,0 100%)" : undefined }}>{s.t.replace(/\*\*/g, "")}</div>
-            {s.d && <div className="mt-[0.4em] text-[var(--color-ink-3)] leading-snug text-center" style={{ fontSize: fs * 0.74 }}>{s.d.replace(/\*\*/g, "")}</div>}
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-/** 일정 — 첫 줄 '구분 | M | M+1 …', 활동 '이름 | 시작-끝 | 막대 글', 마일스톤 '◆ 이름 | 칸' (칸은 1부터) — worker design.py wire_gantt 와 같다 */
-const cellsOf = (l: string) => l.trim().replace(/^\|/, "").replace(/\|$/, "").split("|").map((c) => c.trim());
-const gantt = (d?: string) => {
-  const ls = (d || "").split("\n").filter((l) => l.trim());
-  const head = ls.length ? cellsOf(ls[0]!).slice(1) : [];
-  const rows: { t: string; a: number; e: number; l: string }[] = [], pins: { t: string; a: number }[] = [];
-  for (const l of ls.slice(1)) {
-    const c = cellsOf(l), m = (c[1] || "").match(/^(\d+)\s*(?:[-~–]\s*(\d+))?$/);
-    if (!m) continue;
-    const a = +m[1]! - 1, e = Math.max(a, +(m[2] || m[1])! - 1);
-    if (c[0]!.startsWith("◆")) pins.push({ t: c[0]!.replace(/^◆\s*/, ""), a });
-    else rows.push({ t: c[0]!, a, e, l: c[2] || "" });
-  }
-  return { head, rows, pins };
-};
-
-function Gantt({ b, fs }: { b: WireBlock; fs: number }) {
-  const { head, rows, pins } = gantt(b.d);
-  const n = Math.max(1, head.length), tone = (i: number) => `hsl(0 0% ${82 - (i * 22) / Math.max(1, rows.length - 1)}%)`;
-  return (
-    <div className="flex-1 min-h-0 flex flex-col px-[0.7em] pt-[0.6em] pb-[0.5em]" style={{ fontSize: fs * 0.78 }}>
-      {b.t && <div className="font-bold text-[var(--color-ink)] leading-tight whitespace-pre-line break-words mb-[0.4em]" style={{ fontSize: fs * 1.02 }}>{b.t}</div>}
-      <div className="flex bg-[var(--color-line)] font-bold text-[var(--color-ink-2)]"><div className="w-[24%] shrink-0" />{head.map((h, i) => <div key={i} className="flex-1 min-w-0 text-center truncate py-[0.15em] border-l border-white">{h}</div>)}</div>
-      <div className="flex-1 min-h-0 flex flex-col">
-        {rows.map((r, i) => (
-          <div key={i} className="flex-1 min-h-0 flex items-center border-b border-[var(--color-line)]">
-            <div className="w-[24%] shrink-0 pr-[0.4em] text-[var(--color-ink-2)] leading-tight">{r.t}</div>
-            <div className="relative flex-1 h-full">
-              <div className="absolute top-[22%] bottom-[22%] rounded-[2px] flex items-center px-[0.4em] text-[var(--color-ink)] truncate"
-                style={{ left: `${(r.a / n) * 100}%`, width: `${((r.e - r.a + 1) / n) * 100}%`, background: tone(i) }}>{r.l}</div>
-            </div>
-          </div>
-        ))}
-        {pins.length > 0 && (
-          <div className="relative flex-none" style={{ height: fs * 1.6, marginLeft: "24%" }}>
-            {pins.map((p, i) => <span key={i} className="absolute top-[0.2em] whitespace-nowrap text-[var(--color-ink-2)]" style={{ left: `${((p.a + 0.3) / n) * 100}%` }}>◆ {p.t}</span>)}
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
-/** 단계 범위 — 줄마다 '[기간] 단계: 설명', 오른쪽일수록 높고 진하게 */
-function Phase({ b, fs }: { b: WireBlock; fs: number }) {
-  const ss = steps(b.d).slice(0, 6), n = ss.length;
-  return (
-    <div className="flex-1 min-h-0 flex flex-col px-[0.7em] pt-[0.6em] pb-[0.5em]">
-      {b.t && <div className="font-bold text-[var(--color-ink)] leading-tight whitespace-pre-line break-words mb-[0.4em]" style={{ fontSize: fs * 1.02 }}>{b.t}</div>}
-      <div className="flex-1 min-h-0 flex items-end gap-[1.5%]">
-        {ss.map((s, i) => {
-          const dark = i / Math.max(1, n - 1) > 0.5;
-          return (
-            <div key={i} className="flex-1 min-w-0 rounded-[2px] px-[0.5em] py-[0.4em] overflow-hidden"
-              style={{ height: `${55 + (45 * i) / Math.max(1, n - 1)}%`, background: `hsl(0 0% ${86 - (46 * i) / Math.max(1, n - 1)}%)`, color: dark ? "#fff" : "var(--color-ink)" }}>
-              <div className="font-bold leading-tight" style={{ fontSize: fs * 0.9 }}>{s.t.replace(/\*\*/g, "")}</div>
-              {s.d && <div className="mt-[0.3em] leading-snug" style={{ fontSize: fs * 0.74, opacity: 0.85 }}>{s.d.replace(/\*\*/g, "")}</div>}
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
-/** 큰 수치 줄 — 줄마다 '수치 | 설명' */
-const kpis = (d?: string) => (d || "").split("\n").map((l) => cellsOf(l.replace(/^\s*[-•]\s*/, ""))).filter((c) => c[0]).map((c) => ({ v: c[0], c: c[1] || "" }));
-
-/** 큰 수치 글자 크기 — 칸이 좁으면(썸네일·모바일) 글자 수에 맞춰 줄인다. 칸 폭(container 단위)을 넘지 않게 — "290만개" 가 칸 밖으로 나가던 문제(종합평가 2-7) */
-const fitBig = (px: number, text: string) => `min(${px}px, calc(96cqi / ${Math.max(1, [...text].length) * 0.62}))`;
-
-function Kpi({ b, fs, boxH }: { b: WireBlock; fs: number; boxH: number }) {
-  const ks = kpis(b.d).slice(0, 4);
-  const big = Math.max(fs * 1.1, Math.min(fs * 2.6, boxH * 0.38));
-  return (
-    <div className="flex-1 min-h-0 flex flex-col px-[0.7em] pt-[0.5em] pb-[0.4em]">
-      {b.t && <div className="font-bold text-[var(--color-ink)] leading-tight whitespace-pre-line break-words mb-[0.3em]" style={{ fontSize: fs * 1.02 }}>{b.t}</div>}
-      <div className="flex-1 min-h-0 flex items-center">
-        {ks.map((k, i) => (
-          <div key={i} className={cn("flex-1 min-w-0 text-center px-[0.3em] [container-type:inline-size]", i > 0 && "border-l border-[var(--color-line-3)]")}>
-            <div className="font-extrabold leading-none tracking-[-.02em] text-[var(--color-ink)] whitespace-nowrap" style={{ fontSize: fitBig(big, k.v ?? "") }}>{k.v}</div>
-            {k.c && <div className="mt-[0.35em] leading-snug text-[var(--color-ink-3)]" style={{ fontSize: fs * 0.8 }}>{k.c}</div>}
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
 /** 그림 자리 — '그림:' 줄은 무엇을 그릴지(옅게), 나머지 줄은 그림 위에 찍힐 글(말풍선·라벨), t 는 캡션 */
 function Visual({ b, fs }: { b: WireBlock; fs: number }) {
   const lines = (b.d || "").split("\n").map((l) => l.trim()).filter(Boolean);
@@ -345,10 +171,17 @@ function Block({ b, fs, sel, editing, onDown, onResize, onEdit, onPatch, onMenu 
   onEdit?: () => void; onPatch?: (p: Partial<WireBlock>) => void;
 }) {
   const band = b.k === "band", badge = b.k === "badge", panel = b.k === "panel", text = b.k === "text";
-  const visual = ["person", "image", "screen", "chart", "flow", "map"].includes(b.k);   // 그림 자리 — 장면 설명을 적는다
+  const visual = ["person", "image", "screen", "chart", "flow", "map", "pin"].includes(b.k);   // 그림 자리 — 장면 설명을 적는다
   const light = band || badge;
   const stop = (e: React.PointerEvent) => e.stopPropagation();
   const boxH = (fs / FS) * (2 / 3) * (1 - HEAD - FOOT) * (b.h / 100);   // 상자 높이(px) — 캔버스 폭에서 거꾸로 셈
+  const boxW = (fs / FS) * (b.w / 100);
+  // 데이터 그림(chart·kpi·table·gauge·proportion·progress)의 머리 줄 — 메시지는 아래 띠로, 나머지 머리 줄은 글에서 뺀다(2026-10-18)
+  const data = isData(b.k);
+  const [mt, rest] = data ? meta(b.d) : [{}, [] as string[]];
+  const msg = data ? mt.message || "" : "";
+  const dd = data ? rest.join("\n").trim() : b.d;
+  const sketch = editing ? null : KindView({ b, fs, W: boxW, H: boxH - (msg ? fs * 1.7 : 0) });
   return (
     <div data-block onPointerDown={editing ? undefined : onDown} onDoubleClick={onEdit} onContextMenu={editing ? undefined : onMenu}
       className={cn("absolute flex flex-col", onDown && !editing && "cursor-move", (sel || editing) && "z-10")}
@@ -368,11 +201,7 @@ function Block({ b, fs, sel, editing, onDown, onResize, onEdit, onPatch, onMenu 
         </div>
       ) : <>
         {panel && <div className="flex-none flex items-center px-[0.9em] font-bold text-[var(--color-ink)] truncate border-b border-[var(--color-ink-4)]" style={{ background: "var(--color-line)", height: fs * 2, fontSize: fs * 0.95 }}>{b.t}</div>}
-        {b.k === "chart" && bars(b.d).length >= 2 ? <Chart b={b} fs={fs} />
-          : b.k === "flow" && steps(b.d).length >= 2 ? <Flow b={b} fs={fs} />
-          : b.k === "gantt" && gantt(b.d).head.length > 0 ? <Gantt b={b} fs={fs} />
-          : b.k === "phase" && steps(b.d).length >= 2 ? <Phase b={b} fs={fs} />
-          : b.k === "kpi" && kpis(b.d).length > 0 ? <Kpi b={b} fs={fs} boxH={boxH} />
+        {sketch ? sketch
           : visual ? <Visual b={b} fs={fs} />
           : badge ? (
             <div className="flex-1 min-h-0 flex flex-col items-center justify-center text-center px-[0.9em] text-[var(--color-ink)] [container-type:inline-size]">
@@ -383,16 +212,17 @@ function Block({ b, fs, sel, editing, onDown, onResize, onEdit, onPatch, onMenu 
           ) : (() => {
             // 낮은 상자 — 위 여백 없이 세로 가운데에 놓고, 그래도 넘치면 글자를 상자 높이에 맞춰 줄인다(0.62배까지)
             const room = boxH - (panel ? fs * 2 : 0);
-            const need = fs * ((!panel && b.t ? 1.4 + (b.t.split("\n").length - 1) * 1.2 : 0) + (b.d ? b.d.split("\n").filter((l) => l.trim()).length * 1.25 + 0.3 : 0));
+            const need = fs * ((!panel && b.t ? 1.4 + (b.t.split("\n").length - 1) * 1.2 : 0) + (dd ? dd.split("\n").filter((l) => l.trim()).length * 1.25 + 0.3 : 0));
             const tight = need + fs * 0.9 > room;
             const k = tight ? Math.max(0.62, Math.min(1, room / (need + fs * 0.2))) : 1;
             return (
               <div className={cn("flex-1 min-h-0 flex flex-col px-[0.9em] overflow-hidden", tight ? "justify-center" : "pt-[0.55em]", light && "justify-center text-center items-center pt-0")}>
                 {!panel && b.t && <div className={cn("font-bold leading-tight text-[var(--color-ink)] whitespace-pre-line break-words", tight && "line-clamp-2")} style={{ fontSize: fs * (light ? 1.1 : 1.08) * k }}>{b.t}</div>}
-                {b.d && <Body d={b.d} fs={fs * k} />}
+                {dd && <Body d={dd} fs={fs * k} />}
               </div>
             );
           })()}
+        {msg && <div className="flex-none mx-[0.5em] mb-[0.4em] px-[0.6em] rounded-[2px] flex items-center font-bold text-white truncate" style={{ height: fs * 1.4, fontSize: fs * 0.78, background: "var(--color-ink-2)" }}>▶ {msg}</div>}
       </>}
       </div>
       {onResize && sel && !editing && HANDLES.map(([h, x, y]) => (

@@ -84,6 +84,15 @@ if [ "$SCOPE" = web ]; then
   node scripts/ms-subset.mjs check || bad "아이콘 글꼴에 없는 이름이 있다 — node scripts/ms-subset.mjs build 로 다시 받을 것"
 fi
 
+# 10. 와이어 상자 종류 한 벌(R62) — 정본 engine/wire_kinds.json 과 서버·화면 사본, 프롬프트 사본이 같아야 한다.
+#     엔진·서버·화면이 서로 다른 종류 목록을 읽으면 새 종류가 한쪽에서 '카드'로 바뀌거나 프롬프트에만 있는 종류가 생긴다
+if [ "$SCOPE" = web ] || [ "$SCOPE" = engine ]; then
+  for c in api/src/Deck/wire_kinds.json apps/web/app/modules/deck/legacy/data/wire_kinds.json; do
+    cmp -s engine/wire_kinds.json "$c" || bad "$c 가 engine/wire_kinds.json 과 다르다 — cp engine/wire_kinds.json $c (R62)"
+  done
+  diff -q --strip-trailing-cr engine/prompt_wire.md api/src/Deck/prompt_wire.md >/dev/null || bad "api/src/Deck/prompt_wire.md 가 engine/prompt_wire.md 와 다르다 — 둘 다 고칠 것(R62)"
+fi
+
 # 알림 — 다른 배포가 필요한지
 LAST=$(git log -1 --name-only --format= 2>/dev/null || true)
 echo "$LAST" | grep -q '^services/mockref-api/' && [ "$SCOPE" != mockref ] && echo "ℹ️  마지막 커밋이 mockref 를 고쳤다 → bash scripts/deploy-mockref.sh 도"

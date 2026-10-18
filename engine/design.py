@@ -1201,11 +1201,12 @@ def make_plan(job, brief, note, context="", slide_count=0, purpose="present", ra
     return plan
 
 
-WIRE_KINDS = ("panel", "card", "person", "image", "screen", "chart", "table", "flow", "map", "badge", "band", "text", "gantt", "phase", "kpi",
-              "fishbone", "hub", "pyramid", "matrix", "funnel", "cycle", "venn", "roadmap", "isostack", "gauge", "proportion",
-              "converge", "ridge", "petal", "stage")   # 2026-10-14 원본 대조 확장 — 수렴-확산·능선 연혁·꽃잎 전략·플랫폼 무대
+import wirekinds   # noqa: E402 — 상자 종류 한 벌(engine/wire_kinds.json, 2026-10-18 단일 원본)
+WIRE_KINDS = wirekinds.KINDS
+WIRE_PIC = wirekinds.PIC   # 그림 자리(person·image·screen·map)
 # 서버가 직접 그리는 도식 틀(2026-10-12 PPT 레퍼런스 학습) — 피시본·허브·피라미드·2×2, 이어서 퍼널·순환·벤·로드맵·층 쌓기·게이지·비율 막대.
-# 글 형식은 prompt_wire.md 와 같다. 오르는 계단은 phase 가 이미 그린다(따로 두지 않음)
+# 10-14 원본 대조 수렴-확산·능선·꽃잎·무대, 10-18 전후 비교·인용·진행 막대·주체별 절차·화면 핀.
+# 글 형식은 wire_kinds.json fmt(prompt_wire.md 에 찍힌다)와 같다. 오르는 계단은 phase 가 이미 그린다(따로 두지 않음)
 
 
 def _cells(l):
@@ -1255,9 +1256,7 @@ SOURCE_LINE = re.compile(r"^\s*[-•]?\s*(출처|자료)\s*[:：]\s*(.+)$")
 def wire_kpis(d):
     """kpi 글 → [(수치, 설명, 칩)] — 줄마다 '수치 | 설명 | 칩(선택)'. '출처: …' 줄은 빼고 wire_source 로"""
     out = []
-    for l in str(d or "").splitlines():
-        if SOURCE_LINE.match(l):
-            continue
+    for l in wirekinds.meta(d)[1]:   # 메시지·강조·출처 줄은 수치가 아니다
         c = _cells(re.sub(r"^\s*[-•]\s*", "", l))
         if c and c[0]:
             out.append((c[0], c[1] if len(c) > 1 else "", c[2] if len(c) > 2 else ""))
@@ -1274,27 +1273,167 @@ def wire_source(d):
     return src
 
 
-def wire_bars(d):
-    """chart 글 → (머리[이전,지금] 또는 [], [(라벨, 값, 이전값|None)]) — 줄마다 '라벨 | 값' 또는 '라벨 | 이전 | 지금'.
-    첫 줄이 '구분 | 도입 전 | 도입 후' 처럼 숫자가 없으면 두 막대의 이름"""
-    head, out = [], []
+_CELL_NUM = re.compile(r"^\s*([-+−]?[\d,]*\.?\d+)\s*(\S*)")
+CHART_HEAD = re.compile(r"^\s*(구분|항목|분류|연도|년도|기간|지표|category|label|item)?\s*$", re.I)   # 계열 머리 줄의 첫 칸
+WF_TOTAL = re.compile(r"^\s*(합계|총계|총합|계|최종|누계|total|sum)\b", re.I)   # 폭포 그래프의 합계 막대(증감이 아니라 그 시점의 값)
+
+
+def _cell_val(x):
+    """'120' · '1,200건' · '+12' · '−5%' → (값, 단위) — 숫자로 시작하지 않으면 (None, '')"""
+    m = _CELL_NUM.match(str(x or ""))
+    if not m:
+        return None, ""
+    u = m.group(2) or ""
+    try:
+        return float(m.group(1).replace(",", "").replace("−", "-")), (u if len(u) <= 5 and not re.search(r"\d", u) else "")
+    except ValueError:
+        return None, ""
+
+
+def wire_chart(d):
+    """chart 글 → {type, unit, series[], rows[(라벨, [값…])], highlight, callout, message, source}.
+    머리 줄(유형·단위·강조·말풍선·메시지·출처)은 wire_kinds.json meta. 데이터는 '라벨 | 값' 또는 계열 머리 '구분 | 계열1 | 계열2 …' + '라벨 | 값 | 값'.
+    옛 형식 그대로: 유형이 없고 두 계열(머리 '구분 | 도입 전 | 도입 후' 또는 '라벨 | 이전 | 지금')이면 pair(이전 회색·지금 파랑 짝 막대).
+    api WireKinds::chart · 화면 wireParse.ts chart 와 같은 규칙 — 시험 묶음 engine/tests/wire_chart_cases.json"""
+    mt, lines = wirekinds.meta(d)
+    series, rows, unit = [], [], mt.get("unit", "")
+    for l in lines:
+        l = re.sub(r"^\s*[-•]\s*", "", l).strip()
+        if not l:
+            continue
+        if "|" in l:
+            c = _cells(l)
+        elif re.search(r"[:：]", l):
+            c = [p.strip() for p in re.split(r"[:：]", l, maxsplit=1)]
+        else:   # '2021 120건' — 끝이 수치인 줄만
+            m = re.match(r"^(.+?)\s+([-+−]?[\d,]*\.?\d+\s*\S{0,4})$", l)
+            c = [m.group(1).strip(), m.group(2)] if m else [l]
+        vals = [_cell_val(x) for x in c[1:]]
+        if len(c) >= 2 and not rows and not series and (all(v is None for v, _ in vals) and len(c) >= 3 or CHART_HEAD.match(c[0])):
+            series = c[1:5]   # 계열 이름 — 숫자만 있는 머리('구분 | 2024 | 2025')는 첫 칸이 구분·항목… 이거나 비어 있을 때
+            continue
+        if any(v is not None for v, _ in vals):
+            if not unit:
+                unit = vals[0][1] if vals and vals[0][0] is not None else ""   # 단위는 첫 계열 칸에서만(막대+선의 '82%' 를 전체 단위로 읽지 않게)
+            rows.append((c[0], [v for v, _ in vals]))
+    n = len(series) if series else max([max([i + 1 for i, v in enumerate(vs) if v is not None] or [1]) for _, vs in rows] or [1])
+    n = max(1, min(4, n))
+    rows = [(lab, (vs + [None] * n)[:n]) for lab, vs in rows]
+    t = wirekinds.chart_type(mt.get("type"))
+    if not t:
+        t = "pair" if n == 2 else "bar"
+    elif t == "pair" and n != 2:
+        t = "bar"
+    elif t == "stacked" and n < 2:
+        t = "bar"
+    return {"type": t, "unit": unit, "series": list(series[:n]), "rows": rows, "highlight": mt.get("highlight", ""),
+            "callout": mt.get("callout", ""), "message": mt.get("message", ""), "source": mt.get("source", "")}
+
+
+def chart_nums(ch):
+    """그래프 안의 수치 개수(빈 칸 제외)"""
+    return sum(1 for _, vs in ch["rows"] for v in vs if v is not None)
+
+
+def wf_steps(ch):
+    """폭포 그래프 → [(라벨, 아래, 위, 합계인가, 증감)] — 첫 줄은 시작값, 합계 줄은 그때까지의 값(값을 적었으면 그 값)"""
+    out, run = [], 0.0
+    for i, (lab, vs) in enumerate(ch["rows"]):
+        v = vs[0] if vs and vs[0] is not None else 0.0
+        if i == 0:
+            run = v
+            out.append((lab, 0.0, v, True, v))
+        elif WF_TOTAL.match(lab):
+            run = v if vs and vs[0] is not None else run   # 적은 합계가 있으면 그 값
+            out.append((lab, 0.0, run, True, run))
+        else:
+            a = run
+            run += v
+            out.append((lab, min(a, run), max(a, run), False, v))
+    return out
+
+
+def wire_dodont(d):
+    """dodont 글 → (NG 이름, OK 이름, [NG 항목], [OK 항목]) — 줄마다 'NG | 내용' / 'OK | 내용'. 머리말이 없으면 번갈아"""
+    ng_re = re.compile(r"^(NG|DON'?T|기존|현행|현재|AS-?IS|전|이전|도입 전|before|✕|×|X)\b", re.I)
+    ok_re = re.compile(r"^(OK|DO|개선|제안|TO-?BE|후|이후|도입 후|after|○|✓|O)\b", re.I)
+    names, ng, ok = ["", ""], [], []
+    plain = []
+    for l in str(d or "").splitlines():
+        l = re.sub(r"^\s*[-•]\s*", "", l).strip()
+        if not l or SOURCE_LINE.match(l):
+            continue
+        tag, _, rest = l.partition("|")
+        tag, rest = tag.strip(), rest.strip()
+        if rest and ng_re.match(tag):
+            names[0] = names[0] or tag
+            ng.append(rest)
+        elif rest and ok_re.match(tag):
+            names[1] = names[1] or tag
+            ok.append(rest)
+        else:
+            plain.append(rest or tag)
+    if not ng and not ok:
+        ng, ok = plain[0::2], plain[1::2]
+    return names[0] or "NG", names[1] or "OK", ng[:5], ok[:5]
+
+
+def wire_progress(d):
+    """progress 글 → ([(항목, 값, 목표)], 단위) — 줄마다 '항목 | 값 | 목표'(목표 없으면 100)"""
+    mt, lines = wirekinds.meta(d)
+    out, unit = [], mt.get("unit", "")
+    for l in lines:
+        l = re.sub(r"^\s*[-•]\s*", "", l).strip()
+        c = _cells(l) if "|" in l else [p.strip() for p in re.split(r"[:：]", l, maxsplit=1)]
+        if len(c) < 2:
+            continue
+        v, u = _cell_val(c[1])
+        if v is None:
+            continue
+        tg = _cell_val(c[2])[0] if len(c) > 2 else None
+        unit = unit or u
+        out.append((c[0], v, tg if tg and tg > 0 else 100.0))
+    return out[:6], unit or "%"
+
+
+def wire_swim(d):
+    """swimlane 글 → (단계 머리[], [(주체, [칸…])]) — 첫 줄 '주체 | 단계1 | 단계2 …', 다음 줄 '민원인 | 일 | | 일'"""
+    rows = [_cells(l) for l in str(d or "").splitlines() if "|" in l and not re.fullmatch(r"[\s|:-]+", l)]
+    if len(rows) < 2:
+        return [], []
+    head = rows[0][1:7]
+    lanes = [(r[0], (r[1:] + [""] * len(head))[:len(head)]) for r in rows[1:6] if r and r[0]]
+    return head, lanes
+
+
+def wire_pins(d):
+    """pin 글 → (그림 설명, [(번호, 이름, 설명, (x%, y%)|None)]) — '그림: …' 줄 + '1 | 이름: 설명 | 30,40'"""
+    pic, out = "", []
     for l in str(d or "").splitlines():
         if not l.strip() or SOURCE_LINE.match(l):
             continue
-        l = re.sub(r"^\s*[-•]\s*", "", l)
-        c = _cells(l) if "|" in l else [p.strip() for p in re.split(r"[:：]", l, maxsplit=1)]
-        nums = []
-        for x in c[1:3]:
-            m = re.match(r"^\s*(-?[\d,]*\.?\d+)", x)
-            nums.append(float(m.group(1).replace(",", "")) if m else None)
-        if len(c) >= 3 and nums[0] is None and nums[1] is None and not out:
-            head = [c[1], c[2]]
+        if PIC_LINE.match(l):
+            pic = PIC_LINE.sub("", l).strip()
             continue
-        if len(c) >= 3 and nums[0] is not None and nums[1] is not None:
-            out.append((c[0], nums[1], nums[0]))
-        elif len(c) >= 2 and nums and nums[0] is not None:
-            out.append((c[0], nums[0], None))
-    return head, out
+        c = _cells(re.sub(r"^\s*[-•]\s*", "", l)) if "|" in l else [str(len(out) + 1), l.strip()]
+        no = re.sub(r"\D", "", c[0]) or str(len(out) + 1)
+        body = c[1] if len(c) > 1 else c[0]
+        nm, _, ds = body.partition(":") if ":" in body else body.partition("：")
+        pos = None
+        if len(c) > 2:
+            m = re.match(r"^\s*(\d+(?:\.\d+)?)\s*[,/ ]\s*(\d+(?:\.\d+)?)\s*$", c[2])
+            if m:
+                pos = (min(100.0, float(m.group(1))), min(100.0, float(m.group(2))))
+        out.append((no, nm.strip(), ds.strip(), pos))
+    return pic, out[:6]
+
+
+def wire_quote(t, d):
+    """quote → (문장, 화자) — 문장은 t(없으면 d 첫 줄), 화자는 '— …' 줄"""
+    lines = [l.strip() for l in str(d or "").splitlines() if l.strip()]
+    who = next((re.sub(r"^[—–\-]+\s*", "", l) for l in lines if re.match(r"^[—–\-]", l)), "")
+    q = str(t or "").strip() or next((l for l in lines if not re.match(r"^[—–\-]", l)), "")
+    return q.strip("\"“”'‘’「」 "), who
 
 
 def wire_table(d):
@@ -1376,8 +1515,8 @@ def wire_conv(d):
 def wire_parts(d):
     """proportion 글 → [(이름, 값)] — 줄마다 '이름 | 값'. 값이 숫자가 아닌 줄은 뺀다"""
     out = []
-    for l in str(d or "").splitlines():
-        if not l.strip() or SOURCE_LINE.match(l):
+    for l in wirekinds.meta(d)[1]:   # 메시지·강조·단위·출처 줄은 뺀다
+        if not l.strip():
             continue
         l = re.sub(r"^\s*[-•]\s*", "", l)
         c = _cells(l) if "|" in l else [p.strip() for p in re.split(r"[:：]", l, maxsplit=1)]
@@ -1431,9 +1570,9 @@ WIRE_BATCH = 3   # 작은 묶음을 여러 개 동시에 — 출력 길이가 �
 def make_wires(job, plan, only_empty=False):
     """와이어프레임 — 기획이 끝난 뒤 장 묶음(5장)마다 따로 짠다. 디자인만 빠진 완성 목업: 상자마다 장표에 찍힐 실제 글·수치.
     기획 한 번에 넣으면 출력이 길어 잘리므로 나눈다. 실패한 묶음은 비워 두고(화면이 기획 내용으로 자동 배치) 계속한다.
-    규칙은 prompt_wire.md — 서버(api/src/prompt_wire.md, 'AI 로 다시 짜기')와 같은 글이다."""
+    규칙은 prompt_wire.md — 서버(api/src/prompt_wire.md, 'AI 로 다시 짜기')와 같은 글이다. 종류 표·쓰는 법은 wire_kinds.json 에서 채운다."""
     from concurrent.futures import ThreadPoolExecutor
-    system = read(os.path.join(W["HERE"], "prompt_wire.md"))
+    system = wirekinds.prompt(read(os.path.join(W["HERE"], "prompt_wire.md")))
     todo = [s for s in plan["slides"] if not (only_empty and s.get("wire"))]
     if not system or not todo:
         return
@@ -1464,7 +1603,9 @@ def make_wires(job, plan, only_empty=False):
         send = [dict(x, content=str(by.get(int(x.get("n", 0)), {}).get("content", "")), title=str(by.get(int(x.get("n", 0)), {}).get("title", ""))) for x in raw]
         laid = W["req"]("POST", "/worker/wire/layout", {"slides": send}, timeout=60).get("slides") or []
         shape = {int(x.get("n", 0)): wire_shape(x) for x in raw}
-        return {int(x.get("n", 0)): (clean_wire(x.get("wire")), [str(c) for c in (x.get("wire_checks") or [])], shape.get(int(x.get("n", 0)), "")) for x in laid}
+        why = {int(x.get("n", 0)): str(x.get("why") or "").strip()[:200] for x in raw}   # 이 장의 관계 한 줄(2026-10-18) — 화면에 보인다
+        return {int(x.get("n", 0)): (clean_wire(x.get("wire")), [str(c) for c in (x.get("wire_checks") or [])], shape.get(int(x.get("n", 0)), ""),
+                                     why.get(int(x.get("n", 0)), "")) for x in laid}
 
     def ab(g):
         """한 묶음 — A안을 짜고 바로 그 묶음의 B안(A안 배치를 알려 주고 다른 배치로). 묶음끼리는 동시에 돈다"""
@@ -1496,15 +1637,22 @@ def make_wires(job, plan, only_empty=False):
                 job.event(f"와이어프레임 한 묶음을 짜지 못했습니다 — 그 장은 기획 내용으로 자동 배치됩니다: {str(e)[:120]}", "warn")
     n = nb = 0
     for s in todo:
-        w, chk, _ = got.get(s["n"]) or ([], [], "")
+        w, chk, _, why = got.get(s["n"]) or ([], [], "", "")
         if w:
             s["wire"], s["wire_ai"], s["wire_checks"] = w, w, chk   # wire_ai: AI 가 짠 그대로(사람이 고친 것과 견줘 배운다)
-            s.pop("wire_alt", None); s.pop("wire_pick", None)
+            s.pop("wire_alt", None); s.pop("wire_pick", None); s.pop("wire_why_alt", None)
+            if why:
+                s["wire_why"] = why   # 이 장의 관계 판단 — 시안 확인 화면 와이어 아래에 보인다
+            else:
+                s.pop("wire_why", None)
             n += 1
-            # B안 — 사용자가 시안 확인에서 A·B 중 하나를 확정하면 그것이 wire 가 된다(서버 Jobs::patch wire_pick)
-            wb = (got_b.get(s["n"]) or ([],))[0]
+            # B안 — 사용자가 시안 확인에서 A·B 중 하나를 확정하면 그것이 wire 가 된다(서버 Jobs::patch wire_pick, 관계 줄도 같이)
+            wb_ = got_b.get(s["n"]) or ([], [], "", "")
+            wb = wb_[0]
             if wb and wb != w:
                 s["wire_alt"] = {"a": w, "b": wb}
+                if why or wb_[3]:
+                    s["wire_why_alt"] = {"a": why, "b": wb_[3]}
                 nb += 1
     left = sum(1 for s in todo if s.get("wire_checks"))
     job.event(f"와이어프레임 완료 — {n}/{len(todo)}장" + (f" · B안 {nb}장" if nb else "") + (f" ({bad}묶음 실패)" if bad else "") + (f" · 확인이 필요한 장 {left}장" if left else ""), "done" if not bad else "warn")
@@ -1516,10 +1664,42 @@ def wire_boxes(s):
     for b in s.get("wire") or []:
         t = "" if "보강 필요" in str(b.get("t") or "") else str(b.get("t") or "")
         d = "\n".join(l for l in str(b.get("d") or "").splitlines() if l.strip() and "보강 필요" not in l)
-        if b.get("k") not in ("person", "image", "screen", "map", "band") and not t.strip() and not d.strip():
+        if b.get("k") not in WIRE_PIC + ("band",) and not t.strip() and not d.strip():
             continue
         out.append(dict(b, t=t, d=d))
     return out
+
+
+class _SafeDraw:
+    """상자가 아주 작을 때(사람이 줄인 상자·모든 종류 견본) 계산한 아래쪽이 위쪽보다 위로 올라가 PIL 이 멈추던 것 — 네 모서리를 정렬해 그린다"""
+    def __init__(self, d):
+        self._d = d
+
+    def __getattr__(self, n):
+        return getattr(self._d, n)
+
+    @staticmethod
+    def _box(xy):
+        x0, y0, x1, y1 = xy
+        return [min(x0, x1), min(y0, y1), max(x0, x1), max(y0, y1)]
+
+    def rectangle(self, xy, *a, **k):
+        return self._d.rectangle(self._box(xy), *a, **k)
+
+    def rounded_rectangle(self, xy, *a, **k):
+        b = self._box(xy)
+        if "radius" in k:   # 반지름이 상자 반보다 크면 PIL 이 모서리를 못 그린다
+            k["radius"] = max(0, min(k["radius"], (b[2] - b[0]) / 2, (b[3] - b[1]) / 2))
+        return self._d.rounded_rectangle(b, *a, **k)
+
+    def ellipse(self, xy, *a, **k):
+        return self._d.ellipse(self._box(xy), *a, **k)
+
+    def arc(self, xy, *a, **k):
+        return self._d.arc(self._box(xy), *a, **k)
+
+    def pieslice(self, xy, *a, **k):
+        return self._d.pieslice(self._box(xy), *a, **k)
 
 
 def _wrap(d, text, font, width):
@@ -1551,7 +1731,7 @@ def wire_png(s, size=(1600, 900)):
         return None
     W_, H_ = size
     im = Image.new("RGB", size, "white")
-    d = ImageDraw.Draw(im)
+    d = _SafeDraw(ImageDraw.Draw(im))
     f_t, f_d = _font(26), _font(18, False)
     INK, SUB, LINE, PALE = (51, 65, 85), (100, 116, 139), (148, 163, 184), (241, 245, 249)
     # 상자마다 그 '형태'를 회색조 스케치로 — 예전엔 모든 상자를 '회색 상자 + 하늘색 머리 띠 + 글 줄'로 그려서
@@ -1572,11 +1752,175 @@ def wire_png(s, size=(1600, 900)):
     def title(b, x0, y0, x1):
         return lines_in(x0 + 10, y0 + 10, x1 - x0 - 20, y0 + 80, b.get("t") or "", f_t, INK, 32) + 6 if b.get("t") else y0 + 10
 
+    def fmtv(v, unit=""):
+        s = f"{v:,.0f}" if abs(v - round(v)) < 1e-9 else f"{v:,.1f}"
+        return s + ("%" if unit == "%" else "")
+
+    def pill(cx, cy, text, dark=True):
+        """말풍선(강조 항목 위) — 가운데 아래(cx, cy)를 가리킨다"""
+        f = _font(17)
+        tw = d.textlength(text, font=f) + 20
+        d.rounded_rectangle([cx - tw / 2, cy - 38, cx + tw / 2, cy - 10], radius=12, fill=(30, 41, 59) if dark else PALE)
+        d.polygon([(cx - 6, cy - 11), (cx + 6, cy - 11), (cx, cy - 3)], fill=(30, 41, 59) if dark else PALE)
+        d.text((cx - tw / 2 + 10, cy - 34), text, font=f, fill=(255, 255, 255) if dark else INK)
+
+    def draw_chart(b, ch, x0, y0, x1, y1):
+        """chart 한 상자 — 유형마다 회색조 스케치. 강조 항목은 파랑, 말풍선은 그 위. 이미지 모델이 모양을 베낀다"""
+        GREY, BLUE, DARK = (203, 213, 225), (37, 99, 235), (71, 85, 105)
+        f_s = _font(16, False)
+        t, rows, ser, unit, hl = ch["type"], ch["rows"][:10], ch["series"], ch["unit"], ch["highlight"]
+        yy = title(b, x0, y0, x1)
+        ybot = y1 - (24 if ch["source"] else 0)
+        if ch["source"]:
+            d.text((x0 + 10, y1 - 22), "출처: " + ch["source"], font=_font(15, False), fill=SUB)
+        if unit and unit != "%":
+            uw = d.textlength(f"(단위: {unit})", font=f_s)
+            d.text((x1 - uw - 8, yy - 2), f"(단위: {unit})", font=f_s, fill=SUB)
+            yy += 20
+        n = len(rows[0][1]) if rows else 1
+        names = ser or (["이전", "지금"] if t == "pair" else [f"계열{i + 1}" for i in range(n)])
+        hot = lambda lab: bool(hl) and (hl == lab or hl in lab)   # noqa: E731
+        tones = [GREY, BLUE] if t == "pair" else [(203, 213, 225), (148, 163, 184), (100, 116, 139), (51, 65, 85)][-n:] if n > 1 else [(148, 163, 184)]
+        legend = (t in ("pair", "stacked", "combo") or (n > 1 and t in ("bar", "line"))) and t not in ("donut", "waterfall", "hbar")
+        if legend:   # 범례 — 아래 한 줄
+            lx = x0 + 10
+            for i, nm in enumerate(names):
+                col = BLUE if (t == "combo" and i == n - 1) or (t == "line" and i == n - 1) else tones[i % len(tones)]
+                d.rectangle([lx, ybot - 20, lx + 14, ybot - 6], fill=col)
+                d.text((lx + 20, ybot - 24), nm, font=f_s, fill=SUB)
+                lx += 44 + d.textlength(nm, font=f_s)
+            ybot -= 28
+        val = lambda vs, i=0: (vs[i] if i < len(vs) and vs[i] is not None else 0.0)   # noqa: E731
+        if t == "donut":
+            import math
+            vs = [(lab, max(0.0, val(v))) for lab, v in rows][:8]
+            tot = sum(v for _, v in vs) or 1
+            r = min((x1 - x0) * 0.22, (ybot - yy) * 0.46)
+            cx, cy = x0 + 20 + r, (yy + ybot) / 2
+            a0 = -90.0
+            for i, (lab, v) in enumerate(vs):
+                a1 = a0 + 360 * v / tot
+                tone = 60 + int(150 * i / max(1, len(vs) - 1))
+                col = BLUE if hot(lab) else (tone - 30, tone - 15, tone + 10)
+                d.pieslice([cx - r, cy - r, cx + r, cy + r], a0, a1, fill=col, outline=(255, 255, 255), width=3)
+                a0 = a1
+            d.ellipse([cx - r * 0.55, cy - r * 0.55, cx + r * 0.55, cy + r * 0.55], fill=(255, 255, 255))
+            if ch["callout"]:
+                tw = d.textlength(ch["callout"], font=_font(24))
+                d.text((cx - tw / 2, cy - 16), ch["callout"], font=_font(24), fill=INK)
+            ly, lh = cy - len(vs) * 15, 30
+            for i, (lab, v) in enumerate(vs):   # 오른쪽 범례 — 이름 · 값 · 몫
+                tone = 60 + int(150 * i / max(1, len(vs) - 1))
+                d.rectangle([cx + r + 30, ly + i * lh + 4, cx + r + 46, ly + i * lh + 20], fill=BLUE if hot(lab) else (tone - 30, tone - 15, tone + 10))
+                d.text((cx + r + 54, ly + i * lh), f"{lab}  {fmtv(v, unit)} ({v / tot * 100:.0f}%)" if unit != "%" else f"{lab}  {fmtv(v, unit)}",
+                       font=_font(18, hot(lab)), fill=INK if hot(lab) else SUB)
+            return
+        if t == "hbar":
+            vs = sorted(((lab, val(v)) for lab, v in rows), key=lambda x: -x[1])[:8]
+            top = max(v for _, v in vs) or 1
+            lw = (x1 - x0) * 0.26
+            rh = (ybot - yy) / len(vs)
+            for i, (lab, v) in enumerate(vs):
+                ry = yy + i * rh
+                lines_in(x0 + 8, ry + rh / 2 - 11, lw - 14, ry + rh, lab, f_d, INK if hot(lab) else SUB, 22)
+                w_ = max(4, (x1 - x0 - lw - 90) * v / top)
+                col = BLUE if hot(lab) else ((51, 65, 85) if (not hl and i == 0) else (148, 163, 184))
+                d.rectangle([x0 + lw, ry + rh * 0.2, x0 + lw + w_, ry + rh * 0.8], fill=col)
+                d.text((x0 + lw + w_ + 8, ry + rh / 2 - 11), fmtv(v, unit), font=_font(17, hot(lab) or i == 0), fill=INK)
+                if ch["callout"] and (hot(lab) or (not hl and i == 0)):
+                    tw = d.textlength(ch["callout"], font=_font(16)) + 18
+                    bx = min(x1 - tw - 4, x0 + lw + w_ + 70)
+                    d.rounded_rectangle([bx, ry + rh / 2 - 15, bx + tw, ry + rh / 2 + 15], radius=12, fill=(30, 41, 59))
+                    d.text((bx + 9, ry + rh / 2 - 11), ch["callout"], font=_font(16), fill=(255, 255, 255))
+            return
+        # 세로 축이 있는 유형 — 막대·짝·누적·폭포·꺾은선·막대+선
+        base = ybot - 30
+        top_y = min(yy + 44, base - 12)   # 값 글자·말풍선 자리(아주 작은 상자에서 축이 뒤집히지 않게)
+        d.line([x0 + 10, base, x1 - 10, base], fill=LINE, width=1)
+        cw = (x1 - x0 - 20) / len(rows)
+        cxs = [x0 + 10 + (i + 0.5) * cw for i in range(len(rows))]
+        for i, (lab, _) in enumerate(rows):
+            lw_ = d.textlength(lab, font=f_d)   # 축 이름은 그 칸 가운데
+            lines_in(cxs[i] - min(lw_, cw * 0.9) / 2, base + 6, cw * 0.9, base + 30, lab, f_d, INK if hot(lab) else SUB, 22)
+        mark = None   # 말풍선 자리(cx, 꼭대기 y)
+        if t == "waterfall":
+            st = wf_steps(ch)[:len(rows)]
+            lo, hi = min(0.0, min(a for _, a, _, _, _ in st)), max(e for _, _, e, _, _ in st) or 1
+            Y = lambda v: base - (base - top_y) * (v - lo) / ((hi - lo) or 1)   # noqa: E731
+            prev = None
+            for i, (lab, a, e, total, dv) in enumerate(st):
+                bx = cxs[i] - cw * 0.3
+                col = BLUE if hot(lab) else ((51, 65, 85) if total else ((148, 163, 184) if dv >= 0 else (226, 232, 240)))
+                d.rectangle([bx, Y(e), bx + cw * 0.6, max(Y(a), Y(e) + 3)], fill=col, outline=(148, 163, 184) if dv < 0 and not total else None)
+                txt = fmtv(e, unit) if total else (("+" if dv >= 0 else "−") + fmtv(abs(dv), unit))
+                d.text((bx, Y(e) - 22), txt, font=_font(16, total), fill=INK)
+                if prev is not None:   # 이음선 — 앞 막대가 끝난 값 높이에서
+                    d.line([prev[0], Y(prev[1]), bx, Y(prev[1])], fill=LINE, width=1)
+                prev = (bx + cw * 0.6, e if (total or dv >= 0) else a)
+                if hot(lab) or (not hl and i == len(st) - 1):
+                    mark = (cxs[i], Y(e) - 22)
+        else:
+            nb = (n - 1) if t == "combo" else (1 if t == "stacked" else n)
+            if t == "line":
+                nb = 0
+            stack = t == "stacked"
+            top = max([sum(val(v, j) for j in range(n)) if stack else max(val(v, j) for j in range(nb or n)) for _, v in rows] or [1]) or 1
+            Y = lambda v: base - (base - top_y) * v / top   # noqa: E731
+            for i, (lab, vs) in enumerate(rows):
+                if nb:
+                    bw = cw * 0.7 / nb
+                    acc = 0.0
+                    for j in range(n if stack else nb):
+                        v = val(vs, j)
+                        if stack:
+                            col = BLUE if hot(lab) and j == n - 1 else tones[j % len(tones)]
+                            d.rectangle([cxs[i] - cw * 0.3, Y(acc + v), cxs[i] + cw * 0.3, Y(acc)], fill=col, outline=(255, 255, 255))
+                            acc += v
+                            continue
+                        bx = cxs[i] - cw * 0.35 + j * bw
+                        if n == 1:
+                            col = BLUE if hot(lab) else ((71, 85, 105) if (not hl and i == len(rows) - 1) else (148, 163, 184))
+                        else:
+                            col = tones[j % len(tones)] if not (hot(lab) and j == nb - 1) else DARK
+                        d.rectangle([bx + 2, Y(v), bx + bw - 2, base], fill=col)
+                        d.text((bx + 2, Y(v) - 22), fmtv(v, unit), font=_font(15, j == nb - 1), fill=INK if j == nb - 1 else SUB)
+                    if stack:
+                        d.text((cxs[i] - cw * 0.3, Y(acc) - 22), fmtv(acc, unit), font=_font(16), fill=INK)
+                    top_v = acc if stack else max(val(vs, j) for j in range(nb))
+                    if hot(lab) or (not hl and i == len(rows) - 1):
+                        mark = (cxs[i], Y(top_v) - 22)
+            if t in ("line", "combo"):   # 선 — 꺾은선은 모든 계열, 막대+선은 마지막 계열(오른쪽 축, 제 최댓값 기준)
+                sers = range(n) if t == "line" else [n - 1]
+                for j in sers:
+                    mx = max(val(v, j) for _, v in rows) or 1
+                    Yl = Y if t == "line" else (lambda v, mx=mx: base - (base - top_y) * 0.9 * v / mx)
+                    pts = [(cxs[i], Yl(val(vs, j))) for i, (_, vs) in enumerate(rows)]
+                    col = BLUE if (t == "combo" or j == n - 1) else tones[j % len(tones)]
+                    d.line(pts, fill=col, width=4, joint="curve")
+                    for i, (px, py) in enumerate(pts):
+                        big = hot(rows[i][0]) or (not hl and i == len(pts) - 1 and j == n - 1)
+                        rr = 9 if big else 6
+                        d.ellipse([px - rr, py - rr, px + rr, py + rr], fill=(255, 255, 255), outline=col, width=3)
+                        if big or n == 1 or t == "combo":
+                            d.text((px - 14, py - 34), fmtv(val(rows[i][1], j), unit), font=_font(15, big), fill=INK)
+                        if big and j == (n - 1 if t == "line" else j):
+                            mark = (px, py - 34)
+        if ch["callout"] and mark:
+            pill(mark[0], mark[1], ch["callout"])
+
     for b in wire:
         k = b["k"]
         x0, y0 = b["x"] / 100 * W_, b["y"] / 100 * H_
         x1, y1 = x0 + b["w"] / 100 * W_, y0 + b["h"] / 100 * H_
-        body = "\n".join(l for l in str(b.get("d") or "").splitlines() if "보강 필요" not in l and not PIC_LINE.match(l))   # 그림 지시 줄은 찍지 않는다
+        body = "\n".join(l for l in str(b.get("d") or "").splitlines() if "보강 필요" not in l and (k in wirekinds.DATA or not PIC_LINE.match(l)))   # 그림 지시 줄은 찍지 않는다(데이터 그림의 '말풍선:' 은 강조 수치라 남긴다)
+        mt = wirekinds.meta(body)[0] if k in wirekinds.DATA else {}
+        hl = mt.get("highlight", "")   # 강조 항목 하나 — 진하게, 나머지는 옅게
+        if mt.get("message") and y1 - y0 > 120:   # 데이터 그림의 결론 한 줄 — 그림 아래 진한 말풍선(시안에서 그림 옆 설명으로)
+            msg = "▶ " + mt["message"]
+            f_m = _font(19)
+            d.rounded_rectangle([x0 + 4, y1 - 38, min(x1 - 4, x0 + 28 + d.textlength(msg, font=f_m)), y1 - 4], radius=8, fill=(51, 65, 85))
+            lines_in(x0 + 16, y1 - 33, x1 - x0 - 32, y1 - 2, msg, f_m, (255, 255, 255), 24)
+            y1 -= 46
         if k == "band":
             d.rounded_rectangle([x0, y0, x1, y1], radius=10, fill=(30, 58, 138))
             lines_in(x0 + 14, y0 + (y1 - y0) / 2 - 16, x1 - x0 - 28, y1, b.get("t") or "", f_t, (255, 255, 255), 32)
@@ -1645,46 +1989,18 @@ def wire_png(s, size=(1600, 900)):
                     d.text((kx + (kw - cw) / 2 + 12, ty + 3), ch, font=f_c, fill=(30, 41, 59))
                     ty += 36
                 nw = d.textlength(num, font=f_n)
-                d.text((kx + (kw - nw) / 2, ty), num, font=f_n, fill=(30, 41, 59))
+                on = bool(hl) and (hl == num or hl in num or hl == cap)
+                d.text((kx + (kw - nw) / 2, ty), num, font=f_n, fill=(30, 41, 59) if on or not hl else (148, 163, 184))
+                if on:   # 강조 수치 — 밑줄(색은 시안에서)
+                    d.line([kx + (kw - nw) / 2, d.textbbox((0, ty), num, font=f_n)[3] + 4, kx + (kw + nw) / 2, d.textbbox((0, ty), num, font=f_n)[3] + 4], fill=(37, 99, 235), width=4)
                 lines_in(kx + 12, d.textbbox((0, ty), num, font=f_n)[3] + 12, kw - 24, ybot, cap, f_d, SUB, 23)
             if src:
                 d.text((x0 + 10, y1 - 22), "출처: " + src, font=_font(15, False), fill=SUB)
             continue
         if k == "chart":
-            names, vals = wire_bars(body)
-            src = wire_source(body)
-            if len(vals) >= 2:
-                yy = title(b, x0, y0, x1)
-                pair = sum(1 for v in vals if v[2] is not None) >= max(1, len(vals) // 2)
-                top = max(max(v, p or 0) for _, v, p in vals) or 1
-                bw = (x1 - x0 - 20) / len(vals)
-                base = y1 - 30 - (24 if src else 0) - (28 if pair else 0)
-                d.line([x0 + 10, base, x1 - 10, base], fill=LINE, width=1)
-                GREY, BLUE = (203, 213, 225), (37, 99, 235)
-                for i, (lab, v, p) in enumerate(vals):
-                    bx = x0 + 10 + i * bw
-                    if pair:   # 이전은 회색, 지금은 파랑 — 두 막대 나란히
-                        for j, (val, col) in enumerate(((p, GREY), (v, BLUE))):
-                            if val is None:
-                                continue
-                            h = max(4, (base - yy - 30) * val / top)
-                            cx0 = bx + bw * (0.14 + 0.37 * j)
-                            d.rectangle([cx0, base - h, cx0 + bw * 0.33, base], fill=col)
-                            d.text((cx0, base - h - 22), f"{val:g}", font=_font(16, j == 1), fill=INK if j else SUB)
-                    else:
-                        h = max(4, (base - yy - 30) * v / top)
-                        d.rectangle([bx + bw * 0.2, base - h, bx + bw * 0.8, base], fill=(148, 163, 184) if i < len(vals) - 1 else (71, 85, 105))
-                        d.text((bx + bw * 0.2, base - h - 24), f"{v:g}", font=f_d, fill=INK)
-                    lines_in(bx + bw * 0.1, base + 6, bw * 0.8, base + 30, lab, f_d, SUB, 22)
-                ly = base + 32
-                if pair:   # 범례
-                    lx = x0 + 10
-                    for nm, col in (((names[0] if names else "이전"), GREY), ((names[1] if names else "지금"), BLUE)):
-                        d.rectangle([lx, ly + 4, lx + 14, ly + 18], fill=col)
-                        d.text((lx + 20, ly), nm, font=_font(16, False), fill=SUB)
-                        lx += 40 + d.textlength(nm, font=_font(16, False))
-                if src:
-                    d.text((x0 + 10, y1 - 22), "출처: " + src, font=_font(15, False), fill=SUB)
+            ch = wire_chart(body)
+            if chart_nums(ch) >= 2 and ch["rows"]:
+                draw_chart(b, ch, x0, y0, x1, y1)
                 continue
         if k == "table" and wire_table(body)[0]:
             cells, star = wire_table(body)
@@ -1697,6 +2013,8 @@ def wire_png(s, size=(1600, 900)):
                 ry = yy + r * rh
                 if r == 0:
                     d.rectangle([x0, ry, x1, ry + rh], fill=(226, 232, 240))
+                elif hl and row and (row[0] == hl or hl in row[0]):   # 강조 행
+                    d.rectangle([x0, ry, x1, ry + rh], fill=(219, 234, 254))
                 d.line([x0, ry + rh, x1, ry + rh], fill=(203, 213, 225), width=1)
                 for c in range(nc):
                     tx = row[c] if c < len(row) else ""
@@ -1842,12 +2160,12 @@ def wire_png(s, size=(1600, 900)):
             off = r * 0.62
             cs = [(cx - off, cy), (cx + off, cy)] if n == 2 else [(cx - off, cy + off * 0.55), (cx + off, cy + off * 0.55), (cx, cy - off * 0.6)]
             ov = Image.new("RGBA", size, (0, 0, 0, 0))
-            od = ImageDraw.Draw(ov)
+            od = _SafeDraw(ImageDraw.Draw(ov))
             for i, (px, py) in enumerate(cs):
                 tone = 120 + 40 * i
                 od.ellipse([px - r, py - r, px + r, py + r], fill=(tone - 60, tone - 40, tone, 70), outline=(71, 85, 105, 255), width=3)
             im.paste(ov, (0, 0), ov)
-            d = ImageDraw.Draw(im)
+            d = _SafeDraw(ImageDraw.Draw(im))
             for i, ((px, py), (st, ds)) in enumerate(zip(cs, ss)):
                 dx = (px - cx) * 0.75
                 dy = (py - cy) * 0.75 + (-r * 0.15 if n == 3 and i == 2 else 0)
@@ -1928,7 +2246,8 @@ def wire_png(s, size=(1600, 900)):
                     w_ = max(10, int(r * 0.26))
                     d.ellipse([cx - r, cy - r, cx + r, cy + r], outline=(226, 232, 240), width=w_)
                     if pct > 0:
-                        d.arc([cx - r, cy - r, cx + r, cy + r], -90, -90 + 360 * pct / 100, fill=(30, 41, 59), width=w_)
+                        on = not hl or hl == num or hl in cap
+                        d.arc([cx - r, cy - r, cx + r, cy + r], -90, -90 + 360 * pct / 100, fill=(30, 41, 59) if on else (148, 163, 184), width=w_)
                     f_n = _font(int(max(20, min(40, r * 0.32))))
                     nw = d.textlength(num, font=f_n)
                     d.text((cx - nw / 2, cy - f_n.size * 0.62), num, font=f_n, fill=(30, 41, 59))
@@ -1953,6 +2272,8 @@ def wire_png(s, size=(1600, 900)):
             for i, (nm, v) in enumerate(ps):
                 w_ = bw * v / tot
                 tone = 60 + int(150 * i / max(1, len(ps) - 1))   # 가장 큰 몫(첫 줄)이 가장 진함
+                if hl:   # 강조 몫만 진하게
+                    tone = 60 if (hl == nm or hl in nm) else 190
                 d.rectangle([cx_, by, cx_ + w_ - (2 if i < len(ps) - 1 else 0), by + bh], fill=(tone - 30, tone - 15, tone + 10))
                 pct = f"{v / tot * 100:.0f}%"
                 fg = (255, 255, 255) if tone < 150 else INK
@@ -2068,6 +2389,130 @@ def wire_png(s, size=(1600, 900)):
                 ty = lines_in(px - cr * 0.8, py - 16, cr * 1.6, py + cr, st, _font(17), INK, 20)
                 lines_in(px - cr * 0.8, ty, cr * 1.6, py + cr, ds, _font(13, False), SUB, 16)
             continue
+        # 2026-10-18 레퍼런스 학습 §7 확장 5종 — 전후 비교·인용·진행 막대·주체별 절차·화면 핀
+        if k == "dodont" and any(wire_dodont(body)[2:]):
+            nn, on, ng, ok = wire_dodont(body)
+            yy = title(b, x0, y0, x1)
+            mid = (x0 + x1) / 2
+            cw = (x1 - x0) / 2 - 34
+            for side, nm, col in ((0, nn, (100, 116, 139)), (1, on, (37, 99, 235))):   # 열 머리 알약
+                bx = x0 if side == 0 else mid + 34
+                d.rounded_rectangle([bx, yy, bx + cw, yy + 40], radius=20, fill=col)
+                lab = ("✕ " if side == 0 else "✓ ") + nm
+                d.text((bx + (cw - d.textlength(lab, font=_font(20))) / 2, yy + 7), lab, font=_font(20), fill=(255, 255, 255))
+            yy += 52
+            n = max(len(ng), len(ok), 1)
+            rh = (y1 - yy) / n
+            for i in range(n):
+                ry = yy + i * rh
+                for side, items in ((0, ng), (1, ok)):
+                    if i >= len(items):
+                        continue
+                    bx = x0 if side == 0 else mid + 34
+                    d.rounded_rectangle([bx, ry + 4, bx + cw, ry + rh - 6], radius=10, fill=PALE if side == 0 else (219, 234, 254),
+                                        outline=(203, 213, 225) if side == 0 else (147, 197, 253), width=2)
+                    lines_in(bx + 16, ry + rh / 2 - 13, cw - 30, ry + rh - 8, items[i], _font(19, side == 1), SUB if side == 0 else INK, 24)
+                ay = ry + rh / 2   # 가운데 쉐브론
+                d.polygon([(mid - 22, ay - 16), (mid + 6, ay - 16), (mid + 22, ay), (mid + 6, ay + 16), (mid - 22, ay + 16), (mid - 6, ay)], fill=(148, 163, 184))
+            continue
+        if k == "quote" and wire_quote(b.get("t"), body)[0]:
+            q, who = wire_quote(b.get("t"), body)
+            d.rounded_rectangle([x0, y0, x1, y1], radius=10, fill=PALE)
+            d.rectangle([x0, y0 + 10, x0 + 6, y1 - 10], fill=(51, 65, 85))
+            d.text((x0 + 22, y0 - 4), "“", font=_font(90), fill=(148, 163, 184))
+            f_q = _font(int(min(34, max(22, (y1 - y0) * 0.14))))
+            ty = lines_in(x0 + 34, y0 + 70, x1 - x0 - 60, y1 - 34, q, f_q, INK, int(f_q.size * 1.35))
+            if who:
+                tw = d.textlength("— " + who, font=f_d)
+                d.text((x1 - tw - 20, min(y1 - 34, ty + 10)), "— " + who, font=f_d, fill=SUB)
+            continue
+        if k == "progress" and wire_progress(body)[0]:
+            ps, unit = wire_progress(body)
+            src = wire_source(body)
+            yy = title(b, x0, y0, x1)
+            ybot = y1 - (26 if src else 0)
+            rh = (ybot - yy) / len(ps)
+            lw = (x1 - x0) * 0.30
+            for i, (nm, v, tg) in enumerate(ps):
+                ry = yy + i * rh
+                on = bool(hl) and (hl == nm or hl in nm)
+                lines_in(x0 + 8, ry + rh / 2 - 12, lw - 16, ry + rh, nm, _font(19, on), INK if on or not hl else SUB, 23)
+                tx0, tx1 = x0 + lw, x1 - 110
+                bh = min(26, rh * 0.42)
+                d.rounded_rectangle([tx0, ry + rh / 2 - bh / 2, tx1, ry + rh / 2 + bh / 2], radius=bh / 2, fill=(226, 232, 240))
+                w_ = (tx1 - tx0) * max(0.0, min(1.0, v / tg))
+                if w_ > 2:
+                    col = (30, 41, 59) if on else ((100, 116, 139) if not hl else (148, 163, 184))
+                    d.rounded_rectangle([tx0, ry + rh / 2 - bh / 2, tx0 + w_, ry + rh / 2 + bh / 2], radius=bh / 2, fill=col)
+                lab = (f"{v:g}%" if unit == "%" and tg == 100 else f"{v:g} / {tg:g}{'' if unit == '%' else unit}")
+                d.text((tx1 + 12, ry + rh / 2 - 13), lab, font=_font(20, on), fill=INK)
+            if src:
+                d.text((x0 + 10, y1 - 22), "출처: " + src, font=_font(15, False), fill=SUB)
+            continue
+        if k == "swimlane" and wire_swim(body)[1]:
+            head, lanes = wire_swim(body)
+            yy = title(b, x0, y0, x1)
+            lw = (x1 - x0) * 0.16
+            cw = (x1 - x0 - lw) / max(1, len(head))
+            d.rectangle([x0, yy, x1, yy + 34], fill=(203, 213, 225))
+            for j, h in enumerate(head):
+                tw = d.textlength(h, font=_font(18))
+                d.text((x0 + lw + j * cw + (cw - tw) / 2, yy + 6), h, font=_font(18), fill=INK)
+            yy += 34
+            rh = (y1 - yy) / len(lanes)
+            boxes = []
+            for i, (nm, cells) in enumerate(lanes):
+                ry = yy + i * rh
+                d.rectangle([x0, ry, x1, ry + rh], fill=PALE if i % 2 == 0 else (255, 255, 255), outline=(226, 232, 240))
+                d.rectangle([x0, ry, x0 + lw, ry + rh], fill=(226, 232, 240))
+                lines_in(x0 + 10, ry + rh / 2 - 12, lw - 20, ry + rh, nm, _font(19), INK, 23)
+                for j, c in enumerate(cells):
+                    if not c.strip():
+                        continue
+                    bx0, by0 = x0 + lw + j * cw + 12, ry + rh * 0.18
+                    bx1, by1 = bx0 + cw - 24, ry + rh * 0.82
+                    d.rounded_rectangle([bx0, by0, bx1, by1], radius=8, fill=(255, 255, 255), outline=(100, 116, 139), width=2)
+                    lines_in(bx0 + 8, (by0 + by1) / 2 - 11, bx1 - bx0 - 16, by1, c, _font(16, False), INK, 20)
+                    boxes.append((j, i, bx0, by0, bx1, by1))
+            boxes.sort()
+            for (j0, i0, a0, b0, a1, b1), (j1, i1, c0, e0, c1, e1) in zip(boxes, boxes[1:]):   # 단계 순서로 잇는 화살표
+                if j1 == j0:
+                    sx, sy, ex, ey = (a0 + a1) / 2, b1 if i1 > i0 else b0, (c0 + c1) / 2, e0 if i1 > i0 else e1
+                else:
+                    sx, sy, ex, ey = a1, (b0 + b1) / 2, c0, (e0 + e1) / 2
+                d.line([sx, sy, (sx + ex) / 2, sy, (sx + ex) / 2, ey, ex, ey] if j1 != j0 else [sx, sy, ex, ey], fill=(71, 85, 105), width=2)
+                dx = 1 if j1 != j0 else 0
+                dy = 0 if j1 != j0 else (1 if ey > sy else -1)
+                d.polygon([(ex, ey), (ex - 10 * dx - 6 * dy, ey - 10 * dy - 6 * dx), (ex - 10 * dx + 6 * dy, ey - 10 * dy + 6 * dx)], fill=(71, 85, 105))
+            continue
+        if k == "pin" and wire_pins(b.get("d"))[1]:
+            pic, pins = wire_pins(b.get("d"))
+            yy = title(b, x0, y0, x1)
+            sw = (x1 - x0) * 0.6
+            d.rounded_rectangle([x0, yy, x0 + sw, y1], radius=10, fill=PALE, outline=(203, 213, 225), width=2)   # 화면(창 틀 + 자리 줄)
+            d.rectangle([x0 + 2, yy + 2, x0 + sw - 2, yy + 30], fill=(226, 232, 240))
+            for i in range(3):
+                d.ellipse([x0 + 12 + i * 18, yy + 10, x0 + 22 + i * 18, yy + 20], fill=(148, 163, 184))
+            for i in range(5):
+                ly = yy + 52 + i * (y1 - yy - 70) / 5
+                d.rounded_rectangle([x0 + 24, ly, x0 + 24 + (sw - 48) * (0.9 - 0.12 * (i % 3)), ly + 12], radius=6, fill=(226, 232, 240))
+            if pic:
+                tw = d.textlength(pic, font=f_d)
+                d.text((x0 + max(10, (sw - tw) / 2), y1 - 34), pic, font=f_d, fill=(148, 163, 184))
+            spots = [(22, 28), (72, 24), (34, 56), (76, 58), (24, 82), (62, 84)]
+            ch_ = (y1 - yy - 40) / len(pins)
+            for i, (no, nm, ds, pos) in enumerate(pins):
+                px_, py_ = pos or spots[i % len(spots)]
+                px, py = x0 + sw * px_ / 100, yy + 30 + (y1 - yy - 30) * py_ / 100
+                d.ellipse([px - 17, py - 17, px + 17, py + 17], fill=(30, 41, 59), outline=(255, 255, 255), width=3)
+                d.text((px - d.textlength(no, font=_font(18)) / 2, py - 12), no, font=_font(18), fill=(255, 255, 255))
+                ly = yy + 10 + i * ch_   # 오른쪽 번호 설명
+                lx = x0 + sw + 24
+                d.ellipse([lx, ly, lx + 30, ly + 30], fill=(30, 41, 59))
+                d.text((lx + 15 - d.textlength(no, font=_font(16)) / 2, ly + 4), no, font=_font(16), fill=(255, 255, 255))
+                ty = lines_in(lx + 40, ly + 2, x1 - lx - 44, ly + ch_, nm, _font(19), INK, 23)
+                lines_in(lx + 40, ty, x1 - lx - 44, ly + ch_ - 4, ds, _font(16, False), SUB, 20)
+            continue
         if k == "badge":
             f_n = _font(int(min(64, max(30, (y1 - y0) * 0.35))))
             tw = d.textlength(b.get("t") or "", font=f_n)
@@ -2076,23 +2521,81 @@ def wire_png(s, size=(1600, 900)):
             continue
         # 글 상자·표·그림 자리 — 옅은 면 하나(머리 띠 없음)
         d.rounded_rectangle([x0, y0, x1, y1], radius=10, fill=None if k == "text" else PALE, outline=(203, 213, 225) if k != "text" else None, width=2)
-        if k in ("person", "image", "screen", "map"):
+        if k in WIRE_PIC:
             d.line([x0, y0, x1, y1], fill=(226, 232, 240), width=2)
             d.line([x0, y1, x1, y0], fill=(226, 232, 240), width=2)
         yy = title(b, x0, y0, x1)
-        lines_in(x0 + 10, max(yy, y0 + 46) if b.get("t") else yy, x1 - x0 - 20, y1 - 4, body.replace("|", "   "), f_d, SUB, 24)
+        plain = "\n".join(wirekinds.meta(body)[1]) if k in wirekinds.DATA else body   # 메시지·강조 줄은 위 말풍선으로
+        lines_in(x0 + 10, max(yy, y0 + 46) if b.get("t") else yy, x1 - x0 - 20, y1 - 4, plain.replace("|", "   "), f_d, SUB, 24)
     buf = io.BytesIO()
     im.save(buf, "PNG")
     return "data:image/png;base64," + base64.b64encode(buf.getvalue()).decode()
+
+
+CHART_EN = {"bar": "BAR CHART (vertical bars)", "hbar": "RANKING BAR CHART (horizontal bars sorted from largest at the top to smallest)",
+            "line": "LINE CHART (trend line with round markers)", "stacked": "STACKED BAR CHART (each bar stacked by series)",
+            "donut": "DONUT CHART (ring split by share, the key share or total in the center)", "waterfall": "WATERFALL CHART (start bar, floating up/down steps, total bar)",
+            "combo": "COMBO CHART (bars for the first series + a line on a secondary axis for the last series)", "pair": "BEFORE/AFTER BAR CHART"}
+
+
+def chart_text(ch):
+    """chart 의 시안 지시(영어) — 유형·값·강조·말풍선·출처를 정확히"""
+    t, rows, ser, unit, hl = ch["type"], ch["rows"], ch["series"], ch["unit"], ch["highlight"]
+    v = lambda x: "—" if x is None else f"{x:g}" + ("%" if unit == "%" else "")   # noqa: E731
+    if t == "pair":
+        bn, an = (ser + ["before", "after"])[:2] if ser else ("before", "after")
+        desc = " ; ".join(f'[{lab}] {bn} {v(vs[0])} → {an} {v(vs[1])}' for lab, vs in rows)
+        out = (f'BEFORE/AFTER BAR CHART: paired bars per category, the "{bn}" bar in light grey and the "{an}" bar in the primary blue, value labels on top, small legend: {desc}')
+    elif t == "waterfall":
+        desc = " ; ".join(f'[{lab}] ' + (f"total {e:g}" if tot else (f"+{dv:g}" if dv >= 0 else f"−{abs(dv):g}")) for lab, _, e, tot, dv in wf_steps(ch))
+        out = f'{CHART_EN[t]}: increases in a mid tone, decreases in a pale tone, start/total bars dark, thin connector lines between steps, value labels on each bar: {desc}'
+    elif t == "donut":
+        tot = sum(vs[0] or 0 for _, vs in rows) or 1
+        desc = " ; ".join(f'[{lab}] {v(vs[0])}' + ("" if unit == "%" else f" ({(vs[0] or 0) / tot * 100:.0f}%)") for lab, vs in rows)
+        out = f'{CHART_EN[t]}: segment sizes exactly proportional, blue family light → dark, a legend with name and value beside the ring: {desc}'
+    elif t == "hbar":
+        srt = sorted(rows, key=lambda r: -(r[1][0] or 0))
+        out = f'{CHART_EN[t]}: value labels at the bar ends, the top bar darkest: ' + " ; ".join(f'[{lab}] {v(vs[0])}' for lab, vs in srt)
+    else:
+        if len(ser) > 1 or (rows and len(rows[0][1]) > 1):
+            names = ser or [f"series {i + 1}" for i in range(len(rows[0][1]))]
+            desc = " ; ".join(f'[{lab}] ' + ", ".join(f"{names[i]} {v(x)}" for i, x in enumerate(vs)) for lab, vs in rows)
+            extra = (f' — the bars are "{", ".join(names[:-1])}", the LINE is "{names[-1]}" on a secondary axis' if t == "combo" else "") + ", small legend"
+        else:
+            desc = " ; ".join(f'[{lab}] {v(vs[0])}' for lab, vs in rows)
+            extra = ""
+        out = f'{CHART_EN.get(t, CHART_EN["bar"])}{extra}, value labels on the marks: {desc}'
+    if unit and unit != "%":
+        out += f'; unit "{unit}" shown once (axis or title), not on every label'
+    if not hl and t not in ("pair", "donut", "waterfall"):
+        out += "; the last/most important item in the primary color, the rest muted"
+    if ch["callout"]:
+        out += f'; a small dark callout pill "{ch["callout"]}" pointing at ' + (f'"{hl}"' if hl else "the last item")
+    if ch["source"]:
+        out += f'; small source line under the chart: "출처: {ch["source"]}"'
+    return out
+
+
+def persuade_text(d):
+    """데이터 그림(chart·kpi·table·gauge·proportion·progress)의 메시지·강조 지시 — 결론을 그림 곁에"""
+    mt = wirekinds.meta(d)[0]
+    out = ""
+    if mt.get("highlight"):
+        out += f'; HIGHLIGHT ONLY "{mt["highlight"]}" in the primary/accent color (bold, darker), every other item muted grey — one accent only'
+    if mt.get("message"):
+        out += (f'; KEY MESSAGE beside the visual — print exactly "{mt["message"]}" as a short bold callout (pale primary box with a small pointer'
+                + (f' toward "{mt["highlight"]}"' if mt.get("highlight") else " toward the visual") + "), never as a second title")
+    return out
 
 
 def wire_text(s):
     """와이어프레임을 글로 — 이미지 모델이 그림과 함께 읽는다"""
     rows = []
     for b in wire_boxes(s):
+        n0 = len(rows)
         head = f'- {b["k"]} at x {b["x"]}%, y {b["y"]}%, size {b["w"]}% x {b["h"]}% of the body'
         lines = [l.strip() for l in str(b.get("d") or "").splitlines() if l.strip() and "보강 필요" not in l]
-        if b["k"] in ("person", "image", "screen", "map"):
+        if b["k"] in WIRE_PIC:
             # 그림 자리 — '그림:' 줄은 무엇을 그릴지(화면에 글로 찍지 않는다), 나머지 줄만 그림 위에 찍는 글
             draw = [PIC_LINE.sub("", l) for l in lines if PIC_LINE.match(l)]
             say = [l for l in lines if not PIC_LINE.match(l)]
@@ -2105,20 +2608,12 @@ def wire_text(s):
             desc = " ; ".join("row " + str(i + 1) + ": " + " / ".join(f"[{c}]" for c in r) for i, r in enumerate(cells[:10]))
             hi = (f' — HIGHLIGHT OUR COLUMN: column {star + 1} ("{cells[0][star]}") is our proposal — wrap that whole column in a thick primary-color outline'
                   ' with a pale primary fill and bold text; every other column stays neutral grey (one accent only)') if star >= 0 else ""
+            if any(c.strip() in ("○", "△", "×", "✕", "✓", "●", "◐") for r in cells[1:] for c in r):   # 기호 칸 — 글자가 아니라 가운데 정렬한 기호로
+                hi += ' — SYMBOL CELLS: draw ○ (supported) · △ (partial) · × (not supported) as clean centered symbol marks (○ in the primary color, △ grey, × light grey), never as letters'
             rows.append(head + f': "{b.get("t", "")}" — a TABLE (header row first). Each [ ] is one cell; draw real table cells, never print the brackets, any "|" or "★" character: {desc}'
                         ' — ALIGNMENT: header cells centered; text columns left-aligned; short uniform values (numbers, years, scores) centered; amounts, % and comparable figures right-aligned' + hi)
-        elif b["k"] == "chart" and len(wire_bars(b.get("d"))[1]) >= 2:
-            names, vals = wire_bars(b.get("d"))
-            src = wire_source(b.get("d"))
-            if sum(1 for v in vals if v[2] is not None) >= max(1, len(vals) // 2):
-                bn, an = (names + ["before", "after"])[:2] if names else ("before", "after")
-                desc = " ; ".join(f'[{lab}] {bn} {p:g} → {an} {v:g}' if p is not None else f'[{lab}] {v:g}' for lab, v, p in vals)
-                rows.append(head + f': "{b.get("t", "")}" — BEFORE/AFTER BAR CHART: paired bars per category, the "{bn}" bar in light grey and the "{an}" bar in the primary blue,'
-                            f' value labels on top, small legend: {desc}' + (f'; small source line under the chart: "출처: {src}"' if src else ""))
-            else:
-                desc = " ; ".join(f'[{lab}] {v:g}' for lab, v, _ in vals)
-                rows.append(head + f': "{b.get("t", "")}" — BAR CHART, value labels on top, the last/most important bar in the primary color: {desc}'
-                            + (f'; small source line: "출처: {src}"' if src else ""))
+        elif b["k"] == "chart" and chart_nums(wire_chart(b.get("d"))) >= 2:
+            rows.append(head + f': "{b.get("t", "")}" — ' + chart_text(wire_chart(b.get("d"))))
         elif b["k"] == "fishbone" and len(wire_steps(b.get("d"))) >= 2:
             ss = " ; ".join(f'[{t}] causes: {x}' for t, x in wire_steps(b.get("d")))
             rows.append(head + f': "{b.get("t", "")}" — FISHBONE (cause-and-effect) DIAGRAM: one horizontal spine ending in an arrow at a dark head box on the RIGHT holding'
@@ -2204,8 +2699,36 @@ def wire_text(s):
             ss = " ; ".join(f'[{t}]' + (f" ({x})" if x else "") for t, x in wire_steps(b.get("d")))
             rows.append(head + f': "{b.get("t", "")}" — PLATFORM STAGE: a wide flat cylinder base at the bottom labeled "{b.get("t", "")}" (dark), a thin glowing ellipse ring above it,'
                         f' and service circles floating above the ring at slightly different heights, each with a small icon, a bold name and one short line: {ss}')
+        elif b["k"] == "dodont" and any(wire_dodont(b.get("d"))[2:]):
+            nn, on, ng, ok = wire_dodont(b.get("d"))
+            pairs = " ; ".join(f'row {i + 1}: ✕ [{ng[i] if i < len(ng) else ""}] → ✓ [{ok[i] if i < len(ok) else ""}]' for i in range(max(len(ng), len(ok))))
+            rows.append(head + f': "{b.get("t", "")}" — DO/DON\'T COMPARISON: two columns with pill headers — LEFT "{nn}" in muted grey with ✕ marks, RIGHT "{on}" in the primary blue with ✓ marks;'
+                        f' each row pairs a problem with its fix at exactly the same height, a small chevron between them, the right side slightly bolder: {pairs}')
+        elif b["k"] == "quote" and wire_quote(b.get("t"), b.get("d"))[0]:
+            q, who = wire_quote(b.get("t"), b.get("d"))
+            rows.append(head + f': QUOTE CARD — a large pale opening quotation mark, the sentence "{q}" in large bold type (print exactly, no extra quotes), a thin primary rule on the left'
+                        + (f', the attribution "— {who}" small and right-aligned below' if who else ""))
+        elif b["k"] == "progress" and wire_progress(b.get("d"))[0]:
+            ps, unit = wire_progress(b.get("d"))
+            src = wire_source(b.get("d"))
+            ss = " ; ".join(f'[{nm}] {v:g}{"%" if unit == "%" else ""}' + ("" if tg == 100 else f" of target {tg:g}{'' if unit == '%' else unit}") + f" (bar filled {min(100, v / tg * 100):.0f}%)" for nm, v, tg in ps)
+            rows.append(head + f': "{b.get("t", "")}" — PROGRESS BARS: one row per item — name on the left, a rounded pale track with a primary-blue fill whose length is exactly the given share,'
+                        f' the value at the right end: {ss}' + (f'; small source line: "출처: {src}"' if src else ""))
+        elif b["k"] == "swimlane" and wire_swim(b.get("d"))[1]:
+            hd, lanes = wire_swim(b.get("d"))
+            ss = " ; ".join(f'lane [{nm}]: ' + " / ".join(f'{hd[j]} → "{c}"' for j, c in enumerate(cells) if c.strip()) for nm, cells in lanes)
+            rows.append(head + f': "{b.get("t", "")}" — SWIMLANE PROCESS: horizontal lanes, one per actor (actor name in a grey left header cell), stage columns with header cells {" | ".join(hd)};'
+                        f' each task is a small rounded box in its lane under its stage, joined in stage order by thin arrows (left → right, down/up when two tasks share a stage): {ss}')
+        elif b["k"] == "pin" and wire_pins(b.get("d"))[1]:
+            pic, pins = wire_pins(b.get("d"))
+            ss = " ; ".join(f'pin {no} [{nm}]' + (f" — {ds}" if ds else "") + (f" placed at {p[0]:g}%,{p[1]:g}% of the screen" if p else "") for no, nm, ds, p in pins)
+            rows.append(head + f': "{b.get("t", "")}" — ANNOTATED SCREEN: a clean UI screenshot mock' + (f' of {pic}' if pic else "") + ' on the left ~60% (window frame, realistic layout,'
+                        f' no readable filler text), dark numbered circle pins on the relevant UI spots, and on the right a numbered legend (same numbers, bold name, one short line): {ss}')
         else:
-            rows.append(head + f': "{b.get("t", "")}"' + (f' — contents: {" / ".join(lines[:8])}' if lines else ""))
+            plain = [l for l in lines if not wirekinds.META_LINE.match(l)] if b["k"] in wirekinds.DATA else lines   # 메시지·강조는 아래 persuade_text
+            rows.append(head + f': "{b.get("t", "")}"' + (f' — contents: {" / ".join(plain[:8])}' if plain else ""))
+        if b["k"] in wirekinds.DATA and len(rows) > n0:
+            rows[-1] += persuade_text(b.get("d"))
     return "\n".join(rows)
 
 
@@ -2442,7 +2965,7 @@ def make_mockup(job, s, feedback="", accent="#FF2A6D", anchor=None):
     import design_spec
     prompt += "\n" + design_spec.final_check() + "\n"
     # 본문만 16:9 로 만든다 — 머리 띠·바닥은 compose_frame 이 고정 위치로 입혀 3:2 한 장이 된다
-    pics = [b for b in (s.get("wire") or []) if b.get("k") in ("person", "image", "screen", "map")]
+    pics = [b for b in (s.get("wire") or []) if b.get("k") in WIRE_PIC]
     if st.get("body_split") and pics:   # (실험) 그림 칸만 나노바나나 2 — GPT 가 빈 칸 지시를 따르지 않아 자리를 못 찾는다. 본문은 GPT(사용자 결정 2026-10-04)   # 글·카드는 GPT, 그림 칸은 나노바나나 2 — 나노바나나는 글을 깨뜨리고 GPT 는 실사에서 얼룩진다
         return split_body(job, s, prompt, pics, wp, accent)
     if False:   # (본문 전체를 나노바나나로 그리지 않는다 — 글이 깨진다. 사용자 결정 2026-10-04)(GPT 는 실사에서 얼룩이 심하다). 실패하면 기본 모델

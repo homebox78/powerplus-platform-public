@@ -14,6 +14,13 @@ ICONS = os.path.join(ROOT, "storage", "legacy-powerplus", "uploads", "icon")   #
 LOGO = os.path.join(ROOT, "storage", "deck", "jobs", "05eb7dd4f868eb37", "brand", "vendor.png")   # 'solideo S. 솔리데오 컨소시엄' — 앞 심볼만
 THUMBS = os.path.join(ROOT, "apps", "web", "public", "cstyles")
 OUT = os.path.join(ROOT, "storage", "tmp", "company-sample")
+# 테마 E~H 견본 배경(engine THEME_BG 묶음에서 쪽 역할별 한 장 — 실제 작업은 엔진이 작업마다 돌려 고른다)
+SAMPLE_BG = {
+    "e": {"cover": "cpphoto-CP1-P03.jpg", "div1": "cpphoto-CP1-P01.jpg", "div2": "cpphoto-CP1-P12.jpg", "div3": "cpphoto-CP1-P10.jpg", "end": "cpphoto-CP1-P06.jpg"},
+    "f": {"cover": "cbbg-CB1-C01.jpg", "div1": "cbbg-CB1-C04.jpg", "div2": "cbbg-CB1-C08.jpg", "div3": "cbbg-CB1-C05.jpg", "end": "cbbg-CB1-C07.jpg"},
+    "g": {"cover": "cbbg-CB1-A02.jpg", "div1": "cbbg-CB1-A04.jpg", "div2": "cbbg-CB1-A05.jpg", "div3": "cbbg-CB1-A09.jpg", "end": "cbbg-CB1-A08.jpg"},
+    "h": {"cover": "cbbg-CB1-D03.jpg", "div1": "cbbg-CB1-B04.jpg", "div2": "cbbg-CB1-D06.jpg", "div3": "cbbg-CB1-B06.jpg", "end": "cbbg-CB1-D05.jpg"},
+}
 
 
 def one(theme, tone, src):
@@ -37,10 +44,12 @@ def one(theme, tone, src):
             g = next((i for i, ws in enumerate(sec_words) if any(w in str(s.get("title") or "") for w in ws)), kk % 3); kk += 1
             role = f"div{g + 1}"
         if role:
-            f = os.path.join(BG, f"cpbg-CP1-{theme}-{role}.jpg")
+            f = os.path.join(BG, SAMPLE_BG[theme][role] if theme in SAMPLE_BG else f"cpbg-CP1-{theme}-{role}.jpg")
             if os.path.isfile(f):
-                s["_bg_light"] = company.bg_is_light(f)
-                s["_bg"] = url(company.tint_icon(f, os.path.join(out, f"bg-{role}_{tone}.png"), tone))
+                mode = company.THEME_BG[theme][2] if theme in company.THEME_BG else "hue"
+                t = company.tint_bg(f, os.path.join(out, f"bg-{role}_{tone}.png"), tone, mode)
+                s["_bg_light"] = company.bg_is_light(t if mode == "duo" else f)
+                s["_bg"] = url(t)
         s["_logo"], s["_logo_dark"] = url(logo), url(white) if white else None
         if s.get("icon"):
             s["_img"] = icon(s["icon"])

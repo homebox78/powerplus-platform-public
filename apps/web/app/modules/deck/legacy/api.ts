@@ -64,6 +64,8 @@ export type PlanSlide = {
   message?: string; mood?: string; scene?: string; keyword?: string; device?: string;
   wire?: WireBlock[];               // 와이어프레임 — 시안 전에 잡는 화면 구성(본문 기준 %)
   wire_checks?: string[];           // 배치 합격 기준에서 걸린 것(겹침·글 넘침·빠진 수치) — 서버가 채운다
+  wire_why?: string;                // 이 장의 관계 판단 한 줄("추이: 3년간 처리 건수 2.4배") — AI 가 종류·배치를 고른 까닭
+  wire_why_alt?: { a?: string; b?: string };   // A·B 안 각각의 관계 한 줄
   wire_alt?: { a: WireBlock[]; b: WireBlock[] };   // A·B 두 안 — 엔진이 같은 기획으로 다르게 짠 배치
   wire_at?: string;                 // 와이어프레임을 만든 시각(서버 UTC) — 엔진·AI 가 새로 짠 때
   wire_pick?: "a" | "b";            // 확정한 안(그 안이 wire 가 된다). 없으면 아직 고르지 않음 — 시안은 A안(wire)으로
@@ -74,7 +76,8 @@ export type PlanSlide = {
 /** 대본 한 장 — sec 배정 초, keep 남길 문장, screen 화면·시선, cues 동작, notes 말하는 법, cut 줄이는 법 */
 export type ScriptSlide = { n: number; title: string; lines: string[]; sec?: number; keep?: string; screen?: string; cues?: string[]; notes?: string[]; cut?: string };
 export type QA = { q: string; a: string; slide: number; kind?: string; need?: string };
-export type WireKind = "panel" | "card" | "person" | "image" | "screen" | "chart" | "table" | "flow" | "map" | "badge" | "band" | "text" | "gantt" | "phase" | "kpi" | "fishbone" | "hub" | "pyramid" | "matrix" | "funnel" | "cycle" | "venn" | "roadmap" | "isostack" | "gauge" | "proportion" | "converge" | "ridge" | "petal" | "stage";
+export type WireKind = "panel" | "card" | "person" | "image" | "screen" | "chart" | "table" | "flow" | "map" | "badge" | "band" | "text" | "gantt" | "phase" | "kpi" | "fishbone" | "hub" | "pyramid" | "matrix" | "funnel" | "cycle" | "venn" | "roadmap" | "isostack" | "gauge" | "proportion" | "converge" | "ridge" | "petal" | "stage"
+  | "dodont" | "quote" | "progress" | "swimlane" | "pin";   // 목록·이름·아이콘은 data/wire_kinds.json — 여기 이름과 같은지 wireParse.test.ts 가 본다
 /** 와이어프레임 상자 — x·y·w·h 는 본문(머리 띠·바닥 사이) 기준 %, t 제목, d 들어갈 글(줄마다) */
 export type WireBlock = { id: string; k: WireKind; x: number; y: number; w: number; h: number; t: string; d?: string };
 /** 표지·목차·간지 시안 — id: cover · toc · div1… (시안 파일은 mockup/<id>.jpg) */
@@ -102,7 +105,7 @@ export type Job = {
   mine?: boolean; shared?: boolean; comments?: PinComment[];
   /** 공유 링크 권한 0 끔 · 1 의견 · 2 편집 · 3 링크로 누구나 보기 / can_edit: 내가 기획·와이어프레임을 고칠 수 있다 / anon: 로그인 없이 링크로 보는 중 */
   share?: 0 | 1 | 2 | 3; can_edit?: boolean; anon?: boolean;
-  opts?: { slides: number; mockups: "plan" | "sample" | "all"; sample: number; front?: Front; style?: string; vstyle?: string; vtone?: string; ctheme?: string; ctone?: string; purpose?: "submit" | "present" | "company"; lang?: string; font_title?: string; font_body?: string; back?: number } | null;
+  opts?: { slides: number; mockups: "plan" | "sample" | "all"; sample: number; front?: Front; style?: string; vstyle?: string; vtone?: string; ctheme?: string; ctone?: string; cfree?: boolean; purpose?: "submit" | "present" | "company"; lang?: string; font_title?: string; font_body?: string; back?: number } | null;
   est_image_usd?: number | null;
   /** 단계별 비용 — engine 은 구독 사용분의 API 환산액(실제 청구 아님). engine 행의 a = 턴 수, b = 걸린 초 */
   script?: { made_at: string; chars: number; sec?: number; goal?: number; brief?: boolean; stale?: boolean; batch?: number; none?: boolean; slides: ScriptSlide[]; qa?: QA[] } | null;
@@ -133,7 +136,7 @@ const RESUME_KEY = (f: File) => `pd_up_${f.name}_${f.size}_${f.lastModified}`;
 
 export type MockupMode = "plan" | "sample" | "all";
 type UploadMeta = { title: string; note: string; pilot?: boolean; kind?: JobKind; budget_usd?: number | null; accent?: string | null; hold?: boolean;
-  slides?: number; mockups?: MockupMode; sample?: number; front?: Front; style?: string; ctheme?: string; ctone?: string; purpose?: "submit" | "present" | "company"; lang?: string; font_title?: string; font_body?: string; event?: string; date?: string };
+  slides?: number; mockups?: MockupMode; sample?: number; front?: Front; style?: string; ctheme?: string; ctone?: string; cfree?: boolean; purpose?: "submit" | "present" | "company"; lang?: string; font_title?: string; font_body?: string; event?: string; date?: string };
 /** 맥락 자료(RFP 등)를 작업에 붙인다 — 같은 분할 업로드, purpose=doc */
 export const uploadDoc = (file: File, jobId: string, onProgress: (p: UploadProgress) => void, signal: AbortSignal) =>
   uploadFile(file, { title: "", note: "" }, onProgress, signal, { purpose: "doc", job_id: jobId }) as unknown as Promise<{ docs: JobDoc[] }>;

@@ -15,7 +15,6 @@ use Pp\Core\Triage;
  */
 final class Kit
 {
-    public const WIRE_KINDS = ['card', 'panel', 'text', 'table', 'chart', 'flow', 'band', 'badge', 'kpi', 'gantt', 'phase', 'fishbone', 'hub', 'pyramid', 'matrix', 'funnel', 'cycle', 'venn', 'roadmap', 'isostack', 'gauge', 'proportion', 'converge', 'ridge', 'petal', 'stage', 'person', 'image', 'screen', 'map'];
     public const MOODS = ['문제 제기', '배경·현황', '해결·제안', '절차·방법', '성과·증명', '조직·인력', '마무리'];
     private const META = '/(도식화하면|도식화 하면|이 장표는|이 슬라이드|여기에 (?:넣|들어)|예시 이미지|화살표가 중요|하면 딱|placeholder|lorem|TBD|TODO|\[(?:이미지|그림|사진|표) ?(?:삽입|자리)\])/iu';
     private const VAGUE = '/(체계적(으로|인)|효율적(으로|인)|최선을 다|적극적(으로|인)|원활(하게|한)|안정적(으로|인) 수행|만전을 기|차질\s*없|다양한 방안|최적의|성공적(으로|인) 수행|극대화)/u';
@@ -591,7 +590,7 @@ final class Kit
         foreach (WireLayout::templates() as $id => $t) {
             $tpls[] = ['id' => $id, 'name' => $t['name'] ?? $id, 'desc' => $t['desc'] ?? '', 'rows' => $t['rows'] ?? []];
         }
-        $rules = (string) @file_get_contents(__DIR__ . '/prompt_wire.md');
+        $rules = WireKinds::prompt((string) @file_get_contents(__DIR__ . '/prompt_wire.md'));
         // 내부 참고 장 번호(D428 등)와 역할 소개 첫 줄은 사용자 AI 에 필요 없다
         $rules = (string) preg_replace('/\s*\|\s*(?:D\d{3}\s*)+\|/u', ' |', $rules);
         $rules = (string) preg_replace('/\|\s*실제 장표\s*\|/u', '|', $rules);
@@ -618,9 +617,10 @@ final class Kit
                     'wire' => '비권장(직접 좌표). {n, wire:[{k,t,d,x,y,w,h}…]} — x·y·w·h 는 본문 16:9 기준 %(0~100), 헤드라인 자리(y 15 미만) 침범 금지.',
                     'one_of' => '한 장에 rows·tpl·wire 가운데 하나만. 판정 응답의 slides[].wire 는 서버가 계산한 좌표다(detail:true 일 때만 실림).',
                 ],
-                'keys' => ['k' => '상자 종류(kinds)', 't' => '상자 제목·큰 글', 'd' => '상자 본문(줄바꿈 \\n, 표는 "칸 | 칸")', 'span' => '12칸 가운데 차지할 칸 수', 'h' => '높이 비중'],
+                'keys' => ['why' => '장마다 한 줄 — 이 장 메시지의 관계와 근거(예: "추이: 3년간 처리 건수 2.4배"). 관계를 먼저 정하고 종류·배치를 고른다', 'k' => '상자 종류(kinds)', 't' => '상자 제목·큰 글', 'd' => '상자 본문(줄바꿈 \\n, 표는 "칸 | 칸")', 'span' => '12칸 가운데 차지할 칸 수', 'h' => '높이 비중'],
             ],
-            'kinds' => ['panel', 'card', 'table', 'chart', 'flow', 'gantt', 'phase', 'kpi', 'fishbone', 'hub', 'pyramid', 'matrix', 'funnel', 'cycle', 'venn', 'roadmap', 'isostack', 'gauge', 'proportion', 'converge', 'ridge', 'petal', 'stage', 'badge', 'band', 'text', 'person', 'image', 'screen', 'map'],
+            'kinds' => WireKinds::kinds(),   // wire_kinds.json 한 벌 — 이름·쓰는 법은 rules_md 의 '종류(k)별로 적는 법'
+            'chart_types' => array_map(static fn($t) => ['id' => $t['id'], 'label' => $t['label']], (array) (WireKinds::reg()['chart_types'] ?? [])),
             'chars_per_line' => ['2' => 9, '3' => 15, '4' => 21, '5' => 27, '6' => 33, '8' => 45, '12' => 70, 'per_slide_lines' => 22],
             'templates' => $tpls,
             'rules_md' => trim($rules),
@@ -684,8 +684,8 @@ final class Kit
                 foreach (['rows', 'cols', 'stack', 'blocks', 'wire'] as $key) foreach ((array) ($node[$key] ?? []) as $c) $walk($c);
             };
             $walk($s);
-            $bad = array_values(array_unique(array_diff($kinds, self::WIRE_KINDS)));
-            if ($bad) $note('warn', '모르는 상자 종류: ' . implode(', ', $bad) . '(카드로 그립니다)', '종류는 ' . implode(', ', self::WIRE_KINDS) . ' 가운데 하나');
+            $bad = array_values(array_unique(array_diff($kinds, WireKinds::kinds())));
+            if ($bad) $note('warn', '모르는 상자 종류: ' . implode(', ', $bad) . '(카드로 그립니다)', '종류는 ' . implode(', ', WireKinds::kinds()) . ' 가운데 하나');
             $wire = $mode === '' ? [] : WireLayout::fromAi($s);
             $cnt = count($wire);
             if ($mode !== '' && $cnt === 0) $note('fatal', '그릴 상자가 없습니다(빈 상자·한 단어 상자는 걸러집니다)', '상자에 제목과 항목 두 줄 이상을 담으세요');
@@ -701,8 +701,10 @@ final class Kit
                 $fatal = str_contains($msg, '겹칩니다') || str_contains($msg, '화면 밖') || str_contains($msg, '헤드라인 자리');
                 $note($fatal ? 'fatal' : 'warn', $msg, self::wireFix($msg));
             }
+            // 관계를 먼저 정했는가(2026-10-18 '공장형 와이어' 대신 내용에 맞는 표현) — 알림(info, 1점)만
+            if ($mode !== '' && $cnt > 0 && trim((string) ($s['why'] ?? '')) === '') $note('info', '이 장의 관계 한 줄(why)이 없습니다', 'why 에 "관계: 근거"(예: "추이: 3년간 처리 건수 2.4배")를 먼저 정하고 그 관계에 맞는 종류·배치를 고르세요');
             $issues = array_merge($issues, $mine);
-            $row = ['n' => $n, 'mode' => $mode, 'boxes' => $cnt, 'issues' => array_map(static fn($x) => $x['issue'], $mine)];
+            $row = ['n' => $n, 'mode' => $mode, 'boxes' => $cnt, 'why' => trim((string) ($s['why'] ?? '')), 'issues' => array_map(static fn($x) => $x['issue'], $mine)];
             if ($wantWire) $row['wire'] = $wire;
             if ($wantSvg) $row['svg'] = self::svg($wire, (string) ($planBy[$n]['title'] ?? ($s['title'] ?? '')));
             $out[] = $row;
@@ -728,7 +730,9 @@ final class Kit
     {
         $W = 1600; $H = 900;
         $e = static fn($s) => htmlspecialchars((string) $s, ENT_QUOTES | ENT_XML1, 'UTF-8');
-        $label = ['panel' => '패널', 'card' => '카드', 'table' => '표', 'chart' => '그래프', 'flow' => '흐름', 'gantt' => '일정', 'phase' => '단계', 'kpi' => '수치', 'fishbone' => '원인 분석', 'hub' => '허브', 'pyramid' => '피라미드', 'matrix' => '2×2', 'funnel' => '깔때기', 'cycle' => '순환', 'venn' => '벤 도식', 'roadmap' => '로드맵', 'isostack' => '계층', 'gauge' => '달성률', 'proportion' => '비율 막대', 'converge' => '수렴-확산', 'ridge' => '능선 연혁', 'petal' => '꽃잎 전략', 'stage' => '플랫폼 무대', 'badge' => '강조', 'band' => '결론 띠', 'text' => '글', 'person' => '인물', 'image' => '그림', 'screen' => '화면', 'map' => '지도'];
+        $ctype = [];
+        foreach ((array) (WireKinds::reg()['chart_types'] ?? []) as $ct) $ctype[$ct['id']] = $ct['label'];
+        $data = WireKinds::with('data');
         $o = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ' . $W . ' ' . $H . '" width="' . $W . '" height="' . $H . '" font-family="Pretendard, \'Malgun Gothic\', sans-serif">';
         $o .= '<rect width="' . $W . '" height="' . $H . '" fill="#ffffff"/>';
         $o .= '<rect x="' . (0.02 * $W) . '" y="' . (0.03 * $H) . '" width="' . (0.96 * $W) . '" height="' . (0.09 * $H) . '" fill="#f4f4f4"/>';
@@ -737,14 +741,20 @@ final class Kit
             $x = $b['x'] / 100 * $W; $y = $b['y'] / 100 * $H; $w = $b['w'] / 100 * $W; $h = $b['h'] / 100 * $H;
             $dark = $b['k'] === 'band';
             $o .= '<rect x="' . round($x, 1) . '" y="' . round($y, 1) . '" width="' . round($w, 1) . '" height="' . round($h, 1) . '" rx="6" fill="' . ($dark ? '#555' : '#e7e7e7') . '" stroke="#bdbdbd" stroke-width="2"/>';
-            $tag = $label[$b['k']] ?? $b['k'];
+            $tag = WireKinds::label((string) $b['k']);
+            $body = (string) ($b['d'] ?? '');
+            if (in_array($b['k'], $data, true)) {   // 데이터 그림 — 유형을 라벨에, 메시지는 본문 첫 줄(▶)로, 나머지 머리 줄은 빼고
+                [$mt, $rest] = WireKinds::meta($body);
+                if ($b['k'] === 'chart') $tag .= ' · ' . ($ctype[WireKinds::chart($body)['type']] ?? '');
+                $body = (($mt['message'] ?? '') !== '' ? '▶ ' . $mt['message'] . "\n" : '') . implode("\n", $rest);
+            }
             $t = trim((string) ($b['t'] ?? ''));
             $o .= '<text x="' . round($x + 12, 1) . '" y="' . round($y + 30, 1) . '" font-size="20" fill="' . ($dark ? '#eee' : '#777') . '">' . $e($tag) . '</text>';
             if ($t !== '') {
                 $max = max(4, (int) floor(($w - 24) / 22));
                 $o .= '<text x="' . round($x + 12, 1) . '" y="' . round($y + 58, 1) . '" font-size="22" font-weight="700" fill="' . ($dark ? '#fff' : '#333') . '">' . $e(mb_substr($t, 0, $max)) . '</text>';
             }
-            $lines = array_slice(array_values(array_filter(array_map('trim', explode("\n", (string) ($b['d'] ?? ''))), 'strlen')), 0, max(0, (int) floor(($h - 70) / 26)));
+            $lines = array_slice(array_values(array_filter(array_map('trim', explode("\n", $body)), 'strlen')), 0, max(0, (int) floor(($h - 70) / 26)));
             $max = max(4, (int) floor(($w - 24) / 18));
             foreach ($lines as $li => $l) {
                 $o .= '<text x="' . round($x + 12, 1) . '" y="' . round($y + 86 + $li * 26, 1) . '" font-size="17" fill="' . ($dark ? '#ddd' : '#555') . '">' . $e(mb_substr($l, 0, $max)) . '</text>';

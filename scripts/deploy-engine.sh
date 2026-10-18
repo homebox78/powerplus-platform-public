@@ -17,8 +17,9 @@ cd "$ROOT/engine"
 # 한 번 나온 오류의 회귀 시험(known_errors.json) — 하나라도 실패하면 올리지 않는다
 PY=$(command -v python3 || command -v python)
 "$PY" tests/test_known.py || { echo "회귀 시험 실패 — 배포 중단"; exit 3; }
+"$PY" tests/test_wire_kinds.py || { echo "와이어 종류 시험 실패 — 배포 중단(R62)"; exit 3; }
 FILES=$(ls *.py *.md *.sh *.ps1 *.bat config.example.json 2>/dev/null | grep -v '^README.md$')
-FILES="$FILES known_errors.json pipeline skill templates"   # 기본 규칙 원천 · 초안 다듬기 도구·si-deck 스킬 사본(2026-10-12) · 세로 제안서 기본 양식(2026-10-14)
+FILES="$FILES known_errors.json wire_kinds.json pipeline skill templates"   # wire_kinds.json = 와이어 상자 종류 한 벌(2026-10-18, wirekinds.py 가 읽는다)   # 기본 규칙 원천 · 초안 다듬기 도구·si-deck 스킬 사본(2026-10-12) · 세로 제안서 기본 양식(2026-10-14)
 
 if [ "${FORCE:-0}" != "1" ]; then
   busy=$("${SSH[@]}" "sudo mysql -N pp_platform -e \"SELECT COUNT(*) FROM deck_jobs WHERE status='running' AND deleted_at IS NULL\"")

@@ -894,6 +894,10 @@ export function MockupReview({ job, onChange, isAdmin, me, onLogout }: { job: Jo
                   </div>
                 </div>
                 <div className="flex justify-center">{fcur ? frontStage : stage}</div>
+                {/* 이 장의 관계 판단 — AI 가 어떤 관계로 보고 종류·배치를 골랐는지(2026-10-18). 다르면 상자 종류를 바꾸거나 AI 로 다시 짠다 */}
+                {wEdit && cur?.wire_why && (
+                  <p className="mt-3 text-[13px] leading-snug text-dim"><b className="font-semibold text-ink3">관계</b> · {cur.wire_why}</p>
+                )}
                 {/* 합격 기준 — 겹침·글 넘침·빠진 수치 등(서버가 배치·글이 바뀔 때마다 다시 본다) */}
                 {wEdit && cur && !!cur.wire_checks?.length && (
                   <div className="mt-3"><Warn>

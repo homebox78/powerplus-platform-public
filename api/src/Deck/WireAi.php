@@ -41,7 +41,7 @@ final class WireAi
         $user = '덱 제목: ' . ($plan['title'] ?? $j['title']) . ($note !== '' ? "\n요청: " . $note : '')
             . "\n\n아래 " . count($src) . "장의 와이어프레임을 짠다(n 은 쪽 번호 그대로).\n\n" . implode("\n\n", $src);
         $d = AiKeys::ask($j, 'plan', [
-            'messages' => [['role' => 'system', 'content' => (string) file_get_contents(__DIR__ . '/prompt_wire.md')], ['role' => 'user', 'content' => $user]],
+            'messages' => [['role' => 'system', 'content' => WireKinds::prompt((string) file_get_contents(__DIR__ . '/prompt_wire.md'))], ['role' => 'user', 'content' => $user]],
             'response_format' => ['type' => 'json_object'], 'max_tokens' => 1600 * count($src) + 600, 'temperature' => 0.2,
         ]);
         $out = json_decode(AiKeys::jsonClean((string) ($d['choices'][0]['message']['content'] ?? '')), true);
@@ -52,7 +52,7 @@ final class WireAi
             $n = (int) ($x['n'] ?? 0);
             if (!in_array($n, $ns, true) || !is_array($x)) continue;
             $w = WireLayout::fromAi($x);
-            if ($w) $save[] = ['n' => $n, 'wire' => $w, 'wire_ai' => $w];   // wire_ai: AI 가 짠 그대로 — 사람이 고친 것과 견줘 배운다
+            if ($w) $save[] = ['n' => $n, 'wire' => $w, 'wire_ai' => $w, 'wire_why' => trim((string) ($x['why'] ?? ''))];   // wire_ai: AI 가 짠 그대로 — 사람이 고친 것과 견줘 배운다
         }
         if (!$save) Legacy::fail('와이어프레임을 짜지 못했습니다. 다시 눌러 주세요.', 502);
         Jobs::event($id, 'info', '와이어프레임 AI 로 다시 짬 — ' . implode(',', array_column($save, 'n')) . '쪽');

@@ -51,9 +51,21 @@ final class WireLayout
         $em = self::EM;
         if ($k === 'band') return max(8.5, 2.6 * $em + (count($lines) ? 1.3 * $em : 0));
         if ($k === 'badge') return 3.6 * $em + (count($lines) ? 2.2 * $em : 0);
-        if ($k === 'chart') return 9 * $em;
+        // 데이터 그림의 메시지 줄은 그림 아래 말풍선 한 줄(약 1.6줄)을 더 먹는다 — 강조·유형·단위 줄은 자리를 안 먹는다(2026-10-18)
+        $msg = 0.0;
+        if (in_array($k, WireKinds::with('data'), true)) {
+            $msg = isset(WireKinds::meta((string) ($b['d'] ?? ''))[0]['message']) ? 1.6 * $em : 0.0;
+            // 머리 줄은 항목·행으로 세지 않는다(출처 줄은 원래대로 센다)
+            $lines = array_values(array_filter($lines, static fn($l) => ($m = WireKinds::meta($l)[0]) === [] || isset($m['source'])));
+        }
+        if ($k === 'chart') {
+            $ch = WireKinds::chart((string) ($b['d'] ?? ''));
+            $legend = count($ch['series']) > 1 || in_array($ch['type'], ['pair', 'stacked', 'combo'], true) ? 1.2 * $em : 0.0;
+            $rows = $ch['type'] === 'hbar' ? max(3, count($ch['rows'])) * 1.6 * $em : 0.0;   // 가로 막대는 항목 수만큼 높아진다
+            return max(9 * $em, $rows + 2.6 * $em) + $legend + ($ch['source'] !== '' ? 1.0 * $em : 0) + $msg;
+        }
         if ($k === 'gantt') return ($t !== '' ? 2.2 : 0.6) * $em + 1.6 * $em + max(2, count($lines) - 1) * 1.9 * $em;
-        if ($k === 'kpi') return ($t !== '' ? 2.2 : 0.6) * $em + 3.4 * $em + 1.4 * $em + (preg_grep('/^\s*[-•]?\s*(출처|자료)\s*[:：]/u', $lines) ? 1.2 * $em : 0);
+        if ($k === 'kpi') return ($t !== '' ? 2.2 : 0.6) * $em + 3.4 * $em + 1.4 * $em + (preg_grep('/^\s*[-•]?\s*(출처|자료)\s*[:：]/u', $lines) ? 1.2 * $em : 0) + $msg;
         // 2026-10-12 레퍼런스 학습 도식 — 그림이 주인공이라 글 양보다 최소 면적이 중요
         if ($k === 'fishbone') return ($t !== '' ? 1.0 : 0.6) * $em + max(10, 3.2 * (int) ceil(count($lines) / 2) + 4) * $em;
         if ($k === 'hub') return max(12, 1.6 * count($lines) + 6) * $em;
@@ -67,13 +79,27 @@ final class WireLayout
         if ($k === 'venn') return max(12, ($nn >= 3 ? 15 : 11)) * $em;
         if ($k === 'roadmap') return $th + 13 * $em;
         if ($k === 'isostack') return $th + max(3, $nn) * 2.6 * $em;
-        if ($k === 'gauge') return $th + 8.5 * $em + (count($lines) > $nn ? 1.2 * $em : 0);
-        if ($k === 'proportion') return $th + 4.6 * $em + (count($lines) > $nn ? 1.2 * $em : 0);
+        if ($k === 'gauge') return $th + 8.5 * $em + (count($lines) > $nn ? 1.2 * $em : 0) + $msg;
+        if ($k === 'proportion') return $th + 4.6 * $em + (count($lines) > $nn ? 1.2 * $em : 0) + $msg;
         // 2026-10-14 원본 대조 확장 4종(docs/ppt-레퍼런스-디자인-학습-2026-10-14-원본대조.md)
         if ($k === 'converge') return $th + max(11, 3.0 * max(1, (int) ceil($nn / 2)) + 4) * $em;   // 왼쪽 문제·오른쪽 해결 카드 + 가운데 원
         if ($k === 'ridge') return $th + 14 * $em;   // 오르는 능선 + 위 연도 카드·아래 성과 알약
         if ($k === 'petal') return max(13, 2.0 * $nn + 6) * $em;   // 가운데 큰 원 + 둘레 꽃잎 + 좌우 설명
         if ($k === 'stage') return $th + 14 * $em;   // 원기둥 기단 + 고리 + 떠 있는 원
+        // 2026-10-18 레퍼런스 학습 §7 확장 5종
+        if ($k === 'dodont') {   // 열 머리 알약 + 짝마다 한 줄(긴 글은 두 줄)
+            $cpl = self::cpl($w / 2 - 3);
+            $h = 0.0;
+            $pairs = (int) ceil(max(1, $nn) / 2);
+            foreach ($lines as $l) { $p = explode('|', $l, 2); $h = max($h, (float) ceil(mb_strlen(trim($p[1] ?? $p[0])) / max(1, $cpl))); }
+            return $th + 2.4 * $em + $pairs * max(2.6, 1.3 * $h + 1.4) * $em;
+        }
+        if ($k === 'quote') {   // 큰 따옴표 + 큰 글(1.35배) + 화자
+            return 2.6 * $em + max(1, (int) ceil(mb_strlen($t) / max(1, self::cpl($w, 1.25)))) * 1.75 * $em + (count($lines) ? 1.6 * $em : 0) + 0.8 * $em;
+        }
+        if ($k === 'progress') return $th + max(2, $nn) * 2.0 * $em + (count($lines) > $nn ? 1.2 * $em : 0) + $msg;
+        if ($k === 'swimlane') return $th + 1.8 * $em + max(2, $nn - 1) * 3.4 * $em;   // 머리 줄 + 레인마다 상자 한 줄
+        if ($k === 'pin') return $th + max(12, 2.6 * max(2, $nn - 1) + 2) * $em;   // 화면 캡처가 주인공 — 최소 면적
         if ($k === 'phase') {
             $n = max(1, count($lines));
             $cpl = self::cpl(($w - 3) / $n, 0.8);
@@ -88,13 +114,13 @@ final class WireLayout
             foreach ($lines as $l) { $p = preg_split('/[:：]/u', $l, 2); $desc = max($desc, (int) ceil(mb_strlen(trim($p[1] ?? '')) / max(1, $cpl))); }
             return ($t !== '' ? 2.2 : 0.6) * $em + 2.6 * $em + $desc * 1.05 * $em + 1.2 * $em;
         }
-        if (in_array($k, ['person', 'image', 'screen', 'map'], true)) {
+        if (in_array($k, WireKinds::with('pic'), true)) {
             $say = count(array_filter($lines, static fn($l) => !preg_match(self::PIC_LINE, $l)));
             return max(7 * $em, 3.2 * $em + ceil($say / 2) * 1.7 * $em + ($t !== '' ? 1.4 * $em : 0));
         }
         if ($k === 'table') {
             $rows = count(array_filter($lines, static fn($l) => !preg_match('/^\|?\s*:?-{2,}/', $l)));
-            return ($t !== '' ? 2.2 : 0.8) * $em + $rows * 1.75 * $em + 0.8 * $em;
+            return ($t !== '' ? 2.2 : 0.8) * $em + $rows * 1.75 * $em + 0.8 * $em + $msg;
         }
         // panel · card · text — 제목 + 줄(폭에 따라 줄바꿈)
         $cpl = self::cpl($w);
@@ -202,14 +228,14 @@ final class WireLayout
 
     private static function kindClass(string $k): string
     {
-        return $k === 'band' ? 'band' : (in_array($k, ['person', 'image', 'screen', 'map', 'chart', 'flow', 'gantt', 'phase', 'fishbone', 'hub', 'pyramid', 'matrix', 'funnel', 'cycle', 'venn', 'roadmap', 'isostack', 'gauge', 'proportion', 'converge', 'ridge', 'petal', 'stage'], true) ? 'visual' : 'text');
+        return WireKinds::cls($k);   // wire_kinds.json cls — 종류를 더해도 여기는 안 고친다
     }
 
     /** 글이 하나도 없는 글 상자('※ 보강 필요'만 든 것 포함) */
     private static function emptyText(array $b): bool
     {
         $k = (string) ($b['k'] ?? 'card');
-        if (in_array($k, ['person', 'image', 'screen', 'map'], true)) return false;
+        if (in_array($k, WireKinds::with('pic'), true)) return false;
         $strip = static fn($s) => trim(implode("\n", array_filter(explode("\n", (string) $s), static fn($l) => !str_contains($l, '보강 필요'))));
         return $strip($b['t'] ?? '') === '' && $strip($b['d'] ?? '') === '';
     }
@@ -366,7 +392,7 @@ final class WireLayout
     public static function check(array $wire, array $slide = []): array
     {
         $out = [];
-        $name = static fn(array $b) => '「' . (mb_substr(trim((string) ($b['t'] ?? '')), 0, 14) ?: ['panel' => '패널', 'card' => '카드', 'table' => '표', 'chart' => '그래프', 'flow' => '흐름', 'band' => '결론 띠', 'badge' => '강조', 'text' => '글', 'gantt' => '일정', 'phase' => '단계', 'kpi' => '수치', 'fishbone' => '원인 분석', 'hub' => '허브', 'pyramid' => '피라미드', 'matrix' => '2×2', 'funnel' => '깔때기', 'cycle' => '순환', 'venn' => '벤 도식', 'roadmap' => '로드맵', 'isostack' => '계층', 'gauge' => '달성률', 'proportion' => '비율 막대', 'converge' => '수렴-확산', 'ridge' => '능선 연혁', 'petal' => '꽃잎 전략', 'stage' => '플랫폼 무대'][$b['k'] ?? ''] ?? '그림') . '」';
+        $name = static fn(array $b) => '「' . (mb_substr(trim((string) ($b['t'] ?? '')), 0, 14) ?: WireKinds::label((string) ($b['k'] ?? ''))) . '」';
         // 화면 밖 · 헤드라인 자리
         foreach ($wire as $b) {
             if ($b['y'] < 12.5) $out[] = $name($b) . ' 상자가 헤드라인 자리(맨 위)를 덮습니다';
@@ -418,6 +444,57 @@ final class WireLayout
                 if (count($cells) !== 4) $out[] = $name($b) . ' — 사분면 내용은 4줄이어야 합니다(지금 ' . count($cells) . '줄). 축 이름은 첫 줄 "축: 가로 | 세로"로만';
             }
         }
+        // 데이터 그림 판정(2026-10-18) — 그래프 수치 2개 이상 · % 비율 합 100 · 달성률 100 이하 · 깔때기는 줄어든다 · KPI 2~4개
+        $num = static fn(string $s): ?float => preg_match('/[-+−]?\d[\d,]*(?:\.\d+)?/u', $s, $mm) ? (float) str_replace([',', '−'], ['', '-'], $mm[0]) : null;
+        foreach ($wire as $b) {
+            $k = (string) $b['k'];
+            $d = (string) ($b['d'] ?? '');
+            [$mt, $rest] = WireKinds::meta($d);
+            $items = array_values(array_filter(array_map('trim', $rest), static fn($l) => $l !== '' && !str_contains($l, '보강 필요')));
+            if ($k === 'chart') {
+                $ch = WireKinds::chart($d);
+                $vals = [];
+                foreach ($ch['rows'] as $r) foreach ($r[1] as $v) if ($v !== null) $vals[] = $v;
+                if (count($vals) < 2) $out[] = $name($b) . ' 그래프에 수치가 ' . count($vals) . '개입니다 — 수치가 둘 이상일 때만 그래프로(하나면 강조·수치 상자로)';
+                if ($ch['type'] === 'donut' && $ch['unit'] === '%') {
+                    $sum = array_sum(array_map(static fn($r) => (float) ($r[1][0] ?? 0), $ch['rows']));
+                    if (abs($sum - 100) > 2) $out[] = $name($b) . ' 도넛의 % 합이 ' . round($sum, 1) . '입니다 — 구성비는 합이 100 이어야 합니다';
+                }
+            }
+            if ($k === 'proportion') {
+                $vs = []; $pct = ($mt['unit'] ?? '') === '%';
+                $all = true;
+                foreach ($items as $l) {
+                    $c = str_contains($l, '|') ? array_map('trim', explode('|', $l)) : array_map('trim', preg_split('/[:：]/u', $l, 2));
+                    if (count($c) < 2 || ($v = $num($c[1])) === null) continue;
+                    $vs[] = $v;
+                    if (!str_contains($c[1], '%')) $all = false;
+                }
+                if (($pct || ($vs && $all)) && abs(array_sum($vs) - 100) > 2) $out[] = $name($b) . ' 비율(%)의 합이 ' . round(array_sum($vs), 1) . '입니다 — 합이 100 이 되게 고치세요';
+            }
+            if ($k === 'gauge') {
+                foreach ($items as $l) {
+                    if (preg_match('/^\s*[-•]?\s*(출처|자료|source)\s*[:：]/iu', $l)) continue;
+                    $v = $num(explode('|', $l)[0]);
+                    if ($v !== null && $v > 100) { $out[] = $name($b) . ' 달성률 ' . $v . ' — 링은 100 을 넘을 수 없습니다(증가율이면 수치 상자로)'; break; }
+                }
+            }
+            if ($k === 'funnel') {
+                $prev = null;
+                foreach ($items as $l) {
+                    if (!str_contains($l, '|')) continue;
+                    $parts = explode('|', $l);
+                    $v = $num((string) end($parts));
+                    if ($v === null) continue;
+                    if ($prev !== null && $v > $prev) { $out[] = $name($b) . ' 깔때기 수치가 아래에서 커집니다(' . $prev . ' → ' . $v . ') — 위가 가장 큰 순서로 적으세요'; break; }
+                    $prev = $v;
+                }
+            }
+            if ($k === 'kpi') {
+                $cnt = count(array_filter($items, static fn($l) => !preg_match('/^\s*[-•]?\s*(출처|자료|source)\s*[:：]/iu', $l)));
+                if ($cnt < 2 || $cnt > 4) $out[] = $name($b) . ' 수치가 ' . $cnt . '개입니다 — 큰 수치 줄은 2~4개(하나면 강조, 많으면 표)';
+            }
+        }
         // 기획의 수치가 빠졌는가 — 단위가 붙은 수치만 본다
         $content = (string) ($slide['content'] ?? '');
         if ($content !== '' && $wire) {
@@ -430,6 +507,10 @@ final class WireLayout
                 $key = preg_replace('/[\s,]/u', '', $num);
                 if (mb_strlen($key) >= 2 && !str_contains($text, $key)) $miss[] = trim($num);
             }
+            // 수치가 셋 이상인데 글 상자(card·panel·text)로만 짰다 — 수치는 그래프·KPI·표로 보여야 설득된다(2026-10-18)
+            $boxes = array_filter($wire, static fn($b) => $b['k'] !== 'band');
+            if (count(array_unique($m[0])) >= 3 && $boxes && !array_filter($boxes, static fn($b) => !in_array($b['k'], ['card', 'panel', 'text'], true)))
+                $out[] = '수치가 ' . count(array_unique($m[0])) . '개인데 글 상자로만 짰습니다 — chart·kpi·table·gauge·progress 가운데 하나로 수치를 보이세요';
             if ($miss) $out[] = '기획의 수치가 와이어프레임에 없습니다: ' . implode(', ', array_slice($miss, 0, 5)) . (count($miss) > 5 ? ' 외 ' . (count($miss) - 5) . '개' : '');
         }
         return array_values(array_unique(array_slice($out, 0, 8)));

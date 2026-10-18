@@ -2,7 +2,7 @@
 // 지표는 옛 파워플러스 관리자(UsageService::analytics)에서 살아남은 것만: 핵심 3지표·추이·요일×시간·카테고리 실사용·인기 에셋·활발한 사용자·최근 삽입.
 // 데이터 = GET /admin/stats(합계·감사 로그) + GET /admin/analytics(분석, 한 번). 가드는 admin-layout.tsx. 색은 무채색, 주황(point)은 추세 배지 한 곳만.
 import { useQuery } from "@tanstack/react-query";
-import { AlertTriangle, ArrowRight, Columns3, MoreHorizontal, TrendingDown, TrendingUp } from "lucide-react";
+import { AlertTriangle, Columns3, MoreHorizontal, TrendingDown, TrendingUp } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Link } from "react-router";
 import { Area, AreaChart, Bar, BarChart, CartesianGrid, Cell, Label, Line, LineChart, Pie, PieChart, XAxis, YAxis } from "recharts";
@@ -21,7 +21,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AdminTitle, SortHead, useSort } from "@/components/admin/admin-ui";
 import { AtText } from "@/components/admin/at-text";
-import { AUDIT_KO, auditTargetKo, type AdminAnalytics, type AdminStats, type AnalyticsPeriod, CHANNEL_KO, DECK_STATUS_KO, fetchAnalytics, fetchStats, fetchSystem, fmtAt } from "@/lib/admin";
+import { AUDIT_KO, auditTargetKo, type AdminAnalytics, type AnalyticsPeriod, CHANNEL_KO, DECK_STATUS_KO, fetchAnalytics, fetchOps, fetchStats, fetchSystem, fmtAt, type AdminOps } from "@/lib/admin";
 import { useMe } from "@/lib/auth";
 import { LiveStatus } from "@/components/hb/live-status";
 import type { AdminSystem, MetricsRange, ServerMetrics } from "@/lib/admin";
@@ -47,24 +47,15 @@ export default function AdminDashboard() {
 
   return (
     <div className="flex min-w-0 flex-col gap-6">
-      <div><AdminTitle title="대시보드" desc="오늘 처리할 일 → 서비스 상태 → 추이 순으로 봅니다." /></div>
+      <div><AdminTitle title="대시보드" desc="메뉴 묶음별 처리할 일 → 서버 상태 → 모듈 지표 → 추이 순으로 봅니다." /></div>
 
-      <TodoStrip s={s} />
+      <OpsBoard />
 
       <SystemStrip />
 
-      <TrendCard a={a} period={period} onPeriod={setPeriod} fetching={an.isFetching} />
-
       <ModuleCards a={a} loading={an.isLoading} />
 
-      <div className="grid min-w-0 grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
-        <MiniKpi label="사용자" value={n(s?.users.total)} sub={s ? `임직원 ${s.users.staff.toLocaleString()} · 외부 ${s.users.external.toLocaleString()}` : ""} to="/admin/users" />
-        <MiniKpi label="에셋" value={n(s?.assets)} sub="powerAssets" to="/admin/assets" />
-        <MiniKpi label="장표 작업" value={n(s?.deck_jobs)} sub="powerDeck" to="/admin/deck" />
-        <MiniKpi label="시안" value={n(s?.mockups)} sub="powerMock" to="/admin/mockups" />
-        <MiniKpi label="열린 문의" value={n(s?.contacts_open)} sub="답변 전" to="/admin/contacts" alert={(s?.contacts_open ?? 0) > 0} />
-        <MiniKpi label="삭제요청 대기" value={n(s?.removals.pending)} sub={s && s.removals.overdue > 0 ? `기한 지남 ${s.removals.overdue}건` : "48시간 안에 처리"} to="/admin/removals" alert={(s?.removals.overdue ?? 0) > 0} />
-      </div>
+      <TrendCard a={a} period={period} onPeriod={setPeriod} fetching={an.isFetching} />
 
       <ModuleTabs a={a} loading={an.isLoading} />
 
@@ -114,39 +105,78 @@ function Donut({ pct }: { pct: number }) {
   );
 }
 
-/** 오늘 할 일 — 열린 문의·삭제요청 대기. 둘 다 0 이면 "처리할 것 없음" 한 줄. */
-function TodoStrip({ s }: { s?: AdminStats }) {
-  if (!s) return null;
-  const items = [
-    { n: s.contacts_open, label: "답변 전 문의", to: "/admin/contacts", urgent: false },
-    { n: s.removals.pending, label: s.removals.overdue > 0 ? `삭제요청 대기 · 기한 지남 ${s.removals.overdue}건` : "삭제요청 대기", to: "/admin/removals?status=pending", urgent: s.removals.overdue > 0 },
-  ].filter((x) => x.n > 0);
-  if (!items.length) return <p className="rounded-panel border border-line bg-ground-2 px-4 py-3 text-md text-ink-3">오늘 처리할 것 없음</p>;
-  return (
-    <div className="flex flex-wrap gap-2" aria-label="오늘 할 일">
-      {items.map((x) => (
-        <Link key={x.to} to={x.to} className={cn("inline-flex min-h-10 items-center gap-2 rounded-panel border px-4 py-2 text-md font-semibold transition-colors hover:bg-ground-2", x.urgent ? "border-point text-point-ink" : "border-line text-ink")}>
-          {x.urgent && <AlertTriangle className="size-4 shrink-0" aria-hidden />}
-          {x.label} <span className="tabular-nums">{x.n}</span>
-          <ArrowRight className="size-4 shrink-0" aria-hidden />
-        </Link>
-      ))}
-    </div>
-  );
-}
+/** 운영 현황판 — 왼쪽 메뉴 묶음(요청 처리·모듈 운영·품질 검수·콘텐츠·회원·설정)과 같은 짜임. 칸마다 손이 갈 수를 보여 주고 그 메뉴로 보낸다.
+ *  주황(point)은 늦었거나 멈춘 것만(기한 지남·멈춘 작업·실패·다시 생긴 결함·휴면 해제 요청). 데이터 = GET /admin/ops, 1분마다 */
+type OpsRow = { label: string; value: string; sub?: string; to: string; warn?: boolean };
+const ago = (at: string | null) => { if (!at) return ""; const d = Math.floor((Date.now() - new Date(at.replace(" ", "T")).getTime()) / 86_400_000); return d <= 0 ? "오늘 들어옴" : `가장 오래된 것 ${d}일 전`; };
 
-function MiniKpi({ label, value, sub, to, alert }: { label: string; value: string; sub: string; to?: string; alert?: boolean }) {
-  const body = (
-    <>
-      <span className="text-xs text-ink-4">{label}</span>
-      <span className={cn("mt-1 text-[22px] font-extrabold tabular-nums leading-none tracking-[-0.02em]", alert && "text-point-ink")}>{value}</span>
-      <span className={cn("mt-1.5 truncate text-xs", alert ? "font-semibold text-point-ink" : "text-ink-4")}>{sub}</span>
-    </>
-  );
+function OpsBoard() {
+  const { isAdmin } = useMe();
+  const q = useQuery({ queryKey: ["admin", "ops"], queryFn: fetchOps, enabled: isAdmin, refetchInterval: 60_000, refetchIntervalInBackground: false });
+  const o = q.data;
+  const chk = (k: keyof AdminOps["quality"], label: string, to: string): OpsRow => {
+    const c = o?.quality[k];
+    return { label, value: n(c?.open), sub: c && c.regressed > 0 ? `다시 생김 ${c.regressed}` : undefined, to, warn: (c?.regressed ?? 0) > 0 };
+  };
+  const groups: Array<{ title: string; span?: boolean; rows: OpsRow[]; foot?: string }> = !o ? [] : [
+    { title: "요청 처리", rows: [
+      { label: "답변 전 문의", value: n(o.requests.contacts), sub: ago(o.requests.contacts_oldest), to: "/admin/contacts?status=open" },
+      { label: "자료 요청 접수", value: n(o.requests.asset_requests), sub: ago(o.requests.asset_requests_oldest), to: "/admin/requests" },
+      { label: "삭제요청 대기", value: n(o.requests.removals), sub: o.requests.removals_overdue > 0 ? `기한 지남 ${o.requests.removals_overdue}건` : "48시간 안에 처리", to: "/admin/removals?status=pending", warn: o.requests.removals_overdue > 0 },
+    ] },
+    { title: "모듈 운영", span: true, rows: [
+      { label: "장표 대기열", value: n(o.modules.deck_queue), sub: `진행 ${o.modules.deck_running}`, to: "/admin/deck" },
+      { label: "멈춘 장표 작업", value: n(o.modules.deck_stalled), sub: "10분 넘게 소식 없음", to: "/admin/deck", warn: o.modules.deck_stalled > 0 },
+      { label: "실패한 작업(24시간)", value: n(o.modules.deck_failed24), to: "/admin/deck", warn: o.modules.deck_failed24 > 0 },
+      { label: "시안 확인 대기", value: n(o.modules.deck_review), sub: "사용자 확정 전", to: "/admin/deck" },
+      { label: "이번 달 AI 비용", value: `$${o.modules.ai_month_usd.toFixed(2)}`, sub: "powerDeck 전체", to: "/admin/deck-settings/bill" },
+      { label: "결과 없던 검색(7일)", value: n(o.modules.zero_search_total), sub: o.modules.zero_searches.slice(0, 3).map((z) => z.q).join(" · ") || undefined, to: "/admin/search" },
+      { label: "새 에셋(7일)", value: n(o.modules.assets_new7), to: "/admin/assets" },
+      { label: "새 시안(7일)", value: n(o.modules.mock_new7), to: "/admin/mockups" },
+    ] },
+    { title: "품질 검수", foot: "열린 결함 수", rows: [
+      chk("site", "사이트 공통", "/admin/site/checklist"), chk("assets", "powerAssets", "/admin/qa/assets"), chk("deck", "powerDeck", "/admin/deck/checklist"),
+      chk("mock", "powerMock", "/admin/mock/checklist"), chk("guide", "powerGuide", "/admin/qa/guide"), chk("mcp", "powerMCP", "/admin/qa/mcp"),
+    ] },
+    { title: "콘텐츠", rows: [
+      { label: "커뮤니티 새 글(7일)", value: n(o.content.posts7), to: "/admin/community" },
+      { label: "새 댓글(7일)", value: n(o.content.comments7), to: "/admin/community" },
+      { label: "마지막 변경 이력", value: o.content.changelog_last ? o.content.changelog_last.slice(5).replace("-", ".") : "—", sub: o.content.changelog_last?.slice(0, 4), to: "/admin/changelog" },
+    ] },
+    { title: "회원·설정", rows: [
+      { label: "새 가입(7일)", value: n(o.members.signups7), to: "/admin/users" },
+      { label: "휴면 해제 요청", value: n(o.members.dormant_requests), sub: `휴면 ${o.members.dormant}명`, to: "/admin/users", warn: o.members.dormant_requests > 0 },
+      { label: "30일 안에 기한 끝", value: n(o.members.expiring30), sub: "임직원·협력사 이용 기간", to: "/admin/users" },
+      { label: "보기만 하는 Free", value: n(o.members.free_viewers), sub: "전환 후보", to: "/admin/users" },
+    ] },
+  ];
+  if (q.isLoading) return <Skeleton className="h-[260px] w-full rounded-panel" />;
+  if (!o) return null;
   return (
-    <Card size="sm" className={cn("min-w-0 transition-shadow", to && "hover:ring-ink")}>
-      {to ? <Link to={to} className="flex min-w-0 flex-col px-3">{body}</Link> : <div className="flex min-w-0 flex-col px-3">{body}</div>}
-    </Card>
+    <div className="grid min-w-0 grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-6" aria-label="운영 현황판">
+      {groups.map((g) => {
+        const warn = g.rows.filter((r) => r.warn).length;
+        return (
+          <Card key={g.title} className={cn("min-w-0 gap-2 py-4", g.span && "md:col-span-2")}>
+            <CardHeader className="px-4">
+              <CardTitle className="text-md">{g.title}</CardTitle>
+              {(warn > 0 || g.foot) && <CardAction>{warn > 0 ? <Badge variant="outline" className="border-point text-point-ink"><AlertTriangle aria-hidden />{warn}</Badge> : <span className="text-xs text-ink-4">{g.foot}</span>}</CardAction>}
+            </CardHeader>
+            <CardContent className={cn("grid min-w-0 px-4", g.span && "md:grid-cols-2 md:gap-x-6")}>
+              {g.rows.map((r) => (
+                <Link key={r.label} to={r.to} className={cn("group flex min-h-[52px] min-w-0 items-center justify-between gap-3 border-b border-line-soft py-2 last:border-b-0", g.span && "md:[&:nth-last-child(2):nth-child(odd)]:border-b-0")}>
+                  <span className="flex min-w-0 flex-col">
+                    <span className="truncate text-sm font-semibold text-ink-2 group-hover:underline">{r.label}</span>
+                    {r.sub && <span className={cn("truncate text-xs", r.warn ? "font-semibold text-point-ink" : "text-ink-4")}>{r.sub}</span>}
+                  </span>
+                  <span className={cn("shrink-0 text-lg font-extrabold tabular-nums tracking-[-0.02em]", r.warn && "text-point-ink")}>{r.value}</span>
+                </Link>
+              ))}
+            </CardContent>
+          </Card>
+        );
+      })}
+    </div>
   );
 }
 

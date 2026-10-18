@@ -72,8 +72,99 @@ return static function (Router $r): void {
         ]);
     });
 
+    // ---- 대시보드 운영 현황판(사용자 2026-10-18 "관리자 메뉴 속성에 맞게 짜임새 있고 실질적인 모니터링") —
+    // 왼쪽 메뉴 묶음(요청 처리·모듈 운영·품질 검수·콘텐츠·회원·설정)마다 지금 손이 가야 하는 수와 위험 신호. 한 칸이 실패해도 나머지는 나온다.
+    $r->get('/admin/ops', function (array $p, Actor $a) use ($need): void {
+        $need($a, 'admin');
+        $v = static function (string $sql, array $args = []): int {
+            try {
+                return (int) Db::val($sql, $args);
+            } catch (\Throwable) {
+                return 0;
+            }
+        };
+        $rows = static function (string $sql): array {
+            try {
+                return Db::rows($sql);
+            } catch (\Throwable) {
+                return [];
+            }
+        };
+        $oldest = static function (string $sql): ?string {
+            try {
+                $x = Db::val($sql);
+                return $x === null || $x === false ? null : (string) $x;
+            } catch (\Throwable) {
+                return null;
+            }
+        };
+        // 체크리스트 = 열림(open·fixing)·다시 생김(regressed)
+        $chk = static function (string $table, string $where = '1=1') use ($v): array {
+            return [
+                'open' => $v("SELECT COUNT(*) FROM {$table} WHERE status IN ('open','fixing') AND {$where}"),
+                'regressed' => $v("SELECT COUNT(*) FROM {$table} WHERE status IN ('open','fixing') AND regressed = 1 AND {$where}"),
+            ];
+        };
+        Response::json([
+            'requests' => [
+                'contacts' => $v("SELECT COUNT(*) FROM core_contacts WHERE status = 'open'"),
+                'contacts_oldest' => $oldest("SELECT MIN(created_at) FROM core_contacts WHERE status = 'open'"),
+                'asset_requests' => $v("SELECT COUNT(*) FROM asset_requests WHERE status = 'new'"),
+                'asset_requests_oldest' => $oldest("SELECT MIN(created_at) FROM asset_requests WHERE status = 'new'"),
+                'removals' => $v("SELECT COUNT(*) FROM core_removal_requests WHERE status IN ('received','reviewing')"),
+                'removals_overdue' => $v("SELECT COUNT(*) FROM core_removal_requests WHERE status IN ('received','reviewing') AND due_at < NOW(3)"),
+            ],
+            'modules' => [
+                'deck_queue' => $v("SELECT COUNT(*) FROM deck_jobs WHERE status = 'queued'"),
+                'deck_running' => $v("SELECT COUNT(*) FROM deck_jobs WHERE status = 'running'"),
+                // 돌고 있다는데 10분 넘게 소식이 없는 작업 = 엔진이 멈췄을 수 있다
+                'deck_stalled' => $v("SELECT COUNT(*) FROM deck_jobs WHERE status = 'running' AND (heartbeat_at IS NULL OR heartbeat_at < NOW() - INTERVAL 10 MINUTE)"),
+                'deck_failed24' => $v("SELECT COUNT(*) FROM deck_jobs WHERE status = 'failed' AND created_at >= NOW() - INTERVAL 1 DAY"),
+                'deck_review' => $v("SELECT COUNT(*) FROM deck_jobs WHERE status = 'review'"),
+                'ai_month_usd' => (float) (function () {
+                    try {
+                        return Db::val("SELECT COALESCE(SUM(cost_usd), 0) FROM deck_ai_usage WHERE created_at >= DATE_FORMAT(NOW(), '%Y-%m-01')");
+                    } catch (\Throwable) {
+                        return 0;
+                    }
+                })(),
+                'assets_new7' => $v('SELECT COUNT(*) FROM asset_items WHERE deleted_at IS NULL AND created_at >= NOW() - INTERVAL 7 DAY'),
+                // 찾았는데 하나도 없던 말(7일) — 자료 요청·등록 후보
+                'zero_searches' => array_map(static fn (array $r): array => ['q' => (string) $r['q'], 'n' => (int) $r['n']],
+                    $rows("SELECT q, COUNT(*) AS n FROM asset_search_logs WHERE results = 0 AND day >= CURDATE() - INTERVAL 7 DAY GROUP BY q ORDER BY n DESC LIMIT 5")),
+                'zero_search_total' => $v('SELECT COUNT(*) FROM asset_search_logs WHERE results = 0 AND day >= CURDATE() - INTERVAL 7 DAY'),
+                'mock_new7' => $v('SELECT COUNT(*) FROM mock_mockups WHERE deleted_at IS NULL AND created_at >= NOW() - INTERVAL 7 DAY'),
+            ],
+            'quality' => [
+                'site' => $chk('site_checklist'),
+                'assets' => $chk('qa_checklist', "module = 'assets'"),
+                'deck' => $chk('deck_checklist'),
+                'mock' => $chk('mock_checklist'),
+                'guide' => $chk('qa_checklist', "module = 'guide'"),
+                'mcp' => $chk('qa_checklist', "module = 'mcp'"),
+            ],
+            'content' => [
+                'posts7' => $v('SELECT COUNT(*) FROM comm_posts WHERE deleted_at IS NULL AND created_at >= NOW() - INTERVAL 7 DAY'),
+                'comments7' => $v('SELECT COUNT(*) FROM comm_comments WHERE deleted_at IS NULL AND created_at >= NOW() - INTERVAL 7 DAY'),
+                'changelog_last' => $oldest('SELECT MAX(released_on) FROM core_changelog WHERE deleted_at IS NULL AND published = 1'),
+            ],
+            'members' => [
+                'signups7' => $v('SELECT COUNT(*) FROM core_users WHERE deleted_at IS NULL AND created_at >= NOW() - INTERVAL 7 DAY'),
+                // 휴면 풀어 달라는 요청(관리자 승인 뒤 재사용, 2026-10-16 결정)
+                'dormant_requests' => $v("SELECT COUNT(*) FROM core_users WHERE deleted_at IS NULL AND status = 'dormant' AND dormant_requested_at IS NOT NULL"),
+                'dormant' => $v("SELECT COUNT(*) FROM core_users WHERE deleted_at IS NULL AND status = 'dormant'"),
+                // 이용 기한(임직원 1년·협력사 계약 끝)이 30일 안에 끝나는 사람
+                'expiring30' => $v('SELECT COUNT(*) FROM core_users WHERE deleted_at IS NULL AND access_until IS NOT NULL AND access_until >= NOW() AND access_until < NOW() + INTERVAL 30 DAY'),
+                // 보기만 하는 외부 Free(전환 후보) — 판정은 Users::planOf 와 같은 구독 조건(개인 구독만 본다, 팀 소속은 드물어 뺀다)
+                'free_viewers' => $v("SELECT COUNT(*) FROM core_users u WHERE u.deleted_at IS NULL AND u.status = 'active' AND u.kind <> 'staff'
+                    AND NOT EXISTS (SELECT 1 FROM core_subscriptions s JOIN core_plans pl ON pl.id = s.plan_id WHERE s.owner_type = 'user' AND s.owner_id = u.id
+                        AND pl.code IN ('pro','team') AND s.status IN ('trial','active','past_due') AND (s.current_period_end IS NULL OR s.current_period_end > NOW(3)))"),
+            ],
+        ]);
+    });
+
     // ---- 문의
-    $contactOut = static fn (array $c): array => [
+    $contactOut =static fn (array $c): array => [
         'id' => $c['public_id'], 'topic' => $c['topic'], 'module' => $c['module'], 'name' => $c['name'], 'email' => $c['email'],
         'org' => $c['org'], 'seats' => $c['seats'] === null ? null : (int) $c['seats'], 'message' => $c['message'],
         'reply' => $c['reply'], 'reply_sent_at' => $c['reply_sent_at'], 'status' => $c['status'],

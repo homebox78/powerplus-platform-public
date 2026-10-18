@@ -163,6 +163,22 @@ final class Service
             $where[] = "EXISTS (SELECT 1 FROM asset_tags tg WHERE tg.item_id = i.id AND tg.axis = 'kw' AND tg.tag = ?)";
             $params[] = mb_strtolower((string) $f['tag']);
         }
+        // 로고는 기관·회사 이름 — 이름에 검색어가 통째로(띄어쓰기 무시) 든 로고가 있으면 그것만. 긴 이름("장애인기업종합지원센터")을
+        // 낱말로 쪼개 넓혀 찾으면 수백·수천 개가 걸렸다(2026-10-19 전수 조사)
+        if ($cat === 'logo' && $qRaw !== '' && mb_strlen($qRaw) >= 2) {
+            // 한↔영 짝(카카오↔kakao)도 이름으로 함께 — 어느 쪽으로 찾든 같은 묶음
+            $flatQ = mb_strtolower(preg_replace('/\s+/u', '', $qRaw) ?? $qRaw);
+            $alts = array_values(array_unique([$flatQ, ...Lexicon::brandPair($flatQ)]));
+            $likes = array_map(static fn(string $w): string => '%' . self::escapeLike($w) . '%', $alts);
+            [$vS, $vP] = Access::whereVisible($a, 'i');
+            $nameHit = '(' . implode(' OR ', array_fill(0, count($likes), "REPLACE(LOWER(COALESCE(i.name,'')), ' ', '') LIKE ?")) . ')';
+            if ((int) Db::val("SELECT COUNT(*) FROM asset_items i WHERE i.category = 'logo' AND i.deleted_at IS NULL AND {$nameHit} AND {$vS}", array_merge($likes, $vP)) > 0) {
+                $where[] = $nameHit;
+                array_push($params, ...$likes);
+                $f['q'] = '';
+                $f['sort'] = '__namelen';   // 이름이 짧은(검색어와 똑같은) 로고 먼저
+            }
+        }
         // 오타 교정(Lexicon) — 아는 낱말은 안 고치고, 고친 것은 corrected 로 돌려줘 화면이 "'코드'로 고쳐서 찾았어요"를 띄운다.
         // 띄어 쓴 복합어("데이터 베이스")는 먼저 붙여 본다(glue) — 안 붙이면 "베이스"가 "케이스"로 잘못 고쳐졌다(2026-10-10 MCP 시험).
         // 분류 낱말(사진·로고·아이콘…)은 찾을 말이 아니라 종류 — 빼서 그 종류를 앞으로 올리고, 그 말 하나뿐이면 그 종류로 거른다.
@@ -311,6 +327,7 @@ final class Service
         $order = match ($f['sort'] ?? 'newest') {
             'popular' => '(SELECT COUNT(*) FROM asset_uses u WHERE u.item_id = i.id) DESC, i.created_at DESC',
             'name' => 'i.name IS NULL, i.name ASC, i.id ASC',
+            '__namelen' => 'CHAR_LENGTH(i.name), i.name, i.id',
             default => 'i.created_at DESC, i.id DESC',
         };
         // 검색어가 있으면 관련도 먼저: 태그가 낱말과 똑같음(3) > 이름·설명에 들어 있음(2) — 요청한 정렬은 같은 점수 안에서.

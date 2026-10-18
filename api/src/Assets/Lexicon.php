@@ -90,15 +90,23 @@ final class Lexicon
         }
         $cache = self::cachePath();
         $tags = null;
+        // 캐시는 에셋 목록이 바뀌면(수·마지막 수정 시각) 저절로 새로 — 하루 캐시라 대량 등록 직후 새 브랜드 이름이 오타로 고쳐졌다
+        // (2026-10-18 semologo 로고 뒤 '네이버'→네이비·'삼성'→남성·'토스'→소스)
+        $ver = self::assetsVersion();
         if (is_readable($cache) && (time() - (int) @filemtime($cache) < 86400)) {
             $raw = @file_get_contents($cache);
-            $tags = $raw ? json_decode($raw, true) : null;
+            $got = $raw ? json_decode($raw, true) : null;
+            if (is_array($got) && ($got['v'] ?? null) === $ver && is_array($got['tags'] ?? null)) {
+                $tags = $got['tags'];
+                self::$pairs = is_array($got['pairs'] ?? null) ? $got['pairs'] : null;
+            }
         }
         if (!is_array($tags)) {
             $tags = [];
             try {
-                $rows = Db::rows("SELECT t.tag, COUNT(*) AS n FROM asset_tags t JOIN asset_items i ON i.id = t.item_id AND i.deleted_at IS NULL
-                    WHERE t.axis = 'kw' GROUP BY t.tag HAVING n >= 2");
+                // 로고에 붙은 말(기관·회사 이름)은 한 번만 나와도 아는 말 — 이름은 하나뿐이라 2회 기준에 늘 빠졌다
+                $rows = Db::rows("SELECT t.tag, COUNT(*) AS n, MAX(i.category = 'logo') AS logo FROM asset_tags t JOIN asset_items i ON i.id = t.item_id AND i.deleted_at IS NULL
+                    WHERE t.axis = 'kw' GROUP BY t.tag HAVING n >= 2 OR logo = 1");
                 foreach ($rows as $r) {
                     $w = mb_strtolower(trim((string) $r['tag']));
                     $l = mb_strlen($w);
@@ -107,13 +115,95 @@ final class Lexicon
                     }
                     $tags[$w] = (int) $r['n'];
                 }
-                @file_put_contents($cache, json_encode($tags, JSON_UNESCAPED_UNICODE));
+                self::$pairs = self::buildPairs();
+                @file_put_contents($cache, json_encode(['v' => $ver, 'tags' => $tags, 'pairs' => self::$pairs], JSON_UNESCAPED_UNICODE));
             } catch (\Throwable) {
                 $tags = [];   // DB 를 못 읽으면 교정 없이 원문 그대로 검색
             }
         }
         self::$dict = $tags;
         return self::$dict;
+    }
+
+    private static ?array $pairs = null;
+
+    private static function assetsVersion(): string
+    {
+        try {
+            // 태그만 바뀌어도(낱말 더하기) 새로 — 태그 수를 함께 본다
+            return (string) Db::val("SELECT CONCAT(COUNT(*), ':', COALESCE(MAX(updated_at), ''), ':', (SELECT COUNT(*) FROM asset_tags)) FROM asset_items");
+        } catch (\Throwable) {
+            return '';
+        }
+    }
+
+    /**
+     * 브랜드 한↔영 짝 — semologo 로고의 한글 이름 ↔ 영문 이름(공백 없이, 둘 다 통째로): 카카오↔kakao, 네이버↔naver, 카카오뱅크↔kakaobank.
+     * 어느 쪽으로 찾든 같은 조건(이름·태그에 둘 중 하나)이 되게 variants 가 서로를 더한다(사용자 2026-10-18 "kakao 와 카카오 갯수가 일치해야").
+     * 한 말이 여러 말과 짝이면(korea·hd 처럼 흔한 말) 넣지 않는다 — 결과가 엉뚱하게 불어난다.
+     * @return array<string, string[]>
+     */
+    private static function buildPairs(): array
+    {
+        $rows = Db::rows("SELECT i.name, t.tag FROM asset_items i JOIN asset_tags t ON t.item_id = i.id AND t.lang = 'en' AND t.axis = 'kw'
+            WHERE i.category = 'logo' AND i.source = 'semologo' AND i.deleted_at IS NULL");
+        $link = [];
+        foreach ($rows as $r) {
+            $ko = preg_replace('/\s+/u', '', mb_strtolower((string) $r['name'])) ?? '';
+            $en = preg_replace('/[\s.\-·]+/u', '', mb_strtolower((string) $r['tag'])) ?? '';
+            if (!preg_match('/^\p{Hangul}{2,20}$/u', $ko) || !preg_match('/^[a-z0-9&+]{2,30}$/', $en) || in_array($en, ['logo', 'brand', 'korea'], true)) {
+                continue;
+            }
+            $link[$ko][$en] = true;
+            $link[$en][$ko] = true;
+        }
+        // 짝이 셋 이하인 말만(naver ↔ 네이버·네이버블로그) — 넷 이상은 흔한 말이라 결과가 엉뚱하게 불어난다
+        $out = [];
+        foreach ($link as $w => $others) {
+            if (count($others) <= 3) {
+                $out[(string) $w] = array_map('strval', array_keys($others));
+            }
+        }
+        // 그룹 이름 짝 — 영문 첫 낱말이 같은 로고(samsung-card·samsung-life…) 대부분이 같은 한글 앞말(삼성)로 시작하면 samsung↔삼성.
+        // 'Samsung Galaxy S23' 처럼 한글이 없는 로고가 '삼성' 으로는 안 나오던 것(2026-10-19, 사용자 "kakao 와 카카오 갯수가 일치해야")
+        $group = [];
+        foreach ($rows as $r) {
+            $tag = mb_strtolower((string) $r['tag']);
+            if (!preg_match('/^([a-z][a-z0-9]{2,})\s/', $tag, $m) || in_array($m[1], ['the', 'korea', 'korean', 'national', 'new', 'official', 'logo', 'brand'], true)) {
+                continue;
+            }
+            $group[$m[1]][(string) $r['name']] = true;
+        }
+        foreach ($group as $en => $names) {
+            $ko = array_values(array_filter(array_map(static fn($n) => preg_replace('/\s+/u', '', (string) $n) ?? '', array_keys($names)), static fn($n) => (bool) preg_match('/^\p{Hangul}{2}/u', $n)));
+            if (count($ko) < 2) {
+                continue;
+            }
+            $pre = [];
+            foreach ($ko as $n) {
+                for ($l = 2; $l <= min(4, mb_strlen($n)); $l++) {
+                    $pre[mb_substr($n, 0, $l)] = ($pre[mb_substr($n, 0, $l)] ?? 0) + 1;
+                }
+            }
+            $best = null;
+            foreach ($pre as $p => $c) {
+                if (preg_match('/^\p{Hangul}+$/u', (string) $p) && $c >= count($ko) * 0.7 && ($best === null || mb_strlen((string) $p) > mb_strlen($best))) {
+                    $best = (string) $p;
+                }
+            }
+            if ($best !== null) {
+                $out[$en] = array_values(array_unique([...($out[$en] ?? []), $best]));
+                $out[$best] = array_values(array_unique([...($out[$best] ?? []), $en]));
+            }
+        }
+        return $out;
+    }
+
+    /** 브랜드 짝(없으면 빈 배열) */
+    public static function brandPair(string $tok): array
+    {
+        self::dict();
+        return self::$pairs[preg_replace('/\s+/u', '', $tok) ?? $tok] ?? [];
     }
 
     public static function clearCache(): void
@@ -564,7 +654,7 @@ final class Lexicon
     /** 낱말과 함께 찾을 말들(자기 자신 포함). */
     public static function variants(string $tok): array
     {
-        $out = array_merge([$tok], self::SYNONYMS[$tok] ?? []);
+        $out = array_merge([$tok], self::SYNONYMS[$tok] ?? [], self::brandPair($tok));
         // "수원시청" → 수원시(로고는 기관 이름이라 '청'이 없다, 2026-10-12 MCP 시험 r1-a1)
         if (preg_match('/^(\p{Hangul}{2,}[시군구도])청$/u', $tok, $m)) {
             $out[] = $m[1];

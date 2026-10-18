@@ -6,7 +6,8 @@ import { Link } from "react-router";
 import { toast } from "sonner";
 import { LiveStatus } from "@/components/hb/live-status";
 import { AdminTitle, RowSwitch, SortHead, useSort } from "@/components/admin/admin-ui";
-import { toastError } from "@/components/hb/confirm";
+import { Minus, Plus } from "lucide-react";
+import { confirmToast, toastError } from "@/components/hb/confirm";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
@@ -45,7 +46,7 @@ export default function AdminAi() {
             <span className="text-ink-4">{d.provider.value === "claude" ? "시안 그림과 빠른 판단이 이 키로 돕니다." : "모든 AI 가 이 키 하나로 돕니다."}</span>
           </div>
 
-          <ProviderCard key={d.provider.value + (d.provider.claude.last4 ?? "") + (d.provider.claude.budget?.credit ?? "") + (d.provider.claude.budget?.reset_day ?? "")} s={d.provider} />
+          <ProviderCard key={d.provider.value + d.provider.claude.keys.map((k) => k.id).join(",") + (d.provider.claude.budget?.per_key ?? "") + (d.provider.claude.budget?.reset_day ?? "")} s={d.provider} />
 
           {ms.bar}
 
@@ -116,7 +117,9 @@ function ProviderCard({ s }: { s: AiProvider }) {
   const save = useMutation({
     mutationFn: saveAdminProvider,
     onSuccess: (_r, b) => {
-      toast.success(b.claude_key ? "Claude API 키를 확인하고 저장했습니다." : b.remove_claude_key ? "Claude API 키를 지웠습니다. 이제 OpenRouter 로 돕니다." : "월 크레딧·갱신일을 저장했습니다.");
+      toast.success(b.claude_key ? "Claude API 키를 확인하고 더했습니다."
+        : b.remove_claude_key_id ? (s.claude.keys.length <= 1 ? "Claude API 키를 모두 뺐습니다. 이제 OpenRouter 로 돕니다." : "Claude API 키를 하나 뺐습니다.")
+        : "월 크레딧·갱신일을 저장했습니다.");
       setKey("");
       void qc.invalidateQueries({ queryKey: KEY });
     },
@@ -127,8 +130,10 @@ function ProviderCard({ s }: { s: AiProvider }) {
   const validKey = clean.startsWith("sk-ant-") && !clean.startsWith("sk-ant-admin") && clean.length >= 30;
   const on = s.value === "claude";
   const st = s.claude.status;
+  const keys = s.claude.keys;
+  const active = keys.findIndex((k) => k.state === "ok");   // 넣은 순서대로 막히지 않은 첫 키를 쓴다
   const bg = s.claude.budget;
-  const [credit, setCredit] = useState(String(bg?.credit ?? 200));
+  const [credit, setCredit] = useState(String(bg?.per_key ?? 200));
   const [day, setDay] = useState(String(bg?.reset_day ?? 1));
   const validCredit = /^\d+(\.\d{1,2})?$/.test(credit.trim()) && Number(credit) <= 100000;
   const validDay = /^\d{1,2}$/.test(day.trim()) && Number(day) >= 1 && Number(day) <= 31;
@@ -138,35 +143,63 @@ function ProviderCard({ s }: { s: AiProvider }) {
       <div className="flex flex-wrap items-center gap-3">
         {s.claude.set
           ? (!s.claude.usable ? <b className="text-sm text-warn">키를 풀 수 없음 — 다시 넣어 주세요</b>
-            : st.state === "ok" ? <LiveStatus state="ok">사용 중 · 키 …{s.claude.last4}</LiveStatus>
-            : <b className="text-sm text-warn">{st.state === "no_credits" ? "Claude 크레딧 소진" : "Claude 가 키를 거절"} — OpenRouter 로 대신 도는 중 ({st.at?.slice(5, 16)}부터 · 30분마다 다시 시도)</b>)
+            : st.state === "ok" ? <LiveStatus state="ok">사용 중 · 키 {keys.length}개 중 {active + 1}번째</LiveStatus>
+            : <b className="text-sm text-warn">키 {keys.length}개 모두 {st.state === "no_credits" ? "크레딧 소진" : "막힘"} — OpenRouter 로 대신 도는 중 ({st.at?.slice(5, 16)}부터 · 30분마다 다시 시도)</b>)
           : <span className="text-sm text-ink-4">키 없음 — 지금은 OpenRouter 기존 설정으로 돕니다</span>}
       </div>
+
+      {/* 키 목록 — 위에서부터 차례로 쓰고, 크레딧 소진·거절된 키는 30분 건너뛰고 다음 키로. 다 막히면 OpenRouter(2026-10-18) */}
+      {keys.length > 0 && (
+        <ol className="mt-4 grid w-[640px] max-w-full divide-y divide-line rounded-xl border border-line">
+          {keys.map((k, i) => (
+            <li key={k.id} className="flex items-center gap-3 px-4 py-2.5 text-sm">
+              <span className="w-6 shrink-0 text-center tabular-nums text-ink-4">{i + 1}</span>
+              <div className="min-w-0 flex-1">
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                  <span className="font-mono text-ink">…{k.last4}</span>
+                  {k.state === "ok"
+                    ? (i === active ? <LiveStatus state="ok">지금 사용</LiveStatus> : <span className="text-ink-3">대기</span>)
+                    : <b className="text-warn">{k.state === "no_credits" ? "크레딧 소진" : "키 거절"} · {k.at?.slice(5, 16)}부터</b>}
+                  <span className="tabular-nums text-ink">{usd(k.spent)}<span className="text-ink-4"> / {usd(bg?.per_key ?? 0)} · {k.calls.toLocaleString()}회</span></span>
+                </div>
+                {/* 마지막 사용·소진 이력 — 소진 이력은 충전 뒤 다시 쓰여도 남는다 */}
+                <p className="mt-0.5 text-ink-4">
+                  {k.last_used ? `마지막 사용 ${k.last_used.slice(5, 16)}` : "아직 안 씀"}
+                  {k.exhausted && ` · 마지막 소진 ${k.exhausted.at.slice(5, 16)} (그 기간 ${usd(k.exhausted.spent)} 쓰고)`}
+                </p>
+              </div>
+              <Button size="icon-sm" variant="ghost" className="shrink-0" aria-label={`키 …${k.last4} 빼기`} disabled={save.isPending}
+                onClick={() => confirmToast(`키 …${k.last4} 를 뺄까요?`, () => save.mutate({ remove_claude_key_id: k.id }), { action: "빼기", description: keys.length === 1 ? "마지막 키라 빼면 OpenRouter 로 돕니다." : undefined })}>
+                <Minus className="size-4" />
+              </Button>
+            </li>
+          ))}
+        </ol>
+      )}
+
       <div className="mt-3 flex flex-wrap items-center gap-3">
-        <label htmlFor="claude-key" className="sr-only">Claude API 키</label>
-        <Input id="claude-key" type="password" autoComplete="off" className="h-9 w-96 max-w-full min-w-0" value={key} placeholder="sk-ant-api…" onChange={(e) => setKey(e.target.value)} />
-        <Button size="sm" variant="outline" disabled={!validKey || save.isPending} onClick={() => save.mutate({ claude_key: clean })}>{s.claude.set ? "바꾸기" : "저장"}</Button>
-        {s.claude.set && (
-          <Button size="sm" variant="ghost" disabled={save.isPending} onClick={() => save.mutate({ remove_claude_key: true })}>지우기</Button>
-        )}
+        <label htmlFor="claude-key" className="sr-only">Claude API 키 더하기</label>
+        <Input id="claude-key" type="password" autoComplete="off" className="h-9 w-96 max-w-full min-w-0" value={key} placeholder="sk-ant-api…" onChange={(e) => setKey(e.target.value)}
+          onKeyDown={(e) => { if (e.key === "Enter" && validKey && !save.isPending) save.mutate({ claude_key: clean }); }} />
+        <Button size="sm" variant="outline" disabled={!validKey || save.isPending} onClick={() => save.mutate({ claude_key: clean })}><Plus className="size-4" />키 더하기</Button>
       </div>
-      <p className="mt-2 text-sm text-ink-4">콘솔에서 워크스페이스 범위로 만든 키를 넣습니다.<br />저장할 때 Claude API 에 물어 맞는 키인지 확인합니다.</p>
+      <p className="mt-2 text-sm text-ink-4">키는 몇 개든 더할 수 있고, 위에서부터 차례로 씁니다.<br />크레딧이 떨어진 키는 건너뛰고, 모두 떨어지면 OpenRouter 로 돕니다.<br />더할 때 Claude API 에 물어 맞는 키인지 확인합니다.</p>
 
       {bg && s.claude.set && (
         <>
           <h3 className="mt-6 text-md font-bold">이번 기간 사용 <span className="text-sm font-normal text-ink-4">({bg.since} 부터 · 추정)</span></h3>
           <div className="mt-3 flex flex-wrap items-baseline gap-x-5 gap-y-1 text-sm tabular-nums">
-            <span>사용 <b className="text-ink">{usd(bg.spent)}</b> / {usd(bg.credit)}</span>
+            <span>사용 <b className="text-ink">{usd(bg.spent)}</b> / {usd(bg.credit)}{bg.keys > 1 && <span className="text-ink-4"> ({usd(bg.per_key)} × 키 {bg.keys}개)</span>}</span>
             <span>남은 추정 <b className={bg.left < bg.credit * 0.1 ? "text-warn" : "text-ink"}>{usd(bg.left)}</b></span>
             <span className="text-ink-4">호출 {bg.calls.toLocaleString()}회</span>
           </div>
           <Progress className="mt-2 h-2 w-96 max-w-full" value={pct} aria-label="이번 기간 Claude 크레딧 사용 비율" />
           <div className="mt-4 flex flex-wrap items-center gap-3">
-            <label htmlFor="claude-credit" className="text-md text-ink-3">월 크레딧($)</label>
+            <label htmlFor="claude-credit" className="text-md text-ink-3">키 하나당 월 크레딧($)</label>
             <Input id="claude-credit" className="h-9 w-28 text-right tabular-nums" inputMode="decimal" value={credit} onChange={(e) => setCredit(e.target.value)} />
             <label htmlFor="claude-day" className="text-md text-ink-3">갱신일(매월)</label>
             <Input id="claude-day" className="h-9 w-20 text-right tabular-nums" inputMode="numeric" value={day} onChange={(e) => setDay(e.target.value)} />
-            <Button size="sm" variant="outline" disabled={!validCredit || !validDay || (Number(credit) === bg.credit && Number(day) === bg.reset_day) || save.isPending}
+            <Button size="sm" variant="outline" disabled={!validCredit || !validDay || (Number(credit) === bg.per_key && Number(day) === bg.reset_day) || save.isPending}
               onClick={() => save.mutate({ claude_credit_usd: Number(credit), claude_reset_day: Number(day) })}>저장</Button>
           </div>
           <p className="mt-2 text-sm text-ink-4">Claude 는 잔액을 알려 주는 기능이 없어 이 서버 사용 기록으로 셉니다.<br />정확한 잔액은 Claude 콘솔 결제 화면에서 확인합니다.</p>

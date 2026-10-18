@@ -71,6 +71,26 @@ if ($cmd === 'mirror') {
     exit(0);
 }
 
+// 만료 연장(비밀번호는 그대로): php8.4 api/bin/test-account.php extend 2026-11-15
+//   약관 판이 바뀌었으면 동의 창이 다시 뜨므로 필수 동의도 지금 판으로 다시 넣는다
+if ($cmd === 'extend') {
+    $day = trim((string) ($argv[2] ?? ''));
+    $ts = preg_match('/^\d{4}-\d{2}-\d{2}$/', $day) ? strtotime($day . ' 23:59:59') : false;
+    $uid = (int) Db::val("SELECT v FROM core_settings WHERE k = 'auth.test.user_id'");
+    if (!$ts || $ts <= time() || !$uid) {
+        fwrite(STDERR, $uid ? "날짜를 YYYY-MM-DD(오늘 이후)로 주세요.\n" : "테스트 계정이 없습니다 — create 먼저.\n");
+        exit(1);
+    }
+    foreach (['age14', 'terms', 'privacy', 'overseas'] as $k) {
+        Db::exec('INSERT INTO core_consents (user_id, kind, version, agreed) VALUES (?, ?, ?, 1) ON DUPLICATE KEY UPDATE version = VALUES(version), agreed = 1', [$uid, $k, Consents::version()]);
+    }
+    $until = date('Y-m-d H:i:s', $ts);
+    $set('auth.test.until', $until);
+    Audit::log(null, 'auth.test_account.extend', 'core_users:' . $uid, null, ['until' => $until]);
+    echo "연장했습니다 — 만료 {$until}\n";
+    exit(0);
+}
+
 // 로그인 화면의 테스트 로그인 칸 보이기·숨기기(보고할 때만 켠다)
 if ($cmd === 'show' || $cmd === 'hide') {
     $set('auth.test.show_login', $cmd === 'show' ? '1' : '0');

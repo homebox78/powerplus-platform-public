@@ -61,12 +61,12 @@ final class AiKeys
         $out['text_model'] = self::setting('text_model') ?? self::DEFAULT_TEXT;
         $out['text_effort'] = self::textEffort();
         $out['text_provider'] = self::textProvider();
-        $out['claude'] = ['set' => self::setting('claude_key_enc') !== null, 'fixed' => Claude::FIXED, 'status' => self::claudeStatus()];
+        $out['claude'] = ['set' => self::claudeKeys() !== [], 'fixed' => Claude::FIXED, 'status' => self::claudeStatus()];
         if ($admin) {
             try { $out['claude']['budget'] = self::claudeBudget(); } catch (Throwable) { $out['claude']['budget'] = null; }
         }
         if ($admin) {
-            $out['claude']['hint'] = self::setting('claude_key_hint');
+            $out['claude']['keys'] = self::claudeKeyList();
             $out['company']['hint'] = $companyHint;
             $out['admin_models'] = ['plan' => self::setting('plan_model') ?? self::textModel(), 'image' => self::setting('image_model') ?? self::DEFAULT_IMAGE];
         }
@@ -85,43 +85,148 @@ final class AiKeys
      */
     public static function textProvider(): string
     {
-        return self::setting('claude_key_enc') !== null ? 'claude' : 'openrouter';
+        return self::claudeKeys() ? 'claude' : 'openrouter';
     }
 
-    /** 크레딧 소진·키 거절 뒤 Claude 를 건너뛰는 시간(초) — 지나면 다시 Claude 로 한 번 시도한다(충전되면 저절로 돌아오게) */
+    /** 크레딧 소진·키 거절 뒤 그 키를 건너뛰는 시간(초) — 지나면 그 키로 다시 한 번 시도한다(충전되면 저절로 돌아오게) */
     private const CLAUDE_SKIP = 1800;
 
     /**
-     * Claude 로 한 번 부른다 — [상태, OpenAI 꼴 JSON]. Claude 를 쓸 수 없으면 null(부른 쪽이 OpenRouter 기존 설정으로 간다).
-     * null 이 되는 경우: 키 없음·풀 수 없음 / 잔액 부족·키 거절로 막힌 지 30분이 안 됨 / 이번 호출이 잔액 부족·키 거절(2026-10-17 사용자 "크레딧 떨어지면 자동으로 OpenRouter").
-     * 그 밖의 오류(요청 잘못·과부하)는 그대로 돌려준다 — OpenRouter 로 넘겨도 같은 요청이라 소용없고 비용만 겹친다.
+     * Claude 키 목록 — [{id, enc, hint, added, status?}], 개수 제한 없음(2026-10-18 사용자 "키 여러 개, 소진되면 다음 키로, 다 쓰면 OpenRouter").
+     * 계정이 다른 키들이라 키마다 막힘(status)을 따로 둔다. 예전 키 하나(claude_key_enc·claude_status)는 첫 번째 키로 옮긴다.
+     */
+    private static function claudeKeys(): array
+    {
+        $list = json_decode((string) (self::setting('claude_keys') ?? ''), true);
+        $list = is_array($list) ? array_values(array_filter($list, static fn ($k) => is_array($k) && !empty($k['enc']) && !empty($k['id']))) : [];
+        $old = self::setting('claude_key_enc');
+        if ($old !== null) {
+            $st = json_decode((string) (self::setting('claude_status') ?? ''), true);
+            // 동시에 들어온 요청이 이미 옮겼으면 다시 넣지 않는다(같은 암호문)
+            if (!in_array($old, array_column($list, 'enc'), true)) array_unshift($list,['id' => bin2hex(random_bytes(4)), 'enc' => $old, 'hint' => (string) (self::setting('claude_key_hint') ?? ''),
+                'added' => date('Y-m-d H:i:s'), 'status' => is_array($st) && in_array($st['state'] ?? '', ['no_credits', 'bad_key'], true) ? $st : null]);
+            self::setSetting('claude_keys', json_encode($list, JSON_UNESCAPED_UNICODE));
+            foreach (['claude_key_enc', 'claude_key_hint', 'claude_status'] as $k) self::setSetting($k, null);
+        }
+        return $list;
+    }
+
+    private static function saveClaudeKeys(array $list): void
+    {
+        self::setSetting('claude_keys', $list ? json_encode(array_values($list), JSON_UNESCAPED_UNICODE) : null);
+    }
+
+    /** 키 하나의 막힘 표시를 바꾼다 — 그 사이 다른 요청이 목록을 바꿨을 수 있어 다시 읽고 id 로 찾는다 */
+    private static function setClaudeKeyStatus(string $id, ?array $status): void
+    {
+        $list = self::claudeKeys();
+        foreach ($list as &$k) {
+            if ($k['id'] !== $id) continue;
+            $k['status'] = $status;
+            // 크레딧 소진 이력 — 충전 뒤 다시 쓰여도 지우지 않는다. 그 기간에 이 서버에서 얼마를 쓰고 떨어졌는지 같이 남긴다
+            if (($status['state'] ?? '') === 'no_credits') $k['exhausted'] = ['at' => $status['at'], 'spent' => self::claudeKeySpend($id)[0]];
+        }
+        unset($k);
+        self::saveClaudeKeys($list);
+    }
+
+    /** 지금 막혀 있는 키인가 — 잔액 부족·키 거절 뒤 30분 동안 */
+    private static function claudeKeyBlocked(array $k): bool
+    {
+        $st = $k['status'] ?? null;
+        return is_array($st) && time() - (int) ($st['ts'] ?? 0) < self::CLAUDE_SKIP;
+    }
+
+    /**
+     * Claude 로 한 번 부른다 — [상태, OpenAI 꼴 JSON]. 키를 넣은 순서대로 막히지 않은 키를 쓰고, 이번 호출이 잔액 부족·키 거절이면
+     * 그 키를 30분 막고 다음 키로 바로 다시 부른다. 모든 키가 막히면 null(부른 쪽이 OpenRouter 기존 설정으로 간다 — 2026-10-17 "크레딧 떨어지면 자동으로 OpenRouter").
+     * 그 밖의 오류(요청 잘못·과부하)는 그대로 돌려준다 — 다른 키·OpenRouter 로 넘겨도 같은 요청이라 소용없고 비용만 겹친다.
      */
     public static function claudeCall(string $model, array $b, int $timeout, string $effort): ?array
     {
-        $key = self::claudeKey();
-        if ($key === null) return null;
-        $st = self::claudeStatus();
-        if ($st['state'] !== 'ok' && time() - (int) ($st['ts'] ?? 0) < self::CLAUDE_SKIP) return null;
         unset($b['_answer_tokens']);
-        [$status, $raw] = Claude::chat($key, $model, $b, $timeout, $effort);
-        if ($status === 200) {
-            if ($st['state'] !== 'ok') self::setSetting('claude_status', null);   // 충전·키 교체 뒤 첫 성공 — 표시를 지운다
-            return [$status, $raw];
+        foreach (self::claudeKeys() as $k) {
+            if (self::claudeKeyBlocked($k)) continue;
+            try { $key = self::dec((string) $k['enc']); } catch (Throwable) { continue; }
+            [$status, $raw] = Claude::chat($key, $model, $b, $timeout, $effort);
+            if ($status === 200) {
+                if (!empty($k['status'])) self::setClaudeKeyStatus($k['id'], null);   // 충전 뒤 첫 성공 — 표시를 지운다(소진 이력 exhausted 는 남는다)
+                self::addClaudeKeySpend((string) $k['id'], (float) (json_decode($raw, true)['usage']['cost'] ?? 0));
+                return [$status, $raw];
+            }
+            $msg = (string) (json_decode($raw, true)['error']['message'] ?? '');
+            $state = $status === 401 || $status === 403 ? 'bad_key'
+                : (preg_match('/credit balance|purchase credits|billing|insufficient.*(credit|fund)/i', $msg) ? 'no_credits' : null);
+            if ($state === null) return [$status, $raw];
+            error_log('[claude] 키 …' . substr((string) $k['hint'], -4) . ' ' . $state . ' — 다음 키로: ' . mb_substr($msg, 0, 200));
+            self::setClaudeKeyStatus($k['id'], ['state' => $state, 'message' => mb_substr($msg, 0, 300), 'at' => date('Y-m-d H:i:s'), 'ts' => time()]);
         }
-        $msg = (string) (json_decode($raw, true)['error']['message'] ?? '');
-        $state = $status === 401 || $status === 403 ? 'bad_key'
-            : (preg_match('/credit balance|purchase credits|billing|insufficient.*(credit|fund)/i', $msg) ? 'no_credits' : null);
-        if ($state === null) return [$status, $raw];
-        error_log('[claude] ' . $state . ' — OpenRouter 로 넘김: ' . mb_substr($msg, 0, 200));
-        self::setSetting('claude_status', json_encode(['state' => $state, 'message' => mb_substr($msg, 0, 300), 'at' => date('Y-m-d H:i:s'), 'ts' => time()], JSON_UNESCAPED_UNICODE));
         return null;
     }
 
-    /** Claude 상태 — ok | no_credits(잔액 부족) | bad_key(키 거절). 막힌 뒤 30분이 지나면 다시 시도하므로 화면엔 그 시각을 같이 보인다 */
+    /**
+     * Claude 전체 상태 — 막히지 않은 키가 하나라도 있으면 ok. 전부 막혔으면 no_credits(하나라도 잔액 부족이면)·bad_key 와
+     * 가장 먼저 다시 시도하는 키의 막힌 시각(at·ts) — 화면에 "언제부터 OpenRouter 로 도는지" 보인다.
+     */
     public static function claudeStatus(): array
     {
-        $s = json_decode((string) (self::setting('claude_status') ?? ''), true);
-        return is_array($s) && in_array($s['state'] ?? '', ['no_credits', 'bad_key'], true) ? $s : ['state' => 'ok'];
+        $keys = self::claudeKeys();
+        $blocked = array_filter($keys, [self::class, 'claudeKeyBlocked']);
+        if (!$keys || count($blocked) < count($keys)) return ['state' => 'ok'];
+        usort($blocked, static fn ($a, $b) => (int) $a['status']['ts'] <=> (int) $b['status']['ts']);
+        $states = array_map(static fn ($k) => $k['status']['state'], $blocked);
+        return ['state' => in_array('no_credits', $states, true) ? 'no_credits' : 'bad_key'] + $blocked[0]['status'];
+    }
+
+    /** 관리자 화면용 키 목록 — 원문·암호문 없이 앞뒤 몇 글자와 상태만 */
+    private static function claudeKeyList(): array
+    {
+        return array_map(static function (array $k): array {
+            $blocked = self::claudeKeyBlocked($k);
+            [$spent, $calls] = self::claudeKeySpend((string) $k['id']);
+            return ['id' => $k['id'], 'hint' => (string) $k['hint'], 'added' => (string) ($k['added'] ?? ''),
+                'state' => $blocked ? (string) $k['status']['state'] : 'ok', 'at' => $blocked ? (string) ($k['status']['at'] ?? '') : null,
+                'spent' => $spent, 'calls' => $calls, 'last_used' => self::setting('cku:' . $k['id']),
+                'exhausted' => is_array($k['exhausted'] ?? null) ? $k['exhausted'] : null];
+        }, self::claudeKeys());
+    }
+
+    /** 이번 기간 시작일 — 관리자가 적은 갱신일(매월 N일, 기본 1일, 짧은 달이면 말일). [시작일, N] */
+    private static function claudeSince(): array
+    {
+        $day = max(1, min(31, (int) (self::setting('claude_reset_day') ?? 1)));
+        $now = new \DateTimeImmutable('today');
+        $at = static function (\DateTimeImmutable $m) use ($day): \DateTimeImmutable {
+            return $m->setDate((int) $m->format('Y'), (int) $m->format('n'), min($day, (int) $m->format('t')));
+        };
+        $since = $at($now->modify('first day of this month'));
+        if ($since > $now) $since = $at($now->modify('first day of last month'));
+        return [$since, $day];
+    }
+
+    /**
+     * 키별 사용 기록 — 성공한 호출마다 그 키의 이번 기간 비용·호출 수를 더한다(2026-10-18 사용자 "각각 소진 내역이 다 남아야").
+     * deck_ai_usage 는 어느 키로 불렀는지 모르므로 따로 센다. 기간마다 줄이 따로라 갱신일이 지나면 저절로 0 부터, 지난 기간 기록은 남는다.
+     * 더하기는 SQL 한 줄(v = v + ?)이라 동시에 불러도 빠지지 않는다. 설정 키(64자): ckc|ckn:<키 id 8자>:<YYYY-MM-DD>
+     */
+    private static function addClaudeKeySpend(string $id, float $cost): void
+    {
+        try {
+            $p = ':' . $id . ':' . self::claudeSince()[0]->format('Y-m-d');
+            $add = Db::pdo()->prepare('INSERT INTO deck_ai_settings (k, v) VALUES (?, ?) ON DUPLICATE KEY UPDATE v = CAST(v AS DECIMAL(14,6)) + VALUES(v)');
+            $add->execute(['ckc' . $p, (string) round($cost, 6)]);
+            $add->execute(['ckn' . $p, '1']);
+            self::setSetting('cku:' . $id, date('Y-m-d H:i:s'));   // 마지막으로 쓴 때
+        } catch (Throwable $e) {
+            error_log('[claude] 키별 사용 기록 실패: ' . $e->getMessage());   // 기록 실패로 답을 버리지 않는다
+        }
+    }
+
+    /** 키 하나의 이번 기간 사용 [비용, 호출 수] */
+    private static function claudeKeySpend(string $id): array
+    {
+        $p = ':' . $id . ':' . self::claudeSince()[0]->format('Y-m-d');
+        return [round((float) (self::setting('ckc' . $p) ?? 0), 4), (int) (self::setting('ckn' . $p) ?? 0)];
     }
 
     /**
@@ -131,42 +236,56 @@ final class AiKeys
      */
     public static function claudeBudget(): array
     {
-        $credit = (float) (self::setting('claude_credit_usd') ?? 200);
-        $day = max(1, min(31, (int) (self::setting('claude_reset_day') ?? 1)));
-        $now = new \DateTimeImmutable('today');
-        $at = static function (\DateTimeImmutable $m) use ($day): \DateTimeImmutable {   // 그 달의 N일 — 짧은 달이면 말일
-            return $m->setDate((int) $m->format('Y'), (int) $m->format('n'), min($day, (int) $m->format('t')));
-        };
-        $since = $at($now->modify('first day of this month'));
-        if ($since > $now) $since = $at($now->modify('first day of last month'));
+        // 월 크레딧은 키 하나당 값 — 키마다 계정이 달라 전체는 키 개수만큼 곱한다(갱신일은 하나로 본다)
+        $perKey = (float) (self::setting('claude_credit_usd') ?? 200);
+        $n = max(1, count(self::claudeKeys()));
+        $credit = $perKey * $n;
+        [$since, $day] = self::claudeSince();
         // 엔진 PC 의 Claude 구독(Claude Code) 사용분(engine·e*)도 모델이 claude- 로 남는다 — 구독 종류는 빼야 API 크레딧만 센다(2026-10-17 시험에서 $106 이 섞여 나왔다)
         $w = "model LIKE 'claude-%' AND kind NOT IN " . self::SUBS_SQL . " AND created_at >= ?";
         $spent = (float) Db::val("SELECT COALESCE(SUM(cost_usd), 0) FROM deck_ai_usage WHERE $w", [$since->format('Y-m-d')]);
         $calls = (int) Db::val("SELECT COUNT(*) FROM deck_ai_usage WHERE $w", [$since->format('Y-m-d')]);
-        return ['credit' => round($credit, 2), 'reset_day' => $day, 'since' => $since->format('Y-m-d'),
+        return ['credit' => round($credit, 2), 'per_key' => round($perKey, 2), 'keys' => $n, 'reset_day' => $day, 'since' => $since->format('Y-m-d'),
             'spent' => round($spent, 4), 'left' => round(max(0.0, $credit - $spent), 4), 'calls' => $calls];
     }
 
-    /** 서버가 쓰는 Claude API 키 — 없거나 풀 수 없으면 null */
+    /** 서버가 쓸 수 있는 Claude API 키 하나(풀 수 있는 첫 키) — 하나도 없으면 null. 화면의 "키를 풀 수 없음" 판정용 */
     public static function claudeKey(): ?string
     {
-        $enc = self::setting('claude_key_enc');
-        if ($enc === null) return null;
-        try { return self::dec($enc); } catch (Throwable) { return null; }
+        foreach (self::claudeKeys() as $k) {
+            try { return self::dec((string) $k['enc']); } catch (Throwable) {}
+        }
+        return null;
     }
 
-    /** 관리자 — Claude 키(있으면 글 작업이 Claude 로, 모델은 Claude::forKind 고정) */
+    /** 관리자 — Claude 키 더하기(+)·빼기(−)·월 크레딧. 키가 하나라도 있으면 글 작업이 Claude 로(모델은 Claude::forKind 고정) */
     public static function saveProvider(array $b): array
     {
+        $added = null;
         $key = (string) preg_replace('/\s+/', '', (string) ($b['claude_key'] ?? ''));   // 붙여 넣다 섞인 줄바꿈·공백
         if ($key !== '') {
             // 꼴은 앞머리만 본다 — 진짜 확인은 아래 Claude::verify(모델 목록 호출)
             if (str_starts_with($key, 'sk-ant-admin')) Legacy::fail('관리자 키(sk-ant-admin)는 쓸 수 없습니다. 일반 API 키를 넣어 주세요.');
             if (!preg_match('/^sk-ant-[A-Za-z0-9_-]{20,300}$/', $key)) Legacy::fail('Claude API 키는 sk-ant- 로 시작합니다. 키 전체를 붙여 넣어 주세요.');
+            $list = self::claudeKeys();
+            foreach ($list as $k) {
+                try { $same = self::dec((string) $k['enc']) === $key; } catch (Throwable) { $same = false; }
+                if ($same) Legacy::fail('이미 넣은 키입니다 (…' . substr($key, -4) . ').');
+            }
             Claude::verify($key);
-            self::setSetting('claude_key_enc', self::enc($key));
-            self::setSetting('claude_key_hint', substr($key, 0, 10) . '…' . substr($key, -4));
-            self::setSetting('claude_status', null);   // 새 키 — 막힘 표시를 지우고 바로 Claude 로
+            $added = substr($key, 0, 10) . '…' . substr($key, -4);
+            $list[] = ['id' => bin2hex(random_bytes(4)), 'enc' => self::enc($key), 'hint' => $added, 'added' => date('Y-m-d H:i:s'), 'status' => null];
+            self::saveClaudeKeys($list);
+        }
+        $rid = (string) ($b['remove_claude_key_id'] ?? '');
+        if ($rid !== '') {   // 키 하나 빼기 — 마지막 키를 빼면 OpenRouter 기존 설정으로 돌아간다
+            $list = self::claudeKeys();
+            $left = array_values(array_filter($list, static fn ($k) => $k['id'] !== $rid));
+            if (count($left) === count($list)) Legacy::fail('지울 키를 찾지 못했습니다. 화면을 새로 고쳐 주세요.', 404);
+            self::saveClaudeKeys($left);
+            if (preg_match('/^[0-9a-f]{8}$/', $rid)) {   // 그 키의 사용 기록 줄도 같이 — 다른 키의 줄은 id 가 달라 걸리지 않는다
+                Db::pdo()->prepare("DELETE FROM deck_ai_settings WHERE k = ? OR k LIKE ? OR k LIKE ?")->execute(['cku:' . $rid, 'ckc:' . $rid . ':%', 'ckn:' . $rid . ':%']);
+            }
         }
         if (array_key_exists('claude_credit_usd', $b)) {
             $c = $b['claude_credit_usd'];
@@ -178,12 +297,8 @@ final class AiKeys
             if (!is_numeric($d) || (int) $d < 1 || (int) $d > 31) Legacy::fail('갱신일은 1~31 사이 날짜로 적어 주세요.');
             self::setSetting('claude_reset_day', (string) (int) $d);
         }
-        if (!empty($b['remove_claude_key'])) {   // 지우면 바로 OpenRouter 기존 설정으로 돌아간다
-            self::setSetting('claude_key_enc', null);
-            self::setSetting('claude_key_hint', null);
-            self::setSetting('claude_status', null);
-        }
-        return ['ok' => true, 'provider' => self::textProvider(), 'claude_hint' => self::setting('claude_key_hint')];
+        if (!empty($b['remove_claude_key'])) self::saveClaudeKeys([]);   // 전부 지우기(예전 화면 호환) — 바로 OpenRouter 기존 설정으로
+        return ['ok' => true, 'provider' => self::textProvider(), 'claude_hint' => $added, 'claude_count' => count(self::claudeKeys())];
     }
 
     /**

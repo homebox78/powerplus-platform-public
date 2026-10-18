@@ -84,14 +84,17 @@ return static function (Router $r): void {
                 'billed' => !in_array((string) $row['kind'], ['engine', 'eplan', 'edigest', 'escript', 'ewire', 'hf'], true)];
         }
 
-        $claudeHint = (string) ($deck['claude']['hint'] ?? '');
+        // Claude 키 목록 — 앞뒤 몇 글자와 키마다 상태(ok·no_credits·bad_key)만. 원문·암호문은 내려 보내지 않는다
+        $claudeKeys = array_map(static fn (array $k) => ['id' => $k['id'], 'last4' => mb_substr($k['hint'], -4), 'added' => $k['added'], 'state' => $k['state'], 'at' => $k['at'],
+            'spent' => $k['spent'], 'calls' => $k['calls'], 'last_used' => $k['last_used'], 'exhausted' => $k['exhausted']],
+            $deck['claude']['keys'] ?? []);
         Response::json([
             'openrouter' => ['set' => $source !== null, 'usable' => $usable, 'source' => $source, 'last4' => $last4],
             // 글 작업 경로 — Claude 키가 있으면 claude(그림만 OpenRouter, 모델 고정), 없으면 openrouter. 키는 끝 4자리만
             'provider' => [
                 'value' => (string) ($deck['text_provider'] ?? 'openrouter'),
                 'claude' => ['set' => !empty($deck['claude']['set']), 'usable' => $safe(static fn () => AiKeys::claudeKey() !== null, false),
-                    'last4' => $claudeHint !== '' ? mb_substr($claudeHint, -4) : null, 'fixed' => $deck['claude']['fixed'] ?? [],
+                    'keys' => $claudeKeys, 'fixed' => $deck['claude']['fixed'] ?? [],
                     'status' => $deck['claude']['status'] ?? ['state' => 'ok'], 'budget' => $deck['claude']['budget'] ?? null],
             ],
             'solutions' => [
@@ -162,7 +165,9 @@ return static function (Router $r): void {
         $before = ['provider' => AiKeys::textProvider()];
         $out = AiKeys::saveProvider($in);
         $after = ['provider' => $out['provider'],
-            'claude_key' => trim((string) ($in['claude_key'] ?? '')) !== '' ? '…' . mb_substr((string) $out['claude_hint'], -4) . ' 새로 넣음' : (!empty($in['remove_claude_key']) ? '지움' : '그대로')];
+            'claude_key' => $out['claude_hint'] !== null ? '…' . mb_substr((string) $out['claude_hint'], -4) . ' 더함'
+                : (!empty($in['remove_claude_key_id']) ? '하나 뺌' : (!empty($in['remove_claude_key']) ? '전부 지움' : '그대로')),
+            'claude_count' => $out['claude_count']];
         Audit::log($a, 'ai.provider.update', 'settings:ai.provider', $before, $after);
         Response::json(['provider' => $out['provider']]);
     });

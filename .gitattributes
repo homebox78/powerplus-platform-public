@@ -16,3 +16,7 @@ engine/** text eol=lf
 *.docx binary
 *.hwpx binary
 *.hwp binary
+# engine 정본의 사본 — 정본(engine/** LF)과 바이트로 비교하므로(preflight R62·R82) 새 체크아웃에서도 LF 로 풀려야 한다(R85)
+api/src/Deck/wire_kinds.json text eol=lf
+api/src/Deck/wire_templates.json text eol=lf
+apps/web/app/modules/deck/legacy/data/*.json text eol=lf

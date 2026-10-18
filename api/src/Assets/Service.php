@@ -113,6 +113,12 @@ final class Service
         } else {
             // 목업 샘플은 카테고리를 콕 집은 MCP·관리자 요청에만(§18 mockup_sample)
             $where[] = "i.category <> 'mockup_sample'";
+            // 이 종류는 빼고 — 둘러보기 '에셋' 탭이 '전체'에서 로고(수천 개)를 뺀다(로고는 '로고' 탭, 사용자 2026-10-18)
+            $except = (string) ($f['except'] ?? '');
+            if ($except !== '' && in_array($except, self::CATEGORIES, true)) {
+                $where[] = 'i.category <> ?';
+                $params[] = $except;
+            }
         }
         $notes = [];
         // 이모지·기호·스크립트 같은 검색어는 찾지 않는다 — 예전엔 낱말을 하나씩 빼며 엉뚱한 55건을 돌려주고 원문을 relaxed 로 되비췄다(2026-10-12 MCP 시험 r1-a1)

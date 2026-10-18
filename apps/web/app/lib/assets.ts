@@ -32,7 +32,7 @@ interface AssetCategoryCount { id: AssetCategory; label: string; count: number; 
 interface AssetSet { id: string; name: string; style: string | null; category: string | null; count: number; total: number; cover_url: string | null; recent?: number; updated_at?: string | null }
 export interface AssetRequest { id: string; title: string; kind: string | null; detail: string | null; status: "new" | "done" | "rejected"; created_at: string }
 
-export interface AssetListParams { category?: string; q?: string; set?: string; sort?: "newest" | "popular" | "name"; page?: number; limit?: number; /** 로고 분류(gov·local·biz-food…) — api/src/Deck/Logos.php TOPICS */ logo_topic?: string }
+export interface AssetListParams { category?: string; q?: string; set?: string; sort?: "newest" | "popular" | "name"; page?: number; limit?: number; /** 로고 분류(gov·local·biz-food…) — api/src/Deck/Logos.php TOPICS */ logo_topic?: string; /** 종류를 고르지 않았을 때 빼는 종류(둘러보기 에셋 탭 = logo) */ except?: string }
 interface LogoTopic { id: string; label: string; count: number }
 
 const qs = (p: Record<string, string | number | undefined>) => {

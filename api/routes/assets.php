@@ -32,6 +32,7 @@ return static function (Router $r): void {
             'addin' => $a->via !== 'key',
             'ids' => isset($_GET['ids']) ? array_slice(array_filter(explode(',', (string) $_GET['ids'])), 0, 200) : null,
             'tag' => (string) ($_GET['tag'] ?? ''),
+            'logo_topic' => (string) ($_GET['logo_topic'] ?? ''),
             'slide_kind' => (string) ($_GET['slide_kind'] ?? ''),
             'slide_page' => (string) ($_GET['slide_page'] ?? ''),
         ], $limit, $offset);
@@ -45,6 +46,16 @@ return static function (Router $r): void {
         }
         Response::list($res['rows'], $res['total'], $page, $limit, ['hidden' => $res['hidden'], 'plan' => $a->plan, 'corrected' => $res['corrected'], 'relaxed' => $res['relaxed'] ?? null, 'notes' => $res['notes'] ?? []]);
     });
+
+    // 로고 분류(공공 6 + 기업 12, 건수 포함) — powerDeck 로고 찾기와 같은 목록(Deck\Logos::TOPICS)
+    $r->get('/assets/logo-topics', function (array $p, Actor $a): void {
+        Response::json(\Pp\Deck\Logos::topics($a)['data']);
+    });
+
+    // 자주 사용하는 로고(나만) — 파워에셋 로고 검색란 아래(사용자 2026-10-18)
+    $r->get('/assets/logos/frequent', function (array $p, Actor $a): void {
+        Response::json(Service::frequentLogos($a));
+    }, ['auth' => true]);
 
     $r->get('/assets/sets', function (array $p, Actor $a): void {
         Response::json(Service::sets($a, (string) ($_GET['category'] ?? '') ?: null));

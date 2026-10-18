@@ -32,7 +32,8 @@ interface AssetCategoryCount { id: AssetCategory; label: string; count: number; 
 interface AssetSet { id: string; name: string; style: string | null; category: string | null; count: number; total: number; cover_url: string | null; recent?: number; updated_at?: string | null }
 export interface AssetRequest { id: string; title: string; kind: string | null; detail: string | null; status: "new" | "done" | "rejected"; created_at: string }
 
-export interface AssetListParams { category?: string; q?: string; set?: string; sort?: "newest" | "popular" | "name"; page?: number; limit?: number }
+export interface AssetListParams { category?: string; q?: string; set?: string; sort?: "newest" | "popular" | "name"; page?: number; limit?: number; /** 로고 분류(gov·local·biz-food…) — api/src/Deck/Logos.php TOPICS */ logo_topic?: string }
+interface LogoTopic { id: string; label: string; count: number }
 
 const qs = (p: Record<string, string | number | undefined>) => {
   const u = new URLSearchParams();
@@ -45,7 +46,10 @@ export const assetCategoriesQuery = queryOptions({ queryKey: ["assets", "categor
 export const assetListQuery = (p: AssetListParams) => queryOptions({ queryKey: ["assets", "items", p], queryFn: () => apiList<AssetItem>(`/assets/items${qs({ ...p })}`), staleTime: 30_000 });
 export const assetSetsQuery = (category?: string) => queryOptions({ queryKey: ["assets", "sets", category ?? ""], queryFn: () => apiFetch<AssetSet[]>(`/assets/sets${qs({ category })}`), staleTime: 60_000 });
 export const assetDetailQuery = (id: string | null) => queryOptions({ queryKey: ["assets", "item", id], queryFn: () => apiFetch<AssetDetail>(`/assets/items/${id}`), enabled: !!id });
-export const assetRequestsQuery = queryOptions({ queryKey: ["assets", "requests"], queryFn: () => apiFetch<AssetRequest[]>("/assets/requests") });
+export const logoTopicsQuery = queryOptions({ queryKey: ["assets", "logo-topics"], queryFn: () => apiFetch<LogoTopic[]>("/assets/logo-topics"), staleTime: 300_000 });
+/** 자주 사용하는 로고(나만, 로그인 필요) — 사용 + 같은 이름 검색 횟수 순 */
+export const frequentLogosQuery = (uid: string) => queryOptions({ queryKey: ["assets", "logos-frequent", uid], queryFn: () => apiFetch<AssetItem[]>("/assets/logos/frequent"), staleTime: 60_000 });
+export const assetRequestsQuery =queryOptions({ queryKey: ["assets", "requests"], queryFn: () => apiFetch<AssetRequest[]>("/assets/requests") });
 
 export const CATEGORY_KO: Record<AssetCategory, string> = { icon: "아이콘", photo: "사진", illust: "일러스트", diagram: "다이어그램", logo: "로고", ppt: "장표", mockup_sample: "목업 샘플" };
 export const SORT_KO = { newest: "최신순", popular: "인기순", name: "이름순" } as const;

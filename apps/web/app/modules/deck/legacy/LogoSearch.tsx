@@ -3,10 +3,11 @@ import { useEffect, useRef, useState } from "react";
 import { API } from "./api";
 import { Arrow, cn, Ms, useToastOn } from "./ui";
 
-/** 파워플러스 로고 검색 — powerAssets 로고(정부·공공기관, 공개 등급)를 서버가 같은 출처로 내준다(api/src/Deck/Logos.php). 고르면 그림을 File 로 돌려준다(올린 파일과 같게) */
+/** 파워플러스 로고 검색 — powerAssets 로고(정부·공공기관 + semologo 국내 기업·브랜드, 공개 등급)를 서버가 같은 출처로 내준다(api/src/Deck/Logos.php). 고르면 그림을 File 로 돌려준다(올린 파일과 같게) */
 type Logo = { id: string; name: string; thumb: string; img: string };
 const fileOf = (p: string) => `${API}/logos/file?p=${encodeURIComponent(p)}`;
-const TOPICS: [string, string][] = [["", "전체"], ["gov", "중앙부처"], ["local", "지자체"], ["agency", "공단·공사·재단"], ["promo", "진흥원·연구원"], ["edu", "교육"], ["own", "자사"]];
+/** 분류는 서버 목록(Deck/Logos.php TOPICS, 건수 포함)을 받는다 — 공공 줄 / 기업(biz-*) 줄. 받기 전엔 '전체'만 */
+type Topic = { id: string; label: string; count: number };
 
 export function LogoSearch({ title, onPick, onClose }: { title: string; onPick: (f: File) => void; onClose: () => void }) {
   const [q, setQ] = useState("");
@@ -17,6 +18,13 @@ export function LogoSearch({ title, onPick, onClose }: { title: string; onPick: 
   const [err, setErr] = useState("");
   useToastOn(err);
   const [picking, setPicking] = useState<string | null>(null);
+  const [topics, setTopics] = useState<Topic[]>([]);
+  useEffect(() => {
+    fetch(`${API}/logos/topics`).then((r) => r.json()).then((raw) => {
+      const d = raw && raw.data && !Array.isArray(raw.data) ? raw.data : raw;
+      if (Array.isArray(d?.data)) setTopics((d.data as Topic[]).filter((t) => t.count > 0));
+    }).catch(() => {});
+  }, []);
   const seq = useRef(0);
   useEffect(() => {
     const n = ++seq.current;
@@ -59,13 +67,16 @@ export function LogoSearch({ title, onPick, onClose }: { title: string; onPick: 
             <span className="text-[13px] text-faint whitespace-nowrap flex-none">{busy ? "찾는 중…" : `${total}개`}</span>
             <button className="btn-icon ml-auto !w-9 !h-9 !border !border-line !border-solid !bg-white hover:!bg-panel" title="닫기" aria-label="닫기" onClick={onClose}><Ms name="close" size={22} /></button>
           </div>
-          <input autoFocus className="field !h-10 !text-[15px]" value={q} onChange={(e) => setQ(e.target.value)} placeholder="기관 이름 — 예: 식약처, OO시, 한국전력, 교육청" />
-          <div className="flex flex-wrap gap-1.5">
-            {TOPICS.map(([k, l]) => (
-              <button key={k} type="button" aria-pressed={topic === k} onClick={() => setTopic(k)}
-                className={cn("h-7 px-3 rounded-full text-[13.5px] font-semibold border whitespace-nowrap inline-flex items-center justify-center", topic === k ? "bg-ink text-white border-ink" : "bg-white border-line text-ink3 hover:bg-panel")}>{l}</button>
-            ))}
-          </div>
+          <input autoFocus className="field !h-10 !text-[15px]" value={q} onChange={(e) => setQ(e.target.value)} placeholder="기관·회사 이름 — 예: 식약처, OO시, 한국전력, 삼성" />
+          {[[{ id: "", label: "전체", count: 0 }, ...topics.filter((t) => !t.id.startsWith("biz-"))], topics.filter((t) => t.id.startsWith("biz-"))].map((row, i) => row.length > 0 && (
+            <div key={i} className="flex flex-wrap items-center gap-1.5">
+              <span className="w-8 flex-none text-[12.5px] font-semibold text-faint">{i === 0 ? "공공" : "기업"}</span>
+              {row.map((t) => (
+                <button key={t.id} type="button" aria-pressed={topic === t.id} onClick={() => setTopic(t.id)}
+                  className={cn("h-7 px-3 rounded-full text-[13.5px] font-semibold border whitespace-nowrap inline-flex items-center justify-center", topic === t.id ? "bg-ink text-white border-ink" : "bg-white border-line text-ink3 hover:bg-panel")}>{t.label}</button>
+              ))}
+            </div>
+          ))}
         </div>
         <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden scroll-thin px-5 py-4 bg-panel">
           {err && <div role="alert" className="mb-3 flex items-center gap-1.5 text-[13px] font-semibold text-[var(--color-warn)]"><Ms name="error" size={18} />{err}</div>}

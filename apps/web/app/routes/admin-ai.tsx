@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
 import { Table, TableBody, TableCell, TableHeader, TableRow } from "@/components/ui/table";
-import { fetchAdminAi, saveAdminChat, saveAdminJev, saveAdminProvider, type AiChatSolution, type AiDeckSolution, type AiJevSolution, type AiProvider } from "@/lib/admin-ai";
+import { fetchAdminAi, saveAdminJev, saveAdminProvider, type AiDeckSolution, type AiJevSolution, type AiProvider } from "@/lib/admin-ai";
 import { DeckSettingsScreen } from "@/modules/deck/screens";
 import { useMobileSections } from "@/components/hb/mobile-sections";
 import type { Route } from "./+types/admin-ai";
@@ -28,9 +28,8 @@ export default function AdminAi() {
   const d = q.data;
   const deck = d?.solutions.find((s): s is AiDeckSolution => s.id === "deck");
   const jev = d?.solutions.find((s): s is AiJevSolution => s.id === "jev");
-  const chat = d?.solutions.find((s): s is AiChatSolution => s.id === "chat");
-  // 모바일은 설정 칸 넷을 탭 하나로(PC 는 그대로 세로로)
-  const ms = useMobileSections("설정", [{ value: "chat", label: "AI 답변" }, { value: "jev", label: "빠른 판단" }, { value: "deck", label: "powerDeck" }, { value: "usage", label: "사용량" }]);
+  // 모바일은 설정 칸 셋을 탭 하나로(PC 는 그대로 세로로). powerPlus AI(채팅) 칸은 없앴다 — 모델은 위 Claude API 칸 목록, 상한 없음(2026-10-18)
+  const ms = useMobileSections("설정", [{ value: "jev", label: "빠른 판단" }, { value: "deck", label: "powerDeck" }, { value: "usage", label: "사용량" }]);
   const us = useSort(d?.usage ?? [], { sol: (u) => SOL_KO[u.solution] ?? u.solution, label: (u) => u.label, calls: (u) => u.calls, cost: (u) => u.cost });
   return (
     <div>
@@ -50,7 +49,6 @@ export default function AdminAi() {
 
           {ms.bar}
 
-          <div className={ms.wrap("chat")}>{chat && <ChatCard key={chat.model + chat.daily_usd} s={chat} />}</div>
           <div className={ms.wrap("jev")}>{jev && <JevCard key={jev.daily_usd} s={jev} />}</div>
 
           <div className={ms.wrap("deck")}>
@@ -137,7 +135,6 @@ function ProviderCard({ s }: { s: AiProvider }) {
   const [day, setDay] = useState(String(bg?.reset_day ?? 1));
   const validCredit = /^\d+(\.\d{1,2})?$/.test(credit.trim()) && Number(credit) <= 100000;
   const validDay = /^\d{1,2}$/.test(day.trim()) && Number(day) >= 1 && Number(day) <= 31;
-  const pct = bg && bg.credit > 0 ? Math.min(100, (bg.spent / bg.credit) * 100) : 0;
   return (
     <Card title="Claude API" desc="키가 있으면 시안 그림 외 글 작업을 Claude API 로 먼저 보냅니다.">
       <div className="flex flex-wrap items-center gap-3">
@@ -149,10 +146,13 @@ function ProviderCard({ s }: { s: AiProvider }) {
       </div>
 
       {/* 키 목록 — 위에서부터 차례로 쓰고, 크레딧 소진·거절된 키는 30분 건너뛰고 다음 키로. 다 막히면 OpenRouter(2026-10-18) */}
+      {/* 이번 기간 사용은 키마다 그 줄에 — 사용액·남은 크레딧·막대·호출 수(2026-10-18 사용자 "각각 키마다 붙어야, 직관적이게") */}
       {keys.length > 0 && (
         <ol className="mt-4 grid w-[640px] max-w-full divide-y divide-line rounded-xl border border-line">
-          {keys.map((k, i) => (
-            <li key={k.id} className="flex items-center gap-3 px-4 py-2.5 text-sm">
+          {keys.map((k, i) => {
+            const per = bg?.per_key ?? 0;
+            return (
+            <li key={k.id} className="flex items-center gap-3 px-4 py-3 text-sm">
               <span className="w-6 shrink-0 text-center tabular-nums text-ink-4">{i + 1}</span>
               <div className="min-w-0 flex-1">
                 <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
@@ -160,21 +160,32 @@ function ProviderCard({ s }: { s: AiProvider }) {
                   {k.state === "ok"
                     ? (i === active ? <LiveStatus state="ok">지금 사용</LiveStatus> : <span className="text-ink-3">대기</span>)
                     : <b className="text-warn">{k.state === "no_credits" ? "크레딧 소진" : "키 거절"} · {k.at?.slice(5, 16)}부터</b>}
-                  <span className="tabular-nums text-ink">{usd(k.spent)}<span className="text-ink-4"> / {usd(bg?.per_key ?? 0)} · {k.calls.toLocaleString()}회</span></span>
+                  <span className="ml-auto tabular-nums text-ink-4">{k.last_used ? `마지막 사용 ${k.last_used.slice(5, 16)}` : "아직 안 씀"}</span>
                 </div>
-                {/* 마지막 사용·소진 이력 — 소진 이력은 충전 뒤 다시 쓰여도 남는다 */}
-                <p className="mt-0.5 text-ink-4">
-                  {k.last_used ? `마지막 사용 ${k.last_used.slice(5, 16)}` : "아직 안 씀"}
-                  {k.exhausted && ` · 마지막 소진 ${k.exhausted.at.slice(5, 16)} (그 기간 ${usd(k.exhausted.spent)} 쓰고)`}
-                </p>
+                <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 tabular-nums">
+                  <span className="text-ink-3">이번 기간</span>
+                  <span><b className="text-ink">{usd(k.spent)}</b><span className="text-ink-4"> / {usd(per)}</span></span>
+                  <span className="text-ink-4">남음 <b className={per > 0 && per - k.spent < per * 0.1 ? "text-warn" : "text-ink"}>{usd(Math.max(0, per - k.spent))}</b></span>
+                  <span className="text-ink-4">{k.calls.toLocaleString()}회</span>
+                </div>
+                <Progress className="mt-1.5 h-1.5" value={per > 0 ? Math.min(100, (k.spent / per) * 100) : 0} aria-label={`키 …${k.last4} 이번 기간 크레딧 사용 비율`} />
+                {/* 소진 이력은 충전 뒤 다시 쓰여도 남는다 */}
+                {k.exhausted && <p className="mt-1 text-warn">마지막 소진 {k.exhausted.at.slice(5, 16)} (그 기간 {usd(k.exhausted.spent)} 쓰고)</p>}
               </div>
               <Button size="icon-sm" variant="ghost" className="shrink-0" aria-label={`키 …${k.last4} 빼기`} disabled={save.isPending}
                 onClick={() => confirmToast(`키 …${k.last4} 를 뺄까요?`, () => save.mutate({ remove_claude_key_id: k.id }), { action: "빼기", description: keys.length === 1 ? "마지막 키라 빼면 OpenRouter 로 돕니다." : undefined })}>
                 <Minus className="size-4" />
               </Button>
             </li>
-          ))}
+            );
+          })}
         </ol>
+      )}
+      {bg && s.claude.set && (
+        <div className="mt-2 w-[640px] max-w-full px-1 text-sm tabular-nums text-ink-4">
+          <p>합계 <b className="text-ink">{usd(bg.spent)}</b> / {usd(bg.credit)} · 남음 <b className={bg.left < bg.credit * 0.1 ? "text-warn" : "text-ink"}>{usd(bg.left)}</b> · {bg.calls.toLocaleString()}회 <span>({bg.since.slice(5)}부터 · 추정)</span></p>
+          {bg.untracked_calls > 0 && <p>그중 {usd(bg.untracked)} · {bg.untracked_calls.toLocaleString()}회는 키별 기록(10-18) 전 사용이라 어느 키인지 모릅니다.</p>}
+        </div>
       )}
 
       <div className="mt-3 flex flex-wrap items-center gap-3">
@@ -187,14 +198,8 @@ function ProviderCard({ s }: { s: AiProvider }) {
 
       {bg && s.claude.set && (
         <>
-          <h3 className="mt-6 text-md font-bold">이번 기간 사용 <span className="text-sm font-normal text-ink-4">({bg.since} 부터 · 추정)</span></h3>
-          <div className="mt-3 flex flex-wrap items-baseline gap-x-5 gap-y-1 text-sm tabular-nums">
-            <span>사용 <b className="text-ink">{usd(bg.spent)}</b> / {usd(bg.credit)}{bg.keys > 1 && <span className="text-ink-4"> ({usd(bg.per_key)} × 키 {bg.keys}개)</span>}</span>
-            <span>남은 추정 <b className={bg.left < bg.credit * 0.1 ? "text-warn" : "text-ink"}>{usd(bg.left)}</b></span>
-            <span className="text-ink-4">호출 {bg.calls.toLocaleString()}회</span>
-          </div>
-          <Progress className="mt-2 h-2 w-96 max-w-full" value={pct} aria-label="이번 기간 Claude 크레딧 사용 비율" />
-          <div className="mt-4 flex flex-wrap items-center gap-3">
+          <h3 className="mt-6 text-md font-bold">크레딧</h3>
+          <div className="mt-3 flex flex-wrap items-center gap-3">
             <label htmlFor="claude-credit" className="text-md text-ink-3">키 하나당 월 크레딧($)</label>
             <Input id="claude-credit" className="h-9 w-28 text-right tabular-nums" inputMode="decimal" value={credit} onChange={(e) => setCredit(e.target.value)} />
             <label htmlFor="claude-day" className="text-md text-ink-3">갱신일(매월)</label>
@@ -213,37 +218,6 @@ function ProviderCard({ s }: { s: AiProvider }) {
         ))}
       </dl>
       <p className="mt-3 text-sm text-ink-4">시안 그림과 빠른 판단은 키와 상관없이 OpenRouter 로 만듭니다.</p>
-    </Card>
-  );
-}
-
-/** powerPlus AI(채팅) — 홈 채팅·우측 챗봇이 답을 쓰는 모델. 꺼지거나 상한을 넘으면 도움말 원문으로 답한다. */
-function ChatCard({ s }: { s: AiChatSolution }) {
-  const qc = useQueryClient();
-  const [daily, setDaily] = useState(String(s.daily_usd));
-  const [model, setModel] = useState(s.model);
-  const save = useMutation({
-    mutationFn: saveAdminChat,
-    onSuccess: () => { toast.success("powerPlus AI 설정을 저장했습니다."); void qc.invalidateQueries({ queryKey: KEY }); },
-    onError: (e) => toastError(e),
-  });
-  const validDaily = /^\d+(\.\d{1,2})?$/.test(daily.trim()) && Number(daily) <= 100;
-  const validModel = model.trim() === "" || /^[a-z0-9._-]+\/[a-z0-9._:-]+$/i.test(model.trim());
-  return (
-    <Card title={s.name} desc={s.desc}>
-      <RowSwitch id="chat-on" label="LLM 답변 켜기" desc={`지금 모델 ${s.model}`} checked={s.enabled} onChange={(v) => save.mutate({ enabled: v })} />
-      <div className="mt-5 flex flex-wrap items-center gap-3">
-        <label htmlFor="chat-model" className="text-md text-ink-3">모델</label>
-        <Input id="chat-model" className="h-9 w-72 min-w-0" value={model} placeholder={s.default_model} onChange={(e) => setModel(e.target.value)} />
-        <Button size="sm" variant="outline" disabled={!validModel || model.trim() === s.model || save.isPending} onClick={() => save.mutate({ model: model.trim() })}>저장</Button>
-        <span className="text-sm text-ink-4">비우면 기본({s.default_model})</span>
-      </div>
-      <div className="mt-4 flex flex-wrap items-center gap-3">
-        <label htmlFor="chat-daily" className="text-md text-ink-3">하루 상한($)</label>
-        <Input id="chat-daily" className="h-9 w-28 text-right tabular-nums" inputMode="decimal" value={daily} onChange={(e) => setDaily(e.target.value)} />
-        <Button size="sm" variant="outline" disabled={!validDaily || Number(daily) === s.daily_usd || save.isPending} onClick={() => save.mutate({ daily_usd: Number(daily) })}>저장</Button>
-        <span className="text-sm text-ink-4">오늘 {usd(s.spent_today)} 사용</span>
-      </div>
     </Card>
   );
 }

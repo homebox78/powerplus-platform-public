@@ -281,7 +281,7 @@ flowchart TB
 | 장표 제작 | `claude-opus-5-5` | powerDeck 칸의 장표 제작 모델 |
 | 기획 · 대본 · 와이어 | `claude-sonnet-5-5` | powerDeck 칸의 글 모델 |
 | 자료 정리 | `claude-sonnet-5-5` | powerDeck 칸의 자료 정리 모델 |
-| AI 답변(챗봇) | 답변 모델이 Claude 면 그 모델(기본 Haiku 4.5), 아니면 `claude-sonnet-5-5` | 답변 칸의 모델 |
+| powerPlus AI(채팅) | `claude-haiku-5-5` (하루 상한 없음) | 고정 |
 | 시안 그림 · Jev | OpenRouter 그대로 | OpenRouter |
 
 - 분기는 서버 두 곳에서만 합니다. 장표 쪽은 `Deck\AiKeys::sendText`, 답변은 `Core\Llm::chat` 입니다.

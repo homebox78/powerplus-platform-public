@@ -16,7 +16,9 @@ final class Claude
     private const VERSION = '2023-06-01';
     public const DEFAULT_MODEL = 'claude-sonnet-5-5';
     /** 키가 있으면 모델은 고르지 않고 고정(2026-10-17 사용자 지시) — 장표 제작 Opus 5.5, 기획·대본·와이어·자료 정리 Sonnet 5.5. 화면 표시용 [이름, 모델] */
-    public const FIXED = [['장표 제작', 'claude-opus-5-5'], ['기획 · 대본 · 와이어', 'claude-sonnet-5-5'], ['자료 정리', 'claude-sonnet-5-5']];
+    public const FIXED = [['장표 제작', 'claude-opus-5-5'], ['기획 · 대본 · 와이어', 'claude-sonnet-5-5'], ['자료 정리', 'claude-sonnet-5-5'], ['powerPlus AI(채팅)', self::CHAT_MODEL]];
+    /** 홈 채팅·우측 챗봇 답변 — 고정, 하루 상한 없음(2026-10-18 사용자 지시 "하이쿠도 지금 쓰는 모델 하위로, 상한 없애고") */
+    public const CHAT_MODEL = 'claude-haiku-5-5';
 
     /** 작업 종류 → 고정 모델 */
     public static function forKind(string $kind): string

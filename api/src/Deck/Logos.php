@@ -25,9 +25,14 @@ final class Logos
     /** 쓰지 않는 로고 — 솔리데오 컨소시엄은 'solideo S + 솔리데오 컨소시엄'(가로, 심볼 왼쪽) logo_524·523(흰색)만 쓴다 */
     private const HIDE = ['pp:logo_525', 'pp:logo_526', 'pp:logo_527', 'pp:logo_528', 'pp:logo_529'];
 
-    /** 분류 — 옛 powerPlus 주제와 같은 이름(화면 LogoSearch.tsx TOPICS 와 짝) */
-    private const TOPICS = [
-        'gov' => '중앙부처', 'local' => '지자체', 'agency' => '공단·공사·재단', 'promo' => '진흥원·연구원', 'edu' => '교육', 'own' => '자사',
+    /** 분류 — 공공 6개는 옛 powerPlus 주제 이름, biz-* 는 semologo 국내 기업 카테고리를 묶은 것(2026-10-18).
+     *  화면(LogoSearch.tsx·powerAssets 로고 분류)은 이 목록을 /deck/logos/topics·/assets/logo-topics 로 받는다.
+     *  저장 = asset_items.style_group 'logo-<분류>'. 기업은 이름으로 못 가르니 등록 때(db/migrate-legacy/register-logos.mjs) 정하고, 비어 있는 것은 ensureTopics 가 이름으로 채운다. */
+    public const TOPICS = [
+        'gov' => '중앙부처', 'local' => '지자체', 'agency' => '공단·공사·재단', 'promo' => '진흥원·연구원', 'edu' => '교육',
+        'biz-food' => '식품·음료', 'biz-it' => 'IT·게임·통신', 'biz-media' => '미디어·엔터', 'biz-health' => '의료·바이오', 'biz-finance' => '금융·결제',
+        'biz-maker' => '제조·중공업', 'biz-energy' => '에너지·화학', 'biz-retail' => '유통·패션', 'biz-mobility' => '교통·물류·여행', 'biz-build' => '건설·부동산',
+        'biz-sports' => '스포츠', 'biz-etc' => '기타 기업·브랜드', 'own' => '자사',
     ];
 
     /** 이름 끝말로 분류(판정 순서 = 자사 → 교육 → 진흥·연구 → 공단·공사·재단 → 지자체 → 중앙부처) */
@@ -50,13 +55,30 @@ final class Logos
         return match ($mime) { 'image/jpeg' => 'jpg', 'image/webp' => 'webp', 'image/svg+xml' => 'svg', default => 'png' };
     }
 
-    /** 보이는 로고 전체(이름·태그·파일) — 545개라 요청마다 한 번 읽어도 가볍다 */
+    /** 분류가 안 붙은 로고(관리자 새 등록·옛 공공기관 로고)에 이름으로 분류를 붙인다. 할 일이 없으면 색인 한 번 읽고 끝 */
+    public static function ensureTopics(): void
+    {
+        $rows = Db::rows("SELECT id, name FROM asset_items WHERE category = 'logo' AND (style_group IS NULL OR style_group NOT LIKE 'logo-%')");
+        foreach ($rows as $r) {
+            Db::exec('UPDATE asset_items SET style_group = ? WHERE id = ?', ['logo-' . self::topicOf((string) $r['name']), $r['id']]);
+        }
+    }
+
+    /** style_group 'logo-<분류>' → 분류 id(모르는 값이면 이름으로) */
+    private static function topicFrom(?string $group, string $name): string
+    {
+        $t = $group !== null && str_starts_with($group, 'logo-') ? substr($group, 5) : '';
+        return isset(self::TOPICS[$t]) ? $t : self::topicOf($name);
+    }
+
+    /** 보이는 로고 전체(이름·태그·파일) — 2026-10-18 semologo 국내 로고로 약 6천 개, 아직 요청마다 한 번 읽는다(느려지면 캐시) */
     private static function all(Actor $a): array
     {
+        self::ensureTopics();
         [$vis, $vp] = Access::whereVisible($a, 'i');
         $hide = implode(',', array_fill(0, count(self::HIDE), '?'));
         $rows = Db::rows(
-            "SELECT i.public_id, i.name,
+            "SELECT i.public_id, i.name, i.style_group,
                     (SELECT GROUP_CONCAT(t.tag SEPARATOR ' ') FROM asset_tags t WHERE t.item_id = i.id AND t.lang = 'ko') AS tags,
                     (SELECT f.mime FROM asset_files af JOIN core_files f ON f.id = af.file_id WHERE af.item_id = i.id AND af.kind = 'original') AS mime_o,
                     (SELECT f.mime FROM asset_files af JOIN core_files f ON f.id = af.file_id WHERE af.item_id = i.id AND af.kind = 'thumb') AS mime_t
@@ -73,7 +95,7 @@ final class Logos
                 'thumb' => $r['mime_t'] ? "{$r['public_id']}/thumb." . self::ext($r['mime_t']) : $img,
                 'img' => $img,
                 'tags' => (string) $r['tags'],
-                'topic' => self::topicOf((string) $r['name']),
+                'topic' => self::topicFrom($r['style_group'], (string) $r['name']),
             ];
         }, $rows);
     }
@@ -149,6 +171,13 @@ final class Logos
         // 2026-10-07: 옛 서버(/powerPlus)는 내렸다 — 파일은 전부 플랫폼 storage 에 있다
         if (!is_file($local)) {
             Legacy::fail('로고 그림이 없습니다', 404);
+        }
+        // 원본을 받는 것 = 로고 찾기에서 고른 것 — powerAssets '자주 사용하는 로고'(Service::frequentLogos)의 근거
+        if ($m[2] === 'original' && $a->id() !== null) {
+            try {
+                Db::exec("INSERT INTO asset_uses (item_id, user_id, channel) VALUES (?, ?, 'deck')", [$item['id'], $a->id()]);
+            } catch (\Throwable) {
+            }
         }
         $img = (string) file_get_contents($local);
         header('Content-Type: ' . $f['mime']);

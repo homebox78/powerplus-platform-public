@@ -19,6 +19,25 @@ final class Service
 {
     public const CATEGORIES = ['icon', 'photo', 'illust', 'diagram', 'logo', 'ppt', 'mockup_sample'];
 
+    /**
+     * 자산 이미지 화소 상한(가로×세로) — 업로드 판정은 이 한 곳(2026-10-18 사용자 결정 "상한을 낮춤", 전수조사 B).
+     * GD 는 화소당 4B 를 쓴다: 8천만 화소면 디코딩만 320MB 라 memory_limit 256M 에서 Fatal(빈 500 + 고아 파일). 4천만 = 160MB + 썸네일.
+     */
+    public const MAX_PIXELS = 40_000_000;
+    /** 오류 글에 싣는 예시 크기(= MAX_PIXELS) */
+    public const MAX_PIXELS_EXAMPLE = [8000, 5000];
+
+    /** 화소 상한을 넘으면 사용자에게 보일 글, 아니면 null — 디코딩·저장 전에 부른다. DB 없이 시험할 수 있게 순수 함수 */
+    public static function pixelLimitError(int $w, int $h): ?string
+    {
+        if ($w * $h <= self::MAX_PIXELS) {
+            return null;
+        }
+        [$ew, $eh] = self::MAX_PIXELS_EXAMPLE;
+        return sprintf('이미지가 너무 큽니다(%d×%d, %s만 화소). 최대 %s만 화소(예 %d×%d) 이하로 줄여서 올려 주세요.',
+            $w, $h, number_format((int) round($w * $h / 10000)), number_format(intdiv(self::MAX_PIXELS, 10000)), $ew, $eh);
+    }
+
     /** 주제 목록에서 뺄 모양·화풍 낱말(스타일이지 주제가 아니다). */
     private const STYLE_WORDS = [
         'graphic', '그래픽', 'vector', '벡터', 'flat', '플랫', '평면', '입체', '3d', 'icon', '아이콘', 'illustration', '일러스트',
@@ -642,7 +661,7 @@ final class Service
                     (SELECT c.public_id FROM asset_items c WHERE c.id = s.cover_item_id) AS cover_pid,
                     SUBSTRING_INDEX(GROUP_CONCAT(i.public_id ORDER BY i.created_at DESC, i.id DESC), ',', 1) AS first_pid,
                     MAX(i.created_at) AS last_at,
-                    SUM(i.created_at >= NOW() - INTERVAL 7 DAY) AS recent_n
+                    SUM(i.created_at >= NOW() - INTERVAL 24 HOUR) AS recent_n
              FROM asset_sets s JOIN asset_items i ON i.set_id = s.id AND i.deleted_at IS NULL AND {$visSql}
              WHERE i.category <> 'mockup_sample'{$catSql}
              GROUP BY s.id ORDER BY last_at DESC, s.item_count DESC LIMIT {$limit}",

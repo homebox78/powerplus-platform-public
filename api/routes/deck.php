@@ -161,6 +161,11 @@ return static function (Router $r): void {
         if (!in_array($p['kind'], ['result', 'before', 'after', 'extra', 'live', 'frames', 'draft', 'pilot', 'mockup'], true)) Legacy::fail('Not Found', 404);
         Legacy::jsonOut(Jobs::putFile($hex16($p['id']), $w, $p['kind'], (string) ($_GET['name'] ?? ''), isset($_GET['slide']) ? (int) $_GET['slide'] : null));
     });
+    // 기획을 먼저 저장(시안 전) — 시안에서 실패해도 다시 돌리면 기획부터 다시 짜지 않게(R81)
+    $r->post('/deck/worker/jobs/{id}/plan', static function (array $p, Actor $a) use ($worker, $hex16): void {
+        $w = $worker($a);
+        Legacy::jsonOut(Jobs::savePlan($hex16($p['id']), $w, Legacy::body()));
+    });
     $r->post('/deck/worker/jobs/{id}/finish', static function (array $p, Actor $a) use ($worker, $hex16): void {
         $w = $worker($a);
         Legacy::jsonOut(Jobs::finish($hex16($p['id']), $w, Legacy::body()));

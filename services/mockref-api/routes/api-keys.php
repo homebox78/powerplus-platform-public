@@ -20,6 +20,14 @@ $requireUser = static function (): array {
     }
     return $u;
 };
+/**
+ * 일 사용량(api_usage_daily.day)의 날짜 — 한국 0시 기준(2026-10-18 사용자 결정 "한국 0시").
+ * 예전엔 DB 날짜 함수(CURDATE)였다. 이 서비스의 DB 연결은 time_zone 을 정하지 않아 서버 시간대(VM 은 UTC 일 수 있음)를 따랐다 → 한도가 한국 09시에 풀릴 수 있었다.
+ * 날짜를 PHP 에서 Asia/Seoul 로 만들어 넘긴다(쓰기·읽기 같은 값).
+ */
+$kstDay = static function (string $modify = 'now'): string {
+    return (new DateTimeImmutable($modify, new DateTimeZone('Asia/Seoul')))->format('Y-m-d');
+};
 $planOf = static function (int $userId): array {
     $sub = Db::row("SELECT plan_id FROM subscriptions WHERE owner_type = 'user' AND owner_id = ? AND status IN ('trial','active','past_due') ORDER BY id DESC LIMIT 1", [$userId]);
     $planId = $sub['plan_id'] ?? 'free';
@@ -38,12 +46,13 @@ $shape = static function (array $k): array {
     ];
 };
 
-$router->get('/api/api-keys', static function () use ($requireUser, $planOf, $shape): void {
+$router->get('/api/api-keys', static function () use ($requireUser, $planOf, $shape, $kstDay): void {
     $u = $requireUser();
+    $today = $kstDay();
     $rows = Db::rows(
-        "SELECT k.*, (SELECT COALESCE(SUM(calls),0) FROM api_usage_daily d WHERE d.api_key_id = k.id AND d.day = CURDATE()) AS calls_today,
-                (SELECT COALESCE(SUM(calls),0) FROM api_usage_daily d WHERE d.api_key_id = k.id AND d.day >= DATE_FORMAT(CURDATE(), '%Y-%m-01')) AS calls_month
-         FROM api_keys k WHERE k.owner_type = 'user' AND k.owner_id = ? ORDER BY k.revoked_at IS NOT NULL, k.id DESC", [$u['id']]);
+        "SELECT k.*, (SELECT COALESCE(SUM(calls),0) FROM api_usage_daily d WHERE d.api_key_id = k.id AND d.day = ?) AS calls_today,
+                (SELECT COALESCE(SUM(calls),0) FROM api_usage_daily d WHERE d.api_key_id = k.id AND d.day >= ?) AS calls_month
+         FROM api_keys k WHERE k.owner_type = 'user' AND k.owner_id = ? ORDER BY k.revoked_at IS NOT NULL, k.id DESC", [$today, substr($today, 0, 8) . '01', $u['id']]);
     $plan = $planOf($u['id']);
     Response::json(['items' => array_map($shape, $rows), 'plan' => $plan['id'], 'limit' => ['mcp_keys' => $plan['limits']['mcp_keys'] ?? 0, 'mcp_calls_day' => $plan['limits']['mcp_calls_day'] ?? 0]], 200, ['Cache-Control' => 'no-store']);
 });
@@ -93,13 +102,13 @@ $router->add('DELETE', '/api/api-keys/{id}', static function (array $p) use ($re
     Response::json(['ok' => true]);
 });
 
-$router->get('/api/api-keys/{id}/usage', static function (array $p) use ($requireUser): void {
+$router->get('/api/api-keys/{id}/usage', static function (array $p) use ($requireUser, $kstDay): void {
     $u = $requireUser();
     $k = Db::row("SELECT id FROM api_keys WHERE id = ? AND owner_type = 'user' AND owner_id = ?", [(int) $p['id'], $u['id']]);
     if ($k === null) {
         Response::error(404, 'NOT_FOUND', '키를 찾을 수 없습니다.');
     }
-    $days = Db::rows('SELECT day, tool, calls FROM api_usage_daily WHERE api_key_id = ? AND day >= CURDATE() - INTERVAL 30 DAY ORDER BY day, tool', [(int) $p['id']]);
+    $days = Db::rows('SELECT day, tool, calls FROM api_usage_daily WHERE api_key_id = ? AND day >= ? ORDER BY day, tool', [(int) $p['id'], $kstDay('-30 days')]);
     foreach ($days as &$d) {
         $d['calls'] = (int) $d['calls'];
     }
@@ -108,7 +117,7 @@ $router->get('/api/api-keys/{id}/usage', static function (array $p) use ($requir
 });
 
 /** MCP 서버용 키 검증 (서버 간, X-Admin-Token). 사용량 +1 은 tool 파라미터로 함께 기록 */
-$router->get('/api/internal/keys/verify', static function (): void {
+$router->get('/api/internal/keys/verify', static function () use ($kstDay): void {
     Auth::requireAdmin();
     $key = (string) ($_GET['key'] ?? '');
     $tool = preg_replace('/[^a-z_]/', '', (string) ($_GET['tool'] ?? '')) ?: 'unknown';
@@ -123,11 +132,12 @@ $router->get('/api/internal/keys/verify', static function (): void {
     $plan = Db::row('SELECT id, limits FROM plans WHERE id = ?', [$sub['plan_id'] ?? 'free']);
     $limits = is_string($plan['limits'] ?? null) ? (json_decode($plan['limits'], true) ?: []) : [];
     $limitDay = $k['role'] === 'admin' ? -1 : (int) ($limits['mcp_calls_day'] ?? 0);
-    $used = (int) (Db::row('SELECT COALESCE(SUM(calls),0) AS n FROM api_usage_daily WHERE api_key_id = ? AND day = CURDATE()', [$k['id']])['n'] ?? 0);
+    $today = $kstDay();   // 한국 0시 기준(DB CURDATE 는 서버 시간대를 따랐다)
+    $used = (int) (Db::row('SELECT COALESCE(SUM(calls),0) AS n FROM api_usage_daily WHERE api_key_id = ? AND day = ?', [$k['id'], $today])['n'] ?? 0);
     if ($limitDay >= 0 && $used >= $limitDay) {
-        Response::error(429, 'RATE_LIMITED', '오늘 호출 한도를 넘었습니다. 내일 00:00(KST) 초기화됩니다.', ['limit' => $limitDay, 'used' => $used]);
+        Response::error(429, 'RATE_LIMITED', '오늘 호출 한도를 넘었습니다. 자정(한국 시각)에 다시 채워집니다.', ['limit' => $limitDay, 'used' => $used]);
     }
-    Db::exec('INSERT INTO api_usage_daily (api_key_id, day, tool, calls) VALUES (?, CURDATE(), ?, 1) ON DUPLICATE KEY UPDATE calls = calls + 1', [$k['id'], $tool]);
+    Db::exec('INSERT INTO api_usage_daily (api_key_id, day, tool, calls) VALUES (?, ?, ?, 1) ON DUPLICATE KEY UPDATE calls = calls + 1', [$k['id'], $today, $tool]);
     Db::exec('UPDATE api_keys SET last_used_at = NOW(3) WHERE id = ?', [$k['id']]);
     Response::json(['ok' => true, 'key_id' => (int) $k['id'], 'plan' => $plan['id'] ?? 'free', 'role' => $k['role'], 'scopes' => json_decode((string) $k['scopes'], true) ?: [], 'limit_day' => $limitDay, 'used_today' => $used + 1], 200, ['Cache-Control' => 'no-store']);
 });

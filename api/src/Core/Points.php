@@ -50,6 +50,18 @@ final class Points
         return Db::exec('INSERT IGNORE INTO core_point_ledger (user_id, delta, reason, ref_type, ref_id) VALUES (?, ?, ?, ?, ?)', [$userId, (int) $rule['delta'], $reason, $refType, $refId]) > 0;
     }
 
+    /**
+     * 관리자 일괄 지급의 묶음 키(ref_id, 40자) — 한국 날짜 + 사유 해시. 같은 대상·같은 사유·같은 날이면 같은 키라
+     * ux_point_dedup(user_id, reason, ref_type, ref_id) 에 걸려 두 번째 지급이 들어가지 않는다(2026-10-18 사용자 결정).
+     * 사유는 앞뒤 공백·연속 공백만 정리해 비교한다(대소문자·글자는 그대로). DB 없이 시험할 수 있게 순수 함수.
+     */
+    public static function bulkRef(string $reason, ?\DateTimeImmutable $at = null): string
+    {
+        $day = ($at ?? new \DateTimeImmutable('now'))->setTimezone(new \DateTimeZone('Asia/Seoul'))->format('Ymd');
+        $norm = preg_replace('/\s+/u', ' ', trim($reason)) ?? trim($reason);
+        return $day . ':' . substr(sha1($norm), 0, 31);
+    }
+
     public static function cost(string $reason): int
     {
         return abs((int) (Db::val('SELECT delta FROM core_point_rules WHERE reason = ?', [$reason]) ?? 0));

@@ -54,6 +54,8 @@ return static function (Router $r): void {
         $reason = trim((string) ($b['reason'] ?? ''));
         $count = 0;
         $skipped = 0;
+        $already = 0;   // points: 같은 사유로 오늘(한국 시각) 이미 받은 사람
+        $bulkRef = Points::bulkRef($reason);
 
         if ($action === 'block' || $action === 'points') {
             if (mb_strlen($reason) < 2 || mb_strlen($reason) > 200) {
@@ -129,22 +131,29 @@ return static function (Router $r): void {
                 });
                 Audit::log($a, 'user.plan', $target, $before, ['plan' => Users::plan(Users::byId($uid) ?? $u), 'set' => $plan, 'until' => $until ?: null, 'bulk' => true]);
             } else { // points
-                $ok = Db::tx(static function () use ($uid, $u, $amount, $reason, $a): bool {
+                // 같은 대상·같은 사유·같은 날(한국 시각)은 한 번만(2026-10-18 사용자 결정, 전수조사 B) — 중간에 끊겨 다시 눌러도 이미 받은 사람은 두 번 받지 않는다.
+                // 판정은 core_point_ledger 유일 키(user_id, reason, ref_type, ref_id) 하나 — 두 요청이 겹쳐도 DB 가 한 줄만 받는다(INSERT IGNORE).
+                $res = Db::tx(static function () use ($uid, $u, $amount, $reason, $a, $bulkRef): string {
                     Db::row('SELECT id FROM core_users WHERE id = ? FOR UPDATE', [$uid]);
                     $bal = Points::balance($uid);
                     if ($bal + $amount < 0) {
-                        return false;
+                        return 'low';
                     }
-                    Audit::log($a, 'points.adjust', 'user:' . $u['public_id'], ['balance' => $bal], ['balance' => $bal + $amount, 'delta' => $amount, 'reason' => $reason, 'bulk' => true]);
-                    $ref = Db::lastId();
-                    $ref = $ref > 0 ? (string) $ref : 'x' . Ids::publicId(10);
-                    Db::exec(
-                        "INSERT INTO core_point_ledger (user_id, delta, reason, ref_type, ref_id, memo) VALUES (?, ?, 'admin_adjust', 'audit', ?, ?)",
-                        [$uid, $amount, $ref, $reason]
+                    $n = Db::exec(
+                        "INSERT IGNORE INTO core_point_ledger (user_id, delta, reason, ref_type, ref_id, memo) VALUES (?, ?, 'admin_adjust', 'bulk', ?, ?)",
+                        [$uid, $amount, $bulkRef, $reason]
                     );
-                    return true;
+                    if ($n === 0) {
+                        return 'dup';
+                    }
+                    Audit::log($a, 'points.adjust', 'user:' . $u['public_id'], ['balance' => $bal], ['balance' => $bal + $amount, 'delta' => $amount, 'reason' => $reason, 'bulk' => true, 'ref' => $bulkRef]);
+                    return 'ok';
                 });
-                if (!$ok) {
+                if ($res === 'dup') {
+                    $already++;
+                    continue;
+                }
+                if ($res !== 'ok') {
                     $skipped++;
                     continue;
                 }
@@ -152,7 +161,14 @@ return static function (Router $r): void {
             $count++;
         }
         $skipped += count($list) - count($users);
-        Response::json(['action' => $action, 'count' => $count, 'skipped' => $skipped]);
+        $out = ['action' => $action, 'count' => $count, 'skipped' => $skipped];
+        if ($action === 'points') {
+            $out['already'] = $already;
+            if ($already > 0) {
+                $out['note'] = "이미 지급 {$already}명 — 같은 사유로 오늘(한국 시각) 이미 받은 사람은 건너뛰었습니다.";
+            }
+        }
+        Response::json($out);
     });
 
     // ---- 문의: 상태 일괄 · 삭제(admin 이상, 되돌릴 수 없음)

@@ -1119,8 +1119,10 @@ return static function (Router $r): void {
             if (!$info || !in_array($info[2], [IMAGETYPE_JPEG, IMAGETYPE_PNG, IMAGETYPE_WEBP, IMAGETYPE_GIF], true)) {
                 throw HttpError::invalid('JPG·PNG·WEBP·GIF 이미지만 됩니다.', 'file');
             }
-            if ($info[0] * $info[1] > 80_000_000) {
-                throw HttpError::invalid('이미지가 너무 큽니다(8천만 화소 이하).', 'file');
+            // 화소 상한은 Assets\Service::MAX_PIXELS 한 곳(4천만, 2026-10-18) — 옮기기·디코딩 전에 거절해 고아 파일·메모리 Fatal 을 막는다
+            $tooBig = \Pp\Assets\Service::pixelLimitError((int) $info[0], (int) $info[1]);
+            if ($tooBig !== null) {
+                throw HttpError::invalid($tooBig, 'file');
             }
             $ext = match ($info[2]) { IMAGETYPE_JPEG => 'jpg', IMAGETYPE_PNG => 'png', IMAGETYPE_WEBP => 'webp', default => 'gif' };
             $w = $info[0];

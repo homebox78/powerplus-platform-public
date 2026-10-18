@@ -99,14 +99,16 @@ $router->get('/api/billing/success', static function () use ($requireUser, $plan
         header('Location: ' . $appPath('/account/billing?error=' . rawurlencode(mb_substr($e->getMessage(), 0, 80))), true, 302);
         exit;
     }
-    // 기존 활성 구독은 대체
-    Db::exec("UPDATE subscriptions SET status = 'canceled', canceled_at = NOW(3) WHERE owner_type = 'user' AND owner_id = ? AND status IN ('trial','active','past_due')", [$u['id']]);
+    // 기존 구독 취소·새 구독·영수증은 한 트랜잭션(Homebox\Billing::recordPaid) — 하나라도 실패하면 셋 다 되돌린다(2026-10-18 전수조사 B).
+    // 돈은 이미 나갔으므로 기록 실패는 주문번호·결제키와 함께 남기고, 사용자에게 문의할 번호를 보여 준다(예전엔 기존 구독만 취소되고 Free 로 떨어졌다).
     $periodEnd = date('Y-m-d H:i:s', strtotime($billing === 'year' ? '+1 year' : '+1 month'));
-    Db::exec('INSERT INTO subscriptions (owner_type, owner_id, plan_id, billing, status, seats, pg_customer_key, pg_billing_key, current_period_end) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
-        ['user', $u['id'], $plan['id'], $billing, 'active', $seats, $customerKey, $billingKey, $periodEnd]);
-    $subId = (int) Db::pdo()->lastInsertId();
-    $vat = (int) round($amount - $amount / 1.1);
-    Db::exec('INSERT INTO invoices (subscription_id, amount_krw, vat_krw, status, pg_payment_key, paid_at) VALUES (?, ?, ?, ?, ?, NOW(3))', [$subId, $amount - $vat, $vat, 'paid', $paid['paymentKey'] ?? null]);
+    try {
+        \Homebox\Billing::recordPaid($u, $plan['id'], $billing, $seats, $customerKey, $billingKey, $amount, isset($paid['paymentKey']) ? (string) $paid['paymentKey'] : null, $periodEnd);
+    } catch (Throwable $e) {
+        error_log('[homebox-billing] PAID_NOT_RECORDED order=' . $orderId . ' payment=' . (string) ($paid['paymentKey'] ?? '') . ' user=' . $u['id'] . ' plan=' . $plan['id'] . ' amount=' . $amount . ' — ' . $e->getMessage());
+        header('Location: ' . $appPath('/account/billing?error=' . rawurlencode('결제는 됐지만 구독 기록에 실패했습니다. 기존 구독은 그대로입니다. 주문번호 ' . $orderId . ' 로 문의해 주세요.')), true, 302);
+        exit;
+    }
     header('Location: ' . $appPath('/account?paid=1'), true, 302);
     exit;
 });

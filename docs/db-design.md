@@ -54,7 +54,7 @@ comm_posts ─< comm_comments · comm_likes
 | `core_subscriptions` | org_id 또는 user_id, plan, status ENUM(active,past_due,canceled), period_start/end, billing_key_enc, renews_at | `ix_user_status`, `ix_renews`(갱신 배치) |
 | `core_invoices` | subscription_id, amount, vat, status, pg_tid, issued_at, paid_at, refunded_at, receipt_url | `ix_sub_issued` |
 | `core_credit_ledger` | user_id, org_id, delta INT, kind ENUM(grant_month,purchase,use,refund,expire), ref_type, ref_id, balance_after, expires_at | `ix_user_created`(잔액 = 마지막 행 balance_after), `ix_expires` |
-| `core_point_ledger` | user_id, delta, reason, ref_type, ref_id, created_at | `ux_dedup(user_id, reason, ref_type, ref_id)`(중복 적립 차단), `ix_user_created` |
+| `core_point_ledger` | user_id, delta, reason, ref_type, ref_id, created_at | `ux_dedup(user_id, reason, ref_type, ref_id)`(중복 적립 차단), `ix_user_created`. 관리자 일괄 지급은 ref_type='bulk', ref_id='YYYYMMDD(한국 날짜):사유 sha1 앞 31자' — 같은 대상·같은 사유·같은 날 두 번째는 이 키에 걸려 건너뛴다(열 추가 없음) |
 | `core_point_rules` | reason(PK), delta, daily_cap, yearly_cap, enabled | — |
 | `core_api_keys` | public_id, user_id, org_id, label, key_hash CHAR(64), key_enc VARBINARY(512)(다시 보기), last4, scopes SET(assets,deck,mock,guide), plan_snapshot, daily_limit, ip_allow JSON, last_used_at, revoked_at | `ux_hash`, `ix_user` |
 | `core_api_usage` | key_id, day DATE, tool VARCHAR(48), calls INT, bytes BIGINT, ms_sum | `ux_key_day_tool`, 파티션 월 |
@@ -91,7 +91,7 @@ comm_posts ─< comm_comments · comm_likes
 |---|---|---|
 | `deck_uploads` | public_id, owner_user_id, filename, bytes, mime, sha256, parts_total, parts_done, file_id, scanned_at | `ix_owner_created` |
 | `deck_upload_parts` | upload_id, no, bytes, sha | `ux_upload_no` |
-| `deck_jobs` | content 6열(기본 private), upload_id, kind ENUM(design,wire), phase ENUM(pilot,full), status, pilot_slide, options JSON, score, stage, pct, engine_worker_id, credits_used, started_at, finished_at, error | `ix_owner_created`, `ix_status_updated`(엔진 대기열은 core_jobs 가 담당) |
+| `deck_jobs` | content 6열(기본 private), upload_id, kind ENUM(design,wire), phase ENUM(pilot,full), status, pilot_slide, options JSON, score, stage, pct, engine_worker_id, credits_used, started_at, finished_at, error · (현행 0005 표) budget_usd·spent_usd·**budget_base_usd**(0043 — 작업당 한도의 기준선. 시안 확정 때 spent_usd 로 다시 잡고, 발표 대본·예상 질문 비용만큼 올린다. 판정 = spent_usd − budget_base_usd ≥ budget_usd) | `ix_owner_created`, `ix_status_updated`(엔진 대기열은 core_jobs 가 담당) |
 | `deck_job_files` | job_id, kind ENUM(before,after,live,frames,draft,pilot,pptx,extras), file_id, ver | `ux_job_kind_ver` |
 | `deck_job_events` | job_id, at, stage, pct, msg, kind(think/log) | `ix_job_at`, 파티션 월 |
 | `deck_wires` | job_id, slide_no, rows JSON, rows_ai JSON, tpl, wire_at, edited_by | `ux_job_slide` |

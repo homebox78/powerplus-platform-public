@@ -75,7 +75,12 @@ def launch_engine(job, prompt, cwd=None, prog_file=None, quiet=False):
 
 
 def log(*a):
-    print(time.strftime("[%H:%M:%S]"), *a, flush=True)
+    # 로그 한 줄 때문에 작업이 죽지 않게 — Windows 콘솔(cp949)은 '—'·이모지를 못 찍어 UnicodeEncodeError 로 작업이 실패했다(2026-10-18 이어 만들기 시험).
+    try:
+        print(time.strftime("[%H:%M:%S]"), *a, flush=True)
+    except UnicodeEncodeError:
+        enc = getattr(sys.stdout, "encoding", None) or "utf-8"
+        print(" ".join([time.strftime("[%H:%M:%S]"), *map(str, a)]).encode(enc, "replace").decode(enc, "replace"), flush=True)
 
 
 def req(method, path, body=None, raw=None, timeout=60):
@@ -599,6 +604,103 @@ def key_align_of(job_dir, default="center"):
     return default
 
 
+from resume import BUILT, built_load, built_save, built_done, reusable, sig_of, pptx_ok   # 이어 만들기 공용(R79·R81) — 세로 제안서도 같은 기록을 쓴다
+
+
+def _mock_files(src_m, key, front):
+    names = (f"{key}.jpg", f"{key}.png", f"{key}_bg.png", f"{key}_logos.json") if front else (f"{key}.jpg", f"{key}.png", f"{key}_body.png")
+    return [os.path.join(src_m, nm) for nm in names if os.path.isfile(os.path.join(src_m, nm))]
+
+
+def slide_sig(j, src_m, key, spec, front, rv, comments):
+    """장 하나를 '같은 조건으로 만들었나' 의 지문 — 시안 파일 내용·그 장의 기획·핀 의견·수정 요청·색·디자인 타입·서체·언어·요청 사항
+    (resume.sig_of 로 옮겼지만 값은 10-18 판과 같다 — 이미 남은 _built.json 지문이 그대로 맞는다)"""
+    return sig_of({"spec": spec, "comments": comments, "rv": rv, "theme": j.get("theme") or "", "style": styles.of_job(j), "font": font_ids(j),
+                   "lang": design.lang_of(j), "note": (j.get("note") or "").strip(), "feedback": (j.get("feedback") or "").strip()},
+                  _mock_files(src_m, key, front))
+
+
+def _revise_of(j):
+    review = j.get("review")
+    if isinstance(review, str):
+        try:
+            review = json.loads(review)
+        except Exception:
+            review = None
+    return (review or {}).get("revise") if isinstance(review, dict) else None
+
+
+def whole_sig(job, j, plan):
+    """엔진 하나로 만든 장표 전체의 지문 — 장마다의 지문(slide_sig)을 모은 것 + 만드는 길(엔진·모델)"""
+    src_m = os.path.join(job.dir, "_mockup")
+    pins = design.comments_by_slide(j)
+    rv = _revise_of(j)
+    parts = [slide_sig(j, src_m, f"s{int(s['n']):02d}", s, False, rv, pins.get(int(s["n"]), [])) for s in plan.get("slides") or []]
+    parts += [slide_sig(j, src_m, f["id"], f, True, rv, []) for f in plan.get("front") or [] if isinstance(f, dict) and f.get("id")]
+    return sig_of({"slides": parts, "engine": build_engine(), "model": build_model(job) if build_engine() == "openrouter" else (CFG.get("model") or "")})
+
+
+def build_single(job, j, prompt, t0):
+    """엔진 하나로 장표 전체를 만든다(초안 다듬기 · build_parallel=0 인 내용→장표).
+    내용→장표는 이어 만들기(R81): 엔진이 낸 결과를 _slides/_whole.pptx 로 보관하고 지문을 _built.json 'whole' 에 둔다.
+    그 뒤(마무리·렌더·올리기)에서 실패해 다시 돌리면 엔진을 부르지 않고 보관본으로 마무리부터 — 마무리는 결과 파일을 제자리에서 고치므로 보관본은 손대지 않은 사본.
+    반환: (보고서, 결과 경로, 엔진 사용, final)"""
+    design_job = j.get("kind") == "design"
+    keep = os.path.join(job.dir, "_slides", "_whole.pptx")
+    sig = None
+    if design_job:
+        try:
+            plan = json.load(open(os.path.join(job.dir, "_mockup", "plan.json"), encoding="utf-8"))
+            sig = whole_sig(job, j, plan)
+        except Exception as e:
+            log("이어 만들기 지문 실패(새로 만듭니다):", e)
+        m = built_load(job) if sig else {}
+        w = {} if m.get("done") else (m.get("whole") or {})
+        if sig and w.get("sig") == sig and pptx_ok(keep) and isinstance(w.get("report"), dict):
+            out = os.path.join(job.dir, w.get("result") or "결과.pptx")
+            shutil.copy2(keep, out)
+            job.event("앞 실행에서 엔진이 만든 장표를 그대로 씁니다 — 엔진을 부르지 않고 마무리부터 합니다.", "done")
+            rep = json.loads(json.dumps(w["report"], ensure_ascii=False))
+            rep.setdefault("stats", []).append({"label": "이어 쓴 장표(앞 실행에서 만든 것)", "value": 1})
+            return rep, out, {"cost": 0, "turns": 0, "seconds": 0, "model": "(이어 만들기 — 엔진 호출 없음)"}, {"turns": 0}
+    code, final = run_claude(job, prompt)
+    engine = {"cost": final.get("cost"), "turns": final.get("turns"), "seconds": int(time.time() - t0),
+              "model": build_model(job) if build_engine() == "openrouter" else (CFG.get("model") or job.engine_model or "claude (CLI 기본)")}
+    if job.cancel:
+        return None, None, engine, final
+    res_path = os.path.join(job.dir, "result.json")
+    if not os.path.exists(res_path):
+        raise RuntimeError("에이전트가 result.json 을 남기지 않았습니다. " + (final.get("text") or "")[-800:])
+    rep = json.load(open(res_path, encoding="utf-8"))
+    out = os.path.join(job.dir, rep.get("result") or "")
+    if not os.path.isfile(out):
+        raise RuntimeError(f"결과 파일을 찾을 수 없습니다: {rep.get('result')}")
+    if design_job and sig:   # 마무리 전에 보관 — 다음 실패에도 엔진 결과는 남는다
+        try:
+            os.makedirs(os.path.dirname(keep), exist_ok=True)
+            shutil.copy2(out, keep)
+            m = built_load(job)
+            m = {} if m.get("done") else m
+            m["whole"] = {"sig": sig, "result": os.path.relpath(out, job.dir), "report": rep, "at": time.strftime("%Y-%m-%d %H:%M:%S")}
+            m["done"] = False
+            built_save(job, m)
+        except Exception as e:
+            log("엔진 결과 보관 실패(무시):", e)
+    return rep, out, engine, final
+
+
+def _part_report_for(r, n):
+    """엔진 하나의 result.json 에서 그 장 몫만(쪽 번호가 없는 항목은 함께)"""
+    def mine(v):
+        s = v.get("slide") if isinstance(v, dict) else None
+        try:
+            return s in (None, "", 0) or int(s) == int(n)
+        except (TypeError, ValueError):
+            return True
+    return {"changes": [v for v in (r.get("changes") or []) if mine(v)], "checklist": [v for v in (r.get("checklist") or []) if mine(v)],
+            "assets_used": list(r.get("assets_used") or []), "score": r.get("score"), "summary": str(r.get("summary") or "")[:400]}
+
+
 def build_parallel(job, j, plan, note):
     """내용→장표 제작을 여러 엔진으로 나눠 동시에 만든다.
     - 장마다 파일 하나(out/sNN.pptx, 본문만) → 순서대로 합치고 → 머리 띠·바닥은 코드가 모든 장에 똑같이 입힌다
@@ -632,17 +734,66 @@ def build_parallel(job, j, plan, note):
                 log("부분 재제작 준비 실패 — 전체를 다시 만듭니다:", e)
                 todo, base = slides, None
 
-    par = max(1, min(int(CFG.get("build_parallel", 5)), len(todo)))
-    size = -(-len(todo) // par)
-    groups = [todo[i:i + size] for i in range(0, len(todo), size)]
-    # 표지·목차·간지 시안 — 전체를 만들 때만, 장이 적은 엔진부터 하나씩 나눠 맡긴다
     fronts = {f["id"]: f for f in (plan.get("front") or []) if isinstance(f, dict) and f.get("id")} if not base else {}
-    for fid in fronts:
-        min(groups, key=len).append(fid)
-    tpl = open(os.path.join(HERE, "prompt_design_part.md"), encoding="utf-8").read()
     src_m = os.path.join(job.dir, "_mockup")
+    sdir = os.path.join(job.dir, "_slides")
+    os.makedirs(sdir, exist_ok=True)
+
+    # 이어 만들기(R79) — 앞 실행이 _slides/ 에 남긴 완성 장 중 조건(시안·기획·의견·수정 요청·설정)이 그대로인 장은 다시 만들지 않는다.
+    # 2026-10-18 작업 55ae9b33: 4장을 다 만들고 합치기에서 멈췄는데 다시 돌리기가 처음부터 다시 만들어 비용 한도에 걸렸다
+    man = built_load(job)
+    legacy_ok = not man.get("done")
+    if man.get("done"):   # 끝까지 성공한 작업을 다시 돌림 = 새로 만들어 달라는 뜻 — 기록·옛 파일 모두 쓰지 않는다
+        man = {}
+    man.setdefault("slides", {})
+    pins = design.comments_by_slide(j)
+    rv_all = bool(rv and rv.get("all"))
+    rv_set = set(int(x) for x in ((rv or {}).get("slides") or []) if str(x).lstrip("-").isdigit())
+    sigs, reused = {}, {}
+    for n in todo:
+        key = f"s{n:02d}"
+        hit_rv = rv_all or n in rv_set
+        sigs[key] = slide_sig(j, src_m, key, by_n.get(n), False, rv if hit_rv else None, pins.get(n, []))
+        e = reusable(os.path.join(sdir, f"{key}.pptx"), man["slides"].get(key), sigs[key], _mock_files(src_m, key, False),
+                     legacy_ok and not hit_rv and not pins.get(n))
+        if e:
+            reused[n] = e
+    for fid, fs in fronts.items():
+        sigs[fid] = slide_sig(j, src_m, fid, fs, True, rv if rv_all else None, [])
+        e = reusable(os.path.join(sdir, f"{fid}.pptx"), man["slides"].get(fid), sigs[fid], _mock_files(src_m, fid, True), legacy_ok and not rv_all)
+        if e:
+            reused[fid] = e
+    for key, e in reused.items():   # 기록 없는 옛 파일을 쓰기로 했으면 지금 지문으로 기록해 둔다 — 다음부터는 지문으로 판단
+        if e.get("legacy"):
+            man["slides"][key if isinstance(key, str) else f"s{key:02d}"] = {"sig": e["sig"], "from": "옛 파일(기록 없음)", "at": time.strftime("%Y-%m-%d %H:%M:%S"), "report": {}}
+    if reused:
+        try:
+            built_save(job, man)
+        except Exception as e:
+            log("장 기록 저장 실패(무시):", e)
+    build_n = [n for n in todo if n not in reused]
+    # 앞장은 본문을 하나라도 새로 만들 때만 함께 맡긴다 — 본문이 다 있으면 앞장은 앞 실행에서 이미 시도한 것(못 만들었으면 코드가 기본 모양)
+    build_f = [fid for fid in fronts if fid not in reused] if build_n else []
+    if reused:
+        nb = sum(1 for k in reused if k in by_n)
+        job.event(f"이미 만든 장 {nb}개는 그대로 쓰고 {len(build_n)}개만 만듭니다." if build_n else
+                  f"이미 만든 장 {nb}개를 그대로 씁니다 — 엔진을 부르지 않고 합치기부터 합니다."
+                  + (" (표지·목차·간지 시안대로 {}장 포함)".format(len(reused) - nb) if len(reused) > nb else ""), "done")
+        if any(e.get("legacy") for e in reused.values()):
+            log("이어 만들기 — 기록 없는 옛 장 파일을 시안보다 나중에 만든 것으로 보고 씀:", job.id, sorted(str(k) for k, e in reused.items() if e.get("legacy")))
+
+    groups = []
+    if build_n:
+        par = max(1, min(int(CFG.get("build_parallel", 5)), len(build_n)))
+        size = -(-len(build_n) // par)
+        groups = [build_n[i:i + size] for i in range(0, len(build_n), size)]
+        # 표지·목차·간지 시안 — 전체를 만들 때만, 장이 적은 엔진부터 하나씩 나눠 맡긴다
+        for fid in build_f:
+            min(groups, key=len).append(fid)
+    tpl = open(os.path.join(HERE, "prompt_design_part.md"), encoding="utf-8").read()
     parts = []
-    job.event(f"장표 {len(todo)}장을 엔진 {len(groups)}개로 나눠 동시에 만듭니다.")
+    if groups:
+        job.event(f"장표 {len(build_n)}장을 엔진 {len(groups)}개로 나눠 동시에 만듭니다.")
     for k, ns in enumerate(groups, 1):
         d = os.path.join(job.dir, f"_part{k}")
         shutil.rmtree(d, ignore_errors=True)
@@ -709,15 +860,27 @@ def build_parallel(job, j, plan, note):
     turns = sum(int(x["final"].get("turns") or 0) for x in parts)
     _em = build_model(job) if build_engine() == "openrouter" else (CFG.get("model") or job.engine_model or "claude (CLI 기본)")
     engine = {"cost": sum(float(x["final"].get("cost") or 0) for x in parts), "turns": turns, "seconds": int(time.time() - t0),
-              "model": _em + (f" ×{len(parts)}" if len(parts) > 1 else "")}
+              "model": _em + (f" ×{len(parts)}" if len(parts) > 1 else "") if parts else "(이어 만들기 — 엔진 호출 없음)"}
     if job.cancel:
         return None, None, engine, turns
 
-    # 장 파일 모으기
-    sdir = os.path.join(job.dir, "_slides")
-    os.makedirs(sdir, exist_ok=True)
+    # 장 파일 모으기 — 이어 쓰는 장은 기록에 남긴 결과를, 새로 만든 장은 엔진 결과를. 새 장은 바로 기록해 다음 실패에도 남는다
     rep = {"result": "결과.pptx", "stats": [], "changes": [], "checklist": [], "assets_used": [], "extras": []}
     scores, sums, missing = [], [], []
+    seen_rep = set()
+    for key, e in reused.items():
+        rr = e.get("report") or {}
+        tag = json.dumps(rr, ensure_ascii=False, sort_keys=True, default=str)
+        if tag in seen_rep:   # 한 엔진이 만든 여러 장은 같은 기록을 나눠 갖는다 — 한 번만
+            continue
+        seen_rep.add(tag)
+        for k2 in ("changes", "checklist", "assets_used"):
+            rep[k2] += [v for v in (rr.get(k2) or []) if v not in rep[k2]]
+        if isinstance(rr.get("score"), (int, float)):
+            scores.append(rr["score"])
+        if rr.get("summary"):
+            sums.append(str(rr["summary"]))
+    man["done"] = False
     for x in parts:
         rp = os.path.join(x["dir"], "result.json")
         r = {}
@@ -731,14 +894,20 @@ def build_parallel(job, j, plan, note):
                 f = os.path.join(x["dir"], "out", f"{n}.pptx")
                 if os.path.isfile(f):
                     shutil.copy2(f, os.path.join(sdir, f"{n}.pptx"))
+                    man["slides"][n] = {"sig": sigs[n], "at": time.strftime("%Y-%m-%d %H:%M:%S"), "report": _part_report_for(r, 0)}
                 else:
                     rep["checklist"].append({"slide": 0, "title": f"{fronts[n]['label']}를 시안대로 만들지 못함", "detail": "기본 모양(코드)으로 넣었습니다.", "level": "warn"})
                 continue
             f = os.path.join(x["dir"], "out", f"s{n:02d}.pptx")
             if os.path.isfile(f):
                 shutil.copy2(f, os.path.join(sdir, f"s{n:02d}.pptx"))
+                man["slides"][f"s{n:02d}"] = {"sig": sigs[f"s{n:02d}"], "at": time.strftime("%Y-%m-%d %H:%M:%S"), "report": _part_report_for(r, n)}
             else:
                 missing.append(n)
+        try:   # 엔진 하나 몫을 모을 때마다 기록 — 다른 엔진이 실패해도 이 엔진이 만든 장은 다시 돌릴 때 쓴다
+            built_save(job, man)
+        except Exception as e:
+            log("장 기록 저장 실패(무시):", e)
         for key in ("changes", "checklist", "assets_used"):
             rep[key] += [v for v in (r.get(key) or [])]
         for st in r.get("stats") or []:
@@ -754,14 +923,28 @@ def build_parallel(job, j, plan, note):
             sums.append(str(r["summary"]))
         for md in glob.glob(os.path.join(x["dir"], "_design", "*.md")) + glob.glob(os.path.join(x["dir"], "*.md")):
             rep["extras"].append(os.path.relpath(md, job.dir))
+    kept = sum(1 for n in todo if os.path.isfile(os.path.join(sdir, f"s{n:02d}.pptx")) and n not in missing)
     if missing:
         tails = " / ".join((x["final"].get("text") or "")[-200:] for x in parts if any(n in missing for n in x["ns"]))
-        raise RuntimeError(f"만들지 못한 장: {', '.join(str(n) + '쪽' for n in sorted(missing))}. " + tails)
-    rep["stats"].insert(0, {"label": "만든 장", "value": len(todo)})
+        raise RuntimeError(f"만들지 못한 장: {', '.join(str(n) + '쪽' for n in sorted(missing))}. "
+                           + (f"만든 장 {kept}개는 남겨 두었습니다 — 다시 돌리면 나머지 {len(missing)}장만 만듭니다. " if kept else "") + tails)
+    rep["stats"].insert(0, {"label": "만든 장", "value": len(build_n)})
+    nb_reused = sum(1 for k in reused if k in by_n)
+    if nb_reused:
+        rep["stats"].insert(1, {"label": "이어 쓴 장(앞 실행에서 만든 것)", "value": nb_reused})
     built = 0
     for fid in fronts:   # 시안대로 만든 앞장 — 서체를 맞춰 서버에 둔다(글 고치기에서 넣고 뺄 때 다시 쓴다)
         fp = os.path.join(sdir, f"{fid}.pptx")
         if not os.path.isfile(fp):
+            continue
+        if fid in reused:   # 앞 실행에서 이미 서체를 맞췄다(finalize 는 이 파일을 제자리에서 고친다) — 다시 올리기만
+            try:
+                put_file(job.id, "mockup", fp, f"{fid}.pptx")
+                built += 1
+            except Exception as e:
+                log("앞장 올리기 실패(무시):", fid, e)
+            continue
+        if fid not in build_f:   # 이번에 맡기지 않은 앞장의 옛 파일(조건이 바뀜) — 쓰지 않는다
             continue
         try:
             tool(job, [os.path.join(HERE, "finalize.py"), fp, os.path.join(job.dir, "_fonts"), "--unify-only", "--front", str(fronts[fid].get("kind") or "")])
@@ -772,15 +955,28 @@ def build_parallel(job, j, plan, note):
     if built:
         rep["stats"].append({"label": "표지·목차·간지(시안대로)", "value": built})
     rep["score"] = round(sum(scores) / len(scores)) if scores else None
-    rep["summary"] = (f"{len(slides)}장 중 {len(todo)}장을 다시 만들었습니다. " if base else f"{len(todo)}장을 엔진 {len(parts)}개로 나눠 만들었습니다. ") + " ".join(sums)[:600]
+    rep["summary"] = ((f"{len(slides)}장 중 {len(todo)}장을 다시 만들었습니다. " if base else f"{len(todo)}장을 엔진 {len(parts)}개로 나눠 만들었습니다. ") if not reused else
+                      f"{len(todo)}장 중 {nb_reused}장은 앞 실행에서 만든 것을 그대로 쓰고 {len(build_n)}장을 만들었습니다. ") + " ".join(sums)[:600]
 
-    # 합치기 → 고정 틀
+    # 합치기 → 고정 틀. 실패해도 _slides/ 의 장과 기록은 그대로 둔다 — 다시 돌리면 엔진 없이 합치기부터(R79)
     job.push("결과 정리", 90)
-    if base:
-        tool(job, [os.path.join(HERE, "merge.py"), "replace", base] + [f"{n}={os.path.join(sdir, f's{n:02d}.pptx')}" for n in todo], lock=True)
-        shutil.copy2(base, out)
-    else:
-        job.event(tool(job, [os.path.join(HERE, "merge.py"), out] + [os.path.join(sdir, f"s{n:02d}.pptx") for n in slides], lock=True))
+    try:
+        if base:
+            mo = tool(job, [os.path.join(HERE, "merge.py"), "replace", base] + [f"{n}={os.path.join(sdir, f's{n:02d}.pptx')}" for n in todo], lock=True)
+            shutil.copy2(base, out)
+        else:
+            mo = tool(job, [os.path.join(HERE, "merge.py"), out] + [os.path.join(sdir, f"s{n:02d}.pptx") for n in slides], lock=True)
+    except Exception as e:
+        job.event(f"장 합치기 실패 — 만든 장 {len(todo)}개는 남겨 두었습니다. 다시 돌리면 장을 새로 만들지 않고 합치기부터 합니다.", "warn")
+        raise RuntimeError(f"장 합치기 실패({str(e)[:300]}) — 만든 장은 남겨 두었다. 다시 돌리면 합치기부터") from e
+    for ln in (mo or "").splitlines():   # 합치기가 못 옮긴 개체(그 도형만 빠짐)는 확인 목록으로
+        if ln.startswith("WARN: "):
+            no, title, detail = (ln[6:].split("|", 2) + ["", ""])[:3]
+            pos = int(no) if no.isdigit() else 0   # 합치기는 '합친 파일의 몇째 장' 을 적는다 — 기획 쪽 번호로
+            sn = pos if base else (slides[pos - 1] if 0 < pos <= len(slides) else 0)
+            rep["checklist"].append({"slide": sn, "title": title, "detail": detail, "level": "warn"})
+        elif ln.strip():
+            job.event(ln.strip()[:300])
     logos = brand_paths(job)
     fo = os.path.join(job.dir, "_frame_opts.json")
     proj = design.project_of(j)
@@ -914,21 +1110,11 @@ def process(j):
             if job.cancel:
                 req("POST", f"/worker/jobs/{job.id}/finish", {"status": "canceled"})
                 return
-        else:
-            code, final = run_claude(job, prompt)
-            engine = {"cost": final.get("cost"), "turns": final.get("turns"), "seconds": int(time.time() - t_engine),
-                      "model": build_model(job) if build_engine() == "openrouter" else (CFG.get("model") or job.engine_model or "claude (CLI 기본)")}
+        else:   # 엔진 하나 — 내용→장표면 이어 만들기(앞 실행 엔진 결과가 같은 조건이면 그대로, R81)
+            rep, out, engine, final = build_single(job, j, prompt, t_engine)
             if job.cancel:
                 req("POST", f"/worker/jobs/{job.id}/finish", {"status": "canceled"})
                 return
-
-            res_path = os.path.join(job.dir, "result.json")
-            if not os.path.exists(res_path):
-                raise RuntimeError("에이전트가 result.json 을 남기지 않았습니다. " + (final.get("text") or "")[-800:])
-            rep = json.load(open(res_path, encoding="utf-8"))
-            out = os.path.join(job.dir, rep.get("result") or "")
-            if not os.path.isfile(out):
-                raise RuntimeError(f"결과 파일을 찾을 수 없습니다: {rep.get('result')}")
 
         job.push("결과 정리", 96)
         guard_warn, guard_hits = [], []
@@ -1054,6 +1240,8 @@ def process(j):
         req("POST", f"/worker/jobs/{job.id}/finish", {"status": "done", "result_name": os.path.basename(out), "engine": engine,
             "pilot_slide": rep.get("pilot_slide"), "report": {
             k: rep.get(k) for k in ("summary", "score", "stats", "checklist", "changes", "assets_used", "pilot_slide", "guard")}})   # guard 가 빠져 있어 10-12 부터 게이트 되돌림이 개선 체크리스트에 안 쌓였다(10-14 실측)
+        if design_job:   # 결과를 올렸다 — 이 장들은 다 썼다. 끝난 작업을 다시 돌리면 새로 만든다(R79)
+            built_done(job)
         log("완료:", job.id)
     except Exception as e:
         traceback.print_exc()

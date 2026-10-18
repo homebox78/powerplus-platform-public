@@ -63,21 +63,27 @@ if ($dry) {
     exit(0);
 }
 
-$list = implode(' ', array_map('escapeshellarg', array_keys($check)));
-$out = [];
-$code = 1;
-exec($cmd . ' ' . $list . ' 2>&1', $out, $code);
-// clamscan: 0 깨끗 · 1 감염 있음 · 2 이상 오류(설치 안 됨·DB 없음 등)
-if ($code >= 2 || $code < 0) {
-    $msg = mb_substr(implode(' | ', $out), 0, 250);
-    echo "  검사 실패(code $code): $msg\n";
+// clamscan: 0 깨끗 · 1 감염 있음 · 2 이상 오류(설치 안 됨·DB 없음·파일 하나 못 읽음 등)
+// 묶음이 2 여도 FOUND 는 쓰고, 나머지는 한 장씩 다시 본다(Scan::classify — 2026-10-18 전수조사 B: 파일 하나가 대기열 전체를 막던 것)
+$run = static function (array $paths) use ($cmd): array {
+    $out = [];
+    $code = 2;
+    exec($cmd . ' ' . implode(' ', array_map('escapeshellarg', $paths)) . ' 2>&1', $out, $code);
+    return [$code, $out];
+};
+$cls = \Pp\Core\Scan::classify($run, array_keys($check));
+if ($cls['global'] !== null) {
+    $msg = (string) $cls['global'];
+    echo "  검사 실패(전체): $msg\n";
     foreach ($check as $rs) foreach ($rs as $r) Db::exec("UPDATE core_scan_queue SET result = ? WHERE id = ?", ['error: ' . $msg, $r['id']]);
     exit(1);
 }
-$infected = [];  // path => 바이러스 이름
-foreach ($out as $line) {
-    if (preg_match('/^(.*): (.+) FOUND$/', $line, $m)) $infected[$m[1]] = $m[2];
+foreach ($cls['errors'] as $p => $msg) {   // 이 파일만 오류로 빼고 나머지는 계속 — 다시 검사하려면 status 를 pending 으로
+    echo "  검사 오류(이 파일만 건너뜀): $p — $msg\n";
+    foreach ($check[$p] ?? [] as $r) Db::exec("UPDATE core_scan_queue SET status = 'error', result = ?, scanned_at = NOW(3) WHERE id = ?", [mb_substr('error: ' . $msg, 0, 255), $r['id']]);
+    unset($check[$p]);
 }
+$infected = $cls['infected'];  // path => 바이러스 이름
 
 if (!is_dir($quarantine)) @mkdir($quarantine, 0700, true);
 $admins = Db::rows("SELECT DISTINCT user_id FROM core_user_roles WHERE role IN ('superadmin','admin')");

@@ -9,7 +9,7 @@
   3) 제작: templates/vertical/base.pptx(표지·목차·간지·본문 마스터 + 견본 4장)로
      표지 1 · 목차(장마다) · 간지(장마다) · 본문을 만든다. 쪽 번호는 장별(Ⅱ - 3), 목차 쪽 번호는 실제 쪽.
   기본 양식의 출처: design/제안서템플릿(사내 표준 세로 템플릿)을 2026-10-14 세션에서 정비한 것."""
-import contextvars, copy, io, json, math, os, re, time, urllib.parse, urllib.request
+import contextvars, copy, hashlib, io, json, math, os, re, time, urllib.parse, urllib.request
 from concurrent.futures import ThreadPoolExecutor
 from PIL import Image, ImageDraw, ImageFont
 from lxml import etree
@@ -18,6 +18,7 @@ from pptx.oxml import parse_xml   # python-pptx 요소 클래스로 만든다 �
 from pptx.util import Cm, Pt
 
 import design
+import resume
 import vertical_rules
 
 A = "http://schemas.openxmlformats.org/drawingml/2006/main"
@@ -1546,13 +1547,18 @@ def set_text(sh, text):
 
 
 def clone_slide(prs, src):
-    """같은 파일 안에서 장표 복제(그림 없는 견본만 — 글·도형·선)."""
+    """같은 파일 안에서 장표 복제 — 글·도형·선에 더해 그림·차트·SmartArt·링크의 연결(rId)도 새 장에 단다.
+    2026-10-18 전에는 도형 XML 만 복사해 견본에 그림·차트가 있으면 새 장의 r:embed·r:id 가 없는 연결을 가리켰다(PowerPoint '복구' — R81).
+    연결 옮기기는 합치기(merge_pptx.copy_rels·remap_refs)와 같은 함수 — 차트는 파트째 새 이름으로(두 장이 한 차트를 나눠 갖지 않게)."""
+    import merge_pptx
     s = prs.slides.add_slide(src.slide_layout)
     for ph in list(s.placeholders):
         ph._element.getparent().remove(ph._element)
+    rid, dead, memo = merge_pptx.copy_rels(src, s, prs.part.package, 0, "세로 제안서 견본")
     for el in src.shapes._spTree.iterchildren():
-        if el.tag.split("}")[1] in ("sp", "grpSp", "cxnSp", "pic", "graphicFrame"):
+        if el.tag.split("}")[1] in ("sp", "grpSp", "cxnSp", "pic", "graphicFrame", "contentPart"):
             s.shapes._spTree.append(copy.deepcopy(el))
+    merge_pptx.remap_refs(s._element, rid, dead, memo, 0)
     return s
 
 
@@ -2959,7 +2965,39 @@ def run(job, j, opts, brief, note):
     job.push("기획", 4)
     job.event("세로 제안서(A4) — 자료를 읽고 RFP 권고 목차대로 장·절을 정합니다.")
     ctx, raw = _ctx(job, j, brief)
-    o = outline(job, brief, note, ctx, raw, pages)
+    # 이어 만들기(R81) — 앞 실행이 목차·본문 기획까지 마치고 뒤(배경·조립·올리기)에서 실패했으면, 같은 자료·요청이면 그 기획을 쓴다.
+    # 지문 = 직접 쓴 글·요청 사항(원문, 개선 체크리스트 문구 제외 — 실패할 때마다 늘어 지문이 늘 달라진다)·쪽 수·사업 요약·자료 원문
+    sig = resume.sig_of({"brief": brief, "note": (j.get("note") or "").strip(), "pages": pages, "ctx": ctx,
+                         "raw": hashlib.sha256(raw.encode("utf-8", "replace")).hexdigest(), "kind": "vertical"})
+    keep = os.path.join(job.dir, "_slides", "_vertical.json")
+    ent = (resume.built_fresh(job).get("vertical") or {})
+    saved = None
+    if ent.get("sig") == sig and os.path.isfile(keep):
+        try:
+            saved = json.load(open(keep, encoding="utf-8"))
+            if not (isinstance(saved, dict) and (saved.get("outline") or {}).get("chapters")):
+                saved = None
+        except Exception:
+            saved = None
+
+    def keep_plan(o, pages_):
+        try:
+            os.makedirs(os.path.dirname(keep), exist_ok=True)
+            with open(keep + ".tmp", "w", encoding="utf-8") as f:
+                json.dump({"outline": o, "pages": pages_}, f, ensure_ascii=False)
+            os.replace(keep + ".tmp", keep)
+            resume.built_put(job, "vertical", {"sig": sig, "file": "_slides/_vertical.json"})
+        except Exception as e:
+            design.W["log"]("세로 제안서 기획 보관 실패(무시):", e)
+
+    if saved:
+        o = saved["outline"]
+        old_pages = {int(k): v for k, v in (saved.get("pages") or {}).items() if str(k).lstrip("-").isdigit()}
+        job.event(f"앞 실행에서 만든 목차를 다시 씁니다 — {o['project'].get('name', '')} / {len(o['chapters'])}장 (목차 AI 호출 없음).", "done")
+    else:
+        o = outline(job, brief, note, ctx, raw, pages)
+        old_pages = {}
+        keep_plan(o, {})   # 목차만이라도 먼저 — 본문 기획 도중 실패해도 다시 돌리면 목차는 다시 짜지 않는다
     p = o["project"]
     job.event(f"목차 완료 — {p['name']} / {len(o['chapters'])}장. 비용 ${job.spent:.3f}", "done")
     its = [it for c in o["chapters"] for s in c.get("sections") or [] for it in s.get("items") or [] if it.get("_brief")]
@@ -2970,9 +3008,11 @@ def run(job, j, opts, brief, note):
               + " · ".join(f"{k} {v}" for k, v in sorted(rules.items(), key=lambda x: -x[1])[:8]), "done")
     job.push("기획", 12)
     body = [(i, c) for i, c in enumerate(o["chapters"]) if c["no"] != "※"]
-    chapters_pages = {}
+    chapters_pages = {i: old_pages[i] for i, c in body if old_pages.get(i)}   # 앞 실행에서 본문을 만든 장은 그대로(빈 장 = 그때 실패한 장만 다시)
+    if chapters_pages:
+        job.event(f"앞 실행에서 만든 본문 {len(chapters_pages)}장을 다시 씁니다" + (f" — 나머지 {len(body) - len(chapters_pages)}장만 만듭니다." if len(chapters_pages) < len(body) else " (본문 AI 호출 없음)."), "done")
     with ThreadPoolExecutor(max_workers=design.par(job, 2, 4)) as ex:
-        futs = {ex.submit(_carry(chapter_pages), job, o, c, ctx, raw): i for i, c in body}
+        futs = {ex.submit(_carry(chapter_pages), job, o, c, ctx, raw): i for i, c in body if i not in chapters_pages}
         for f in futs:
             i = futs[f]
             try:
@@ -2981,6 +3021,8 @@ def run(job, j, opts, brief, note):
             except Exception as e:
                 chapters_pages[i] = []
                 job.event(f"{o['chapters'][i]['title']} 본문 실패 — 간지만 넣습니다: {str(e)[:120]}", "warn")
+    if futs:
+        keep_plan(o, chapters_pages)
     try:
         d = os.path.join(job.dir, "_mockup")
         os.makedirs(d, exist_ok=True)
@@ -3062,6 +3104,7 @@ def run(job, j, opts, brief, note):
                      + [{"slide": 0, "title": "제안사 정보 확인", "level": "info",
                        "detail": "회사 현황·실적·인력·지분처럼 자료에 없는 제안사 정보는 「[제안사 작성]」 자리로 두었습니다."}],
         "changes": bglog}})
+    resume.built_done(job)   # 끝까지 성공 — 이 작업을 다시 돌리면(새로 만들어 달라는 뜻) 기획을 이어 쓰지 않는다(R81)
 
 
 # ───────────────────────── 작성 가이드(결과에 함께 넣는다) — 컨소시엄 업체가 같은 규칙으로 쓰게(사용자 2026-10-14)

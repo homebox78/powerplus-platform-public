@@ -86,4 +86,35 @@ final class Db
         $st->execute($params);
         return $st->rowCount();
     }
+
+    public static function lastId(): int
+    {
+        return (int) self::pdo()->lastInsertId();
+    }
+
+    /**
+     * 트랜잭션 — 안에서 예외가 나면 되돌리고 다시 던진다(2026-10-18 결제 기록이 반쯤 남던 것, 전수조사 B).
+     * 이미 트랜잭션 안이면 그대로 이어 쓴다(바깥이 커밋·되돌림).
+     * @template T
+     * @param callable(): T $fn
+     * @return T
+     */
+    public static function tx(callable $fn): mixed
+    {
+        $pdo = self::pdo();
+        if ($pdo->inTransaction()) {
+            return $fn();
+        }
+        $pdo->beginTransaction();
+        try {
+            $r = $fn();
+            $pdo->commit();
+            return $r;
+        } catch (\Throwable $e) {
+            if ($pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
+            throw $e;
+        }
+    }
 }

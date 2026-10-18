@@ -174,7 +174,8 @@ export function MainChat({ variant = "full", onClose }: { variant?: "full" | "do
           await apiFetch(`/deck/uploads/${u.id}/${n}`, { method: "PUT", body: f.slice(n * u.chunk_size, (n + 1) * u.chunk_size) });
           setUpl({ name: f.name, pct: Math.round(((n + 1) / u.chunks) * 100) });
         }
-        await postJson(`/deck/uploads/${u.id}/complete`, {});
+        // 끝내기는 채팅 길로 — 무료 몫은 여기서 성공했을 때만 센다(시작 때 세면 끊긴 업로드도 몫을 깎았다, 2026-10-18)
+        await postJson(`/chat/projects/${pid}/upload/${u.id}/complete`, {});
       } catch (e) { fail(e); break; }
     }
     setUpl(null);

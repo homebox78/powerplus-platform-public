@@ -10,6 +10,7 @@
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 bash "$ROOT/scripts/preflight.sh" web || exit 1   # 배포 전 자가 검사(docs/오류-재발방지-체크리스트.md)
+php "$ROOT/engine/tests/test_plan_keep.php" 2>/dev/null || { echo "기획 먼저 저장(Jobs::savePlan·finish) 시험 실패 — 배포 중단(R81)"; exit 3; }
 HOST="${PP_HOST:?PP_HOST=user@host 필요}"
 KEY_SRC="${PP_SSH_KEY:-}"
 for k in "$HOME/google_key.pem"; do [ -n "$KEY_SRC" ] && break; [ -f "$k" ] && KEY_SRC="$k"; done
@@ -86,7 +87,15 @@ DB="sudo mariadb pp_platform"
 $DB < "$T/db/schema.sql"
 for f in $(ls "$T/db/migrations" | sort); do
   n=$($DB -N -B -e "SELECT COUNT(*) FROM schema_migrations WHERE name='$f'")
-  if [ "$n" = "0" ]; then $DB < "$T/db/migrations/$f" && $DB -e "INSERT INTO schema_migrations (name) VALUES ('$f')" && echo "migrated $f"; fi
+  # 실패하면 여기서 멈춘다 — 예전 `a && b && c` 꼴은 set -e 가 안 걸려, 실패한 마이그레이션을 이력 없이 두고 다음 것·코드 교체까지 갔다(2026-10-18 전수조사 B)
+  if [ "$n" = "0" ]; then
+    if ! $DB < "$T/db/migrations/$f"; then
+      echo "❌ 마이그레이션 실패: $f — 다음 마이그레이션·코드 교체를 하지 않고 멈춥니다. 직전 백업: ~/db-backup/predeploy" >&2
+      exit 1
+    fi
+    $DB -e "INSERT INTO schema_migrations (name) VALUES ('$f')"
+    echo "migrated $f"
+  fi
 done
 [ "$SEED" = 1 ] && [ -f "$T/db/seed.sql" ] && { $DB < "$T/db/seed.sql"; echo "seed 적용"; }
 # 무중단 교체: 옆 폴더에 권한까지 맞춘 뒤 이름만 바꾼다.

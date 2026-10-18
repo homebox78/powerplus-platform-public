@@ -268,7 +268,7 @@ async function withImages(data: unknown, allow: boolean, refs: Array<{ url?: str
 
 // ---------------------------------------------------------------- [공통] 키 검증·일 한도
 /** 오늘 사용량 — 모든 응답 meta.quota. remaining null = 무제한, reset = 다음 KST 자정 */
-type Quota = { limit: number; used: number; remaining: number | null; reset: string };
+type Quota = { limit: number | null; used: number | null; remaining: number | null; reset: string };   // 429 에서 한도를 모르면 limit·used null(0 이 아니다)
 type Verified = ({ ok: true; plan: string; kind: string; roles: string[]; keyId?: string } | { ok: false; status: number; code: string; message: string }) & { quota?: Quota };
 function nextKstMidnight(): string {
   const kst = new Date(Date.now() + 9 * 3600_000);
@@ -283,7 +283,9 @@ async function verifyKey(key: string | null, tool: string): Promise<Verified> {
   // 서버 코드(FORBIDDEN_SCOPE 등)를 그대로 — 범위 밖 키를 "키가 유효하지 않음"으로 읽히게 하지 않는다(2026-10-09 시험)
   const code = typeof r.body?.code === "string" && r.body.code ? r.body.code : r.status === 429 ? "RATE_LIMITED" : r.status === 403 ? "FORBIDDEN" : "UNAUTHORIZED";
   // 한도 초과면 남은 0 으로 알린다(초기화 시각은 다음 KST 자정)
-  const quota: Quota | undefined = r.status === 429 ? { limit: 0, used: 0, remaining: 0, reset: nextKstMidnight() } : undefined;
+  // 예전엔 limit·used 를 0 으로 덮어 AI 가 "한도 0 인 키"로 전했다 — 서버 hint("일 한도 N건")에서 한도를 읽는다(2026-10-18 전수조사 C)
+  const lim = Number((String(r.body?.hint ?? "").match(/일 한도\s*([\d,]+)\s*건/) ?? [])[1]?.replace(/,/g, "") ?? NaN);
+  const quota: Quota | undefined = r.status === 429 ? { limit: Number.isFinite(lim) ? lim : null, used: Number.isFinite(lim) ? lim : null, remaining: 0, reset: nextKstMidnight() } : undefined;
   return { ok: false, status: r.status, code, message: ppMsg(r, "키 검증 실패"), quota };
 }
 
@@ -448,7 +450,7 @@ function buildServer(key: string | null): McpServer {
     if (v.quota) quota = v.quota;
     // staff(임직원 전원 무료)·pro·team·admin 전부 pro — 플랜 판정은 여기 한 곳(verify 응답)에서 끝난다
     if (v.ok) { pro = v.plan !== "free" || v.roles.some((r) => r === "admin" || r === "superadmin"); keyId = v.keyId ?? ""; return null; }
-    return err(v.message, v.code, v.status === 429 ? `하루 한도를 다 썼습니다. ${quota?.reset ?? "내일 0시(KST)"}에 다시 채워집니다.` : undefined);
+    return err(v.message, v.code, v.status === 429 ? `하루 한도를 다 썼습니다(판정·게시·조회 모든 도구 합산). ${quota?.reset ?? "내일 0시(KST)"}에 다시 채워집니다. 더 필요하면 사용자에게 powerPlus 계정 › 플랜(/account/plan)에서 올리거나 관리자에게 요청하라고 알린다. 같은 호출을 되풀이하지 않는다.` : undefined);
   };
   const orgTypes = taxonomy.org_types.map((o) => o.id) as [string, ...string[]];
   const sectionTypes = taxonomy.section_types.map((s) => s.id) as [string, ...string[]];
@@ -867,7 +869,12 @@ function buildServer(key: string | null): McpServer {
       // 기록이 안 되면 점수·통과가 DB 에 NULL 로 남아 게시가 막힌다 — 조용히 넘기지 않고 로그에 남긴다(PP_JUDGE_SECRET 누락이 흔한 원인)
       if (!rec?.ok) console.error(`[mcp] 판정 기록 실패 token=${token.slice(0, 8)} status=${rec?.status ?? "-"} ${rec?.json?.error?.message ?? ""}${JUDGE_SECRET ? "" : " (PP_JUDGE_SECRET 없음)"}`);
       console.log(`[mcp] mock_check_mockup key=${keyId} token=${token.slice(0, 8)} ref=${refId.slice(0, 40)} score=${result.score} pass=${result.pass}${result.wire_match ? ` wire=${result.wire_match.score}${result.wire_match.pass ? "" : "x"}` : ""} fixes=${result.fixes.length}[${result.fixes.map((f: string) => String(f).split(/[ ·:(—]/)[0]).join(",")}] n=${a.token ? "re" : 1} bytes=${html.length}${a.edits ? ` edits=${a.edits.length}` : ""}`);
-      const next = result.pass
+      // 기록이 안 됐는데 '통과 — 게시하라'고 하면 게시가 NOT_PASSED(409)로 막히고, 오류 글이 "fixes 를 고쳐 다시 판정"이라 AI 가 같은 원인으로
+      // 판정을 되풀이하며 하루 한도를 썼다(2026-10-18 전수조사 B/C). 기록 실패는 결과에 싣고 다음 할 일을 바꾼다.
+      const recorded = !!rec?.ok;
+      const next = result.pass && !recorded
+        ? `판정은 통과(${result.score}점)했지만 결과가 서버에 기록되지 않아 아직 게시할 수 없다(시안 탓 아님 — 판정기·서버 문제). 시안을 고치지 말고 mock_check_mockup(token="${token}") 을 한 번만 다시 부른다. 또 record_saved=false 면 멈추고 사용자에게 "판정 기록 실패 — 관리자 확인 필요"라고 알린다.`
+        : result.pass
         ? `통과 — mock_publish_mockup(token="${token}") 으로 게시한다. HTML 을 다시 보내지 않는다.`
         : `미통과(${result.score}점) — fixes 를 위에서부터 고친다. HTML 전체를 다시 보내지 말고 mock_check_mockup(token="${token}", edits=[{find, replace}]) 로 고친 부분만 보낸다(ref_id 는 다시 안 줘도 된다). 85점 이상·치명 0 이 통과. 통과할 때까지 반복한다 — 미통과 시안은 사용자 목록·갤러리에 남지 않고 하루 뒤 지워지므로, 미통과인 채로 작업을 끝내거나 결과로 내놓지 않는다.`;
       // 디자이너 선호 조언(2026-10-03) — 시안에 든 요소에 맞는 designus 투표 규칙. 점수에는 넣지 않는다(조언)
@@ -875,7 +882,7 @@ function buildServer(key: string | null): McpServer {
       // 개선 체크리스트 되먹임(2026-10-15) — 다른 시안들에서 반복된 결함. fixes 와 별개로, 지금 시안에 같은 것이 없는지 보게 한다(점수에는 넣지 않는다)
       const lessons = Array.isArray(rec?.json?.lessons) ? (rec.json.lessons as Array<{ area?: string; text?: string; hits?: number }>) : [];
       const recurring = lessons.length ? { how: "다른 시안들에서 여러 번 걸린 결함이다. 이 시안에도 같은 것이 없는지 확인하고, 있으면 함께 고친다(감점 없음).", items: lessons.map((l) => `[${l.area ?? ""}] ${l.text ?? ""}`) } : undefined;
-      const content: Array<TextBlock | ImageBlock> = [{ type: "text", text: JSON.stringify({ token, ref_id: refId, reference: ref.site_slug, ...result, summary: undefined, preference_tips, recurring, next }) }];
+      const content: Array<TextBlock | ImageBlock> = [{ type: "text", text: JSON.stringify({ token, ref_id: refId, reference: ref.site_slug, ...result, summary: undefined, preference_tips, recurring, ...(recorded ? {} : { record_saved: false }), next }) }];
       if (usedJudge && compare?.slices?.length) content.push({ type: "text", text: "레퍼런스에 공공누리 제한(2~4유형) 구간이 있어 판정은 원본으로 대조했지만, 레퍼런스|시안 나란히 이미지는 제공하지 않습니다. fixes 를 따라 고치세요." });
       else if (pro && compare?.slices?.length) compare.slices.slice(0, 6).forEach((s, i) => content.push({ type: "text", text: judgeWire ? `[나란히 ${i + 1}] 왼쪽 와이어 도식(빨강 = 안 맞는 줄, 점선 = 시안에 없는 줄) · 오른쪽 시안 (y ${s.from}~${s.to})` : `[나란히 ${i + 1}] 왼쪽 레퍼런스 · 오른쪽 시안 (y ${s.from}~${s.to})` }, { type: "image", data: s.jpeg.toString("base64"), mimeType: "image/jpeg" }));
       return { content };
@@ -1032,12 +1039,19 @@ function buildServer(key: string | null): McpServer {
     const g = await guard("assets_get"); if (g) return g;
     if (many.length > 0 || !one) {
       const list = [...new Set([...(one ? [one] : []), ...many])].slice(0, 20);
+      // 한 건의 연결 오류·429·5xx 가 받아 둔 나머지를 버리거나 '권한 없음(locked)'으로 보이지 않게 — 건마다 나눠 담는다(2026-10-18 전수조사 B)
       const items = await Promise.all(list.map(async (id) => {
-        const r = await pp<Record<string, unknown>>(`/assets/items/${encodeURIComponent(id)}`, key);
-        if (r.ok && r.data) return absUrls(r.data);
-        return { id, locked: true, reason: r.status === 404 ? "없거나 볼 수 없는 자산" : r.status === 403 ? "이 키의 플랜·등급으로는 볼 수 없음" : ppMsg(r, "자산 API 오류") };
+        try {
+          const r = await pp<Record<string, unknown>>(`/assets/items/${encodeURIComponent(id)}`, key);
+          if (r.ok && r.data) return absUrls(r.data);
+          if (r.status === 404 || r.status === 403) return { id, locked: true, reason: r.status === 404 ? "없거나 볼 수 없는 자산" : "이 키의 플랜·등급으로는 볼 수 없음" };
+          return { id, failed: true, retry: true, reason: `${ppMsg(r, "자산 API 오류")} (HTTP ${r.status}) — 이 id 만 잠시 뒤 다시 받는다` };
+        } catch (e) {
+          return { id, failed: true, retry: true, reason: `연결 오류(${String((e as Error)?.message ?? e).slice(0, 80)}) — 이 id 만 잠시 뒤 다시 받는다` };
+        }
       }));
-      return text({ items, total: items.length, locked: items.filter((x) => (x as { locked?: boolean }).locked).length });
+      const failed = items.filter((x) => (x as { failed?: boolean }).failed).map((x) => (x as { id: string }).id);
+      return text({ items, total: items.length, locked: items.filter((x) => (x as { locked?: boolean }).locked).length, ...(failed.length ? { failed: failed.length, retry_ids: failed } : {}) });
     }
     const r = await pp<Record<string, unknown>>(`/assets/items/${encodeURIComponent(one)}`, key);
     if (!r.ok || !r.data) return err(ppMsg(r, "자산 API 오류"), r.ok ? "ERROR" : ppCode(r));

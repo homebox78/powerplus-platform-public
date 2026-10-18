@@ -25,6 +25,6 @@ dumps=("$HOME"/db-backup/nightly/*-"$DAY"-*.sql.gz)
 "${GS[@]}" cp "${dumps[@]}" "$GCS_BUCKET/db/$DAY/"
 # ② 데이터 폴더 — 바뀐 것만 올린다(지운 파일은 버킷에 남긴다 — 실수로 지운 것도 되살릴 수 있게). 임시·캐시는 뺀다
 sudo -n true 2>/dev/null && READ=(sudo) || READ=()
-"${READ[@]}" "${GS[@]}" rsync -r -x '(^|/)(tmp|cache|\.cache)/' /var/www/platform_data "$GCS_BUCKET/data"
+"${READ[@]}" "${GS[@]}" rsync -r -x '(^|/)(tmp|cache|\.cache|sessions)/' /var/www/platform_data "$GCS_BUCKET/data"
 echo "$(date '+%F %T') DB ${#dumps[@]}개 · 데이터 동기화 → $GCS_BUCKET"
 status "ok db=${#dumps[@]}"

@@ -230,7 +230,7 @@ export function DeckSettingsScreen({ forceMenu }: { forceMenu?: SettingsMenu } =
 export function DeckLandingSteps() {
   // 자료 정리부터 대본까지 한 작업 안에서 이어진다 — 단계마다 앞 단계 결과를 그대로 받아 쓰는 게 장점
   const steps = [
-    ["자료를 정리한다", "RFP·보고서·초안 pptx 를 올리면 핵심 내용과 수치를 뽑아 한 장으로 정리합니다. 1GB 까지, 끊겨도 이어 올립니다.", "/deck/convert"],
+    ["자료를 정리한다", "RFP·보고서·pptx 의 핵심과 수치를 한 장으로 정리합니다. 1GB 까지, 끊겨도 이어 올립니다.", "/deck/convert"],
     ["기획을 세운다", "정리한 자료로 장마다 할 말과 근거를 짭니다. 글은 바로 고치고, 고친 내용이 다음 단계로 이어집니다.", "/deck/convert"],
     ["와이어프레임을 잡는다", "장마다 제목·도식·표 자리를 12칸 틀로 배치합니다. 끌어서 바꾸고 AI 에게 다시 짜 달라고 할 수 있습니다.", "/deck/convert"],
     ["디자인 시안을 고른다", "대표 장의 시안을 A·B 로 받아 비교해 확정합니다. 의견을 적으면 그 톤으로 다시 만듭니다.", "/deck/jobs"],

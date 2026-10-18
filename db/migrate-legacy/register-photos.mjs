@@ -44,6 +44,9 @@ const SETS = {
   "p-life": { cat: "photo", prefix: "p1018-", set: "photo-life-welfare", style: "photo-life-welfare", ko: ["사진", "실사", "생활", "복지", "가족", "시민", "AI이미지"], en: ["photo", "lifestyle", "welfare", "family", "citizen"] },
   "p-edu": { cat: "photo", prefix: "p1018-", set: "photo-education", style: "photo-education", ko: ["사진", "실사", "교육", "학교", "학습", "AI이미지"], en: ["photo", "education", "school", "learning"] },
   "p-health": { cat: "photo", prefix: "p1018-", set: "photo-health-safety", style: "photo-health-safety", ko: ["사진", "실사", "의료", "보건", "안전", "재난", "AI이미지"], en: ["photo", "medical", "health", "safety", "disaster"] },
+  // 재검토분(사용자 "홈페이지 목업 샘플에 다양한 샘플이 필요") — 자연·여가 세트 추가. kind·target 태그가 붙은 것은 목업 샘플 풀에도 든다
+  "p-nature": { cat: "photo", prefix: "p1018-", set: "photo-nature-landscape", style: "photo-nature-landscape", ko: ["사진", "실사", "자연", "풍경", "배경", "AI이미지"], en: ["photo", "nature", "landscape", "background"] },
+  "p-leisure": { cat: "photo", prefix: "p1018-", set: "photo-leisure-culture", style: "photo-leisure-culture", ko: ["사진", "실사", "여가", "관광", "문화", "일상", "AI이미지"], en: ["photo", "leisure", "tourism", "culture", "lifestyle"] },
   "p-char3d": { cat: "illust", prefix: "p1018-", set: "illust-3d-character", style: "illust-3d-character", ko: ["3D", "캐릭터", "클레이", "인물", "렌더", "AI이미지"], en: ["3d", "character", "clay", "render"] },
   illust: { set: "illust-doc-concept", style: "doc-concept-render", ko: ["일러스트", "개념이미지", "3D"], en: ["illustration", "concept", "3d render"] },
   // 홈페이지 목업 장면(2026-10-15 시안 10곳 시험에서 모자란 자리) — set:"mock". 태그 json 의 kind(hero-city·sub-visual·news-thumb…)·target(univ·school…)이

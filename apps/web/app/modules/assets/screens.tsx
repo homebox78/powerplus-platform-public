@@ -18,6 +18,7 @@ import { SavedBadge } from "@/components/hb/saved-badge";
 import { SearchInput } from "@/components/hb/search-input";
 import { Tag } from "@/components/hb/tag";
 import { ThumbFrame } from "@/components/hb/thumb-frame";
+import { ContrastImg } from "@/components/hb/contrast-img";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -57,9 +58,8 @@ function AssetCard({ a, onOpen }: { a: AssetItem; onOpen: (id: string) => void; 
           className="bg-ground-3 p-[4.5%]"
           hover={<><Button variant="white" size="icon-sm" type="button" asChild onClick={(e) => e.stopPropagation()}>{me ? <a href={a.thumb_url.replace(/\/thumb$/, "/original")} download aria-label="내려받기" title="내려받기"><Download aria-hidden /></a> : <Link to={loginNext()} aria-label="로그인 후 내려받기" title="로그인 후 내려받기"><Lock aria-hidden /></Link>}</Button><SaveButton type="asset" id={a.id} size="icon-sm" iconOnly /></>}
         >
-          <span className={cn("relative flex w-full items-center justify-center overflow-hidden rounded-md bg-white shadow-[0_1px_3px_rgba(0,0,0,0.08)] aspect-square")}>
-            <img src={a.thumb_url} alt="" loading="lazy" className={cn("size-full", photo ? "object-contain" : "object-contain p-[12%]")} />
-          </span>
+          {/* 흰 로고·흰 아이콘은 칸 바탕을 짙게(ContrastImg, 사용자 2026-10-18) */}
+          <ContrastImg boxClassName="relative flex w-full items-center justify-center overflow-hidden rounded-md shadow-[0_1px_3px_rgba(0,0,0,0.08)] aspect-square" src={a.thumb_url} loading="lazy" className={cn("size-full", photo ? "object-contain" : "object-contain p-[12%]")} />
         </ThumbFrame>
         {saved && <SavedBadge />}
       </div>
@@ -147,7 +147,7 @@ function AssetDialog({ id, onClose }: { id: string | null; onClose: () => void }
         </DialogHeader>
         {a && (
           <div className="grid grid-cols-1 gap-6 md:grid-cols-[1fr_380px]">
-            <div className="flex min-h-[320px] items-center justify-center rounded-panel bg-ground-3 p-[6%]"><span className="flex max-h-[60vh] items-center justify-center overflow-hidden rounded-md bg-white shadow-[0_1px_3px_rgba(0,0,0,0.08)]"><img src={a.original_url} alt={a.alt ?? ""} className="max-h-[60vh] max-w-full object-contain" /></span></div>
+            <div className="flex min-h-[320px] items-center justify-center rounded-panel bg-ground-3 p-[6%]"><ContrastImg boxClassName="flex max-h-[60vh] items-center justify-center overflow-hidden rounded-md shadow-[0_1px_3px_rgba(0,0,0,0.08)]" src={a.original_url} alt={a.alt ?? ""} className="max-h-[60vh] max-w-full object-contain" /></div>
             <div className="flex flex-col gap-4 text-sm">
               <div className="flex flex-wrap gap-1.5">
                 {a.set && <Tag tone="ink">세트 · {setLabel(a.set.name)}</Tag>}
@@ -219,7 +219,7 @@ function AssetsBrowse() {
               <div className="grid grid-cols-4 gap-x-3 gap-y-4 md:grid-cols-6 lg:grid-cols-12">
                 {sets.data!.map((s) => (
                   <button key={s.id} type="button" onClick={() => put("set", s.id)} className="group flex min-w-0 flex-col gap-2 text-center" aria-label={`${setLabel(s.name)} 세트`}>
-                    <span className="relative block"><ThumbFrame radius="lg" ratio="auto" className="bg-ground-3 p-[4.5%]"><span className="flex aspect-square items-center justify-center overflow-hidden rounded-md bg-white shadow-[0_1px_3px_rgba(0,0,0,0.08)]">{s.cover_url && <img src={s.cover_url} alt="" loading="lazy" className="size-full object-contain p-[12%]" />}</span></ThumbFrame>{/* 24시간 안에 올린 자료가 있는 세트에만 'New'(사용자 2026-10-18 — 개수 대신 글자만) */}{(s.recent ?? 0) > 0 && <span className="absolute right-1 top-1 rounded-full bg-point px-1.5 py-0.5 text-xs font-bold leading-none text-white">New</span>}</span>
+                    <span className="relative block"><ThumbFrame radius="lg" ratio="auto" className="bg-ground-3 p-[4.5%]">{s.cover_url ? <ContrastImg boxClassName="flex aspect-square items-center justify-center overflow-hidden rounded-md shadow-[0_1px_3px_rgba(0,0,0,0.08)]" src={s.cover_url} loading="lazy" className="size-full object-contain p-[12%]" /> : <span className="flex aspect-square rounded-md bg-white shadow-[0_1px_3px_rgba(0,0,0,0.08)]" />}</ThumbFrame>{/* 24시간 안에 올린 자료가 있는 세트에만 'New'(사용자 2026-10-18 — 개수 대신 글자만) */}{(s.recent ?? 0) > 0 && <span className="absolute right-1 top-1 rounded-full bg-point px-1.5 py-0.5 text-xs font-bold leading-none text-white">New</span>}</span>
                     <span className="flex min-w-0 flex-col items-center"><span className="w-full line-clamp-2 text-xs font-bold tracking-[-0.01em]" title={setLabel(s.name)}>{setLabel(s.name)}</span><span className="text-xs text-ink-4">{s.count.toLocaleString()}개</span></span>
                   </button>
                 ))}

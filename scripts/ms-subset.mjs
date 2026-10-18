@@ -26,6 +26,9 @@ function collect() {
     for (const m of t.matchAll(/["'`]([a-z][a-z0-9_]{1,40})["'`]/g)) if (all.has(m[1])) used.add(m[1]);
     for (const m of t.matchAll(/>\s*([a-z][a-z0-9_]{1,40})\s*</g)) if (all.has(m[1])) used.add(m[1]);
   }
+  // 와이어 상자 종류 아이콘은 JSON(legacy/data/wire_kinds.json, 2026-10-18 단일 원본)에 있다 — 숫자로 시작하는 이름('123')도 그대로
+  const reg = JSON.parse(fs.readFileSync(path.join(WEB, "app/modules/deck/legacy/data/wire_kinds.json"), "utf8"));
+  for (const k of reg.kinds) if (all.has(k.icon)) used.add(k.icon);
   return [...used].sort();
 }
 

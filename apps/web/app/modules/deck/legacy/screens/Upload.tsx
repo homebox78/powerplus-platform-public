@@ -98,7 +98,8 @@ export function Upload({ engine, isAdmin = false, onUploaded, onCancel, onSettin
   const [front, setFront] = useState({ cover: true, toc: true, divider: true });   // 표지·목차·간지 — 제작 직전에도 바꿀 수 있다
   const [style, setStyle] = useState("a");   // 디자인 타입 — reference/styles/styles.json
   const [purpose, setPurpose] = useState<"submit" | "present" | "company">("present");
-  const [ctheme, setCtheme0] = useState("a");   // 회사소개서 테마 A~D(engine/company.py COMPANY_THEMES)
+  const [ctheme, setCtheme0] = useState("a");   // 회사소개서 테마 A~H(engine/company.py COMPANY_THEMES)
+  const [cfree, setCfree] = useState(false);   // 자유도 — 표지·간지·마무리 배경을 테마 묶음이 아니라 파워에셋에서 AI(Claude Opus 5.5, 없으면 OpenRouter)가 고른다
   const [ctone, setCtone] = useState("blue");   // 회사소개서 톤(색) — engine/company.py TONES 의 id 또는 직접 고른 #RRGGBB
   const setCtheme = (id: string) => { setCtheme0(id); setCtone(COMPANY_THEMES.find((t) => t.id === id)?.tone ?? "blue"); };   // 테마를 고르면 그 테마에 어울리는 기본 톤으로
   const company = purpose === "company";   // 회사소개용 = 회사소개서(engine/company.py, 테마 A·B) — 시안 없이 PPT 바로, 서체·색은 테마가 정한다
@@ -167,7 +168,7 @@ export function Upload({ engine, isAdmin = false, onUploaded, onCancel, onSettin
   const slideUnset = !slideN || !(parseInt(slideN) > 0);
   const slideDef = company ? 14 : 5;   // 장 수 미입력 — 회사소개서는 14쪽 안팎(서버 Jobs::opts 와 같다)
   const slides = slideUnset ? slideDef : parseInt(slideN);
-  const planOpts = { slides, mockups, sample: Math.max(1, parseInt(sampleN) || 3), front, style, vstyle, vtone, ctheme, ctone, purpose, lang, font_title: fontTitle, font_body: fontBody, event: event.trim(), date: evDate.trim() };
+  const planOpts = { slides, mockups, sample: Math.max(1, parseInt(sampleN) || 3), front, style, vstyle, vtone, ctheme, ctone, cfree, purpose, lang, font_title: fontTitle, font_body: fontBody, event: event.trim(), date: evDate.trim() };
   const aiBlock = design && ai && !ai.ready;
   const working = busy !== null;
 
@@ -291,7 +292,7 @@ export function Upload({ engine, isAdmin = false, onUploaded, onCancel, onSettin
     ["용도", purpose === "present" ? "발표용" : company ? "회사소개용" : "제출용", 1, "purpose"],
     ["언어", DECK_LANGS.find((x) => x[0] === lang)?.[1] ?? "한국어", 1, "lang"],
     ["자료", items.length ? `${hasText ? "글 + " : ""}${items.length}개 · ${fmtSize(totalSize)}` : text.trim() ? "직접 적은 글" : "없음", 1, "files"],
-    ["디자인", company ? `테마 ${ctheme.toUpperCase()} · ${companyThemeName(ctheme)}` : purpose === "submit" ? `세로 제안서 · ${verticalStyleName(vstyle)}` : `타입 ${style.toUpperCase()} · ${typeName(style)}`, 2, "design"],
+    ["디자인", company ? `테마 ${ctheme.toUpperCase()} · ${companyThemeName(ctheme)}${cfree ? " · 자유도" : ""}` : purpose === "submit" ? `세로 제안서 · ${verticalStyleName(vstyle)}` : `타입 ${style.toUpperCase()} · ${typeName(style)}`, 2, "design"],
     ...(purpose === "submit" ? [["톤", verticalToneName(vtone), 3, "vtone"] as [string, ReactNode, Step, string]]
       : company ? [["톤", companyToneName(ctone), 3, "ctone"] as [string, ReactNode, Step, string]] : []),
     ["서체", company ? "프리텐다드(고정)" : fontTxt, 2, "font"],
@@ -535,6 +536,14 @@ export function Upload({ engine, isAdmin = false, onUploaded, onCancel, onSettin
                 {company ? <>
                   <SecTitle icon="palette" title="회사소개서 테마" desc="표지 · 간지 · 숫자 · 카드 · 연혁 · 연락처까지 레이아웃 13종이 이 테마로 그려집니다" />
                   <CompanyThemePicker value={ctheme} onChange={setCtheme} disabled={working} tone={ctone} />
+                  <label className={cn("flex items-start gap-2.5 rounded-md border px-3.5 py-3 cursor-pointer bg-white", cfree ? "card-on" : "border-line hover:border-orange-line", working && "opacity-60 cursor-default")}>
+                    <input type="checkbox" className="accent-[var(--color-point)] m-0 mt-[3px] flex-none" checked={cfree} disabled={working} onChange={(e) => setCfree(e.target.checked)} />
+                    <span className="flex flex-col gap-[3px] min-w-0">
+                      <span className="font-bold text-ink">자유도 — 파워에셋에서 그림을 자유롭게</span>
+                      <span className="text-[13px] text-ink2 leading-[1.45] break-keep">표지·간지·마무리 배경을 이 테마 묶음에만 두지 않고 AI가 파워에셋에서 내용에 맞는 것을 고릅니다.</span>
+                      <span className="text-[12.5px] text-faint leading-[1.45] break-keep">AI는 Claude Opus 5.5를 쓰고, Claude 크레딧이 없으면 OpenRouter 글 모델로 이어 갑니다.</span>
+                    </span>
+                  </label>
                 </> : purpose === "submit" ? <>
                   <SecTitle icon="palette" title="세로 제안서 디자인 스타일" desc="표지 · 목차 · 간지 · 본문의 모양이 이 스타일로 정해집니다 — 색은 다음 단계에서 톤으로 고릅니다" />
                   <VerticalStylePicker value={vstyle} onChange={setVstyle} disabled={working} />

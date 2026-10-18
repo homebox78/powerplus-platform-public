@@ -108,6 +108,19 @@ def tint_icon(src, dst, tone):
     return dst
 
 
+def duo_tint(src, dst, tone):
+    """여러 색 파스텔 배경(cp-bg-general)을 톤 한 색으로 — 흑백으로 바꾼 뒤 밝은 곳 흰색·중간 주색·어두운 곳 짙은 주색. 블루여도 돌린다(원본이 민트·베이지라서)"""
+    from PIL import Image, ImageOps
+    pal = tone_palette(tone)
+    im = Image.open(src).convert("L")
+    ImageOps.colorize(im, black=_rgb(pal[8]), mid=_rgb(pal[0]), white=(255, 255, 255), blackpoint=0, midpoint=150, whitepoint=255).save(dst)
+    return dst
+
+
+def tint_bg(src, dst, tone, mode="hue"):
+    return duo_tint(src, dst, tone) if mode == "duo" else tint_icon(src, dst, tone)
+
+
 # ───────────────────────── 레이아웃 카탈로그 — AI 가 고르는 칸(글자 수 한도는 화면에 들어가는 길이)
 LAYOUTS = {
     "cover": "표지(어두운 바탕). eyebrow(영문 대문자 20자) · title(2~3줄, 줄마다 12자 이내, 과감한 한 문장 — 회사의 약속) · sub(40자) · date(예 2026.10)",
@@ -292,8 +305,19 @@ GLOW_D = ("<div class='deco' style=\"background:#fff\"></div>"
           "background:linear-gradient(180deg,#78AAFF 0%,#1F4FFF 70%);opacity:.9\"></div>"
           "<div class='deco' style=\"left:900px;top:900px;width:1400px;height:700px;right:auto;bottom:auto;border-radius:50% 50% 0 0 / 70% 70% 0 0;"
           "background:#3D7BFF;opacity:.55;mix-blend-mode:multiply\"></div>")   # 아래 주색 언덕 두 겹(겹친 자리 색 섞임)
-COMPANY_THEMES = {"a": "다크 임팩트", "b": "라이트 에디토리얼", "c": "솔리드 컬러", "d": "프렌들리 라운드"}
-THEME_DEFAULT_TONE = {"a": "blue", "b": "navy", "c": "carrot", "d": "coral"}
+COMPANY_THEMES = {"a": "다크 임팩트", "b": "라이트 에디토리얼", "c": "솔리드 컬러", "d": "프렌들리 라운드",
+                  "e": "포토 에디토리얼", "f": "라인 미니멀", "g": "소프트 3D", "h": "기하 곡선"}
+THEME_DEFAULT_TONE = {"a": "blue", "b": "navy", "c": "carrot", "d": "coral", "e": "navy", "f": "blue", "g": "sky", "h": "violet"}
+# 테마 E~H(2026-10-18, 배경 묶음 추가로) — 쪽 짜임은 바탕 테마(A·B·D)를 그대로 쓰고 표지·간지·마무리 배경 묶음만 바꾼다
+THEME_BASE = {"e": "a", "f": "b", "g": "b", "h": "d"}
+# (powerAssets 세트, 이름에 들어간 낱말 — | 로 여럿, 색 입히기) — hue = tint_icon 색조 돌리기(파랑으로 만든 그림), duo = 흑백으로 바꿔 톤 한 색으로(파스텔 여러 색)
+THEME_BG = {"e": ("cp-photo-editorial", "", "hue"), "f": ("cp-bg-general", "라인아트", "duo"),
+            "g": ("cp-bg-general", "소프트3D", "duo"), "h": ("cp-bg-general", "기하도형|큰원곡선", "duo")}
+SET_TINT = {"cp-bg-general": "duo"}   # 세트별 색 입히기(없으면 hue) — 자유도 모드에서 여러 세트가 섞일 때
+
+
+def base_theme(t):
+    return THEME_BASE.get(t, t)
 LIGHT_GLOW = {"b": GLOW_B, "d": GLOW_D}   # C 는 전 쪽이 주색 전면(slide_html 에서 따로)   # 밝은 표지·간지·연락처를 쓰는 테마의 바탕
 THEME_CSS = {"b": CSS_B, "c": CSS_C, "d": CSS_D}
 
@@ -1008,7 +1032,8 @@ def clean(d):
 
 
 def slide_html(d, n, total, ctone="blue", ctheme="a"):
-    fn = VARIANTS.get(ctheme, {}).get(d.get("kind")) or LAYOUT_FN.get(d.get("kind")) or L_statement
+    ctheme = base_theme(ctheme)   # E~H 는 바탕 테마의 짜임 그대로(배경 묶음만 다름)
+    fn =VARIANTS.get(ctheme, {}).get(d.get("kind")) or LAYOUT_FN.get(d.get("kind")) or L_statement
     if ctheme == "b" and d.get("kind") == "cover":   # 테마 B 표지는 큰 아이콘 없이 글과 선 다발로(ref_042)
         d["_img"] = None
     try:
@@ -1038,9 +1063,12 @@ def slide_html(d, n, total, ctone="blue", ctheme="a"):
     if d.get("_bg"):   # 테마 배경 그림(cp-bg-theme) — 바탕 전면에 깔고, 글 쪽(왼쪽)만 덮어 글이 읽히게. 장식은 더하지 않는다
         # 글자색은 배경 밝기로(사용자 2026-10-16 "글씨가 잘 안 보임" — 밝은 배경 위 흰 글자): 글 자리(왼쪽 절반) 평균 밝기 ≥150 이면 먹색 글자 + 흰 덮개
         light_bg = d.get("_bg_light")
+        glow = next((g for g in (GLOW_DARK, GLOW_LIGHT, GLOW_BLUE, GLOW_B, GLOW_C, GLOW_C_LIGHT, GLOW_D) if body.startswith(g)), "")
+        body = body[len(glow):]   # 바탕 빛은 배경 그림으로 바뀐다 — 아래 글자색 치환이 빛 코드까지 바꿔 자리를 못 찾던 것(밝은 배경 + 어두운 쪽, 2026-10-18 테마 E)
         if light_bg and tone in ("dark", "blue"):
             body = body.replace("rgba(255,255,255,", "rgba(11,19,36,").replace("color:#fff", "color:var(--ink)")
-            for x, y in (("color:rgba(11,19,36,.45)", "color:var(--blue2)"), ("color:var(--blue2)", "color:var(--blue)")):
+            for x, y in (("color:rgba(11,19,36,.45)", "color:var(--blue2)"), ("color:var(--blue2)", "color:var(--blue)"),
+                         ("color:rgba(11,19,36,.38)", "color:var(--blue)")):   # 테마 D 간지 큰 장 번호(주색 전면용 흰 .38) → 밝은 배경에선 주색
                 body = body.replace(x, y)
             # 연락처 사업장 카드(흰 반투명 면)는 밝은 배경에서 묻힌다 → 흰 카드 + 톤 옅은 테두리
             body = body.replace("background:rgba(11,19,36,.06);border:2px solid rgba(11,19,36,.14)", "background:#fff;border:2px solid var(--line)")
@@ -1051,10 +1079,7 @@ def slide_html(d, n, total, ctone="blue", ctheme="a"):
                 else "linear-gradient(90deg,rgba(255,255,255,.72) 0%,rgba(255,255,255,.4) 45%,rgba(255,255,255,0) 70%)")
         bgimg = (f"<div class='deco' style=\"background:url('{html.escape(d['_bg'])}') center/cover no-repeat\"></div>"
                  f"<div class='deco' style=\"background:{veil}\"></div>")
-        for g in (GLOW_DARK, GLOW_LIGHT, GLOW_BLUE, GLOW_B, GLOW_C, GLOW_C_LIGHT, GLOW_D):
-            if body.startswith(g):
-                body = bgimg + body[len(g):]
-                break
+        body = (bgimg + body) if glow else body
         body = re.sub(r"<img data-x=\"i\" class=\"abs\" src=\"[^\"]*\" style=\"object-fit:contain;left:1[12]\d0px;top:2[36]0px;width:\d+px;height:\d+px\">", "", body)   # 표지·간지 큰 아이콘은 뺀다
         dec = ""
     else:
@@ -1148,6 +1173,7 @@ def render(slides, out_dir, log=print, ctone="blue", ctheme="a"):
     from playwright.sync_api import sync_playwright
     os.makedirs(out_dir, exist_ok=True)
     res = []
+    ctheme = base_theme(ctheme)
     with sync_playwright() as p:
         br = p.chromium.launch(args=["--force-color-profile=srgb", "--font-render-hinting=none", "--allow-file-access-from-files"])
         pg = br.new_page(viewport={"width": W_PX, "height": H_PX}, device_scale_factor=1)
@@ -1346,25 +1372,34 @@ def bg_is_light(path):
 
 
 def _bg_file(job, theme, kind, title, k, used, d):
-    """테마·역할·장 이름으로 배경 한 장 — 이름에 '테마 — 역할' 이 있어 그걸 먼저 거르고, 간지는 장 이름 낱말로 회사/기술/성장 중 고른다"""
-    import vertical
-    tw, rw = BG_THEME_WORD.get(theme, "다크"), BG_ROLE_WORD.get(kind, "표지")
-    q = f"{rw} {tw} 회사소개서 배경"
-    if kind == "section":
-        grp = next((i for i, ws in enumerate(BG_SECTION_WORDS) if any(w in str(title or "") for w in ws)), k % 3)
-        q += " " + " ".join(BG_SECTION_WORDS[grp][:2])
-    try:
-        rows = vertical._api("GET", "/assets/items?" + __import__("urllib.parse").parse.urlencode({"q": q, "category": "illust", "limit": 40})).get("data") or []
-    except Exception:
-        return None
-    rows = [r for r in rows if ((r.get("set") or {}).get("name") or r.get("style_group")) == BG_SET and tw in str(r.get("name") or "") and rw in str(r.get("name") or "")]
-    if kind == "section" and rows:
-        pick = [r for r in rows if any(w in str(r.get("name") or "") for w in BG_SECTION_WORDS[grp][:2])] or rows
-        rows = [r for r in pick if r["id"] not in used] or pick
+    """테마·역할·장 이름으로 배경 한 장 → (경로, 색 입히기 hue|duo) 또는 None.
+    A~D: cp-bg-theme 에서 이름의 '역할 테마' 로 거르고, 간지는 장 이름 낱말로 회사/기술/성장 중. E~H: THEME_BG 묶음에서"""
+    rows = _bg_candidates(theme, kind, title, k)
     if not rows:
         return None
-    r = rows[0]
+    # 후보 중 하나를 작업 id 로 고른다 — 늘 첫 줄이면 같은 테마 작업이 모두 같은 표지(2026-10-18 배경 26장 추가 뒤). 같은 작업은 다시 돌려도 같은 그림
+    rows = [x for x in rows if x["id"] not in used] or rows
+    seed = int(__import__("hashlib").md5(f"{getattr(job, 'id', '')}:{kind}".encode()).hexdigest()[:8], 16)
+    r = rows[seed % len(rows)]
     used.add(r["id"])
+    p_ = _fetch_asset(r, d)
+    return (p_, SET_TINT.get(_set_of(r), "hue")) if p_ else None
+
+
+def _set_of(r):
+    return (r.get("set") or {}).get("name") or r.get("set_name") or r.get("style_group") or ""
+
+
+def _asset_rows(q, category, limit=40):
+    import vertical
+    try:
+        return vertical._api("GET", "/assets/items?" + __import__("urllib.parse").parse.urlencode({"q": q, "category": category, "limit": limit})).get("data") or []
+    except Exception:
+        return []
+
+
+def _fetch_asset(r, d):
+    import vertical
     try:
         blob = vertical._api("GET", f"/assets/items/{r['id']}/file/original", raw=True)
     except Exception:
@@ -1372,6 +1407,94 @@ def _bg_file(job, theme, kind, title, k, used, d):
     p_ = os.path.join(d, f"bg_{r['id']}.jpg")
     open(p_, "wb").write(blob)
     return p_
+
+
+def _bg_candidates(theme, kind, title, k):
+    if theme in THEME_BG:   # E~H — 역할 구분 없는 묶음(쪽마다 다른 그림은 used 로)
+        sset, word, _ = THEME_BG[theme]
+        cat = "photo" if sset == "cp-photo-editorial" else "illust"
+        rows, seen = [], set()
+        for w in (word.split("|") if word else [""]):
+            for r in _asset_rows(("회사소개서 실사" if cat == "photo" else "회사소개서 배경") + (f" {w}" if w else ""), cat, 60):
+                if r["id"] not in seen and _set_of(r) == sset and (not w or w in str(r.get("name") or "")):
+                    seen.add(r["id"])
+                    rows.append(r)
+        return rows
+    tw, rw = BG_THEME_WORD.get(theme, "다크"), BG_ROLE_WORD.get(kind, "표지")
+    q = f"{rw} {tw} 회사소개서 배경"
+    grp = None
+    if kind == "section":
+        grp = next((i for i, ws in enumerate(BG_SECTION_WORDS) if any(w in str(title or "") for w in ws)), k % 3)
+        q += " " + " ".join(BG_SECTION_WORDS[grp][:2])
+    rows = [r for r in _asset_rows(q, "illust") if _set_of(r) == BG_SET and tw in str(r.get("name") or "") and rw in str(r.get("name") or "")]
+    if grp is not None and rows:
+        rows = [r for r in rows if any(w in str(r.get("name") or "") for w in BG_SECTION_WORDS[grp][:2])] or rows
+    return rows
+
+
+# 자유도 모드(2026-10-18 사용자 "테마 이미지로만이 아니라 파워에셋에서 적당한 걸 찾아 자유롭게") — 톤 색을 입힐 수 있는 세트만(파랑으로 만든 것·파스텔)
+FREE_SETS = {"cp-bg-theme": "illust", "cp-bg-general": "illust", "cp-photo-editorial": "photo", "illust-keyvisual-glass": "illust"}
+FREE_ROLE = {"cover": "표지", "section": "간지", "vision": "마무리", "contact": "마무리"}
+
+
+def _free_bgs(job, deck, theme, d, used, log):
+    """표지·간지·마무리 배경을 AI 가 파워에셋 후보에서 고른다 → {쪽 번호: (경로, 색 입히기)}.
+    AI = 서버 kind 'build' — Claude 키가 있으면 Claude Opus 5.5, 없거나 소진이면 OpenRouter 글 모델(Muse). 실패하면 빈 dict(테마 배경으로)"""
+    import design
+    slots = [(k, s) for k, s in enumerate(deck["slides"]) if s["kind"] in FREE_ROLE]
+    if not slots:
+        return {}
+    pool, cand = {}, {}
+    comp = deck.get("company") or {}
+    for k, s in slots:
+        title = " ".join(str(s.get(x) or "") for x in ("title", "headline", "name")).replace("**", "").strip()
+        qs = [x for x in [title, f"{FREE_ROLE[s['kind']]} 회사소개서 배경", "회사소개서 배경"] if x]
+        ids = []
+        for r in _bg_candidates(theme, s["kind"], title, k):   # 테마 기본 후보는 늘 넣는다
+            pool[r["id"]] = r
+            ids.append(r["id"])
+        for q in qs:
+            for sset_cat in sorted(set(FREE_SETS.values())):
+                for r in _asset_rows(q, sset_cat, 30):
+                    if _set_of(r) in FREE_SETS and r["id"] not in ids and len(ids) < 16:
+                        pool[r["id"]] = r
+                        ids.append(r["id"])
+        cand[k] = ids
+    light = base_theme(theme) != "a"
+    lines = []
+    for k, s in slots:
+        title = " ".join(str(s.get(x) or "") for x in ("title", "headline", "name")).replace("**", "").strip()
+        opts = "; ".join(f"{i}={pool[i].get('name')} [{_set_of(pool[i])}]" for i in cand[k])
+        lines.append(f"- 쪽 {k} ({FREE_ROLE[s['kind']]}) 「{title[:60]}」 후보: {opts}")
+    system = ("너는 회사소개서 장표의 아트 디렉터다. 표지·간지·마무리 쪽마다 배경 그림을 후보 중 하나씩 고른다.\n"
+              "규칙: ① 쪽 내용과 어울리는 그림 ② 한 덱 안에서 결이 맞게 — 세트(대괄호)는 두 가지 이내로 묶는다 ③ 같은 그림을 두 번 쓰지 않는다 "
+              f"④ 이 테마는 {'밝은' if light else '어두운'} 표지 계열 — 이름에 다크/라이트가 있으면 맞춘다 ⑤ 글은 왼쪽에 앉는다. "
+              '출력은 JSON 하나만: {"picks":[{"k":쪽번호,"id":"후보 id"}],"why":"한 줄 이유"}')
+    user = f"회사: {comp.get('name') or ''}\n테마: {COMPANY_THEMES.get(theme, '')}\n" + "\n".join(lines)
+    try:
+        r = design.ai(job, "build", {"messages": [{"role": "system", "content": system}, {"role": "user", "content": user}],
+                                     "max_tokens": 1500, "temperature": 0.2}, timeout=240)
+        out = design.parse_json(design.text_of(r))
+    except design.Budget:
+        raise
+    except Exception as e:
+        log(f"자유도 — AI 배경 고르기가 실패해 테마 배경을 씁니다: {str(e)[:120]}", "warn")
+        return {}
+    res = {}
+    for p in (out.get("picks") or []) if isinstance(out, dict) else []:
+        try:
+            k, i = int(p.get("k")), str(p.get("id"))
+        except Exception:
+            continue
+        if k not in cand or k in res or i not in cand[k] or i in used:   # 같은 쪽을 두 번 고르면 첫 선택만
+            continue
+        f = _fetch_asset(pool[i], d)
+        if f:
+            used.add(i)
+            res[k] = (f, SET_TINT.get(_set_of(pool[i]), "hue"))
+    model = str(((r.get("pd") or {}).get("model")) or r.get("model") or "")
+    log(f"자유도 — AI{f'({model})' if model else ''}가 파워에셋 후보 {len(pool)}장에서 배경 {len(res)}/{len(slots)}쪽을 골랐습니다. {str(out.get('why') or '')[:120]}", "done")
+    return res
 
 
 def _icon_file(job, query, used, d):
@@ -1405,18 +1528,20 @@ def _white_logo(src, dst):
     return dst
 
 
-def attach_assets(job, deck, d, log=print, ctone="blue", ctheme="a"):
-    """그림 칸(_img) 채우기 — 표지·간지 큰 그림, 카드 아이콘(톤 색으로 색조를 돌린다). 로고(제안사 = 우리 회사)는 작업에 올린 vendor 로고"""
+def attach_assets(job, deck, d, log=print, ctone="blue", ctheme="a", free=False):
+    """그림 칸(_img) 채우기 — 표지·간지 큰 그림, 카드 아이콘(톤 색으로 색조를 돌린다). 로고(제안사 = 우리 회사)는 작업에 올린 vendor 로고.
+    free = 자유도 — 표지·간지·마무리 배경을 테마 묶음에 묶지 않고 AI 가 파워에셋 후보에서 고른다"""
     import design
     used = set()
     comp = deck.get("company") or {}
     hero_q = ["데이터", "클라우드", "인공지능", "플랫폼", "네트워크", "보안", "서버"]
     bgused = set()
+    freebg = _free_bgs(job, deck, ctheme, d, bgused, log) if free else {}
     for k, s in enumerate(deck["slides"]):
-        if s["kind"] in ("cover", "section", "vision", "contact"):   # cp-bg-theme(2026-10-16 힉스필드 20장, 파랑 계열) — 톤은 tint_icon 색조 회전으로. 다음 세트는 투명 오브젝트로 만들어 바탕색을 엔진이 깐다(계획)
-            bg = _bg_file(job, ctheme, s["kind"], s.get("title"), k, bgused, d)
+        if s["kind"] in ("cover", "section", "vision", "contact"):   # 테마 배경(A~D cp-bg-theme 46장 · E~H THEME_BG) — 톤은 hue(색조 돌리기)·duo(톤 한 색)로
+            bg = freebg.get(k) or _bg_file(job, ctheme, s["kind"], s.get("title"), k, bgused, d)
             if bg:
-                s["_bg"] = bg
+                s["_bg"], s["_bgmode"] = bg
         if s["kind"] in ("cover", "section") and not s.get("_bg"):
             # 표지·간지의 큰 그림은 비면 쪽이 허전하다 — AI 검색어로 못 찾으면 기본 낱말을 차례로(10-16 시험 작업에서 표지 그림이 빔)
             qs = [s.get("icon")] if s.get("icon") else []
@@ -1441,7 +1566,10 @@ def attach_assets(job, deck, d, log=print, ctone="blue", ctheme="a"):
             s["_logo"], s["_logo_dark"] = "file:///" + logo.replace("\\", "/"), ("file:///" + logo_dark.replace("\\", "/")) if logo_dark else None
         if s.get("_bg"):
             s["_bg_light"] = bg_is_light(s["_bg"])
-            s["_bg"] = "file:///" + tint_icon(s["_bg"], s["_bg"][:-4] + f"_{ctone}.png", ctone).replace("\\", "/")
+            mode = s.pop("_bgmode", "hue")
+            s["_bg"] = "file:///" + tint_bg(s["_bg"], s["_bg"][:-4] + f"_{ctone}.png", ctone, mode).replace("\\", "/")
+            if mode == "duo":   # 톤 한 색으로 바꾼 뒤 밝기가 달라진다 — 글자색 판정은 바꾼 그림으로
+                s["_bg_light"] = bg_is_light(s["_bg"][8:])
         if s.get("_img"):
             s["_img"] = "file:///" + tint_icon(s["_img"], s["_img"][:-4] + f"_{ctone}.png", ctone).replace("\\", "/")
         for it in s.get("items") or []:
@@ -1468,8 +1596,9 @@ def run(job, j, opts, brief, note):
     ctheme = str(opts.get("ctheme") or "a")
     ctheme = ctheme if ctheme in COMPANY_THEMES else "a"
     ctone = ctone if ctone in TONES else "blue"
-    job.event(f"테마 {ctheme.upper()} {COMPANY_THEMES[ctheme]} · 톤 {tone_label(ctone)}")
-    attach_assets(job, deck, d, ctone=ctone, ctheme=ctheme)
+    free = bool(opts.get("cfree"))
+    job.event(f"테마 {ctheme.upper()} {COMPANY_THEMES[ctheme]} · 톤 {tone_label(ctone)}" + (" · 자유도(파워에셋에서 배경을 AI 가 고름)" if free else ""))
+    attach_assets(job, deck, d, log=job.event, ctone=ctone, ctheme=ctheme, free=free)
     json.dump(deck, open(os.path.join(d, "deck.json"), "w", encoding="utf-8"), ensure_ascii=False, indent=1)
     try:
         put_file(job.id, "extra", os.path.join(d, "deck.json"), "회사소개서_구성.json")

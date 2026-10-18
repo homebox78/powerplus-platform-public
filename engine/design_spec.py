@@ -8,6 +8,8 @@
 구성: BASE(모든 타입 공통 격자·글자·부품) + TYPES[id](색 역할·카드·아이콘·그림 화풍·금지) → spec_text(id, accent).
 """
 
+import wirekinds   # 상자 종류 한 벌(wire_kinds.json) — 주인공 도식 목록을 여기서(2026-10-18)
+
 BASE = {
     "grid": [
         "Canvas reference 1600×900 px (scale proportionally). Top 11% (≈100 px) stays EMPTY plain background — the headline is set later.",
@@ -28,7 +30,7 @@ BASE = {
     ],
     "form": [
         "FORM FOLLOWS CONTENT: draw each block as the shape its content is, never as 'a box with a header band and a bullet list'. A schedule is a Gantt grid, stages are a rising staircase, a process is chevrons, results are big numbers, trends are a chart, current-vs-proposed is a small grey side against a large navy side.",
-        "ONE HERO: the wireframe's widest form block (gantt / phase / flow / kpi / chart / table / fishbone / hub / pyramid / matrix / funnel / cycle / venn / roadmap / isostack / gauge / proportion / converge / ridge / petal / stage / screen) is the hero — it is the largest and darkest thing on the slide; the blocks beside it are lighter, smaller and quieter (Big–Middle–Small).",
+        "ONE HERO: the wireframe's widest form block (" + " / ".join(wirekinds.FORM + ("screen",)) + ") is the hero — it is the largest and darkest thing on the slide; the blocks beside it are lighter, smaller and quieter (Big–Middle–Small).",
         "READING FLOW: left = situation/evidence, center = our device (the hero), right = result/effect — or top → bottom. Make the flow visible with one or two large arrows or a progression of tone, not with many small arrows.",
         "Bullet lists stay short (2–5 lines) and live inside a block that already has a visual form; a slide must not be a grid of bullet boxes.",
         "NO EMPTY OR FILLER BOXES: draw only the blocks in the wireframe. Never add a box that holds only a title or one word, and never leave a box without its content.",
@@ -63,6 +65,14 @@ BASE = {
         "RIDGE TIMELINE: a pale ridge silhouette rising left→right, a dot on each peak (later = darker {primary}), the year in {primary} bold on a small card above, the achievement in a small pill on the baseline below.",
         "NUMBER PETALS: a big {primary} center circle with the key number/phrase, 3–6 rounded petals numbered 01… around it (tint → {primary}), thin dotted leaders to short description cards in left/right columns.",
         "PLATFORM STAGE: a wide flat dark cylinder base (the platform name on it), a thin glowing ring above, 2–5 service circles floating over the ring at slightly different heights with an icon, bold name and one line each.",
+        # 2026-10-18 차트 유형·설득 장치·확장 5종(레퍼런스 학습 §7.3~7.6)
+        "CHART TYPES: line = a 3 px {primary} line with round markers (other series in lighter tints); ranking = horizontal bars sorted largest first; stacked = one bar per category split by series; donut = a ring split by share with the total or key share in the center and a legend beside it; waterfall = a dark start bar, floating up/down steps (up in tint, down in pale with an outline), a dark total bar and thin connector lines; combo = bars plus a {primary} line on a secondary axis. No 3D, no gradients, no pie explosions.",
+        "KEY MESSAGE CALLOUT: every data visual (chart / KPI / table / gauge / proportion / progress) may carry one short takeaway sentence — set it as a small bold callout (pale tint box, 1.5 px {primary} border, small pointer) next to the highlighted item, never as a second title; only the highlighted item takes {primary}/{accent}, every other item is muted grey.",
+        "DO / DON'T: two equal columns — the left 'NG/기존' column muted grey with ✕ marks, the right 'OK/개선' column in {primary} with ✓ marks; each problem row lines up with its fix row at the same height, joined by a small chevron.",
+        "QUOTE CARD: a large pale opening quotation mark, the quoted sentence in 28–32 px bold, a thin {primary} rule on the left, the speaker/source small and right-aligned below.",
+        "PROGRESS BARS: one row per item — name left, a rounded pale track, a {primary} fill exactly proportional to the value, the value at the right end; only the highlighted row is darkest.",
+        "SWIMLANE: horizontal lanes per actor with a grey actor header column, stage header cells across the top, small rounded task boxes in their lane/stage cells joined in stage order by thin arrows; optional dashed outline around the key step.",
+        "ANNOTATED SCREEN: a clean UI screenshot mock (window frame, realistic layout, no readable filler) with dark numbered circle pins on the relevant spots and a numbered legend beside it (same numbers, bold name, one line).",
     ],
     "quality": [
         "Pixel-precise alignment: left edges of stacked items line up; same-kind gaps are identical; nothing is crooked, overlapping or clipped.",

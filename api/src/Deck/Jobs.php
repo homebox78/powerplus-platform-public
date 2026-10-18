@@ -329,7 +329,8 @@ final class Jobs
             'purpose' => in_array($b['purpose'] ?? '', ['submit', 'company'], true) ? $b['purpose'] : 'present',   // company = 회사소개서(테마 A·B, engine/company.py)
             'vstyle' => in_array($b['vstyle'] ?? '', ['band', 'tab', 'side', 'split', 'pill', 'line'], true) ? $b['vstyle'] : 'band',   // 세로 제안서 디자인 스타일(모양) — engine/vertical.py STYLES
             'vtone' => in_array($b['vtone'] ?? ($b['vtheme'] ?? ''), ['navy', 'blue', 'deep', 'teal', 'gray', 'glass'], true) ? ($b['vtone'] ?? $b['vtheme']) : 'navy',   // 톤(색) — TONES(옛 vtheme 도 받는다)
-            'ctheme' => in_array($b['ctheme'] ?? '', ['a', 'b', 'c', 'd'], true) ? $b['ctheme'] : 'a',   // 회사소개서 테마 — A 다크 임팩트 · B 라이트 에디토리얼 · C 매거진 · D 프렌들리 라운드(engine/company.py COMPANY_THEMES)
+            'ctheme' => in_array($b['ctheme'] ?? '', ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'], true) ? $b['ctheme'] : 'a',   // 회사소개서 테마 — A 다크 임팩트 · B 라이트 에디토리얼 · C 솔리드 · D 프렌들리 라운드 · E 포토 · F 라인 · G 소프트 3D · H 기하 곡선(engine/company.py COMPANY_THEMES)
+            'cfree' => !empty($b['cfree']),   // 자유도 — 표지·간지·마무리 배경을 AI 가 파워에셋에서 고른다(kind build → Claude Opus 5.5, 없으면 OpenRouter)
             'ctone' => preg_match('/^([a-z]{3,10}|#[0-9A-Fa-f]{6})$/', (string) ($b['ctone'] ?? '')) ? $b['ctone'] : 'blue',   // 회사소개서 톤 — TONES 의 id 또는 직접 고른 색 #RRGGBB(모르는 id 는 엔진이 blue 로)
             'lang' => in_array($b['lang'] ?? '', self::LANGS, true) ? $b['lang'] : 'ko',   // 제작 언어 — 장표 글·시안·대본
             'font_title' => preg_match('/^[a-z0-9]{2,16}$/', (string) ($b['font_title'] ?? '')) ? $b['font_title'] : '',
@@ -440,12 +441,15 @@ final class Jobs
                         foreach ($lim as $k => $max) if (isset($s[$k])) $ps[$k] = mb_substr((string) $s[$k], 0, $max);
                         if (isset($s['wire']) && is_array($s['wire'])) $ps['wire'] = self::wire($s['wire']);
                         if (isset($s['wire_ai']) && is_array($s['wire_ai'])) { $ps['wire_ai'] = self::wire($s['wire_ai']); $ps['wire_at'] = gmdate('Y-m-d H:i:s'); }   // AI 로 다시 짠 시각(UTC) — 화면 우측 위에 보인다
+                        // 이 장의 관계 판단 한 줄(2026-10-18) — AI 가 종류·배치를 고른 까닭. 빈 글이면 지운다
+                        if (isset($s['wire_why'])) { $why = trim(mb_substr((string) $s['wire_why'], 0, 200)); if ($why !== '') $ps['wire_why'] = $why; else unset($ps['wire_why']); }
                         // A·B 와이어프레임 확정 — 고른 안이 wire 가 되고(시안은 wire 로 그린다), '' 이면 다시 고르기
                         if (isset($s['wire_pick'])) {
                             $pk = (string) $s['wire_pick'];
                             if (in_array($pk, ['a', 'b'], true) && !empty($ps['wire_alt'][$pk])) {
                                 $ps['wire'] = self::wire((array) $ps['wire_alt'][$pk]);
                                 $ps['wire_pick'] = $pk;
+                                if (isset($ps['wire_why_alt'][$pk])) $ps['wire_why'] = (string) $ps['wire_why_alt'][$pk];   // 고른 안의 관계 한 줄
                                 $s['wire'] = true;   // 아래 합격 기준을 다시 본다
                             } elseif ($pk === '') unset($ps['wire_pick']);
                         }
@@ -499,7 +503,7 @@ final class Jobs
     /** $ai: AI 가 낸 것이면 자리표시 상자를 거른다(사람이 손으로 적은 것은 그대로 둔다) */
     public static function wire(array $in, bool $ai = false): array
     {
-        $kinds = ['panel', 'card', 'person', 'image', 'screen', 'chart', 'table', 'flow', 'map', 'badge', 'band', 'text', 'gantt', 'phase', 'kpi', 'fishbone', 'hub', 'pyramid', 'matrix', 'funnel', 'cycle', 'venn', 'roadmap', 'isostack', 'gauge', 'proportion', 'converge', 'ridge', 'petal', 'stage'];
+        $kinds = WireKinds::kinds();   // 종류 한 벌 = wire_kinds.json(2026-10-18)
         $out = [];
         foreach (array_slice($in, 0, 60) as $b) {
             if (!is_array($b)) continue;

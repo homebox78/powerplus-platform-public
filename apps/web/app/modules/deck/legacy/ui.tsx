@@ -144,7 +144,7 @@ function JobSettings({ job, onEdit }: { job: Job; onEdit?: () => void }) {
       // 제출용은 세로 제안서 스타일·톤(opts.vstyle·vtone) — 발표장표 타입(opts.style)을 보이면 안 된다(10-15 사용자 '세로인데 발표장표 테마로 나옴')
       ["디자인", o?.purpose === "company" ? <span className="flex items-center gap-2.5 min-w-0">
         <img src={companyThumb(o?.ctheme || "a", 1, o?.ctone || "blue")} alt="" className="w-[72px] aspect-video object-cover rounded-md border border-line flex-none" />
-        <span className="min-w-0"><span className="block font-semibold">테마 {(o?.ctheme || "a").toUpperCase()} · {companyThemeName(o?.ctheme)} · {companyToneName(o?.ctone)}</span><span className="block text-[12.5px] text-dim leading-[1.45]">{COMPANY_THEMES.find((t) => t.id === (o?.ctheme || "a"))?.desc}</span></span>
+        <span className="min-w-0"><span className="block font-semibold">테마 {(o?.ctheme || "a").toUpperCase()} · {companyThemeName(o?.ctheme)} · {companyToneName(o?.ctone)}{o?.cfree ? " · 자유도" : ""}</span><span className="block text-[12.5px] text-dim leading-[1.45]">{COMPANY_THEMES.find((t) => t.id === (o?.ctheme || "a"))?.desc}</span></span>
       </span> : o?.purpose === "submit" ? <span className="flex items-center gap-2.5 min-w-0">
         <img src={verticalThumb(vstyle?.id ?? "band", 1)} alt="" className="w-[48px] aspect-[1/1.414] object-cover object-top rounded-md border border-line flex-none" />
         <span className="min-w-0"><span className="block font-semibold">세로 제안서 · {vstyle?.name} · {verticalToneName(o?.vtone)}</span><span className="block text-[12.5px] text-dim leading-[1.45]">{vstyle?.desc}</span></span>

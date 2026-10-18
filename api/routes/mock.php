@@ -553,10 +553,11 @@ return static function (Router $r): void {
         if ($view === 'mine' && $a->id() === null) {
             throw HttpError::unauthorized('로그인하면 내가 만든 시안을 볼 수 있습니다.');
         }
-        $order = match ((string) ($_GET['sort'] ?? 'popular')) {
-            'new' => 'COALESCE(g.shared_at, g.created_at) DESC, g.id DESC',
+        // 기본 = 최신순(사용자 2026-10-18 "갤러리 정렬은 기본값 최신순으로") — 인기순은 sort=popular 일 때만
+        $order = match ((string) ($_GET['sort'] ?? 'new')) {
+            'popular' => '(g.likes * 3 + g.unlocks * 2 + g.views / 10) DESC, g.id DESC',
             'score' => 'g.score DESC, g.id DESC',
-            default => '(g.likes * 3 + g.unlocks * 2 + g.views / 10) DESC, g.id DESC',
+            default => 'COALESCE(g.shared_at, g.created_at) DESC, g.id DESC',
         };
         [$page, $limit, $offset] = Response::paging(24, 60);
         $owners = array_merge([(int) $a->id()], \Pp\Core\TestLogin::mirrorIds($a->id()));   // 테스트 계정 거울(읽기 전용)

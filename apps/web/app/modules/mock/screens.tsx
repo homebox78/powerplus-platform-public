@@ -35,7 +35,7 @@ import { fmtDate, galleryQuery, leadersQuery, myMockupsQuery, pointsQuery, useGa
 import { cn } from "@/lib/utils";
 import { WireframeScreen } from "./wireframe";
 
-const SORT_KO = { popular: "인기순", new: "최신순", score: "점수순" } as const;
+const SORT_KO = { new: "최신순", popular: "인기순", score: "점수순" } as const;
 const DEVICE_KO = { pc: "PC", mobile: "모바일" } as const;
 
 const copyText = (s: string, done = "복사했습니다.") => navigator.clipboard.writeText(s).then(() => toast.success(done), () => toast.error("복사하지 못했습니다."));
@@ -198,7 +198,8 @@ function GalleryCard({ g, onOpen, unlockCost, onSet }: { g: GalleryItem; onOpen:
 function Gallery({ open, onOpen }: { open: number | null; onOpen: (id: number | null) => void }) {
   const [sp, setSp] = useSearchParams();
   const view = sp.get("view") === "mine" ? "mine" : "shared";
-  const sort = (["popular", "new", "score"].includes(sp.get("sort") ?? "") ? sp.get("sort") : "popular") as "popular" | "new" | "score";
+  // 기본 정렬 = 최신순(사용자 2026-10-18 "갤러리 정렬은 기본값 최신순으로")
+  const sort = (["popular", "new", "score"].includes(sp.get("sort") ?? "") ? sp.get("sort") : "new") as "popular" | "new" | "score";
   const type = (["main", "sub"].includes(sp.get("type") ?? "") ? sp.get("type") : "all") as "all" | "main" | "sub";
   const setKey = sp.get("set") ?? "";
   const set = (k: string, v: string) => setSp((p) => { const n = new URLSearchParams(p); if (v) n.set(k, v); else n.delete(k); return n; }, { replace: true });

@@ -17,9 +17,22 @@ final class Session
             return;
         }
         $secure = (bool) Config::get('session.secure', !Config::debug());
+        // 세션 데이터 = 전용 폴더 + 쿠키와 같은 30일(2026-10-18 사용자 "로그인이 자꾸 풀림").
+        // 서버 기본은 /var/lib/php/sessions · gc_maxlifetime 1440초라, 30분마다 도는 phpsessionclean 이 24분 넘게 안 쓴 세션 파일을 지웠다
+        // (쿠키는 30일인데 서버 세션이 없어져 로그아웃). sessionclean 은 php.ini 의 기본 경로만 지우므로 경로를 따로 두고, 정리는 PHP gc 가 30일 기준으로 한다.
+        $life = 60 * 60 * 24 * 30;
+        $dir = rtrim((string) Config::get('session.dir', rtrim((string) Config::get('storage.dir', ''), '/\\') . '/sessions'), '/\\');
+        if ($dir !== '/sessions' && (is_dir($dir) || @mkdir($dir, 0770, true)) && is_writable($dir)) {
+            session_save_path($dir);
+            ini_set('session.gc_maxlifetime', (string) $life);
+            ini_set('session.gc_probability', '1');
+            ini_set('session.gc_divisor', '1000');
+        } else {
+            error_log("[pp-session] 세션 폴더({$dir})를 쓸 수 없어 서버 기본 경로를 쓴다 — 24분 쉬면 로그인이 풀린다");
+        }
         session_name((string) Config::get('session.name', 'pp_sid'));
         session_set_cookie_params([
-            'lifetime' => 60 * 60 * 24 * 30,
+            'lifetime' => $life,
             'path' => '/',
             'secure' => $secure,
             'httponly' => true,

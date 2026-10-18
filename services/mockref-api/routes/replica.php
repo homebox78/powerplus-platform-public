@@ -133,9 +133,12 @@ $router->get('/api/mockups/replica', static function (): void {
         $same = (int) $sc['site_id'] === (int) $main['site_id'];
         $kit['consistency'] = [
             'main_site' => $main['slug'], 'this_site' => $sc['slug'], 'same_site' => $same,
-            'rule' => $same
+            // 와이어 서브(2026-10-18 w07~w09): 메인 시안 없이 서브 한 장만 만드는 흐름이 있다 — 틀은 와이어, root 는 이 묶음 값(base.root_note)
+            'rule' => $wire !== null
+                ? '와이어 서브 묶음이다. 메인 시안(base_token)과 함께 만들면 머리·주 메뉴·바닥·root 는 메인 것을 쓰고, 서브 한 장만 만들면 base.root 와 reference.wire 의 머리·바닥 재료로 직접 만든다. 서브 비주얼·옆 메뉴는 와이어에 있을 때만(sub_shell.wire), 본문 칸은 와이어 줄·칸대로.'
+                : ($same
                 ? '메인과 같은 사이트의 서브 화면이다. 머리·주 메뉴·바닥은 메인 시안 것을 그대로 쓰고, 서브 비주얼·옆 메뉴·본문 폭은 sub_shell 한 가지로, 본문 칸 안쪽 구성만 이 화면을 따른다.'
-                : '메인과 다른 사이트의 화면이다(메인 사이트에 이 유형이 없었다). 머리·주 메뉴·바닥은 메인 시안에, 서브 비주얼·옆 메뉴·본문 폭은 sub_shell 한 가지에 맞추고(이 화면의 옆 메뉴 위치·모양·폭은 따르지 않는다), 이 화면에서는 본문 칸 안쪽 구성(블록 순서·표·카드·사진 배치)만 따른다.',
+                : '메인과 다른 사이트의 화면이다(메인 사이트에 이 유형이 없었다). 머리·주 메뉴·바닥은 메인 시안에, 서브 비주얼·옆 메뉴·본문 폭은 sub_shell 한 가지에 맞추고(이 화면의 옆 메뉴 위치·모양·폭은 따르지 않는다), 이 화면에서는 본문 칸 안쪽 구성(블록 순서·표·카드·사진 배치)만 따른다.'),
         ];
     }
     $srcs = $mix !== null ? [$sc, ...$others] : [$sc];
@@ -169,7 +172,7 @@ function homebox_mix_refs(string $ot, array $main, int $rank, int $max = 2): arr
  */
 function homebox_wire_find(string $k, string $pt, string $ot, array $have, array $persona, int $span = 12, int $h = 0): ?array
 {
-    $minH = max(60, (int) round(0.35 * $h)); $maxH = $h > 0 ? 3 * $h : 99999;
+    $minH = max(60, (int) round(ReplicaKit::WIRE_H_MIN * $h)); $maxH = $h > 0 ? (int) round(ReplicaKit::WIRE_H_MAX * $h) : 99999; // wirePlan usable 과 같은 배수
     $fam = $ot !== '' ? explode('_', $ot)[0] . '%' : '%';
     $minW = max(200, (int) round(0.5 * $span / 12 * 1200)); // 와이어 칸 폭에 견줄 만한 섹션만(ReplicaKit wirePlan 의 usable 과 같은 뜻)
     // 두 단계(2026-10-18 로컬 실측: sections 를 종류로 먼저 훑는 한 방 질의가 35~45초) — ① 그 화면 종류의 상위 120장(요청 안에서 한 번)
@@ -182,15 +185,25 @@ function homebox_wire_find(string $k, string $pt, string $ot, array $have, array
     $ids = array_values(array_diff($cand[$key], array_map('intval', $have)));
     if (!$ids) { return null; }
     $hit = array_flip(array_map('intval', array_column(Db::rows('SELECT DISTINCT screen_id FROM sections WHERE screen_id IN (' . implode(',', $ids) . ') AND section_type_id = ? AND bbox_w >= ? AND bbox_h >= ? AND bbox_h <= ? AND bbox_x >= 0', [$k, $minW, $minH, $maxH]), 'screen_id')));
-    $pick = null;
-    foreach ($ids as $id) { if (isset($hit[$id])) { $pick = $id; break; } }
-    if ($pick === null) { return null; }
-    $sc = Db::row('SELECT sc.id, sc.site_id, sc.status, sc.url, sc.title, sc.page_type_id AS page_type, sc.viewport_w, sc.device, s.slug,
-            COALESCE(o.display_name, o.name) AS org_name, o.org_type_id AS org_type, d.primary_hex, d.palette, d.fonts, d.radius_px, d.container_px
-        FROM screens sc JOIN sites s ON s.id = sc.site_id JOIN organizations o ON o.id = s.org_id LEFT JOIN site_design d ON d.site_id = s.id WHERE sc.id = ?', [$pick]);
-    if ($sc === null) { return null; }
-    $rows = Db::rows('SELECT id, section_type_id AS type, bbox_x AS x, bbox_y AS y, bbox_w AS w, bbox_h AS h, structure FROM sections WHERE screen_id = ? ORDER BY bbox_y, bbox_x', [(int) $sc['id']]);
-    return ['sc' => $sc, 'secs' => ReplicaKit::prepSecs($sc, $rows, $persona)];
+    // 종류 이름만 맞고 구조는 다른 섹션(분해 오류)이 첫 후보면 그 화면을 건너뛴다 — 후보 화면 8장까지 ReplicaKit::wireFits 로 확인(MC-103)
+    $tried = 0;
+    foreach ($ids as $pick) {
+        if (!isset($hit[$pick])) { continue; }
+        if (++$tried > 8) { break; }
+        $sc = Db::row('SELECT sc.id, sc.site_id, sc.status, sc.url, sc.title, sc.page_type_id AS page_type, sc.viewport_w, sc.device, s.slug,
+                COALESCE(o.display_name, o.name) AS org_name, o.org_type_id AS org_type, d.primary_hex, d.palette, d.fonts, d.radius_px, d.container_px
+            FROM screens sc JOIN sites s ON s.id = sc.site_id JOIN organizations o ON o.id = s.org_id LEFT JOIN site_design d ON d.site_id = s.id WHERE sc.id = ?', [$pick]);
+        if ($sc === null) { continue; }
+        $rows = Db::rows('SELECT id, section_type_id AS type, bbox_x AS x, bbox_y AS y, bbox_w AS w, bbox_h AS h, structure FROM sections WHERE screen_id = ? ORDER BY bbox_y, bbox_x', [(int) $sc['id']]);
+        $secs = ReplicaKit::prepSecs($sc, $rows, $persona);
+        $vw = (int) ($sc['viewport_w'] ?? 1920);
+        foreach ($secs as $s) {
+            if ($s['type'] === $k && $s['w'] >= $minW && $s['h'] >= $minH && $s['h'] <= $maxH && ReplicaKit::wireFits($k, ['x' => $s['x'], 'y' => $s['y'], 'w' => $s['w'], 'h' => $s['h'], 'secs' => [$s]], $vw)) {
+                return ['sc' => $sc, 'secs' => $secs];
+            }
+        }
+    }
+    return null;
 }
 
 /**

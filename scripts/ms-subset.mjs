@@ -10,7 +10,7 @@ import path from "node:path";
 const ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, "$1")), "..");
 const WEB = path.join(ROOT, "apps/web");
 const LIST = path.join(WEB, "app/styles/material-symbols-names.txt");
-const FONT = path.join(WEB, "app/styles/material-symbols-outlined-subset.woff2");
+const FONT = path.join(WEB, "app/styles/material-symbols-outlined-subset-v2.woff2");
 const DIRS = ["app/modules/deck/legacy"];
 const FILES = ["app/modules/deck/screens.tsx", "app/components/chat/logo-pick.tsx"];
 
@@ -25,6 +25,14 @@ function collect() {
     const t = fs.readFileSync(f, "utf8");
     for (const m of t.matchAll(/["'`]([a-z][a-z0-9_]{1,40})["'`]/g)) if (all.has(m[1])) used.add(m[1]);
     for (const m of t.matchAll(/>\s*([a-z][a-z0-9_]{1,40})\s*</g)) if (all.has(m[1])) used.add(m[1]);
+    // 아이콘 자리(name="…"·name={…}·icon: "…")의 문자열은 패키지 목록에 없어도 넣는다 — material-symbols 패키지 목록이 낡아
+    // auto_awesome·expand_more·expand_less 가 빠졌고, 글꼴에서도 빠져 화면에 'AUTO_AWESOME' 글자로 나왔다(2026-10-18, R72).
+    // Google 잘라 받기는 없는 이름을 조용히 무시하므로 넉넉히 넣어도 된다
+    for (const m of t.matchAll(/\bname=(?:"([a-z][a-z0-9_]{1,40})"|\{([^}\n]*)\})|\bicon:\s*"([a-z][a-z0-9_]{1,40})"/g)) {
+      const s = m[1] ?? m[3];
+      if (s) used.add(s);
+      if (m[2]) for (const q of m[2].matchAll(/["']([a-z][a-z0-9_]{1,40})["']/g)) used.add(q[1]);
+    }
   }
   // 와이어 상자 종류 아이콘은 JSON(legacy/data/wire_kinds.json, 2026-10-18 단일 원본)에 있다 — 숫자로 시작하는 이름('123')도 그대로
   const reg = JSON.parse(fs.readFileSync(path.join(WEB, "app/modules/deck/legacy/data/wire_kinds.json"), "utf8"));

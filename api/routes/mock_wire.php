@@ -3,9 +3,9 @@
  * powerMock 기획 와이어프레임 — /api/v1/mock/wire…  (엔진: api/src/Mock/Wire.php)
  *
  *   GET    /mock/wire/options                 화면 종류·기관 묶음·칸 종류(섹션 유형)
- *   POST   /mock/wire/generate                {screen, org?, request?, ai?} → {wire, check, source: rule|ai, prompt}
+ *   POST   /mock/wire/generate                {screen, org?, org_name?, request?, ai?} → {wire, check, source: rule|ai, prompt}
  *   POST   /mock/wire/check                   {wire} → {check(+fit), wire(정리본, 칸마다 ev)}
- *   POST   /mock/wire/content                 {wire} → {wire(칸마다 예시 글 t·s·items·img, 원래 설명은 label)} — 보기용
+ *   POST   /mock/wire/content                 {wire, persona?, menu?, org_name?, request?} → {wire(칸마다 예시 글 t·s·items·img, 원래 설명은 label), persona} — 보기용
  *   generate 응답 basis: samples·note·style·alternatives(스타일 목록) + fit(레퍼런스 닮음)·dist(채택률 분포)·recommended(추천 3안)·refine(AI 가 바꾼 점)
  *   GET    /mock/wireframes                   내 와이어 목록
  *   POST   /mock/wireframes                   {title, wire, request?, source?} 저장
@@ -101,6 +101,10 @@ return static function (Router $r): void {
         if ($title !== '') {
             $draft['title'] = $title;
         }
+        // 고객 기관명(org_name) — 예시 내용·요청문의 기관명·기관장 직함이 그 기관으로, 와이어에 실려 재현 묶음까지 간다
+        if (($on = Wire::orgName($in['org_name'] ?? null)) !== null) {
+            $draft['org_name'] = $on;
+        }
         Response::json([
             'wire' => $draft, 'check' => Wire::check($draft), 'source' => $source, 'note' => $note,
             'basis' => $basis, 'prompt' => Wire::prompt($draft, $req),
@@ -125,7 +129,16 @@ return static function (Router $r): void {
             throw HttpError::invalid('wire.rows 가 필요합니다.');
         }
         $n = Wire::normalize($w);
-        Response::json(['wire' => WireContent::fill($n)]);
+        // persona = 재현 묶음 persona(MCP 가 넘기면 기관명·기관장 직함·이름·주민 호칭을 그대로), menu = 그 묶음 menu 트리,
+        // org_name = 고객 기관명, request = 요청 글(주제·종류 낱말). 모두 선택 — 없으면 와이어 묶음의 가상 기관.
+        $opt = ['request' => (string) ($in['request'] ?? ''), 'org_name' => (string) ($in['org_name'] ?? '')];
+        if (is_array($in['persona'] ?? null)) {
+            $opt['persona'] = $in['persona'];
+        }
+        if (is_array($in['menu'] ?? null)) {
+            $opt['menu'] = $in['menu'];
+        }
+        Response::json(['wire' => WireContent::fill($n, $opt)]);
     });
 
     $r->get('/mock/wireframes', static function (array $p, Actor $a) use ($pub): void {

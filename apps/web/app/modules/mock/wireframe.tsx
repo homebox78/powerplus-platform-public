@@ -46,7 +46,7 @@ interface WireOptions { screens: { id: string; label: string; desc: string; samp
 interface GenResult { wire: Wire; check: WireCheck; source: "rule" | "ai"; note: string | null; basis: WireBasis; prompt: string }
 /** 내용 보기 — 칸마다 예시 글(서버 WireContent::fill, 가상 기관) */
 interface ContentCol extends WireCol { s?: string; items?: string[]; img?: { kind: string; label: string }; label?: string }
-interface ContentWire { rows: { cols: ContentCol[] }[]; persona?: { org: string; kind: string; title: string } }
+interface ContentWire { rows: { cols: ContentCol[] }[]; persona?: { org: string; kind: string; title: string; name?: string; head?: string; source?: string } }
 interface SavedWire { id: string; title: string; screen: string; screen_label: string; org: string; score: number | null; pass: boolean; rows: number; source: string; updated_at: string }
 
 const ZONE_KO = { top: "위", body: "본문", bottom: "아래" } as const;
@@ -460,10 +460,11 @@ export function WireframeScreen() {
   useEffect(() => {
     if (!wire) return;
     const t = setTimeout(() => {
-      postJson<{ wire: ContentWire }>("/mock/wire/content", { wire }).then((r) => setContent(r.wire), () => setContent(null));
+      // 요청 글도 보낸다 — '여권 발급 절차'처럼 주제·기관 종류 낱말이 예시 글(쪽 이름·절차·표)에 들어간다
+      postJson<{ wire: ContentWire }>("/mock/wire/content", { wire, request }).then((r) => setContent(r.wire), () => setContent(null));
     }, 250);
     return () => clearTimeout(t);
-  }, [wire]);
+  }, [wire, request]);
 
   const names = useMemo(() => new Map((opt.data?.types ?? []).map((t) => [t.k, t.name])), [opt.data]);
   // 칸 종류 = 수집 섹션 유형 + 키트 부품. 서버가 묶음 순서로 주므로 목록에서 같은 묶음끼리 모여 보이고, 아래 줄(hint)에 묶음 이름을 단다
@@ -610,15 +611,17 @@ export function WireframeScreen() {
     const pctOf = (k: string) => { const e = evMap?.[k]; return !evMap || k.startsWith("kit_") ? "" : `, 레퍼런스 ${e && e.adopt > 0 ? `${e.adopt}%` : "3% 미만"}`; };
     const lines = wire.rows.map((r, i) => `${i + 1}. [${r.zone}] ${r.cols.map((c) => `${names.get(c.k) ?? c.k}(${c.k}, ${c.span}/12${c.t ? `, ${c.t}` : ""}${pctOf(c.k)})`).join(" | ")}`);
     const filled = content && content.rows.length === wire.rows.length ? content : null;
-    const contentLines = filled ? filled.rows.flatMap((r, i) => r.cols.map((c) => [`${i + 1}. ${names.get(c.k) ?? c.k} — "${c.t ?? ""}"`, c.s, c.items?.length ? `항목: ${c.items.slice(0, 6).join(", ")}` : null, c.img ? `그림: ${c.img.label}(${c.img.kind})` : null].filter(Boolean).join(" / "))) : [];
+    // 여러 칸 줄은 '5-1.'·'5-2.' 로 칸을 구분한다(서버 WireContent::lines 와 같은 꼴)
+    const contentLines = filled ? filled.rows.flatMap((r, i) => r.cols.map((c, j) => [`${i + 1}${r.cols.length > 1 ? `-${j + 1}` : ""}. ${names.get(c.k) ?? c.k} — "${c.t ?? ""}"`,c.s, c.items?.length ? `항목: ${c.items.slice(0, 6).join(", ")}` : null, c.img ? `그림: ${c.img.label}(${c.img.kind})` : null].filter(Boolean).join(" / "))) : [];
     return [`powerMock 으로 ${og} 홈페이지의 '${sc}' 화면 시안을 만들어 줘.${request ? ` 요청: ${request}` : ""}`,
       `아래 와이어프레임의 줄 순서와 칸 폭(12칸 격자)을 지켜 줘.${wire.lnb ? " 본문 왼쪽에 LNB(왼쪽 메뉴)를 둔다." : ""}${evMap ? " 괄호 끝 %는 같은 화면 레퍼런스에서 그 섹션을 두는 비율이다." : ""}`,
       ...lines,
-      ...(contentLines.length ? ["", `칸별 예시 내용(가상 기관 '${filled?.persona?.org ?? ""}' 기준 — 실제 기관이면 이름만 바꿔 쓴다):`, ...contentLines] : []),
+      ...(contentLines.length ? ["", `칸별 예시 내용(가상 기관 '${filled?.persona?.org ?? ""}'${filled?.persona?.head ? `, 기관장 ${filled.persona.head} ${filled.persona.name ?? ""}`.trimEnd() : ""} 기준. 재현 묶음을 받으면 칸마다 그 묶음 기관(persona) 기준 content 가 붙으니 그것을 쓴다 — 기관을 바꾸면 이름만이 아니라 기관장 직함·이름·주민 호칭·메뉴도 그 기관 것으로):`, ...contentLines] : []),
       ...(wid
         ? ["", `와이어 id: ${wid}`,
           `순서: mock_get_replica_kit(wire_id="${wid}") 으로 재료를 받고(배치 기준 = 이 와이어, 칸마다 레퍼런스 재료·예시 내용이 붙는다) → 와이어 줄·칸 그대로 만들고(본문 줄·칸에 data-wire-row·data-wire-cell) → mock_check_mockup 으로 판정(와이어와 대조) → 통과하면 mock_publish_mockup.`]
-        : ["", "순서: 이 와이어를 저장해 받은 wire_id 로 mock_get_replica_kit(wire_id=…) 을 불러 재료를 받고(배치 기준 = 이 와이어) → 와이어 줄·칸 그대로 만들고 → mock_check_mockup 으로 판정(와이어와 대조) → 통과하면 mock_publish_mockup."])].join("\n");
+        // 저장 안 한 와이어 — 요청문에 wire_id 가 없으니 위 줄 구성을 wire JSON 으로 넘기게 한다(재현 묶음이 저장해 id 를 만든다)
+        : ["", "순서: 위 줄 구성을 wire JSON({screen, org, rows:[{zone, cols:[{k, span}]}]})으로 mock_get_replica_kit(wire=…) 에 넘겨 재료를 받고(배치 기준 = 이 와이어, 받은 와이어는 내 와이어에 저장돼 묶음 응답에 wire_id 가 생긴다) → 와이어 줄·칸 그대로 만들고(본문 줄·칸에 data-wire-row·data-wire-cell) → mock_check_mockup 으로 판정(와이어와 대조) → 통과하면 mock_publish_mockup."])].join("\n");
   }, [wire, names, opt.data, request, gen, content]);
   const liveId = savedId && !dirty ? savedId : null;
   const prompt = promptFor(liveId);

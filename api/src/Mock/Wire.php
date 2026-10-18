@@ -197,6 +197,8 @@ final class Wire
         'magazine' => ['관광', '여행', '문화재단', '축제', '미술관', '박물관', '아트센터'],
         'minimal' => ['기업', '회사 홈페이지', '스타트업', '일반 홈페이지'],
     ];
+    /** STYLE_HINTS 를 따르는 기관 묶음 — 관공서·공공 묶음은 성격 낱말로 원형을 바꾸지 않는다(필수 칸을 잃는다) */
+    private const HINT_ORGS = ['campus' => ['all', 'university', 'education'], 'magazine' => ['all', 'culture'], 'minimal' => ['all', 'private']];
 
     /** 요청 글 낱말 → 섹션 (넣기). '없이·빼고·제외' 가 붙으면 빼기 */
     private const WORDS = [
@@ -204,7 +206,8 @@ final class Wire
         'main_search' => ['검색'],
         'quick_links' => ['바로가기', '자주 찾는', '퀵메뉴', '아이콘 메뉴'],
         'news_tabs' => ['소식', '공지', '보도자료', '새소식'],
-        'popup_zone' => ['팝업존', '팝업'],
+        'popup_zone' => ['팝업존', '팝업', '알림판', '입시 안내', '입시', '모집 요강'],
+        'content_block' => ['제품 소개', '서비스 소개', '사업 소개', '회사 소개'],
         'banner_zone' => ['배너'],
         'calendar' => ['일정', '행사', '달력', '캘린더'],
         'sns_video' => ['SNS', '영상', '유튜브', '인스타'],
@@ -214,7 +217,7 @@ final class Wire
         'news_ticker' => ['알림 띠', '롤링', '속보'],
         'hero' => ['큰 사진', '히어로'],
         'text_band' => ['슬로건', '문구 띠', '캐치프레이즈'],
-        'photo_gallery' => ['사진', '갤러리', '포토'],
+        'photo_gallery' => ['고객 사례', '도입 사례', '사례', '후기', '사진', '갤러리', '포토'],
         'location_map' => ['지도', '오시는 길', '오시는길', '위치'],
         'faq_list' => ['FAQ', '자주 묻는'],
         'satisfaction' => ['만족도'],
@@ -225,6 +228,10 @@ final class Wire
         'info_table' => ['표'],
         'stat_cards' => ['지표 카드', '수치 카드'],
     ];
+
+    /** 요청 낱말 → 새로 넣는 칸의 설명(t) — '고객 사례'를 사진 모음으로 넣을 때 칸 뜻을 남긴다(2026-10-18 w05) */
+    private const WORD_LABEL = ['고객 사례' => '고객 사례', '도입 사례' => '고객 사례', '사례' => '사례', '후기' => '이용 후기', '입시 안내' => '입시 안내', '입시' => '입시 안내',
+        '모집 요강' => '입시 안내', '알림판' => '알림판', '제품 소개' => '제품 소개', '서비스 소개' => '서비스 소개', '사업 소개' => '사업 소개', '회사 소개' => '회사 소개'];
 
     /** 필수 섹션 대신 받아 주는 칸(옛 와이어·레퍼런스가 인사말을 안내 블록으로 그린 경우) */
     private const SUBST = ['greeting_vision' => ['content_block']];
@@ -323,6 +330,12 @@ final class Wire
         'kit_identifier' => ['운영기관 식별자', '바닥', 80],
     ];
 
+    /**
+     * 수집 분류 이름이 칸 뜻과 어긋나는 것 — text_band 는 분류 이름이 '바로가기 텍스트 배너'라 요청문에서 바로가기 칸으로 읽혔다
+     * (2026-10-18 운영 시험 w01: 설명은 '슬로건 문구 띠'). 와이어·요청문에서는 칸 뜻대로 부른다.
+     */
+    private const NAME_FIX = ['text_band' => '문구 띠 배너'];
+
     private static ?array $all = null;
 
     /** 수집 섹션 유형 + 키트 부품 — k => [name, scope, group, kit, h?] */
@@ -331,7 +344,7 @@ final class Wire
         if (self::$all === null) {
             $all = [];
             foreach ((array) self::data()['types'] as $k => $t) {
-                $all[$k] = ['name' => (string) $t['name'], 'scope' => (string) ($t['scope'] ?? 'common'), 'group' => self::SECTION_GROUP[$k] ?? '콘텐츠', 'kit' => false];
+                $all[$k] = ['name' => self::NAME_FIX[$k] ?? (string) $t['name'],'scope' => (string) ($t['scope'] ?? 'common'), 'group' => self::SECTION_GROUP[$k] ?? '콘텐츠', 'kit' => false];
             }
             foreach (self::KIT_TYPES as $k => [$name, $group, $h]) {
                 $all[$k] = ['name' => $name, 'scope' => 'common', 'group' => $group, 'kit' => true, 'h' => $h];
@@ -396,29 +409,42 @@ final class Wire
         $add = [];
         $remove = [];
         $bigK = [];
+        $labels = [];
+        $place = [];
         $req = mb_strtolower($req);
         foreach (self::WORDS as $k => $words) {
-            foreach ($words as $w) {
-                $w = mb_strtolower($w);
+            foreach ($words as $w0) {
+                $w = mb_strtolower($w0);
                 $pos = mb_strpos($req, $w);
                 if ($pos === false) {
                     continue;
                 }
                 $tail = mb_substr($req, $pos + mb_strlen($w), 8);
+                // 같은 마디(다음 '넣고·빼고·그리고'·쉼표·마침표 전까지) — '제품 소개와 고객 사례 강조'의 강조는 둘 다, '입시 안내와 학사 일정을 위쪽에'의 위쪽도 둘 다
+                $clause = (string) preg_split('/넣고|빼고|그리고|[,.\n]/u', mb_substr($req, $pos + mb_strlen($w), 30))[0];
                 if (preg_match('/^\s*(은|는|을|를|이|가)?\s*(없이|빼고|빼|제외|말고|없는|필요\s*없)/u', $tail)) {
                     $remove[$k] = true;
                 } else {
                     $add[$k] = true;
+                    if (isset(self::WORD_LABEL[$w0])) {
+                        $labels[$k] = self::WORD_LABEL[$w0];
+                    }
                     // '바로가기 강조'·'소식을 크게' — 그 칸을 크게
-                    if (preg_match('/^\s*(은|는|을|를|이|가|도)?\s*(강조|크게|돋보이|돋보여|눈에\s*띄|넓게)/u', $tail)) {
+                    if (preg_match('/(강조|크게|돋보이|돋보여|눈에\s*띄|넓게)/u', $clause)) {
                         $bigK[$k] = true;
+                    }
+                    // '~를 위쪽에'·'맨 아래에' — 그 칸이 든 줄을 비주얼 바로 아래(또는 본문 끝)로
+                    if (preg_match('/(위쪽|위로|위에|상단|맨\s*위|먼저|앞쪽|첫\s*화면)/u', $clause)) {
+                        $place[$k] = 'top';
+                    } elseif (preg_match('/(아래쪽|아래로|아래에|하단|맨\s*아래|마지막)/u', $clause)) {
+                        $place[$k] = 'bottom';
                     }
                 }
                 break;
             }
         }
         foreach (array_keys($remove) as $k) {
-            unset($add[$k]);
+            unset($add[$k], $labels[$k], $place[$k]);
         }
         // '큰 검색창'·'검색창이 큰' 처럼 크기를 말하면 그 칸을 주인공 높이로
         $big = array_keys($bigK);
@@ -426,7 +452,7 @@ final class Wire
             $big[] = 'main_search';
         }
         $big = array_values(array_diff(array_unique($big), array_keys($remove)));
-        return ['add' => array_keys($add), 'remove' => array_keys($remove), 'big' => $big];
+        return ['add' => array_keys($add), 'remove' => array_keys($remove), 'big' => $big] + ($labels ? ['labels' => $labels] : []) + ($place ? ['place' => $place] : []);
     }
 
     /** 실제 레퍼런스 줄 구성 목록 — 그 묶음에 있으면 그것, 없으면 가까운 묶음, 그다음 전체 */
@@ -446,19 +472,29 @@ final class Wire
      * 요청 글 → 스타일(없으면 null). 요청 글에 낱말이 없고 메인 화면이면 기관 묶음으로 고른다(ORG_STYLE) —
      * 서브 화면은 원형이 없으므로 기관으로 고르지 않는다(고르면 '원형은 메인용' 안내만 붙고 레퍼런스 구성으로 바뀐다).
      */
-    public static function detectStyle(string $req, string $org = 'all', string $screen = ''): ?string
+    public static function detectStyle(string $req, string $org = 'all', string $screen = '', bool $byOrg = true): ?string
     {
         $r = mb_strtolower($req);
-        foreach ([self::STYLE_WORDS, self::STYLE_HINTS] as $table) {
-            foreach ($table as $s => $words) {
-                foreach ($words as $w) {
-                    if (mb_strpos($r, $w) !== false) {
-                        return $s;
-                    }
+        foreach (self::STYLE_WORDS as $s => $words) {
+            foreach ($words as $w) {
+                if (mb_strpos($r, $w) !== false) {
+                    return $s;
                 }
             }
         }
-        return $screen === 'main' ? (self::ORG_STYLE[$org] ?? null) : null;
+        // 기관 성격 낱말은 그 성격 묶음(또는 전체)일 때만 — 지자체 요청의 '관광 명소'는 매거진형이 아니라 명소 칸 넣기다
+        // (2026-10-18 운영 시험 w01: 매거진 원형으로 바뀌어 바로가기 80%·기관장 64% 가 빠지고 fit 47)
+        foreach (self::STYLE_HINTS as $s => $words) {
+            if (!in_array($org, self::HINT_ORGS[$s] ?? ['all'], true)) {
+                continue;
+            }
+            foreach ($words as $w) {
+                if (mb_strpos($r, $w) !== false) {
+                    return $s;
+                }
+            }
+        }
+        return $byOrg && $screen === 'main' ? (self::ORG_STYLE[$org] ?? null) : null;
     }
 
     /**
@@ -479,8 +515,8 @@ final class Wire
         $isMain = $screen === 'main';
         $note = null;
         if ($style === 'auto' || !isset(self::STYLES[$style])) {
-            $byWords = self::detectStyle($req);
-            $style = $byWords ?? self::detectStyle($req, $org, $screen) ?? 'standard';
+            $byWords = self::detectStyle($req, $org, $screen, false);
+            $style = $byWords ?? self::detectStyle('', $org, $screen) ?? 'standard';
             if ($byWords === null && $style !== 'standard') {
                 $note = '요청 글에 스타일 낱말이 없습니다. 기관에 맞는 ' . self::STYLES[$style]['label'] . ' 원형입니다.';
             }
@@ -904,6 +940,45 @@ final class Wire
             }
         }
         $body = array_values($body);
+        // 같은 역할은 두 줄까지 — 실제 레퍼런스 구성(reference)이 소식 탭 게시판을 네 줄에 둔 화면을 그대로 옮겼다(2026-10-18 w02).
+        // 셋째 줄부터 그 칸을 빼고(한 칸 줄이면 줄째로), 남은 칸이 폭을 나눠 받는다.
+        $rowsOf = [];
+        foreach ($body as $ri => $r) {
+            $kept = [];
+            foreach ($r as $c) {
+                $seenRows = $rowsOf[$c['k']] ?? [];
+                if (!isset($seenRows[$ri]) && count($seenRows) >= 2) {
+                    $intentDrop['repeat|' . $c['k']] = self::typeName($c['k']) . ' 셋째 줄부터(같은 역할 반복)';
+                    continue;
+                }
+                $rowsOf[$c['k']][$ri] = true;
+                $kept[] = $c;
+            }
+            if (!$kept) {
+                unset($body[$ri]);
+                continue;
+            }
+            if (count($kept) < count($r)) {
+                $sp = self::rebalance(array_column($kept, 'span'));
+                foreach ($kept as $i => $c) {
+                    $kept[$i]['span'] = $sp[$i];
+                }
+            }
+            $body[$ri] = $kept;
+        }
+        $body = array_values($body);
+        // 바로 위 줄과 같은 한 칸 줄(배너존 아래 또 배너존)은 하나로 — 위에서 칸을 빼고 나면 생긴다
+        $prevK = null;
+        foreach ($body as $ri => $r) {
+            $one = count($r) === 1 ? $r[0]['k'] : null;
+            if ($one !== null && $one === $prevK && $one !== 'content_block') {
+                $intentDrop['adjacent|' . $one] = self::typeName($one) . ' 바로 아래 같은 줄(하나로 합침)';
+                unset($body[$ri]);
+                continue;
+            }
+            $prevK = $one;
+        }
+        $body = array_values($body);
         if ($isMain && !isset($has['main_visual']) && !isset($has['hero']) && !isset($has['main_search']) && !in_array('main_visual', $intent['remove'], true)) {
             array_unshift($body, [['span' => 12, 'k' => 'main_visual', 'h' => $hOf('main_visual')]]);
         }
@@ -917,8 +992,16 @@ final class Wire
                 $skipped[] = $k;
                 continue;
             }
-            $body[] = [['span' => 12, 'k' => $k, 'h' => $hOf($k)]];
+            $new = [['span' => 12, 'k' => $k, 't' => $intent['labels'][$k] ?? null, 'h' => $hOf($k)]];
+            // 끝의 행동 유도 띠(문의·상담) 앞에 — 띠 뒤에 칸이 붙으면 마무리가 흐려진다
+            $lastK = $body ? array_column($body[count($body) - 1], 'k') : [];
+            if ($lastK === ['text_band'] && count($body) > 1) {
+                array_splice($body, count($body) - 1, 0, [$new]);
+            } else {
+                $body[] = $new;
+            }
         }
+        $body = self::placeAsked($body, $intent, $isMain);
         $wantBottom = [];
         if (!$isMain && (isset($bottom['satisfaction']) || in_array('satisfaction', $intent['add'], true)) && !in_array('satisfaction', $intent['remove'], true)) {
             $wantBottom[] = 'satisfaction';
@@ -948,6 +1031,69 @@ final class Wire
                 + ($skipped ? ['skipped' => self::skippedNote($skipped)] : [])
                 + ($intentDrop ? ['merged' => array_values($intentDrop)] : []),
         ];
+    }
+
+    /**
+     * 요청이 자리를 말한 칸(intent.place: top = 비주얼 바로 아래, bottom = 본문 끝)이 든 줄을 옮기고,
+     * 새로 넣은 팝업존은 한 칸짜리 메인 비주얼 옆(8+4, 레퍼런스에 흔한 짝)에 붙인다.
+     * 2026-10-18 w03 "입시 안내와 학사 일정을 위쪽에" — 넣은 칸이 본문 끝에 붙고 위치 낱말은 버려졌다.
+     */
+    private static function placeAsked(array $body, array $intent, bool $isMain): array
+    {
+        $body = array_values($body);
+        if ($isMain && in_array('popup_zone', $intent['add'] ?? [], true)) {
+            $vi = null;
+            $pi = null;
+            foreach ($body as $i => $r) {
+                $ks = array_column($r, 'k');
+                if ($vi === null && $ks === ['main_visual']) {
+                    $vi = $i;
+                }
+                if ($pi === null && $ks === ['popup_zone']) {
+                    $pi = $i;
+                }
+            }
+            if ($vi !== null && $pi !== null) {
+                $h = max((int) ($body[$vi][0]['h'] ?? 0), (int) ($body[$pi][0]['h'] ?? 0));
+                $body[$vi] = [['span' => 8] + $body[$vi][0], ['span' => 4] + $body[$pi][0]];
+                $body[$vi] = array_map(static fn (array $c): array => ['h' => $h] + $c, $body[$vi]);
+                unset($body[$pi]);
+                $body = array_values($body);
+            }
+        }
+        $place = (array) ($intent['place'] ?? []);
+        if (!$place) {
+            return $body;
+        }
+        $vis = -1;
+        foreach ($body as $i => $r) {
+            if (array_intersect(array_column($r, 'k'), ['main_visual', 'hero', 'main_search'])) {
+                $vis = $i;
+                break;
+            }
+        }
+        $head = $tops = $mid = $bots = [];
+        foreach ($body as $i => $r) {
+            if ($i <= $vis) {
+                $head[] = $r;
+                continue;
+            }
+            $want = null;
+            foreach (array_column($r, 'k') as $k) {
+                if (isset($place[$k])) {
+                    $want = $place[$k];
+                    break;
+                }
+            }
+            if ($want === 'top') {
+                $tops[] = $r;
+            } elseif ($want === 'bottom') {
+                $bots[] = $r;
+            } else {
+                $mid[] = $r;
+            }
+        }
+        return array_merge($head, $tops, $mid, $bots);
     }
 
     /** 메인용 섹션이지만 이 서브 화면에서는 써도 되는가 — 화면의 필수 본문이거나, 서브에서도 흔한 섹션 */
@@ -1033,7 +1179,7 @@ final class Wire
                 $skipped[] = $k;
                 continue;
             }
-            $body[$k] = ['t' => null, 'pos' => (float) ($T[$k]['pos'] ?? 0.5), 'req' => false, 'asked' => true];
+            $body[$k] = ['t' => $intent['labels'][$k] ?? null, 'pos' => (float) ($T[$k]['pos'] ?? 0.5), 'req' => false, 'asked' => true];
         }
         foreach ($intent['remove'] as $k) {
             if (isset($body[$k]) && empty($body[$k]['req'])) {
@@ -1080,6 +1226,7 @@ final class Wire
                 $rowsBody[] = [['span' => 12, 'k' => $k, 't' => $body[$k]['t'], 'h' => $h($k)]];
             }
         }
+        $rowsBody = self::placeAsked($rowsBody, $intent, $isMain);
 
         $bottom = [];
         if (!$isMain && (($T['satisfaction']['adopt'] ?? 0) >= 0.1 || in_array('satisfaction', $intent['add'], true)) && !in_array('satisfaction', $intent['remove'], true)) {
@@ -1194,6 +1341,10 @@ final class Wire
         if ($title !== '') {
             $out['title'] = $title;
         }
+        // 고객 기관명 — 와이어를 따라 재현 묶음·내용 보기까지 간다(예시 내용의 기관명·기관장 직함이 맞게, 2026-10-18 w01·w02·w06)
+        if (($on = self::orgName($w['org_name'] ?? null)) !== null) {
+            $out['org_name'] = $on;
+        }
         if (isset(self::STYLES[(string) ($w['style'] ?? '')])) {
             $out['style'] = (string) $w['style'];
             $out['variant'] = max(0, (int) ($w['variant'] ?? 0));
@@ -1206,6 +1357,13 @@ final class Wire
             }
         }
         return $out;
+    }
+
+    /** 고객 기관명 정리 — 태그·꺾쇠·따옴표 빼고 40자, 2자 미만이면 null */
+    public static function orgName(mixed $v): ?string
+    {
+        $on = is_string($v) ? trim(mb_substr(str_replace(['<', '>', '"'], '', strip_tags($v)), 0, 40)) : '';
+        return mb_strlen($on) >= 2 ? $on : null;
     }
 
     /** 저장용 근거 요약 — 글은 길이를 자르고, 분포·추천·칸 근거는 다시 계산할 수 있어 담지 않는다 */
@@ -1390,7 +1548,10 @@ final class Wire
         foreach ($count as $k => $c) {
             if ($c > 1 && in_array($k, self::ONCE, true)) {
                 $add('error', 'duplicate', self::j($k, "이", "가") . " {$c}번 나옵니다.", '한 화면에 하나만 두세요.');
-            } elseif (($c = count($rowCount[$k] ?? [])) > 2) {
+            } elseif (($c = count($rowCount[$k] ?? [])) > 3) {
+                // 네 줄 이상은 화면 절반이 같은 칸 — 경고(-5)만으로는 95점 통과였다(2026-10-18 w02 소식 탭 4줄)
+                $add('error', 'repeat', self::j($k, "이", "가") . " {$c}개 줄에 반복됩니다.", '같은 역할은 두 줄까지 — 줄을 합치거나 다른 역할(바로가기·배너·사진)로 바꾸세요.');
+            } elseif ($c > 2) {
                 $add('warn', 'repeat', self::j($k, "이", "가") . " {$c}개 줄에 반복됩니다.", '같은 역할은 두 번까지 — 하나로 합치거나 다른 역할로 바꾸세요.');
             }
         }
@@ -1620,17 +1781,21 @@ final class Wire
             $lines[] = ($i + 1) . '. [' . $r['zone'] . '] ' . implode(' | ', $parts);
         }
         $screen = self::SCREENS[$w['screen']]['label'] ?? $w['screen'];
-        $content = WireContent::lines(WireContent::fill($w));
-        $p = WireContent::persona((string) $w['org']);
-        return "powerMock 으로 " . (self::ORGS[$w['org']] ?? self::ORGS['all']) . " 홈페이지의 '{$screen}' 화면 시안을 만들어 줘."
+        $orgName = trim((string) ($w['org_name'] ?? ''));
+        $filled = WireContent::fill($w, ['request' => $req, 'org_name' => $orgName]);
+        $content = WireContent::lines($filled);
+        $p = $filled['persona'];
+        $on = $orgName !== '' ? ', org_name="' . $orgName . '"' : '';
+        return "powerMock 으로 " . ($orgName !== '' ? $orgName . '(' . (self::ORGS[$w['org']] ?? self::ORGS['all']) . ')' : (self::ORGS[$w['org']] ?? self::ORGS['all'])) . " 홈페이지의 '{$screen}' 화면 시안을 만들어 줘."
             . ($req !== '' ? "\n요청: {$req}" : '')
             . "\n아래 와이어프레임의 줄 순서와 칸 폭(12칸 격자)을 지켜 줘." . (!empty($w['lnb']) ? ' 본문 왼쪽에 LNB(왼쪽 메뉴)를 둔다.' : '')
             . " 괄호 끝 %는 같은 화면 레퍼런스에서 그 섹션을 두는 비율이다."
             . "\n" . implode("\n", $lines)
-            . "\n\n칸별 예시 내용(가상 기관 '" . $p['org'] . "' 기준 — 실제 기관이면 이름만 바꿔 쓴다):\n" . implode("\n", $content)
+            . "\n\n칸별 예시 내용(" . ($p['source'] === 'virtual' ? '가상 기관' : '기관') . " '" . $p['org'] . "', 기관장 " . $p['head'] . ' ' . $p['name'] . " 기준. 재현 묶음을 받으면 칸마다 그 묶음 기관(persona) 기준 content 가 붙으니 그것을 쓴다 — 기관을 바꾸면 이름만이 아니라 기관장 직함·이름·주민 호칭·메뉴도 그 기관 것으로):\n" . implode("\n", $content)
             . ($id !== null && $id !== ''
                 ? "\n와이어 id: {$id}"
-                    . "\n순서: mock_get_replica_kit(wire_id=\"{$id}\") 으로 재료를 받고(배치 기준 = 이 와이어, 칸마다 레퍼런스 재료·예시 내용이 붙는다) → 와이어 줄·칸 그대로 만들고(본문 줄·칸에 data-wire-row·data-wire-cell) → mock_check_mockup 으로 판정(와이어와 대조) → 통과하면 mock_publish_mockup."
-                : "\n순서: 이 와이어를 저장해 받은 wire_id 로 mock_get_replica_kit(wire_id=…) 을 부르거나, 위 줄 구성을 wire JSON({screen, org, rows:[{zone, cols:[{k, span}]}]})으로 mock_get_replica_kit(wire=…) 에 넘겨 재료를 받고(배치 기준 = 이 와이어) → 와이어 줄·칸 그대로 만들고 → mock_check_mockup 으로 판정(와이어와 대조) → 통과하면 mock_publish_mockup.");
+                    . "\n순서: mock_get_replica_kit(wire_id=\"{$id}\"{$on}) 으로 재료를 받고(배치 기준 = 이 와이어, 칸마다 레퍼런스 재료·예시 내용이 붙는다) → 와이어 줄·칸 그대로 만들고(본문 줄·칸에 data-wire-row·data-wire-cell) → mock_check_mockup 으로 판정(와이어와 대조) → 통과하면 mock_publish_mockup."
+                // 저장 안 된 와이어(mock_get_wireframe 응답) — 응답에 wire_id 가 없다. wire 를 그대로 넘기면 재현 묶음이 내 와이어로 저장해 id 를 만든다(2026-10-18 w02·w06·w08)
+                : "\n순서: 이 응답의 wire(JSON)를 고치지 말고 그대로 mock_get_replica_kit(wire=…{$on}) 에 넘겨 재료를 받고(배치 기준 = 이 와이어, 받은 와이어는 내 와이어에 저장돼 묶음 응답에 wire_id 가 생긴다) → 와이어 줄·칸 그대로 만들고(본문 줄·칸에 data-wire-row·data-wire-cell) → mock_check_mockup 으로 판정(와이어와 대조) → 통과하면 mock_publish_mockup.");
     }
 }

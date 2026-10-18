@@ -19,6 +19,7 @@ arrow_forward
 arrow_upward
 article
 assignment_late
+auto_awesome
 auto_stories
 autorenew
 badge
@@ -51,6 +52,7 @@ content_paste
 conversion_path
 crop_landscape
 crop_square
+cur
 cycle
 dashboard
 delete
@@ -59,6 +61,7 @@ description
 desktop_windows
 device_hub
 dns
+done
 donut_large
 double_arrow
 download
@@ -67,6 +70,8 @@ draw
 edit
 edit_note
 error
+expand_less
+expand_more
 files
 filter_alt
 filter_none

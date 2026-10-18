@@ -19,6 +19,13 @@ const GROUPS = {
   "SI장표아이콘_96개": { key: "si", set: "icon-si-deck-blue", style: "si-deck-blue", ko: ["SI장표", "제안서", "파랑", "투톤", "라인"], en: ["proposal", "blue", "duotone", "line icon"] },
   "장표아이콘_공공플랫폼": { key: "pub", set: "icon-si-deck-blue", style: "si-deck-blue", ko: ["공공플랫폼", "제안서", "파랑", "투톤", "라인"], en: ["public platform", "blue", "duotone", "line icon"] },
   "손그림아이콘_120개": { key: "hand", set: "icon-handdrawn-blue", style: "handdrawn-blue", ko: ["손그림", "낙서", "드로잉", "파랑포인트", "라인"], en: ["hand drawn", "doodle", "sketch", "line icon"] },
+  // 2026-10-18 스타일 6종(세트 icon-pict-* — icon-line-navy·icon-duotone-blue 는 10-06 옛 파워플러스 관공서 아이콘 24개씩이 이미 쓰는 이름이라 피함) × 같은 주제 108개(라인 두 벌은 120) — IT·관공서·회사소개 공통 픽토그램, 투명 PNG
+  "S1_솔리드네이비": { key: "solnavy", set: "icon-pict-solid-navy", style: "pict-solid-navy", ko: ["솔리드", "채움", "네이비", "단색", "픽토그램"], en: ["solid", "filled", "navy", "glyph", "pictogram"] },
+  "S2_라인": { key: "linenavy", set: "icon-pict-line-navy", style: "pict-line-navy", ko: ["라인", "선", "외곽선", "네이비", "단색"], en: ["line", "outline", "stroke", "navy"] },
+  "S3_라인포인트": { key: "linept", set: "icon-pict-line-point", style: "pict-line-point", ko: ["라인", "포인트", "노랑포인트", "투톤", "네이비"], en: ["line", "outline", "yellow accent", "two tone"] },
+  "S4_원형배지": { key: "cbadge", set: "icon-pict-circle-badge", style: "pict-circle-badge", ko: ["원형", "배지", "동그라미", "파랑", "흰아이콘"], en: ["circle", "badge", "round", "blue", "white glyph"] },
+  "S5_듀오톤블루": { key: "duoblue", set: "icon-pict-duotone-blue", style: "pict-duotone-blue", ko: ["듀오톤", "투톤", "파랑", "라인", "옅은면"], en: ["duotone", "two tone", "blue", "line"] },
+  "S6_플랫컬러": { key: "flatcolor", set: "icon-pict-flat-color", style: "pict-flat-color", ko: ["플랫", "컬러", "다색", "알록달록", "평면"], en: ["flat", "color", "multicolor", "colorful"] },
   "컬러플랫아이콘": { key: "color", set: "icon-color-gradient-flat", style: "color-gradient-flat", ko: ["컬러", "플랫", "그라데이션", "알록달록"], en: ["color", "flat", "gradient"] },
 };
 const norm = (t) => String(t).normalize("NFC").trim().toLowerCase().slice(0, 64);

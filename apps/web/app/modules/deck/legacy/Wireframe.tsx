@@ -617,12 +617,14 @@ export function WireTools({ blocks, sel, onSel, onChange, content, scene, onUndo
           <button title="다시 하기 (Ctrl+Shift+Z)" aria-label="다시 하기" disabled={!canRedo} onClick={onRedo} className={hist}><Ms name="redo" size={20} /></button>
         </div>
         <span className="w-px self-stretch bg-line flex-none" />
-        <div className="flex items-center gap-1 flex-wrap min-w-0">
-          <span className="text-faint flex-none mr-0.5 inline-flex" title="상자 추가 — 누르면 화면 가운데에 생깁니다"><Ms name="add_box" size={20} /></span>
+        <span className="text-faint flex-none inline-flex self-start mt-2" title="상자 추가 — 누르면 화면 가운데에 생깁니다"><Ms name="add_box" size={20} /></span>
+        {/* 상자 버튼 = 같은 크기 칸 격자. 이름은 두 줄까지(가운데·keep-all, '·' 뒤에서만 끊김) — 고정 48px 에 nowrap 이라 긴 이름이 옆 칸을 덮던 것(2026-10-18) */}
+        <div className="grid gap-1 flex-1 min-w-0" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(64px, 1fr))" }}>
           {KINDS.map((x) => (
             <button key={x.k} title={`${x.label} — ${x.hint}`} onClick={() => add(x.k)}
-              className="w-[48px] h-[46px] rounded-[3px] border border-transparent text-ink3 flex-none flex flex-col items-center justify-center gap-0.5 hover:border-orange hover:bg-orange-tint hover:text-orange-d">
-              <Ms name={KIND_ICON[x.k]} size={20} /><span className="text-[12px] font-semibold leading-none whitespace-nowrap">{x.label}</span>
+              className="h-[58px] px-1 rounded-[3px] border border-transparent text-ink3 flex flex-col items-center justify-center gap-1 hover:border-orange hover:bg-orange-tint hover:text-orange-d">
+              <Ms name={KIND_ICON[x.k]} size={20} className="flex-none" />
+              <span className="text-[11.5px] font-semibold leading-[1.2] text-center [word-break:keep-all] line-clamp-2">{x.label.replace(/·/g, "·​")}</span>
             </button>
           ))}
         </div>

@@ -185,8 +185,24 @@ final class ReplicaKit
                 'rule' => '서브 페이지다. 머리(공식 띠·유틸·로고·주 메뉴)와 바닥은 이 레퍼런스가 아니라 먼저 만든 메인 시안의 것을 그대로 쓴다. 레퍼런스에서 따르는 것은 본문 구간(body_y_from~body_y_to)의 배치다. 높이 비교도 본문 구간끼리 한다. LNB·경로·페이지 제목의 메뉴 이름은 메인 시안의 주 메뉴 트리에 맞춘다(레퍼런스 메뉴 수와 달라도 된다). 페이지끼리는 실제 파일명으로 링크한다.'];
         }
 
+        // 와이어 묶음(2026-10-18 운영 시험 w07~w09): 서브 화면 한 장만 와이어로 만드는 흐름엔 메인 시안 단계가 없다 — root 값을 비우면 작업자가 폭·간격을 짐작했다.
+        // 그래서 와이어 서브 묶음은 root 를 준다(메인 시안이 있으면 메인 root 가 이긴다). 옆 메뉴·서브 비주얼도 와이어가 정한다(wire.lnb·sub_visual 줄).
+        $isWire = isset($mix['wire']);
+        $rootLine = ':root{--hb-primary:' . $primary . ';--hb-w:' . (int) ($mix['frame']['w'] ?? ($sc['container_px'] ?? 1400)) . 'px;--hb-gap:' . (int) ($mix['frame']['col_gap'] ?? 24) . 'px;--hb-row:' . (int) ($mix['frame']['box_gap'] ?? $mix['frame']['row_gap'] ?? 80) . 'px;--hb-radius:' . (int) ($mix['style']['card_radius_px'] ?? 12) . 'px;--hb-h2:' . (int) ($mix['style']['heading_px'] ?? 32) . 'px}';
+        $wireKinds = [];
+        if ($isWire) { foreach ($mix['wire']['rows'] as $wr0) { foreach ($wr0['cells'] as $wc0) { $wireKinds[(string) $wc0['k']] = true; } } }
+        $subShell = self::SUB_SHELL + ['content_w' => $sub !== null ? ($isWire ? (int) ($mix['frame']['w'] ?? 0) . 'px(메인 시안이 있으면 메인 theme.container_px)' : '메인 묶음 theme.container_px 와 같은 값') : ($mix['frame']['w'] ?? null)];
+        if ($isWire && $sub !== null) {
+            $hasLnb = !empty($mix['wire']['lnb']) || isset($wireKinds['lnb']);
+            $hasVis = isset($wireKinds['sub_visual']);
+            $subShell['rule'] = '와이어 묶음이다 — 서브 틀의 무엇을 둘지는 와이어가 정한다(wire.lnb · sub_visual 줄). 와이어에 있는 틀 요소만 아래 모양(높이·폭·선)으로 만들고, 와이어에 없는 옆 메뉴·서브 비주얼은 더하지 않는다(와이어에 없는 줄·칸을 더하지 않는다는 규칙이 우선).';
+            $subShell['wire'] = ['lnb' => $hasLnb, 'sub_visual' => $hasVis,
+                'note' => ($hasLnb ? '옆 메뉴: 와이어에 있다 — lnb 모양대로 둔다.' : '옆 메뉴: 와이어가 lnb:false — 두지 않는다. 본문은 옆 메뉴 없이 본문 폭 가득.') . ' '
+                    . ($hasVis ? '서브 비주얼: 와이어에 있다 — visual 모양대로.' : '서브 비주얼: 와이어에 없다 — 머리 아래 바로 경로·쪽 제목(와이어 줄)으로 시작한다.')];
+            $subShell['lnb']['note'] = $hasLnb ? $subShell['lnb']['note'] : '이 와이어는 옆 메뉴가 없다(lnb:false) — 두지 않는다.';
+        }
         return [
-            'preflight' => isset($mix['wire']) ? self::wirePreflight() : self::PREFLIGHT,
+            'preflight' => $isWire ? self::wirePreflight($sub !== null) : self::PREFLIGHT,
             'preferences' => [ // 디자이너 선호 규칙(2026-10-03) — 관공서 사례(무엇을 만들었나)와 함께 쓰는 두 번째 근거(무엇이 더 낫다고 골랐나)
                 'how' => '디자이너 A/B 투표에서 뚜렷하게 갈린 결과(300명 이상·한쪽 65% 이상)다. 시안에 같은 요소가 있으면 rule 쪽으로 만들고 instead_of 쪽은 피한다. 레퍼런스 배치(무엇이 어디에)는 그대로 따르고, 이 규칙은 요소를 어떻게 그릴지만 정한다. 더 찾으려면 get_design_preferences.',
                 'rules' => Preferences::compact(Preferences::find(match ((string) ($sc['page_type'] ?? 'main')) { 'main' => ['layout', 'nav', 'button', 'visual', 'overlay'], 'board_list', 'board_view', 'search' => ['list', 'form', 'data'], 'form', 'login', 'apply' => ['form', 'feedback', 'button'], default => ['layout', 'data', 'nav'] }, '', 10, true, true)),
@@ -194,7 +210,8 @@ final class ReplicaKit
             'base' => [
                 'how' => '<head> 에 <style data-hb-base></style> 한 줄을 넣으면 check_mockup 이 보관할 때 홈박스 기본 CSS(토큰·틀·카드·단추·서브 공통 틀·반응형·호버)를 채운다. 그 바로 아래 <style> 맨 위에 root 줄을 그대로 적고, 이 시안만의 CSS 는 그 뒤에 쓴다. 서브 페이지는 <!--hb:use style--> 로 메인의 <style> 전부를 그대로 받는다 — 함께 따라온 빈 기본 CSS 자리도 홈박스가 채운다. 서브 묶음의 root 값은 무시하고 메인 root 를 쓴다(한 사이트는 폭·간격·주색이 하나). <!--hb:use header--> 는 메인의 첫 <header> 하나를 가져가므로 메인에 header 는 하나만 둔다. 파일 이름은 menu[].file 을 그대로 쓰면 메뉴 링크가 서로 이어진다.',
                 // 서브 묶음은 root 값을 주지 않는다(2026-10-05 R2·R6: 서브 레퍼런스 폭 1150·1300 이 메인 1500·1800 과 달라 작업자가 서브마다 폭을 바꿨다 — 한 사이트는 폭이 하나)
-                'root' => $sub !== null ? '(서브 페이지 — 메인 시안의 root 줄을 그대로 쓴다. <!--hb:use style--> 로 함께 온다. 이 묶음엔 값이 없다.)' : ':root{--hb-primary:' . $primary . ';--hb-w:' . (int) ($mix['frame']['w'] ?? ($sc['container_px'] ?? 1400)) . 'px;--hb-gap:' . (int) ($mix['frame']['col_gap'] ?? 24) . 'px;--hb-row:' . (int) ($mix['frame']['box_gap'] ?? $mix['frame']['row_gap'] ?? 80) . 'px;--hb-radius:' . (int) ($mix['style']['card_radius_px'] ?? 12) . 'px;--hb-h2:' . (int) ($mix['style']['heading_px'] ?? 32) . 'px}',
+                'root' => $sub === null ? $rootLine : ($isWire ? $rootLine : '(서브 페이지 — 메인 시안의 root 줄을 그대로 쓴다. <!--hb:use style--> 로 함께 온다. 이 묶음엔 값이 없다.)'),
+                'root_note' => $sub !== null && $isWire ? '와이어 서브 묶음 — 메인 시안(base_token)과 함께 만들면 메인 root 를 쓰고 이 줄은 무시한다. 서브 한 장만 만들 때(메인 시안 없음)는 이 줄을 그대로 쓴다. 머리·바닥도 그때는 hb:use 없이 reference.wire 의 머리·바닥 재료로 직접 만든다.' : null,
                 'classes' => [
                     '.hb-wrap' => '본문 폭 컨테이너(모든 구역의 내용을 이 안에 — 같은 왼쪽 선·같은 폭). 폭 가득 띠는 바깥 요소에 배경을 주고 안에 .hb-wrap',
                     '.hb-sec / .hb-band / .hb-band--dark' => '구역(위 간격 = --hb-row) / 옅은 회색 띠 / 짙은 무채색 띠',
@@ -206,7 +223,9 @@ final class ReplicaKit
                 ],
                 'sub_html' => '<div class="hb-subvisual" style="background-image:url(샘플 사진 url)"><div class="hb-wrap"><h1>페이지 이름</h1><nav class="hb-path" aria-label="경로"><a href="main.html">홈</a><a href="#">상위 메뉴</a><span>페이지 이름</span></nav></div></div>'
                     . '<main class="hb-wrap"><div class="hb-sub"><aside class="hb-lnb" aria-label="하위 메뉴"><h2>상위 메뉴</h2><ul><li><a href="a.html" aria-current="page">현재 페이지</a></li><li><a href="b.html">형제 페이지</a></li></ul></aside><div class="hb-content">본문(레퍼런스의 본문 칸 안쪽 구성)</div></div></main>',
-                'rule' => '머리(header)·바닥(footer)·첫 화면처럼 레퍼런스 모양을 따라야 하는 곳만 직접 CSS 를 쓰고, 본문 구역의 폭·카드·단추·제목은 이 클래스로 만든다. 서브 페이지는 sub_html 마크업을 그대로 쓴다 — 옆 메뉴·서브 비주얼을 새로 디자인하지 않는다. 단, 줄과 줄 사이 margin 은 --hb-row 한 값이 아니라 sections 의 줄별 y 차이 그대로 줄마다 둔다(줄마다 다를 수 있다).',
+                'rule' => $isWire
+                    ? '머리(header)·바닥(footer)처럼 재료 모양을 따라야 하는 곳만 직접 CSS 를 쓰고, 본문 구역의 폭·카드·단추·제목은 이 클래스로 만든다. 서브 페이지는 sub_html 마크업에서 와이어에 있는 틀 요소만 쓴다(sub_shell.wire). 와이어 묶음은 줄과 줄 사이 margin 을 --hb-row(frame.row_gap) 한 값으로 둔다 — 레퍼런스 줄별 y 차이를 따르지 않는다.'
+                    : '머리(header)·바닥(footer)·첫 화면처럼 레퍼런스 모양을 따라야 하는 곳만 직접 CSS 를 쓰고, 본문 구역의 폭·카드·단추·제목은 이 클래스로 만든다. 서브 페이지는 sub_html 마크업을 그대로 쓴다 — 옆 메뉴·서브 비주얼을 새로 디자인하지 않는다. 단, 줄과 줄 사이 margin 은 --hb-row 한 값이 아니라 sections 의 줄별 y 차이 그대로 줄마다 둔다(줄마다 다를 수 있다).',
             ],
             'reference' => [
                 // 메인인데 섞을 출처가 없어 한 곳만 쓴 경우 = single:<id> (판정이 '한 사이트 복제'로 막지 않게 구분한다)
@@ -260,11 +279,12 @@ final class ReplicaKit
                     'rule' => '첫 화면 제목만 60px 까지. 섹션 제목·본문 안 슬로건·강조 문구는 40px 을 넘기지 않는다(숫자 통계는 예외). 큰 글자로 화면을 채우지 않는다.'],
                 'font' => $custom['font'] ?? 'Pretendard',
                 'reference_fonts' => Design::fonts(is_string($sc['fonts'] ?? null) ? (json_decode((string) $sc['fonts'], true) ?: []) : (array) ($sc['fonts'] ?? [])),
-                'radius_px' => $sub !== null ? null : self::radius($secs, $sc['radius_px'] ?? null), 'container_px' => $sub !== null ? null : ($mix['frame']['w'] ?? ($sc['container_px'] ?? null)),
+                // 와이어 서브는 값을 준다(서브 한 장만 만드는 흐름 — base.root_note)
+                'radius_px' => $sub !== null && !$isWire ? null : ($isWire ? (int) ($mix['style']['card_radius_px'] ?? 12) : self::radius($secs, $sc['radius_px'] ?? null)), 'container_px' => $sub !== null && !$isWire ? null : ($mix['frame']['w'] ?? ($sc['container_px'] ?? null)),
                 'sub_note' => $sub !== null ? '서브 페이지는 본문 폭·둥글기·간격을 메인 시안 값(메인 묶음 theme.container_px·base.root) 그대로 쓴다. 이 서브 레퍼런스의 폭은 따르지 않는다 — 본문 칸 안쪽 구성만 따른다.' : null,
                 'measure_note' => 'radius_px·container_px 는 자동 측정값이라 틀릴 수 있다. 참고 이미지와 다르면 이미지를 따른다.',
             ],
-            'sub_shell' => self::SUB_SHELL + ['content_w' => $sub !== null ? '메인 묶음 theme.container_px 와 같은 값' : ($mix['frame']['w'] ?? null)],
+            'sub_shell' => $subShell,
             'samples' => self::samples((string) ($persona['virtual'] ?? $persona['org']), !empty($persona['client']), isset($custom['icon_style']) ? (string) $custom['icon_style'] : null),
             'icons' => self::icons(),
             'behavior' => [
@@ -676,8 +696,103 @@ final class ReplicaKit
     /** 서브 공통 틀이 정하는 칸 — 재료를 다른 화면에서 찾지 않는다(없으면 sub_shell 대로) */
     private const WIRE_SHELL = ['sub_visual', 'breadcrumb', 'page_title', 'lnb', 'satisfaction', 'skip_nav'];
 
+    /**
+     * 와이어 칸 그림 종류 → 샘플 종류 후보(앞에서부터 묶음에 있는 것). packages/mcp mock-wire.ts SAMPLE_KIND 가 와이어 그림 종류를 넘기고,
+     * 이 표가 그 묶음 samples 에 실제 있는 종류로 바꾼다(samples.for_wire, MC-104). banner 는 샘플 이름이 strip-banner, video-thumb 은 따로 있다.
+     */
+    public const WIRE_SAMPLE_KIND = [
+        'hero-city' => ['hero-city', 'hero-keyvisual', 'hero-nature'], 'hero-nature' => ['hero-nature', 'hero-city', 'hero-keyvisual'],
+        'sub-visual' => ['sub-visual', 'hero-city'], 'leader' => ['leader', 'leader-field', 'leader-cutout'],
+        'news-thumb' => ['news-thumb', 'place'], 'video-thumb' => ['video-thumb', 'news-thumb'],
+        'banner' => ['banner', 'strip-banner', 'popup-wide', 'card-news'], 'popup' => ['popup', 'popup-wide', 'popup-tall', 'notice-square', 'card-news'],
+        'infographic' => ['infographic', 'card-news'], 'icon-set' => ['icon-set'], 'place' => ['place', 'building-illust'],
+        'citizen' => ['citizen'], 'tour' => ['tour', 'place', 'hero-nature'], 'building-illust' => ['building-illust', 'place'],
+        'archive-photo' => ['archive-photo', 'place'], 'pattern-bg' => ['pattern-bg'],
+    ];
+
     /** 머리 줄로 보는 칸 — 와이어 top 구역의 이 칸들은 A 의 머리 줄을 그대로 쓴다 */
     private const WIRE_HEAD = ['masthead', 'header', 'gnb', 'skip_nav'];
+
+    /** 칸 재료 높이 — 와이어 칸 높이의 이 배수 안만(MC-96 은 0.35~3 이었다: 1576px 커머스 조각이 563px 칸 재료로 들어왔다, 2026-10-18 운영 시험 w04) */
+    public const WIRE_H_MIN = 0.5;
+    public const WIRE_H_MAX = 2.5; // 969/331(영상 히어로)·1576/563(커머스) 는 넘고 615/300(챗봇 띠)은 들어오는 값
+
+    /**
+     * 와이어 칸 대신 쓸 같은 역할 묶음 — 그림이 같은 꼴인 것끼리만(MC-103). mixPlan 의 family() 는 줄 바꿔 끼우기용이라 넓다
+     * (info = 통계·달력·문구 띠 → 문구 띠 칸에 바로가기 격자가 붙었다). 여기 없는 종류는 대신할 것이 없다.
+     */
+    private static function wireFamily(string $t): string
+    {
+        return match (true) {
+            in_array($t, ['news_tabs', 'notice_box'], true) => 'news',
+            in_array($t, ['banner_zone', 'popup_zone'], true) => 'banner',
+            in_array($t, ['hero', 'main_visual'], true) => 'visual',
+            in_array($t, ['stats', 'stat_cards'], true) => 'stats',
+            default => $t,
+        };
+    }
+
+    /**
+     * 섹션 묶음이 정말 그 칸 종류를 그렸나 — 자동 분해의 종류 이름이 틀린 것(2026-10-18 운영 시험 10건 중 7건: '바로가기' 라벨의 영상 히어로,
+     * '통계' 라벨의 민원 링크 45개·기부금 표, '달력' 라벨의 사진 카드, '뉴스' 라벨의 제목 한 줄)을 구조 실측으로 거른다(MC-99).
+     * 조건은 "이게 없으면 그 종류가 아니다" 수준의 필요조건만 — 이름이 맞는 섹션은 대부분 통과한다(kit-check.php 로 통과율 확인).
+     * @param array{x: int, y: int, w: int, h: int, secs: list<array>} $g prepSecs 를 거친 섹션 묶음
+     */
+    public static function wireFits(string $k, array $g, int $vw): bool
+    {
+        $L = 0; $it = 0; $img = 0; $ph = 0; $ic = 0; $hd = 0; $cols = 0; $fl = []; $photoStyle = false; $txt = 0;
+        foreach ($g['secs'] as $s) {
+            $st = is_array($s['structure'] ?? null) ? $s['structure'] : [];
+            $L += (int) ($st['links']['n'] ?? 0);
+            $it += is_numeric($st['items'] ?? null) ? (int) $st['items'] : 0;
+            $img += (int) ($st['images']['n'] ?? 0); $ph += (int) ($st['images']['photos'] ?? 0); $ic += (int) ($st['images']['icons'] ?? 0);
+            $hd += (int) ($st['heading_count'] ?? (is_array($st['headings'] ?? null) ? count($st['headings']) : 0));
+            $cols = max($cols, (int) ($st['cols'] ?? 0));
+            foreach ((array) ($st['flags'] ?? []) as $f => $on) { if ($on) { $fl[$f] = true; } }
+            $sty = (array) ($st['style'] ?? []);
+            if (in_array($sty['photo'] ?? '', ['full_bleed', 'full', 'split_left', 'split_right', 'inline'], true) || ($sty['bg_kind'] ?? '') === 'image') { $photoStyle = true; }
+            foreach ((array) ($st['inner'] ?? []) as $in) { if (is_array($in) && ($in[0] ?? '') === 't') { $txt++; } }
+        }
+        $many = max($L, $it, $ic, (int) ($g['secs'][0]['structure']['style']['icon_menu'] ?? 0));
+        // 화면 맨 위(머리 메뉴와 겹치는 자리)에서 시작하는 본문 칸은 머리를 함께 잘라 온 조각이다(카카오같이가치 '통계' y23) — 비주얼만 예외
+        if ((int) ($g['y'] ?? 0) < 60 && !in_array($k, ['hero', 'main_visual', 'header', 'masthead', 'gnb', 'skip_nav'], true)) { return false; }
+        // 위아래 여백이 높이의 3/4 이상이면 빈 흰 조각이다(천만문화재단 '바로가기' 430 중 403 이 여백) — 사진 비주얼만 예외
+        if (count($g['secs']) === 1 && !in_array($k, ['hero', 'main_visual'], true)) {
+            $sty0 = (array) ($g['secs'][0]['structure']['style'] ?? []);
+            if ((int) ($sty0['pad_top'] ?? 0) + (int) ($sty0['pad_bottom'] ?? 0) >= 0.75 * max(1, (int) $g['h'])) { return false; }
+        }
+        return match ($k) {
+            // 바로가기 = 링크·항목·아이콘이 넷 이상('AI 로 통한다' 영상 히어로 L1·'분야별 정보' 탭 L2 를 걸렀다)
+            // 그림만 열일곱 개고 링크가 하나면 후원사 로고 띠다(월드비전 '주최·후원사·스폰서')
+            'quick_links' => $many >= 4 && !($img >= 8 && $L <= 2),
+            // 소식·게시판 = 글 목록 셋 이상('재단 소식' 제목 한 줄 L1 을 걸렀다)
+            'news_tabs', 'board_list' => max($L, $it, $txt) >= 3,
+            'notice_box' => max($L, $it, $txt) >= 2 || ($hd >= 1 && $it >= 1),
+            // 통계 = 입력·표가 아니고 링크가 많지 않고 사진 위주가 아니다(민원 링크 45개·기부금 표·사진 아카이브를 걸렀다)
+            'stats', 'stat_cards' => empty($fl['form']) && empty($fl['table']) && $L <= 12 && $ph <= 1,
+            // 달력 = 사진 카드가 아니고 한 줄 아이콘 격자가 아니다(BIFF 사진 4장·즐겨찾기 8칸 격자를 걸렀다)
+            // + 제목(달·날짜 머리)이 있다('고객지원' 링크 세 줄·서천 '일자리정보·정보화교육' 링크 탭 hd0 을 걸렀다)
+            'calendar' => $ph <= 1 && $cols < 6 && $g['h'] >= 160 && ($hd >= 1 || ($it >= 3 && $L <= 6)),
+            // 문구 띠 = 입력·목록이 아닌 짧은 글 띠(강의 검색 상자·바로가기 격자를 걸렀다)
+            'text_band' => empty($fl['form']) && $hd <= 3 && $L <= 6 && $it <= 4 && $cols < 6 && $ph === 0,
+            // 비주얼 = 화면 폭에 가깝고 사진이 있다(글 카드 세 칸·소식 목록을 걸렀다)
+            // 제목도 넘김 단추도 없는 사진 한 장은 홍보 카드다(강릉 '소식지 9월호' 카드)
+            'hero', 'main_visual' => $g['w'] >= 0.6 * $vw && ($ph >= 1 || $photoStyle) && $L <= 16 && ($hd >= 1 || !empty($fl['carousel']) || !empty($fl['pagination'])),
+            // 사진 카드·갤러리 = 사진 둘 이상
+            'tour_cards', 'photo_gallery' => $ph >= 2,
+            // 배너·팝업 = 그림이 있다('View More' 한 줄·아코디언 머리줄을 걸렀다)
+            // 제목 넷·링크 여섯 이상이면 사진 소식 목록이다(서울 '새소식')
+            'banner_zone', 'popup_zone' => $img >= 1 && $g['h'] >= 100 && !($hd >= 4 && $L >= 6),
+            'sns_video' => $img >= 1 || $L >= 3,
+            // 챗봇 = 제목이 있고 항목이 많지 않다(이름 22개 목록·빈 흰 조각을 걸렀다)
+            'ai_chatbot' => $hd >= 1 && $it <= 10,
+            'main_search' => !empty($fl['form']) || $L >= 2 || $it >= 2 || $hd >= 1,
+            'info_table' => !empty($fl['table']) || $it >= 3 || $txt >= 6,
+            // 본문 칸 = 쪽 제목 조각(높이 154)이 아닌 내용 덩어리
+            'content_block', 'greeting_vision' => $g['h'] >= 200 && ($hd + $txt + $img + $it) >= 2,
+            default => true,
+        };
+    }
 
     /**
      * 와이어 받기 — JSON 글이나 배열. 줄 40·칸 6 상한, 폭 1~12, 칸 종류는 영문 소문자·밑줄.
@@ -769,12 +884,15 @@ final class ReplicaKit
             return ['x' => $x1, 'y' => $y1, 'w' => max(1, $x2 - $x1), 'h' => max(1, $y2 - $y1), 'secs' => $g];
         };
         // 재료로 쓸 만한 묶음인가 — 자동 분해가 잘게 자른 조각(폭 281·높이 108 '메인 비주얼')을 칸 재료로 고르던 것(2026-10-18 시험).
-        // 그 출처 본문 폭 대비 칸 폭 비율이 와이어 span 비율의 45% 이상, 높이 60 이상, 와이어가 높이를 주면 그 35%~300% 안
-        $usable = static function (array $src, array $g, array $c) use ($vw): bool {
+        // 그 출처 본문 폭 대비 칸 폭 비율이 와이어 span 비율의 45% 이상, 높이 60 이상, 와이어가 높이를 주면 그 50%~250% 안(WIRE_H_MIN·MAX)
+        // + 구조가 정말 그 칸 종류인가(wireFits, MC-103) — 줄 통째·칸마다·다른 화면·같은 역할 네 단계 모두 이 한 함수를 거친다
+        $usable = static function (array $src, array $g, array $c, ?string $as = null) use ($vw): bool {
             if ($g['h'] < 60) { return false; }
             if ($g['w'] / max(1, (int) $src['cw'] ?: $vw) < 0.45 * $c['span'] / 12) { return false; }
             $wh = (int) ($c['h'] ?? 0);
-            return $wh <= 0 || ($g['h'] >= 0.35 * $wh && $g['h'] <= 3 * $wh);
+            if ($wh > 0 && ($g['h'] < self::WIRE_H_MIN * $wh || $g['h'] > self::WIRE_H_MAX * $wh)) { return false; }
+            // 대신 쓰는 종류($as)여도 칸 종류($c['k'])의 꼴이어야 한다 — 내용은 칸 종류로 만들기 때문
+            return self::wireFits($c['k'], $g, $vw) && ($as === null || $as === $c['k'] || self::wireFits($as, $g, $vw));
         };
         $order = static function () use (&$info, &$cnt): array {
             $ls = array_keys($info);
@@ -809,16 +927,17 @@ final class ReplicaKit
         // ② 칸 하나 — 같은 종류(없으면 같은 역할 묶음) 섹션 묶음, A 먼저·폭 비율이 가까운 것
         $cellPick = static function (array $c, bool $family) use (&$info, &$usedSec, $order, $groupOf, $usable, $vw): ?array {
             $k = $c['k']; $span = $c['span'];
-            $best = null; $fam = self::family($k);
+            $best = null; $fam = self::wireFamily($k);
             foreach ($order() as $rank => $L) {
                 $src = $info[$L];
                 foreach ([...$src['body'], ...($family ? [] : $src['head'])] as $ri) {
                     foreach (array_unique(array_column($src['rows'][$ri]['cells'], 'type')) as $t) {
-                        // 같은 역할 묶음(news·quick·banner·media·info·search)만 대신 쓴다 — 묶음이 없는 종류(family 가 자기 이름)는 대신할 것이 없다
-                        if ($family ? ($t === $k || $fam === $k || self::family($t) !== $fam) : $t !== $k) { continue; }
-                        $g = $groupOf($src, $ri, $t); if ($g === null || !$usable($src, $g, $c)) { continue; }
+                        // 같은 역할 묶음(news·banner·visual·stats, wireFamily)만 대신 쓴다 — 묶음이 없는 종류는 대신할 것이 없다(match=none)
+                        if ($family ? ($t === $k || $fam === $k || self::wireFamily($t) !== $fam) : $t !== $k) { continue; }
                         $key = $L . ':' . $ri . ':' . $t;
-                        $d = abs($g['w'] / max(1, $src['cw'] ?: $vw) - $span / 12) + (isset($usedSec[$key]) ? 0.6 : 0.0) + $rank * 0.12;
+                        if (isset($usedSec[$key])) { continue; } // 같은 조각을 두 칸 재료로 쓰지 않는다(w02: 6·7번 줄이 같은 조각)
+                        $g = $groupOf($src, $ri, $t); if ($g === null || !$usable($src, $g, $c, $t)) { continue; }
+                        $d = abs($g['w'] / max(1, $src['cw'] ?: $vw) - $span / 12) + $rank * 0.12;
                         if ($best === null || $d < $best[3]) { $best = [$L, $ri, $t, $d, $g]; }
                     }
                 }
@@ -870,7 +989,7 @@ final class ReplicaKit
             $picks = []; $whole = $rowMatch($wr);
             if ($whole !== null) {
                 [$L, $ri] = $whole; $usedRow[$L . ':' . $ri] = true; $cnt[$L] = ($cnt[$L] ?? 0) + 1;
-                foreach ($wr['cols'] as $j => $c) { $picks[$j] = ['L' => $L, 'g' => $groupOf($info[$L], $ri, $c['k']), 'match' => 'row', 'ri' => $ri]; }
+                foreach ($wr['cols'] as $j => $c) { $picks[$j] = ['L' => $L, 'g' => $groupOf($info[$L], $ri, $c['k']), 'match' => 'row', 'ri' => $ri]; $usedSec[$L . ':' . $ri . ':' . $c['k']] = true; }
             } else {
                 foreach ($wr['cols'] as $j => $c) {
                     $p = $cellPick($c, false); $how = 'cell';
@@ -908,7 +1027,7 @@ final class ReplicaKit
                         'wire_row' => $wno, 'wire_col' => $j + 1, 'match' => 'none'];
                     $cells[] = ['k' => $c['k'], 'span' => $c['span'], 'src' => null, 'match' => 'none', 'note' => in_array($c['k'], self::WIRE_SHELL, true)
                         ? '서브 공통 틀 — sub_shell(서브 비주얼·경로·쪽 제목)과 기본 CSS 대로 만든다'
-                        : '레퍼런스에 이 종류가 없다 — 칸 근거(ev)와 예시 내용(content)으로 새로 만든다'];
+                        : '재료 없음 — 이 칸 종류를 제대로 그린 레퍼런스 섹션이 없어 엉뚱한 종류의 조각을 붙이지 않았다. 칸 종류 설명(label)·근거(ev)·예시 내용(content)대로 그린다'];
                 } else {
                     $L = $pk['L']; $kx = $fullRow ? 1.0 : $tw / max(1, $g['w']);
                     foreach ($g['secs'] as $s) {
@@ -1014,6 +1133,9 @@ final class ReplicaKit
             $out[] = match (true) {
                 str_starts_with($p, '1. ') => '1. wire.rows 를 위에서 아래로 읽고 줄마다 칸 종류·폭(span/12)·좌표(x·y·w·h)를 확인한다. 칸마다 cells[].content(예시 글·항목·그림 종류)와 ev(레퍼런스에서 그 섹션을 두는 비율·보통 높이)를 본다. 참고 이미지는 칸 재료(출처 조각)라 칸 안 구성·밀도·글자 크기만 읽는다.',
                 str_starts_with($p, '2. ') => '2. 배치는 와이어와 같게 만든다 — 줄 순서, 줄마다 칸 수, 칸 폭 비율(grid-template-columns 에 span 을 fr 로), 칸 종류. 칸 안쪽(탭 위치·목록 줄 수·카드 수·아이콘 수·단추 위치)은 그 칸의 재료 섹션(sections, 참고 이미지 조각)을 따른다. 와이어에 없는 줄·칸을 더하거나 있는 칸을 빼지 않는다.',
+                // 2-2(세로 간격은 줄마다 sections 좌표, 통일 금지)는 레퍼런스 배치용 — 와이어 묶음은 one_site·preflight ④ 대로 row_gap 한 값(2026-10-18 시험 10건 중 3건이 모순 지적)
+                str_starts_with($p, '2-2. ') => '2-2. 간격은 둘 다 한 값이다 — 좌우로 나란한 칸 사이는 frame.col_gap, 본문 줄과 줄 사이(위 줄 내용 끝 ~ 아래 줄 제목 시작)는 frame.row_gap. 와이어 묶음은 레퍼런스 줄별 y 차이를 따르지 않는다(sections 좌표의 y 는 이미 row_gap 으로 쌓은 값이다). 높이는 reference.height 근처면 된다.',
+                str_starts_with($p, '7-6. ') => '7-6. 서브 페이지 틀은 와이어가 정한다 — 와이어에 있는 서브 비주얼·옆 메뉴만 sub_shell 모양(같은 높이·폭·선)으로 만들고, 와이어에 없으면(lnb:false·sub_visual 줄 없음) 더하지 않는다(sub_shell.wire). 본문 폭은 frame.w. 여러 서브를 같은 와이어 묶음으로 만들 때는 장마다 같은 틀을 쓴다.',
                 str_starts_with($p, '2-1. ') => '2-1. 칸마다 재료 출처(src)가 달라도 한 사이트처럼 — 제목 크기·굵기와 카드 둥글기는 wire.style, 칸 사이는 frame.col_gap, 본문 줄 사이는 frame.row_gap 한 값(wire.one_site). match=none 칸은 같은 종류의 레퍼런스가 없어 content 와 ev 로 새로 만든다.',
                 str_starts_with($p, '9. ') => '9. 다 만들면 렌더해 wire.rows 와 줄마다 비교한다 — 줄 순서·칸 수·칸 폭 비율·칸 종류가 같은지, data-wire-row·data-wire-cell 이 다 달렸는지. 높이는 reference.height 근처면 된다(와이어를 따르면 레퍼런스와 달라지는 게 정상).',
                 default => $p,
@@ -1032,10 +1154,13 @@ final class ReplicaKit
         return $out;
     }
 
-    private static function wirePreflight(): array
+    private static function wirePreflight(bool $isSub = false): array
     {
         $p = self::PREFLIGHT;
         $p['items'] = array_values(array_map(static fn (string $i): string => match (true) {
+            // 서브 틀은 와이어가 정한다(sub_shell.wire) — 와이어에 없는 서브 비주얼·옆 메뉴를 "필수"로 더하라고 하지 않는다(2026-10-18 w07)
+            $isSub && str_starts_with($i, '⑨') => '⑨ 서브 페이지(지도 -10): 서브 비주얼 띠·옆 메뉴는 와이어에 있을 때만 둔다(sub_shell.wire). 와이어에 있으면 sub_shell 모양 그대로. 찾아오시는 길은 구글 지도 iframe(오픈스트리트맵은 게시 화면에서 막혀 회색 판으로 보인다).',
+            $isSub && str_starts_with($i, '⑪') => str_replace('서브는 전부 sub_shell(왼쪽 옆 메뉴 260px, 서브 비주얼 220px, 본문 폭 = 메인)', '서브 틀은 와이어에 있는 요소만 sub_shell 모양으로(옆 메뉴 260px·서브 비주얼 220px, 본문 폭 = frame.w)', $i),
             str_starts_with($i, '③') => '③ 본문 폭(치명, 줄당 -6): 머리·바닥을 뺀 모든 줄이 같은 시작선과 폭(wire.frame.x·w). 와이어 줄의 칸은 그 폭을 span 비율로 나누고 칸 사이는 col_gap 한 값.',
             str_starts_with($i, '④') => '④ 줄 순서·칸(와이어 일치, 어기면 치명): 본문 줄마다 data-wire-row="줄 번호", 칸마다 data-wire-cell="칸 종류" — 줄 순서·칸 수·칸 종류·칸 폭 비율이 wire.rows 와 같아야 한다. 줄 사이 간격은 frame.row_gap 한 값, 위아래 상자가 맞닿지 않게.',
             str_starts_with($i, '⑤') => '⑤ 높이(참고만): 와이어 묶음은 레퍼런스 높이로 치명을 주지 않는다 — reference.height 와 30% 넘게 다를 때만 작게 감점. min-height·빈 상자로 늘리면 빈칸 감점(-8)은 그대로.',
@@ -1274,7 +1399,16 @@ final class ReplicaKit
             foreach ($out[$k] as $i => $r) { $out[$k][$i][3] = rtrim(mb_substr((string) $r[3], 0, mb_strlen((string) $r[3]) - mb_strlen($tail))); }
         }
         $more = array_filter($total, static fn($n, $k) => $n > ($byKind[$k] ?? 0), ARRAY_FILTER_USE_BOTH);
+        // 와이어 칸 그림 종류(content.img.kind·sample_kind) → 이 묶음에 실제로 있는 샘플 종류(MC-104). 와이어는 banner·popup·infographic·video-thumb 를
+        // 달라는데 샘플 목록에는 strip-banner·popup-wide 이름으로만 있거나(기관 대상이 달라) 아예 없어, 작업자가 없는 종류를 찾다 엉뚱한 사진을 썼다(2026-10-18 시험 3건)
+        $forWire = [];
+        foreach (self::WIRE_SAMPLE_KIND as $want => $cands) {
+            $forWire[$want] = null;
+            foreach ($cands as $cand) { if (($total[$cand] ?? 0) > 0) { $forWire[$want] = $cand; break; } }
+        }
         return ['count' => array_sum($byKind), 'available' => $total,
+            'for_wire' => $forWire,
+            'for_wire_rule' => '와이어 칸의 content.img(kind 또는 sample_kind)는 이 표로 바꿔 읽는다 — 값 = items 에서 고를 종류. 더 필요하면 mock_get_sample_images(kind=그 값). null 이면 이 기관 대상에 맞는 그런 샘플이 없다: 배너·팝업·인포그래픽은 hero-*·place 사진(또는 옅은 면) 위에 HTML 글·도형으로 만들고, 영상 썸네일은 news-thumb 사진에 재생 표시를 얹는다. 없는 종류의 이름으로 다른 기관용 그림을 끌어오지 않는다.',
             'icon_style' => $iconStyle !== null
                 ? ['chosen' => $iconStyle, 'rule' => '고객이 고른 아이콘 스타일이다. 이 시안(메인·서브 전부)의 아이콘은 이 스타일만 쓴다.']
                 : ['chosen' => null, 'rule' => '아이콘 스타일을 따로 고르지 않았다 — 주색에 어울리는 스타일 하나를 골라 시안 전체에 그 스타일만 쓴다(icon_style 인자로 지정할 수 있다).', 'allowed' => Samples::iconStyles()],
@@ -1550,7 +1684,7 @@ final class ReplicaKit
 
     /** 첫 판정에서 크게 깎이는 항목(감점 큰 순) — 묶음 맨 앞에 둔다. 운영 기록: 첫 판정 57·32점에서 시작해 세 바퀴를 돈 시안이 있었다(2026-10-02). */
     public const PREFLIGHT = [
-        'why' => 'check_mockup 을 부르기 전에 이 11가지를 직접 확인한다. 첫 판정에서 가장 크게 깎이는 항목을 감점 큰 순으로 적었다 — 여기서 걸리면 판정을 두세 번 더 돌게 된다.',
+        'why' => 'check_mockup 을 부르기 전에 이 12가지를 직접 확인한다. 첫 판정에서 가장 크게 깎이는 항목을 감점 큰 순으로 적었다 — 여기서 걸리면 판정을 두세 번 더 돌게 된다.',
         'items' => [
             '① 가로 스크롤(치명 -12, 100vw -6): html·body·띠·메뉴 판 어디에도 width:1920px 같은 고정 폭과 100vw 를 쓰지 않는다. 폭 가득 = width:100%, 본문 = max-width + margin:0 auto. <meta name="viewport" content="width=device-width,initial-scale=1">.',
             '② 반응형(치명 -12, @media 없음 -8): @media (max-width:1280px)·(max-width:768px)·(max-width:480px) 를 넣고, 768 이하에서 여러 칸 줄을 세로로 쌓는다(grid-template-columns:1fr / flex-direction:column). 고정 px 폭 칸은 max-width:100%. 390 폭에서 글자 13px 이상.',
@@ -1563,7 +1697,7 @@ final class ReplicaKit
             '⑨ 서브 페이지(-8, 지도 -10): 머리 바로 아래 폭 가득 서브 비주얼 띠(페이지 이름 + 경로). 찾아오시는 길은 구글 지도 iframe(오픈스트리트맵은 게시 화면에서 막혀 회색 판으로 보인다).',
             '⑩ 시각(2026-10-13 추가, 판정 실측): 마지막 내용과 바닥글 사이 0~2px -8 / 40px 미만·120px 넘음 -4 / 300px 넘음 -8 · 내용 없는 띠 160px+ (400px+ 이면 메인 치명) · 넓은데 글·그림이 거의 없는 섹션 -5(둘 다 0 이면 치명) · 글·단추가 칸 밖으로 잘림 치명 · 흐름 안 형제 겹침 치명 · 빈 캐러셀 치명 · h1 하나·# 링크 절반 이하 · 형제 중 하나만 굳은 호버 · 감점 종류 하나가 3번 넘게 나오면 84점 상한.',
             '⑪ 색·글자·묶음 간격·서브 틀(-4~-12, 다른 장과 다르면 치명): 주색은 포인트만(넓은 면은 무채색·사진, theme.color_use) · 섹션 제목·슬로건 40px 이하(theme.type) · 한 묶음 안 칸 간격은 가로·세로 같은 값(col_gap) · 서브는 전부 sub_shell(왼쪽 옆 메뉴 260px, 서브 비주얼 220px, 본문 폭 = 메인).',
-            '⑩ 게이트(항목당 -5): 빈 카드 0 · 글자 기호(› → + × …) 0 · 같은 이미지 두 번 0 · 이미지는 samples 주소만 · 섹션 제목과 내용 사이 64px 이내 · 레퍼런스 기관명·전화·주소 0(치명 -30).',
+            '⑫ 게이트(항목당 -5): 빈 카드 0 · 글자 기호(› → + × …) 0 · 같은 이미지 두 번 0 · 이미지는 samples 주소만 · 섹션 제목과 내용 사이 64px 이내 · 레퍼런스 기관명·전화·주소 0(치명 -30).',
         ],
     ];
 
@@ -1586,7 +1720,7 @@ final class ReplicaKit
         '2-2. 가로 간격은 한 값이다 — 좌우로 나란한 칸 사이는 전부 frame.col_gap(16~32px). 한 묶음 안에서 칸 사이가 갈리면 안 된다(넓은 간격과 좁은 간격을 섞지 않는다). 세로 간격(줄과 줄 사이)은 반대로 줄마다 sections 좌표 그대로 둔다 — 실제 사이트도 줄마다 다르므로 한 값으로 통일하지 않는다(통일하면 높이가 reference.height 와 어긋난다). 각 줄 위 margin = 그 줄 y − (위 줄 y+h). check_mockup 이 줄별 간격이 sections 와 어긋나는지만 본다(±40px 안).',
         '3. 내용은 전부 바꾼다 — 기관명·인물·전화·주소는 persona 의 가상 값, 게시물 제목·행사·문구는 새로 쓴 가상 글(레퍼런스 글을 옮겨 적지 않는다). 글 길이와 줄 수는 레퍼런스와 비슷하게 맞춘다.',
         '3-1. 섹션 제목은 새로 짓는다 — 참고 이미지에 보이는 제목 짜임("○○ 소식", "언론 속의 ○○", "○○랑 소통해요!" 처럼 기관명을 끼워 넣은 틀)을 그대로 따르지 않는다. 마스코트·건물 일러스트·배경 영문 큰 글자의 위치와 모양도 레퍼런스와 다르게 둔다(쓸 거면 samples 에서 고르고 자리를 바꾼다).',
-        '4. 이미지는 samples 의 주소(url_template 에 key 를 넣은 것)만 쓴다(로고·마스코트는 머리·바닥처럼 여러 곳에 반복해도 된다). 레퍼런스 캡처를 잘라 넣거나 그 사이트의 이미지 주소를 쓰지 않는다. 글자가 든 배너 자리는 샘플 사진 위에 HTML 글을 얹어 만든다.',
+        '4. 이미지는 samples 의 주소(url_template 에 key 를 넣은 것)만 쓴다(로고·마스코트는 머리·바닥처럼 여러 곳에 반복해도 된다). 레퍼런스 캡처를 잘라 넣거나 그 사이트의 이미지 주소를 쓰지 않는다. 배너·팝업 자리는 글자 든 배너 샘플(samples.for_wire 의 banner·popup 이 가리키는 종류 — strip-banner·popup-wide 등)을 먼저 쓰고(7-11 ⑤), 맞는 샘플이 없을 때(for_wire 값이 null)만 샘플 사진 위에 HTML 글을 얹어 만든다.',
         '5. 색: 바탕은 무채색(theme.neutral)이고 주색(theme.primary)은 포인트다 — theme.color_use 를 따른다. 레퍼런스에서 색 면이던 자리(첫 화면 배경·구역 띠·큰 상자·바닥)는 주색으로 옮기지 않고 흰색·옅은 회색·짙은 무채색·사진으로 만든다. 주색은 단추·선택 탭·아이콘·밑줄·이름표 같은 작은 요소에, 넓은 주색 면은 한 화면에 1~2곳(합쳐 10% 이내)만. 고객 색이 없으면 홈박스가 레퍼런스 색과 다른 색을 골라 준다. check_mockup 이 한 색 계열이 화면을 얼마나 덮는지 잰다.',
         '5-1. 글자 크기는 theme.type 을 따른다 — 첫 화면 제목만 60px 까지, 섹션 제목은 section_title_px(40px 이하), 본문 안 슬로건·강조 문구도 40px 이하. 참고 이미지의 글자가 더 커 보여도 상한을 넘기지 않는다.',
         '6. 아이콘은 icons 의 path 로 만든 인라인 SVG. 글자 기호 금지.',

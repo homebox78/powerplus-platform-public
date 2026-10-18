@@ -1,5 +1,5 @@
 {
-  "_doc": "장표 서체 목록 — 새 변환에서 고른다(가로 장표·세로 제안서 공통). 줄을 지우면 선택지에서 빠진다(파일은 worker/fonts). title = 키메시지·표지·목차·간지 큰 글자, body = 본문 굵기 4단계(옅음·본문·강조·굵음). 첫 줄이 기본값. weights = 4단계에 쓴 굵기. 2026-10-14 사용자 지정: 제목 G마켓 산스·페이퍼로지·엘리스 DX널리체(Bold)·학교안심 알림장(700) / 본문 프리젠테이션·프리텐다드·아스타산스·하다 라운드 — 전부 SIL OFL(재배포 가능). 아스타산스·하다 라운드 Bold(700)는 가족 이름이 Regular 와 같아 이름표만 바꾼 수정판(*-BoldPD.ttf, OFL 수정판)을 쓴다. title.bold = 가족 이름에 굵게 속성으로 고른다(엘리스 DX널리체는 세 굵기가 가족 이름 하나 — 라이선스가 수정판에 원래 이름을 못 쓰게 해 이름표를 바꿀 수 없다). title.scale = 제목 서체 크기 보정 — 같은 pt 에서도 서체마다 덩어리(폭·높이)가 달라 G마켓 산스와 비슷해 보이게 곱한다(같은 문장의 잉크 폭비와 면적비의 기하평균, 사용자 2026-10-14 '제목들의 폰트 크기와 넓이가 덩어리감이 비슷하게'). body.scale = 본문 서체 크기 보정(4종 평균 기준 — 사용자 '본문서체 중 첫번째랑 나머지가 크기가 다르다').",
+  "_doc": "장표 서체 목록 — 새 변환에서 고른다(가로 장표·세로 제안서 공통). 줄을 지우면 선택지에서 빠진다(파일은 worker/fonts). title = 키메시지·표지·목차·간지 큰 글자, body = 본문 굵기 4단계(옅음·본문·강조·굵음). 첫 줄이 기본값. weights = 4단계에 쓴 굵기. 2026-10-14 사용자 지정: 제목 G마켓 산스·페이퍼로지·엘리스 DX널리체(Bold)·학교안심 알림장(700) / 본문 프리젠테이션·프리텐다드·아스타산스·하다 라운드 — 전부 SIL OFL(재배포 가능). 아스타산스·하다 라운드 Bold(700)는 가족 이름이 Regular 와 같아 이름표만 바꾼 수정판(*-BoldPD.ttf, OFL 수정판)을 쓴다. title.bold = 가족 이름에 굵게 속성으로 고른다(엘리스 DX널리체는 세 굵기가 가족 이름 하나 — 라이선스가 수정판에 원래 이름을 못 쓰게 해 이름표를 바꿀 수 없다). title.scale = 제목 서체 크기 보정 — 같은 pt 에서도 서체마다 덩어리(폭·높이)가 달라 G마켓 산스와 비슷해 보이게 곱한다(같은 문장의 잉크 폭비와 면적비의 기하평균, 사용자 2026-10-14 '제목들의 폰트 크기와 넓이가 덩어리감이 비슷하게'). body.scale = 본문 서체 크기 보정(4종 평균 기준 — 사용자 '본문서체 중 첫번째랑 나머지가 크기가 다르다'). 2026-10-18 언어별 서체(사용자 '니 추천대로'·'다른 언어도 마찬가지'): 장표 언어가 한국어가 아니면 고른 서체가 그 언어 글자를 95% 이상 갖고 있어야 한다(지원율 = fontcover.py 가 서체 파일로 잰 font_cover.json). 못 넘으면 lang_default 의 그 언어 기본 서체로 바꾼다(fontset.for_lang — 엔진 전 단계 공통, 웹 서체 고르기도 같은 표). Noto Sans JP·SC(OFL, Google Fonts 정적 TTF) = 일본어·중국어용, 굵기 Light·Regular·SemiBold·Black 4개만(용량). 프리텐다드(Black) 제목 = 베트남어·유럽어 제목용(성조·악센트 100%). avoid = 지원율은 넘어도 쓰지 않는 언어(이유). samples = 언어별 견본 문장(웹 견본 그림·렌더 시험 공용).",
   "title": [
     {
       "id": "gmarket",
@@ -29,6 +29,30 @@
       "face": "Hakgyoansim Allimjang TTF B",
       "file": "HakgyoansimAllimjangTTF-B.ttf",
       "scale": 1.08
+    },
+    {
+      "id": "pretendard",
+      "name": "프리텐다드",
+      "face": "Pretendard Black",
+      "file": "Pretendard-Black.ttf",
+      "scale": 1.1
+    },
+    {
+      "id": "notojp",
+      "name": "Noto Sans JP",
+      "face": "Noto Sans JP Black",
+      "file": "NotoSansJP-Black.ttf",
+      "scale": 1.03
+    },
+    {
+      "id": "notosc",
+      "name": "Noto Sans SC",
+      "face": "Noto Sans SC Black",
+      "file": "NotoSansSC-Black.ttf",
+      "scale": 1.03,
+      "avoid": {
+        "ja": "중국어 자형 — 같은 한자도 일본어와 모양이 다르다"
+      }
     }
   ],
   "body": [
@@ -123,6 +147,203 @@
         900
       ],
       "scale": 0.95
+    },
+    {
+      "id": "notojp",
+      "name": "Noto Sans JP",
+      "faces": [
+        "Noto Sans JP Light",
+        "Noto Sans JP",
+        "Noto Sans JP SemiBold",
+        "Noto Sans JP Black"
+      ],
+      "files": [
+        "NotoSansJP-Light.ttf",
+        "NotoSansJP-Regular.ttf",
+        "NotoSansJP-SemiBold.ttf",
+        "NotoSansJP-Black.ttf"
+      ],
+      "weights": [
+        300,
+        400,
+        600,
+        900
+      ],
+      "scale": 0.93
+    },
+    {
+      "id": "notosc",
+      "name": "Noto Sans SC",
+      "faces": [
+        "Noto Sans SC Light",
+        "Noto Sans SC",
+        "Noto Sans SC SemiBold",
+        "Noto Sans SC Black"
+      ],
+      "files": [
+        "NotoSansSC-Light.ttf",
+        "NotoSansSC-Regular.ttf",
+        "NotoSansSC-SemiBold.ttf",
+        "NotoSansSC-Black.ttf"
+      ],
+      "weights": [
+        300,
+        400,
+        600,
+        900
+      ],
+      "scale": 0.93,
+      "avoid": {
+        "ja": "중국어 자형 — 같은 한자도 일본어와 모양이 다르다"
+      }
     }
-  ]
+  ],
+  "lang_default": {
+    "ko": {
+      "title": "gmarket",
+      "body": "freesentation"
+    },
+    "ja": {
+      "title": "notojp",
+      "body": "notojp"
+    },
+    "zh": {
+      "title": "notosc",
+      "body": "notosc"
+    },
+    "en": {
+      "title": "pretendard",
+      "body": "pretendard"
+    },
+    "fr": {
+      "title": "pretendard",
+      "body": "pretendard"
+    },
+    "es": {
+      "title": "pretendard",
+      "body": "pretendard"
+    },
+    "de": {
+      "title": "pretendard",
+      "body": "pretendard"
+    },
+    "vi": {
+      "title": "pretendard",
+      "body": "pretendard"
+    }
+  },
+  "samples": {
+    "ko": {
+      "title": [
+        "심사는 빠르게, ",
+        "의약품 AI",
+        " 심사 체계"
+      ],
+      "sub": "PART 01  ·  목차  ·  사업 이해",
+      "body": [
+        "추진 전략 01 · 표준 연계 허브",
+        "기관마다 다른 데이터를 하나의 기준으로",
+        "흩어진 관제 정보를 한 화면에서 보고 바로 대응합니다.",
+        "※ 2026년 1월 기준 · 출처: 사업계획서"
+      ]
+    },
+    "ja": {
+      "title": [
+        "審査は早く、",
+        "医薬品AI",
+        "審査体系"
+      ],
+      "sub": "PART 01  ·  目次  ·  事業の理解",
+      "body": [
+        "推進戦略 01 · 標準連携ハブ",
+        "機関ごとに異なるデータを一つの基準に",
+        "散らばった管制情報を一画面で見て、すぐに対応します。",
+        "※ 2026年1月時点 · 出典：事業計画書"
+      ]
+    },
+    "zh": {
+      "title": [
+        "审查更快，",
+        "药品AI",
+        "审查体系"
+      ],
+      "sub": "PART 01  ·  目录  ·  项目理解",
+      "body": [
+        "推进战略 01 · 标准联通枢纽",
+        "将各机构不同的数据统一为一个标准",
+        "在一个画面中查看分散的监控信息并立即响应。",
+        "※ 截至2026年1月 · 来源：项目计划书"
+      ]
+    },
+    "en": {
+      "title": [
+        "Faster reviews, ",
+        "AI",
+        "-driven drug checks"
+      ],
+      "sub": "PART 01  ·  Contents  ·  Project overview",
+      "body": [
+        "Strategy 01 · Standard integration hub",
+        "Bringing every agency’s data to one standard",
+        "See scattered monitoring data on one screen — and respond at once.",
+        "※ As of January 2026 · Source: business plan"
+      ]
+    },
+    "fr": {
+      "title": [
+        "Évaluation rapide, ",
+        "IA",
+        " des médicaments"
+      ],
+      "sub": "PARTIE 01  ·  Sommaire  ·  Compréhension",
+      "body": [
+        "Stratégie 01 · Plateforme d’intégration",
+        "Des données hétérogènes réunies sous une même norme",
+        "Voir le contrôle sur un seul écran et réagir aussitôt, façon « temps réel ».",
+        "※ Données de janvier 2026 · Source : plan d’affaires"
+      ]
+    },
+    "es": {
+      "title": [
+        "Revisión ágil, ",
+        "IA",
+        " para fármacos"
+      ],
+      "sub": "PARTE 01  ·  Índice  ·  Comprensión",
+      "body": [
+        "Estrategia 01 · Centro de integración",
+        "Datos de cada institución bajo un único criterio",
+        "¿Información dispersa? Véala en una pantalla y actúe al instante.",
+        "※ Año base 2026 · Fuente: plan de negocio"
+      ]
+    },
+    "de": {
+      "title": [
+        "Schnelle Prüfung, ",
+        "KI",
+        " für Arzneimittel"
+      ],
+      "sub": "TEIL 01  ·  Inhalt  ·  Projektverständnis",
+      "body": [
+        "Strategie 01 · Standardlösung für Integration",
+        "Unterschiedliche Daten nach einem gemeinsamen Maßstab",
+        "Verstreute Überwachungsdaten auf einem Bildschirm – sofort reagieren.",
+        "※ Stand: Januar 2026 · Quelle: „Geschäftsplan“"
+      ]
+    },
+    "vi": {
+      "title": [
+        "Thẩm định nhanh, ",
+        "AI",
+        " cho dược phẩm"
+      ],
+      "sub": "PHẦN 01  ·  Mục lục  ·  Hiểu về dự án",
+      "body": [
+        "Chiến lược 01 · Trung tâm liên kết tiêu chuẩn",
+        "Dữ liệu của từng cơ quan về một chuẩn chung",
+        "Xem thông tin giám sát trên một màn hình và phản ứng ngay.",
+        "※ Tính đến tháng 1/2026 · Nguồn: kế hoạch dự án"
+      ]
+    }
+  }
 }

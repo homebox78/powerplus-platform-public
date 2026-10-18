@@ -89,28 +89,42 @@ export function CompanyTonePicker({ value, onChange, disabled, theme = "a" }: { 
   );
 }
 
-/** 회사소개용 2단계 — 테마 카드 4장(표지 크게 2×2 + 오른쪽 2×2 + 아래 4). 「크게 보기」는 견본 덱 전 쪽. tone = 견본을 보여 줄 톤 */
+/** 회사소개 견본에서 카드 아래 작은 3장 — 간지·숫자·대표 사례(테마 차이가 잘 드러나는 쪽) */
+const MINI_PAGES = [3, 5, 10];
+
+/**
+ * 회사소개용 2단계 — 발표 장표 디자인 타입 고르기(DesignTypes)와 같은 짜임: 한 줄 3개, 카드 = 표지 크게 + 작은 견본 3장 + 이름·설명.
+ * 사용자 2026-10-18 "회사소개서 템플릿 선택도 발표 장표처럼 6개가 한 화면에" (예전: 한 줄 2개, 카드마다 견본 9장이라 한 화면에 2~4개).
+ * 「견본 N쪽 보기」는 견본 덱 전 쪽. tone = 견본을 보여 줄 톤
+ */
 export function CompanyThemePicker({ value, onChange, disabled, tone = "blue" }: { value: string; onChange: (id: string) => void; disabled?: boolean; tone?: string }) {
   const [view, setView] = useState<CompanyTheme | null>(null);
   return (
     <>
-      <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+      <div className="grid grid-cols-3 gap-3">
         {COMPANY_THEMES.map((t) => {
           const on = value === t.id;
           return (
             <div key={t.id} role="button" tabIndex={0} aria-pressed={on} onClick={() => !disabled && onChange(t.id)}
               onKeyDown={(e) => { if ((e.key === "Enter" || e.key === " ") && e.target === e.currentTarget && !disabled) { e.preventDefault(); onChange(t.id); } }}
               className={cn("group rounded-md border bg-white overflow-hidden text-left cursor-pointer flex flex-col transition-[border-color,box-shadow,background] duration-150", on ? "card-on" : "border-line hover:border-orange-line")}>
-              {/* 표지 크게(2×2 칸) + 오른쪽 2×2 + 아래 줄 4 — 빈 자리 없이(사용자 2026-10-16 배치 지시) */}
-              <div className="relative grid grid-cols-4 gap-1.5 p-2.5 bg-panel">
-                <img src={companyThumb(t.id, 1, tone)} alt={`${t.name} 표지`} loading="lazy" className="col-span-2 row-span-2 block w-full h-full object-cover rounded-[3px] border border-line-soft bg-white" />
-                {[5, 7, 8, 10, 11, 13, 14, 16].map((n) => <img key={n} src={companyThumb(t.id, n, tone)} alt="" loading="lazy" className="block w-full aspect-video object-cover rounded-[3px] border border-line-soft bg-white" />)}
-                <span className="absolute left-4 bottom-4 whitespace-nowrap text-[12px] font-bold text-white rounded-md px-[7px] py-0.5 bg-[rgba(17,17,17,.72)]">테마 {t.id.toUpperCase()}</span>
-                {on && <span className="absolute right-3.5 top-3.5 w-[26px] h-[26px] rounded-full bg-orange text-white grid place-items-center shadow-[0_2px_6px_rgba(0,0,0,.35)]"><Ms name="check" size={18} style={{ fontWeight: 700 }} /></span>}
+              {/* 표지 크게(16:9) — 발표 장표 타입 카드와 같은 자리·배지·체크 */}
+              <div className="relative aspect-video w-full flex-none overflow-hidden bg-panel">
+                <img src={companyThumb(t.id, 1, tone)} alt={`${t.name} 표지`} loading="lazy" className="w-full h-full object-cover" />
+                <span className="absolute left-3 bottom-3 whitespace-nowrap text-[12px] font-bold text-white rounded-md px-[7px] py-0.5 bg-[rgba(17,17,17,.72)]">테마 {t.id.toUpperCase()}</span>
+                {on && <span className="absolute right-3 top-3 w-[26px] h-[26px] rounded-full bg-orange text-white grid place-items-center shadow-[0_2px_6px_rgba(0,0,0,.35)]"><Ms name="check" size={18} style={{ fontWeight: 700 }} /></span>}
                 <button type="button" title="견본 덱 전 쪽 보기" onClick={(e) => { e.stopPropagation(); setView(t); }}
-                  className="absolute right-3.5 bottom-3.5 h-7 pl-2 pr-2.5 rounded-md bg-white/95 text-[12.5px] font-semibold text-ink3 shadow-[0_1px_4px_rgba(17,17,17,.25)] inline-flex items-center gap-1 whitespace-nowrap opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity">
+                  className="absolute right-3 bottom-3 h-7 pl-2 pr-2.5 rounded-md bg-white/95 text-[12.5px] font-semibold text-ink3 shadow-[0_1px_4px_rgba(17,17,17,.25)] inline-flex items-center gap-1 whitespace-nowrap opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity">
                   <Ms name="zoom_in" size={17} />견본 {PAGES.length}쪽 보기
                 </button>
+              </div>
+              <div className="flex gap-1.5 px-3 pt-2.5">
+                {MINI_PAGES.map((n) => (
+                  <button key={n} type="button" title={`${PAGES[n - 1]} 크게 보기`} onClick={(e) => { e.stopPropagation(); setView(t); }}
+                    className="w-1/3 p-0 rounded-md overflow-hidden border border-line bg-panel hover:border-orange">
+                    <img src={companyThumb(t.id, n, tone)} alt="" loading="lazy" className="block w-full aspect-video object-cover" />
+                  </button>
+                ))}
               </div>
               <div className="px-3 pt-2.5 pb-3 flex flex-col gap-[3px]">
                 <div className={cn("font-bold", on ? "text-orange-d" : "text-ink")}>{t.name}</div>

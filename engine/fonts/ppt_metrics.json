@@ -1,0 +1,240 @@
+{
+ "G마켓 산스 TTF Bold": {
+  "asc": 0.837,
+  "lh": 1.197,
+  "k": 0.9,
+  "lhk": 1.0025,
+  "file": "GmarketSansTTFBold.ttf"
+ },
+ "Paperlogy 8 ExtraBold": {
+  "asc": 0.999,
+  "lh": 1.2015,
+  "k": 0.711,
+  "lhk": 0.9988,
+  "file": "Paperlogy-8ExtraBold.ttf"
+ },
+ "Hana2.0 B": {
+  "asc": 0.882,
+  "lh": 1.2015,
+  "k": 0.9,
+  "lhk": 0.9988,
+  "file": "pd_Hana2-Bold.ttf"
+ },
+ "MBC 1961 Medium": {
+  "asc": 0.8415,
+  "lh": 1.197,
+  "k": 0.9,
+  "lhk": 1.0025,
+  "file": "MBC1961-Medium.ttf"
+ },
+ "a시월구일1": {
+  "asc": 0.9585,
+  "lh": 1.2015,
+  "k": 0.783,
+  "lhk": 0.9988,
+  "file": "a시월구일1.ttf"
+ },
+ "a시월구일2": {
+  "asc": 0.9585,
+  "lh": 1.2015,
+  "k": 0.783,
+  "lhk": 0.9988,
+  "file": "a시월구일2.ttf"
+ },
+ "a시월구일3": {
+  "asc": 0.963,
+  "lh": 1.2015,
+  "k": 0.783,
+  "lhk": 0.9988,
+  "file": "a시월구일3.ttf"
+ },
+ "a시월구일4": {
+  "asc": 0.963,
+  "lh": 1.2015,
+  "k": 0.783,
+  "lhk": 0.9988,
+  "file": "a시월구일4.ttf"
+ },
+ "Pretendard ExtraLight": {
+  "asc": 0.9585,
+  "lh": 1.197,
+  "k": 0.783,
+  "lhk": 1.0025,
+  "file": "pd_Pretendard-ExtraLight.ttf"
+ },
+ "Pretendard": {
+  "asc": 0.963,
+  "lh": 1.197,
+  "k": 0.783,
+  "lhk": 1.0025,
+  "file": "pd_Pretendard-Regular.ttf"
+ },
+ "Pretendard SemiBold": {
+  "asc": 0.9585,
+  "lh": 1.197,
+  "k": 0.783,
+  "lhk": 1.0025,
+  "file": "pd_Pretendard-SemiBold.ttf"
+ },
+ "Pretendard ExtraBold": {
+  "asc": 0.963,
+  "lh": 1.197,
+  "k": 0.783,
+  "lhk": 1.0025,
+  "file": "pd_Pretendard-ExtraBold.ttf"
+ },
+ "Wanted Sans": {
+  "asc": 0.9585,
+  "lh": 1.197,
+  "k": 0.783,
+  "lhk": 1.0025,
+  "file": "WantedSans-Regular.ttf"
+ },
+ "Wanted Sans Medium": {
+  "asc": 0.9585,
+  "lh": 1.197,
+  "k": 0.783,
+  "lhk": 1.0025,
+  "file": "WantedSans-Medium.ttf"
+ },
+ "Wanted Sans SemiBold": {
+  "asc": 0.9585,
+  "lh": 1.197,
+  "k": 0.783,
+  "lhk": 1.0025,
+  "file": "WantedSans-SemiBold.ttf"
+ },
+ "Wanted Sans ExtraBold": {
+  "asc": 0.963,
+  "lh": 1.197,
+  "k": 0.783,
+  "lhk": 1.0025,
+  "file": "WantedSans-ExtraBold.ttf"
+ },
+ "A2Z 2 ExtraLight": {
+  "asc": 0.9765,
+  "lh": 1.2015,
+  "k": 0.747,
+  "lhk": 0.9988,
+  "file": "A2Z-2ExtraLight.ttf"
+ },
+ "A2Z 4 Regular": {
+  "asc": 0.9765,
+  "lh": 1.2015,
+  "k": 0.747,
+  "lhk": 0.9988,
+  "file": "A2Z-4Regular.ttf"
+ },
+ "A2Z 6 SemiBold": {
+  "asc": 0.9765,
+  "lh": 1.2015,
+  "k": 0.747,
+  "lhk": 0.9988,
+  "file": "A2Z-6SemiBold.ttf"
+ },
+ "A2Z 7 Bold": {
+  "asc": 0.9765,
+  "lh": 1.2015,
+  "k": 0.747,
+  "lhk": 0.9988,
+  "file": "A2Z-7Bold.ttf"
+ },
+ "Asta Sans Light": {
+  "asc": 0.963,
+  "lh": 1.197,
+  "k": 0.783,
+  "lhk": 1.0025,
+  "file": "AstaSans-Light.ttf"
+ },
+ "Asta Sans Medium": {
+  "asc": 0.963,
+  "lh": 1.197,
+  "k": 0.783,
+  "lhk": 1.0025,
+  "file": "AstaSans-Medium.ttf"
+ },
+ "Asta Sans SemiBold": {
+  "asc": 0.963,
+  "lh": 1.197,
+  "k": 0.783,
+  "lhk": 1.0025,
+  "file": "AstaSans-SemiBold.ttf"
+ },
+ "Asta Sans ExtraBold": {
+  "asc": 0.963,
+  "lh": 1.197,
+  "k": 0.783,
+  "lhk": 1.0025,
+  "file": "AstaSans-ExtraBold.ttf"
+ },
+ "맑은 고딕": {
+  "asc": 0.981,
+  "lh": 1.2015,
+  "k": 0.738,
+  "lhk": 0.9988,
+  "file": "malgun_0.ttf"
+ },
+ "Pretendard Black": {
+  "asc": 0.963,
+  "lh": 1.197,
+  "k": 0.783,
+  "lhk": 1.0025,
+  "file": "pd_Pretendard-Black.ttf"
+ },
+ "Noto Sans JP Light": {
+  "asc": 0.9675,
+  "lh": 1.197,
+  "k": 0.774,
+  "lhk": 1.0025,
+  "file": "NotoSansJP-Light.ttf"
+ },
+ "Noto Sans JP": {
+  "asc": 0.963,
+  "lh": 1.197,
+  "k": 0.774,
+  "lhk": 1.0025,
+  "file": "NotoSansJP-Regular.ttf"
+ },
+ "Noto Sans JP SemiBold": {
+  "asc": 0.9675,
+  "lh": 1.197,
+  "k": 0.774,
+  "lhk": 1.0025,
+  "file": "NotoSansJP-SemiBold.ttf"
+ },
+ "Noto Sans JP Black": {
+  "asc": 0.963,
+  "lh": 1.197,
+  "k": 0.774,
+  "lhk": 1.0025,
+  "file": "NotoSansJP-Black.ttf"
+ },
+ "Noto Sans SC Light": {
+  "asc": 0.9675,
+  "lh": 1.197,
+  "k": 0.774,
+  "lhk": 1.0025,
+  "file": "NotoSansSC-Light.ttf"
+ },
+ "Noto Sans SC": {
+  "asc": 0.963,
+  "lh": 1.197,
+  "k": 0.774,
+  "lhk": 1.0025,
+  "file": "NotoSansSC-Regular.ttf"
+ },
+ "Noto Sans SC SemiBold": {
+  "asc": 0.9675,
+  "lh": 1.197,
+  "k": 0.774,
+  "lhk": 1.0025,
+  "file": "NotoSansSC-SemiBold.ttf"
+ },
+ "Noto Sans SC Black": {
+  "asc": 0.9675,
+  "lh": 1.197,
+  "k": 0.774,
+  "lhk": 1.0025,
+  "file": "NotoSansSC-Black.ttf"
+ }
+}

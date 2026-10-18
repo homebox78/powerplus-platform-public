@@ -34,6 +34,17 @@ const SETS = {
   climate: { cat: "photo", prefix: "climate-", set: "photo-keyvisual-climate", style: "keyvisual-climate-cinematic", ko: ["키비주얼", "히어로", "메인비주얼", "배경", "기후위기", "기후변화", "이상기후", "기후적응", "탄소중립", "환경", "AI이미지"], en: ["key visual", "hero", "background", "climate crisis", "climate change", "extreme weather", "climate adaptation"] },
   // 제안서 장(章) 배경(인사말·목차·회사소개·비전·Q&A·맺음말 A/B, 밝은 실사·왼쪽 글자 자리) — set:"section"
   section: { cat: "photo", set: "photo-section-keyvisual", style: "section-keyvisual-bright", ko: ["키비주얼", "배경", "섹션배경", "장표배경", "간지", "제안서", "발표자료", "AI이미지"], en: ["key visual", "background", "section background", "slide background", "proposal"] },
+  // 2026-10-18 12차 실사 묶음(드롭 2,712장 → 뷰티·쓰임 없음·중복 장면·결함 뺀 1,860장) — 주제별 세트 10개, 파일·키 접두 p1018-
+  "p-office": { cat: "photo", prefix: "p1018-", set: "photo-biz-office", style: "photo-biz-office", ko: ["사진", "실사", "오피스", "업무", "비즈니스", "직장", "AI이미지"], en: ["photo", "office", "business", "work"] },
+  "p-portrait": { cat: "photo", prefix: "p1018-", set: "photo-biz-portrait", style: "photo-biz-portrait", ko: ["사진", "실사", "인물", "포트레이트", "모델", "AI이미지"], en: ["photo", "portrait", "person", "model"] },
+  "p-field": { cat: "photo", prefix: "p1018-", set: "photo-industry-field", style: "photo-industry-field", ko: ["사진", "실사", "산업", "현장", "작업자", "제조", "AI이미지"], en: ["photo", "industry", "field", "worker", "manufacturing"] },
+  "p-finance": { cat: "photo", prefix: "p1018-", set: "photo-finance-law", style: "photo-finance-law", ko: ["사진", "실사", "금융", "경제", "법률", "계약", "AI이미지"], en: ["photo", "finance", "economy", "law", "contract"] },
+  "p-tech": { cat: "photo", prefix: "p1018-", set: "photo-tech-digital", style: "photo-tech-digital", ko: ["사진", "실사", "IT", "디지털", "기술", "데이터", "AI이미지"], en: ["photo", "it", "digital", "technology", "data"] },
+  "p-city": { cat: "photo", prefix: "p1018-", set: "photo-city-infra", style: "photo-city-infra", ko: ["사진", "실사", "도시", "인프라", "교통", "건축", "AI이미지"], en: ["photo", "city", "infrastructure", "transport", "architecture"] },
+  "p-life": { cat: "photo", prefix: "p1018-", set: "photo-life-welfare", style: "photo-life-welfare", ko: ["사진", "실사", "생활", "복지", "가족", "시민", "AI이미지"], en: ["photo", "lifestyle", "welfare", "family", "citizen"] },
+  "p-edu": { cat: "photo", prefix: "p1018-", set: "photo-education", style: "photo-education", ko: ["사진", "실사", "교육", "학교", "학습", "AI이미지"], en: ["photo", "education", "school", "learning"] },
+  "p-health": { cat: "photo", prefix: "p1018-", set: "photo-health-safety", style: "photo-health-safety", ko: ["사진", "실사", "의료", "보건", "안전", "재난", "AI이미지"], en: ["photo", "medical", "health", "safety", "disaster"] },
+  "p-char3d": { cat: "illust", prefix: "p1018-", set: "illust-3d-character", style: "illust-3d-character", ko: ["3D", "캐릭터", "클레이", "인물", "렌더", "AI이미지"], en: ["3d", "character", "clay", "render"] },
   illust: { set: "illust-doc-concept", style: "doc-concept-render", ko: ["일러스트", "개념이미지", "3D"], en: ["illustration", "concept", "3d render"] },
   // 홈페이지 목업 장면(2026-10-15 시안 10곳 시험에서 모자란 자리) — set:"mock". 태그 json 의 kind(hero-city·sub-visual·news-thumb…)·target(univ·school…)이
   // 목업 샘플 풀(MockSamples)에 들어가는 열쇠다. kind 가 없으면 시안에 안 나온다.

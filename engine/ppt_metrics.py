@@ -32,6 +32,13 @@ def faces():
     return list(dict.fromkeys(out + list(fontset.ASTA) + ["맑은 고딕"]))
 
 
+def txt_for(face):
+    """재는 글 — 한글이 없는 서체(Noto Sans JP·SC, 2026-10-18 언어별 서체)는 한자로. 없는 글자를 PowerPoint 가 다른 서체로 그리면 줄 높이가 그 서체 것이 된다"""
+    import fontcover
+    path = fontset.INSTALLED.get(face.lower())
+    return "漢字体 Ag1" if path and ord("가") not in fontcover.cmap(path) else TXT
+
+
 def box(slide, face, spc, top_in):
     tb = slide.shapes.add_textbox(Inches(0.5), Inches(top_in), Inches(9), Inches(2.2))
     tf = tb.text_frame
@@ -51,7 +58,7 @@ def box(slide, face, spc, top_in):
         p.space_before = Pt(0)
         p.space_after = Pt(0)
         r = p.add_run()
-        r.text = TXT
+        r.text = txt_for(face)
         r.font.size = Pt(PT)
         rpr = r._r.get_or_add_rPr()
         for tag in ("a:latin", "a:ea", "a:cs"):
@@ -100,7 +107,7 @@ def main():
             continue
         im = Image.open(os.path.join(tmp, f"m{i:02d}.png")).convert("L")
         font = ImageFont.truetype(path, int(round(PT * K)))
-        btop = font.getbbox(TXT, anchor="ls")[1]   # 기준선 위 잉크 끝(음수 px)
+        btop = font.getbbox(txt_for(f), anchor="ls")[1]   # 기준선 위 잉크 끝(음수 px)
         m = {}
         for spc, top_in in zip(SPC, (0.5, 3.5)):
             y0 = int(top_in * 72 * K)

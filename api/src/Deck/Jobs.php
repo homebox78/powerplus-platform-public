@@ -176,6 +176,41 @@ final class Jobs
     public static function export(string $id, string $email, bool $admin): void
     {
         $j = self::own($id, $email, $admin);
+        $zip = self::exportZip($j);
+        if ($zip === null) Legacy::fail('내려받을 산출물이 아직 없습니다.', 404);
+        self::sendTemp($zip[0], $zip[1], 'application/zip');
+    }
+
+    /** 내려받기 파일 이름 — 작업 제목 + 꼬리(경로 문자는 _). 다운로드 링크(Links)도 같은 이름을 쓴다 */
+    public static function downloadName(array $j, string $suffix): string
+    {
+        return preg_replace('/[\\\\\/:*?"<>|]/', '_', (string) $j['title']) . $suffix;
+    }
+
+    /** 만든 임시 파일을 내려주고 지운다(산출물 묶음·서체 묶음 공용) */
+    public static function sendTemp(string $tmp, string $name, string $type): void
+    {
+        header('Content-Type: ' . $type);
+        header('Content-Length: ' . filesize($tmp));
+        header("Content-Disposition: attachment; filename*=UTF-8''" . rawurlencode($name));
+        readfile($tmp);
+        @unlink($tmp);
+    }
+
+    /** 지금 결과 장표(pptx) 파일 하나 — [서버 경로, 사용자에게 보일 이름]. 없으면 null. 여럿이면 가장 최근에 올라온 것(다시 돌린 결과) */
+    public static function resultFile(array $j): ?array
+    {
+        $fs = array_values(array_filter(glob(self::dir((string) $j['id'], 'result') . '/*.pptx') ?: [], 'is_file'));
+        if (!$fs) return null;
+        usort($fs, static fn (string $a, string $b): int => filemtime($b) <=> filemtime($a));
+        $name = (string) (($j['result_name'] ?? '') ?: self::downloadName($j, '.pptx'));
+        return [$fs[0], basename(str_replace('\\', '/', $name))];
+    }
+
+    /** 산출물 전체 zip 을 임시 파일로 만든다 — [임시 경로, 받을 이름]. 넣을 것이 없으면 null(다운로드 링크와 /export.zip 이 같이 쓴다) */
+    public static function exportZip(array $j): ?array
+    {
+        $id = (string) $j['id'];
         if (!class_exists('ZipArchive')) Legacy::fail('서버에 zip 기능이 없습니다. 파일을 하나씩 받아 주세요.', 501);
         $tmp = tempnam(sys_get_temp_dir(), 'pdx');
         $z = new ZipArchive();
@@ -188,19 +223,46 @@ final class Jobs
         if ($md !== '') { $z->addFromString('2_기획·문서/기획.md', $md); $n++; }
         $add(self::dir($id, 'mockup') . '/context.md', '2_기획·문서/사업 요약.md');
         $add(self::dir($id, 'mockup') . '/plan.json', '2_기획·문서/plan.json');
-        foreach (glob(self::dir($id, 'extra') . '/*') ?: [] as $f) $add($f, (preg_match('/\.(ttf|otf|ttc)$/i', $f) ? '5_서체/' : '2_기획·문서/') . basename($f));
+        foreach (glob(self::dir($id, 'extra') . '/*') ?: [] as $f) $add($f, (self::isFontFile(basename($f)) ? '5_서체/' : '2_기획·문서/') . basename($f));   // 서체·라이선스·설치 안내는 한 폴더(R82)
         foreach (glob(self::dir($id, 'mockup') . '/s[0-9][0-9].jpg') ?: [] as $f) $add($f, '3_시안/' . basename($f));
         foreach (array_merge(glob(self::dir($id, 'mockup') . '/cover.jpg') ?: [], glob(self::dir($id, 'mockup') . '/toc.jpg') ?: [], glob(self::dir($id, 'mockup') . '/div[0-9]*.jpg') ?: []) as $f) $add($f, '3_시안/0_' . basename($f));
         foreach (glob(self::dir($id, 'after') . '/*.jpg') ?: [] as $f) $add($f, '4_결과 렌더/' . basename($f));
         if (($sh = Script::html($j)) !== '') { $z->addFromString('6_발표 대본/1_발표 대본(들고 갈 것).html', $sh); $z->addFromString('6_발표 대본/2_발표 연습(노래방식).html', Script::practice($j)); $z->addFromString('6_발표 대본/발표 대본.md', Script::md($j)); $n += 3; }
         if (($j['source_kind'] ?? '') === 'pptx') $add(self::dir($id, 'source') . '/source.pptx', '0_원본/' . $j['filename']);
         $z->close();
-        if ($n === 0) { @unlink($tmp); Legacy::fail('내려받을 산출물이 아직 없습니다.', 404); }
-        header('Content-Type: application/zip');
-        header('Content-Length: ' . filesize($tmp));
-        header("Content-Disposition: attachment; filename*=UTF-8''" . rawurlencode(preg_replace('/[\\\\\/:*?"<>|]/', '_', (string) $j['title']) . '_산출물.zip'));
-        readfile($tmp);
-        @unlink($tmp);
+        if ($n === 0) { @unlink($tmp); return null; }
+        return [$tmp, self::downloadName($j, '_산출물.zip')];
+    }
+
+    /** 산출물(extra) 중 서체 묶음에 드는 파일 — 서체 파일 + 엔진 fontbundle 이 쓰는 서체_라이선스·서체_설치안내·배포처 라이선스 문서(R82) */
+    public static function isFontFile(string $name): bool
+    {
+        return (bool) preg_match('/\.(ttf|otf|ttc)$/i', $name)
+            || (bool) preg_match('/^(서체_라이선스|서체_설치안내)\.txt$|-(OFL|COPYRIGHT)\.txt$|-license\.(txt|pdf)$/iu', $name);
+    }
+
+    /** 이 장표에 쓰인 서체만 zip 한 개로(서체 + 라이선스 + 설치 안내) — 결과 pptx 를 따로 받은 사람이 서체만 받게(사용자 2026-10-18 다국어 서체 동봉) */
+    public static function exportFonts(string $id, string $email, bool $admin): void
+    {
+        $j = self::own($id, $email, $admin);
+        $zip = self::fontsZip($j);
+        if ($zip === null) Legacy::fail('이 장표에 함께 넣은 서체가 없습니다.', 404);
+        self::sendTemp($zip[0], $zip[1], 'application/zip');
+    }
+
+    /** 서체 묶음 zip 을 임시 파일로 — [임시 경로, 받을 이름]. 서체가 없으면 null(다운로드 링크와 /fonts.zip 공용) */
+    public static function fontsZip(array $j): ?array
+    {
+        $id = (string) $j['id'];
+        $files = array_values(array_filter(glob(self::dir($id, 'extra') . '/*') ?: [], static fn (string $f): bool => is_file($f) && self::isFontFile(basename($f))));
+        if (!array_filter($files, static fn (string $f): bool => (bool) preg_match('/\.(ttf|otf|ttc)$/i', $f))) return null;
+        if (!class_exists('ZipArchive')) Legacy::fail('서버에 zip 기능이 없습니다. 서체 파일을 하나씩 받아 주세요.', 501);
+        $tmp = tempnam(sys_get_temp_dir(), 'pdf');
+        $z = new ZipArchive();
+        if ($z->open($tmp, ZipArchive::OVERWRITE) !== true) Legacy::fail('묶음 파일을 만들지 못했습니다.', 500);
+        foreach ($files as $f) $z->addFile($f, '서체/' . basename($f));
+        $z->close();
+        return [$tmp, self::downloadName($j, '_서체.zip')];
     }
 
     /* ───────────── 맥락 자료 (RFP·과업지시서·평가기준·회사소개 등) ─────────────
@@ -1021,6 +1083,7 @@ final class Jobs
         if ($j['status'] === 'running') Legacy::fail('진행 중인 작업은 먼저 취소한 뒤 지울 수 있습니다.', 409);
         $pdo = Db::pdo();
         foreach (['deck_job_files', 'deck_job_events'] as $t) $pdo->prepare("DELETE FROM $t WHERE job_id = :i")->execute([':i' => $id]);
+        Links::dropForJob($id);   // 받기 링크(0044) — 남아도 작업이 없으면 404 지만 같이 지운다
         $pdo->prepare('DELETE FROM deck_jobs WHERE id = :i')->execute([':i' => $id]);
         $root = Legacy::dataDir() . '/jobs/' . $id;
         if (preg_match('/^[0-9a-f]{16}$/', $id) && is_dir($root)) {
@@ -1223,7 +1286,7 @@ final class Jobs
         self::mine($id, $worker);
         if (!in_array($kind, self::KINDS, true) || $kind === 'source') Legacy::fail('잘못된 파일 종류');
         $name = basename($name);
-        if ($name === '' || !preg_match('/\.(png|jpg|jpeg|pptx|json|md|txt' . ($kind === 'extra' ? '|ttf|otf|ttc' : '') . ')$/i', $name)) Legacy::fail('허용하지 않는 파일 형식');
+        if ($name === '' || !preg_match('/\.(png|jpg|jpeg|pptx|json|md|txt' . ($kind === 'extra' ? '|ttf|otf|ttc|pdf' : '') . ')$/i', $name)) Legacy::fail('허용하지 않는 파일 형식');
         $p = self::dir($id, $kind) . '/' . $name;
         $in = fopen('php://input', 'rb');
         $out = fopen($p . '.part', 'wb');

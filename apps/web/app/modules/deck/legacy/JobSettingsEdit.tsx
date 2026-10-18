@@ -3,7 +3,7 @@ import { useState } from "react";
 import { api, type Job } from "./api";
 import { cn, Modal, Ms, SecTitle, toast } from "./ui";
 import { DesignTypePicker } from "./DesignTypes";
-import { FontPicker, BODY_FONTS, TITLE_FONTS } from "./FontPicker";
+import { FontPicker, BODY_FONTS, TITLE_FONTS, fitFont } from "./FontPicker";
 
 /** 강조색 고르기 — 새 변환(Upload.tsx)과 같은 색 */
 const ACCENTS: [string, string][] = [
@@ -18,8 +18,9 @@ const ACCENTS: [string, string][] = [
 export function JobSettingsEdit({ job, onClose, onSaved }: { job: Job; onClose: () => void; onSaved: (j: Job) => void }) {
   const o = job.opts;
   const [style, setStyle] = useState(o?.style || "a");
-  const [ft, setFt] = useState(o?.font_title || TITLE_FONTS[0]?.id || "");
-  const [fb, setFb] = useState(o?.font_body || BODY_FONTS[0]?.id || "");
+  const lang = o?.lang || "ko";   // 장표 언어 — 그 언어 글자가 없는 서체는 못 고른다(R82). 옛 값이 안 맞으면 그 언어 기본 서체로 보여 준다
+  const [ft, setFt] = useState(fitFont("title", o?.font_title || TITLE_FONTS[0]?.id || "", lang));
+  const [fb, setFb] = useState(fitFont("body", o?.font_body || BODY_FONTS[0]?.id || "", lang));
   const [accent, setAccent] = useState((job.theme || "#1866DA").slice(0, 7).toUpperCase());
   const [busy, setBusy] = useState(false);
   const ok = /^#[0-9A-F]{6}$/.test(accent);
@@ -48,7 +49,7 @@ export function JobSettingsEdit({ job, onClose, onSaved }: { job: Job; onClose: 
           <SecTitle icon="palette" title="디자인 타입" desc="시안 이미지 · 머리 띠 · 표지 · 목차 · 간지가 모두 이 타입으로 만들어집니다" />
           <DesignTypePicker value={style} onChange={setStyle} disabled={busy} />
         </section>
-        <FontPicker title={ft} body={fb} onTitle={setFt} onBody={setFb} disabled={busy} />
+        <FontPicker title={ft} body={fb} onTitle={setFt} onBody={setFb} disabled={busy} lang={lang} />
         <section className="flex flex-col gap-3">
           <SecTitle icon="format_color_fill" title="강조색" desc="제목의 핵심 단어와 강조 표시에 쓰는 색" />
           <div className="flex items-center gap-2.5 flex-wrap">

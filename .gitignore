@@ -26,4 +26,7 @@ engine/config.json
 engine/config.json.*
 __pycache__/
 services/mockref-api/config.php
-engine/fonts/
+engine/fonts/*
+!engine/fonts/fonts.json
+!engine/fonts/font_cover.json
+!engine/fonts/ppt_metrics.json

@@ -5,7 +5,7 @@
 본문 규칙(공용디자인가이드 §2 서체): 1 옅은 설명 · 2 본문 · 3 강조·소제목 · 4 굵은 제목·띠·표 머리·숫자.
 굵기는 bold 속성이 아니라 서체 이름으로 가른다(굵기마다 서체가 따로다).
 a시월구일(회사 서체)이 이 PC 에 없으면 같은 굵기의 Asta Sans(오픈 소스)로 대신한다. 서체 파일은 worker/fonts — 출처·라이선스는 fonts/licenses/README.md"""
-import json, os
+import json, os, re
 import osdep
 
 # 목록은 fonts/fonts.json(웹의 서체 고르기도 같은 파일을 읽는다) — 첫 줄이 기본
@@ -53,9 +53,134 @@ KEY_BOLD = TITLE_BOLD.get(TITLE_ID, False)   # 제목 서체를 입힐 때 굵�
 KEY_SCALE = TITLE_SCALE.get(TITLE_ID, 1.0)
 
 
-def env(title, body):
-    """하위 도구에 넘길 환경변수"""
-    return dict(os.environ, PD_FONT_TITLE=title or DEFAULT_TITLE, PD_FONT_BODY=body or DEFAULT_BODY)
+# ───────────────────────── 언어별 서체(2026-10-18 사용자 "니 추천대로"·"다른 언어도 마찬가지")
+# 장표 언어가 고른 서체에 없는 글자를 쓰면(일본어 + G마켓 산스 → 가나가 빈칸) 그 언어 기본 서체로 바꾼다. 판단은 여기 하나 —
+# 기획·시안 그림(design)·와이어·앞장(frontdraw·frontmatter)·장표 제작 지시·마무리(finalize)·세로 제안서·회사소개서가 모두 이 결과를 쓴다.
+# 지원율 표 = fonts/font_cover.json(fontcover.py 가 서체 파일 cmap 으로 잰 값). 실제 글(기획)의 글자도 서체 파일에서 하나하나 찾는다.
+import fontcover
+
+LANG_DEFAULT = _LIST.get("lang_default") or {}
+AVOID = {(k, x["id"]): x.get("avoid") or {} for k in ("title", "body") for x in _LIST[k]}
+try:
+    COVER = json.load(open(os.path.join(HERE, "fonts", "font_cover.json"), encoding="utf-8"))
+except (OSError, ValueError):
+    COVER = {}
+MIN_COVER = float(COVER.get("min") or fontcover.MIN)
+
+
+def lang_ok(code):
+    return code if code in fontcover.LANG_TAG else "ko"
+
+
+def cover(kind, fid, lang):
+    """서체(kind=title|body, id)의 그 언어 지원율(%). 표에 없으면(새 서체를 표 갱신 전에 넣음) 파일로 바로 잰다"""
+    v = ((COVER.get(kind) or {}).get(fid) or {}).get(lang)
+    if v is None:
+        v = fontcover.cover_files(_paths(kind, fid)).get(lang, {}).get("pct", 0.0)
+    return float(v)
+
+
+def _paths(kind, fid):
+    if kind == "title":
+        return [os.path.join(HERE, "fonts", TITLES[fid][2])] if fid in TITLES else []
+    fs = BODIES[fid][2] if fid in BODIES else None
+    return [os.path.join(HERE, "fonts", f) for f in fs] if fs else []
+
+
+def _name(kind, fid):
+    return (TITLES if kind == "title" else BODIES).get(fid, ("",))[0]
+
+
+def _josa(word, pair):
+    """받침에 맞는 조사 — pair = ('은', '는') 또는 ('으로', '로'). 한글이 아니면 받침 없음으로 본다"""
+    c = (word or " ")[-1]
+    jong = (ord(c) - 0xAC00) % 28 if 0xAC00 <= ord(c) <= 0xD7A3 else 0
+    if pair[1] == "로" and jong == 8:   # ㄹ 받침 + 로
+        return word + "로"
+    return word + (pair[0] if jong else pair[1])
+
+
+def usable(kind, fid, lang, text=""):
+    """(쓸 수 있나, 이유) — 지원율 MIN_COVER% 이상 · avoid 아님 · 실제 글자 전부 있음"""
+    lang = lang_ok(lang)
+    ln = fontcover.LANG_NAME[lang]
+    why = AVOID.get((kind, fid), {}).get(lang)
+    if why:
+        return False, f"{ln}에 맞지 않는 서체({why})"
+    pc = cover(kind, fid, lang)
+    if pc < MIN_COVER:
+        return False, f"{ln} 글자가 없는 서체(지원율 {pc:g}%)"
+    lack = fontcover.missing(_paths(kind, fid), text, lang) if text else ""
+    if lack:
+        return False, f"글에 쓴 '{lack[:12]}{'…' if len(lack) > 12 else ''}' 글자가 없는 서체"
+    return True, ""
+
+
+def for_lang(title=None, body=None, lang="ko", text=""):
+    """장표 언어·글에 맞는 (제목 id, 본문 id, 알림 목록). 고른 서체가 맞으면 그대로(한국어 + G마켓 산스는 그대로),
+    아니면 그 언어 기본 서체(lang_default) → 같은 종류의 다른 서체(목록 순) 중 처음 맞는 것. 아무것도 맞지 않으면 고른 서체를 두고 빠진 글자를 알린다.
+    알림 예: '제목 서체 G마켓 산스는 일본어 글자가 없는 서체(지원율 0%)라 Noto Sans JP 로 바꿨습니다'"""
+    lang = lang_ok(lang)
+    notes, out = [], {}
+    for kind, given, table in (("title", title, TITLES), ("body", body, BODIES)):
+        dflt = (LANG_DEFAULT.get(lang) or {}).get(kind)
+        dflt = dflt if dflt in table else (DEFAULT_TITLE if kind == "title" else DEFAULT_BODY)
+        cur = given if given in table else dflt   # 안 골랐거나 모르는 값 — 그 언어 기본
+        ok, why = usable(kind, cur, lang, text)
+        if ok:
+            out[kind] = cur
+            continue
+        pick_ = next((c for c in dict.fromkeys([dflt] + list(table)) if c != cur and usable(kind, c, lang, text)[0]), None)
+        label = "제목" if kind == "title" else "본문"
+        if pick_:
+            out[kind] = pick_
+            notes.append(f"{label} 서체 {_josa(_name(kind, cur), ('은', '는'))} {why}라 {_josa(_name(kind, pick_), ('으로', '로'))} 바꿨습니다")
+        else:
+            out[kind] = cur
+            lack = fontcover.missing(_paths(kind, cur), text, lang)
+            notes.append(f"{label} 서체 {_name(kind, cur)}에 없는 글자 '{lack[:20]}' — 맞는 서체가 없어 그대로 두었습니다(PowerPoint 가 다른 서체로 그립니다)")
+    return out["title"], out["body"], notes
+
+
+def text_of(plan):
+    """기획(dict·list·문자열)에 든 글 전부 — 서체 글자 검사용"""
+    if isinstance(plan, str):
+        try:
+            plan = json.loads(plan)
+        except ValueError:
+            return plan
+    acc = []
+
+    def walk(v):
+        if isinstance(v, str):
+            acc.append(v)
+        elif isinstance(v, dict):
+            for x in v.values():
+                walk(x)
+        elif isinstance(v, (list, tuple)):
+            for x in v:
+                walk(x)
+    walk(plan)
+    return "\n".join(acc)
+
+
+LANG = lang_ok(os.environ.get("PD_LANG") or "ko")
+LANG_TAG = fontcover.LANG_TAG[LANG]   # pptx 글 런의 lang 속성(ja-JP·zh-CN …) — 마무리가 넣는다
+
+
+def face_usable(face, lang=None):
+    """pptx 에 적힌 제목 서체 이름이 장표 언어에 쓸 수 있는가(모르는 서체는 True). G마켓 산스 굵기 이름들은 G마켓 산스로 본다"""
+    fid = next((k for k, v in TITLES.items() if v[1] == face), None)
+    if fid is None and re.match(r"^(G마켓|Gmarket)", face or "", re.I):
+        fid = "gmarket" if "gmarket" in TITLES else None
+    return True if fid is None else usable("title", fid, lang or LANG)[0]
+
+
+def env(title, body, lang=None, text=""):
+    """하위 도구에 넘길 환경변수 — lang 을 주면 그 언어·글에 맞게 고친 서체를 넘긴다(for_lang)"""
+    if lang:
+        title, body, _ = for_lang(title, body, lang, text)
+    return dict(os.environ, PD_FONT_TITLE=title or DEFAULT_TITLE, PD_FONT_BODY=body or DEFAULT_BODY, PD_LANG=lang_ok(lang or "ko"))
 
 
 def face(level):

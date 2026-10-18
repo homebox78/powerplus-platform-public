@@ -46,6 +46,8 @@ final class Router
         // 시안 <img> 용 샘플 그림 — 핸들러(MockSamples::sendFile)가 샘플 라이브러리 행·서명 맞는 Pro 후보만 내준다.
         // 2026-10-16 회원 전용 전환 때 빠져 공개 시안(/p)·판정 렌더에서 그림이 전부 401 로 깨졌다(2026-10-18 운영 시험에서 발견, R71)
         '/assets/samples/',
+        // powerDeck 완성 산출물 받기 링크 — 토큰(32바이트, 해시 대조)이 곧 권한. 핸들러(Deck\Links::download)가 만료·끊김·작업 삭제를 같은 404 로 거른다(2026-10-18)
+        '/d/',
     ];
 
     public static function isOpen(string $method, string $path): bool

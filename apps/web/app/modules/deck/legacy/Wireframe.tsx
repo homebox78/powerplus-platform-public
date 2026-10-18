@@ -8,7 +8,7 @@ import { KindView, fitBig } from "./WireSketch";
 
 /** 미리 만들어 둔 배치 틀 — 서버(api/src/WireLayout.php)가 같은 파일로 좌표를 계산한다 */
 type TplCell = { span?: number; h?: number; k?: string; stack?: TplCell[] };
-type Tpl = { id: string; name: string; desc: string; rows: { h: number; cols: TplCell[] }[] };
+type Tpl = { id: string; name: string; desc: string; arrows?: boolean; rel?: string; rows: { h: number; cols: TplCell[] }[] };
 const TEMPLATES = (tplData as unknown as { templates: Tpl[] }).templates;
 
 /**
@@ -492,7 +492,7 @@ export function WireCanvas({ blocks, title, onTitle, onKeyword, keyword, section
 /** 배치 틀 미리보기 — 줄(h 비중) · 칸(span) · 쌓기를 그대로 작은 상자로. 그림 칸은 X, 결론 띠는 회색 */
 function TplThumb({ t }: { t: Tpl }) {
   const cell = (c: TplCell, key: number) => {
-    const visual = ["person", "image", "screen", "map", "chart", "flow"].includes(c.k ?? "");
+    const visual = KIND[c.k as WireKind]?.cls === "visual";   // 그림·도식 칸(종류 한 벌 cls) — 2차 16종(arch·stepcols…)도 X 자리로
     return (
       <span key={key} className="relative min-h-0 min-w-0 border border-[var(--color-ink-4)] rounded-[1px] overflow-hidden flex flex-col gap-[2px] p-[3px]"
         style={{ flex: `${c.h ?? 1} 1 0`, background: c.k === "band" ? "var(--color-line)" : "#fff", borderWidth: c.k === "badge" ? 1.5 : 1 }}>
@@ -512,8 +512,9 @@ function TplThumb({ t }: { t: Tpl }) {
           return (
             <span key={i} className="min-h-0 flex gap-[3px]" style={{ flex: band ? "0 0 9%" : `${row.h} 1 0` }}>
               {row.cols.map((c, j) => (
-                <span key={j} className="min-w-0 flex flex-col gap-[3px]" style={{ flex: `${c.span ?? 1} 1 0` }}>
+                <span key={j} className="relative min-w-0 flex flex-col gap-[3px]" style={{ flex: `${c.span ?? 1} 1 0` }}>
                   {(c.stack ?? [c]).map(cell)}
+                  {t.arrows && i === 0 && j < row.cols.length - 1 && <span className="absolute right-[-5px] top-1/2 -translate-y-1/2 z-10 text-[9px] leading-none text-[var(--color-ink-2)]">▶</span>}
                 </span>
               ))}
             </span>

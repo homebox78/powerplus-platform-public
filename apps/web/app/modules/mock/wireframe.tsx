@@ -25,13 +25,28 @@ import { cn } from "@/lib/utils";
 import { BrowserBar, SectionArt } from "./wire-art";
 
 // ---------------------------------------------------------------- 형
-interface WireCol { span: number; k: string; t?: string; h?: number }
+/** 칸 근거 — 같은 화면 × 기관 묶음 레퍼런스에서 이 섹션을 두는 비율(adopt %)·위치(pos %, 위에서)·폭·높이·표본 수(서버 Wire::evOf) */
+interface CellEv { adopt: number; pos?: number; span?: number; h?: number; n?: number; pair?: number; kit?: boolean }
+interface WireCol { span: number; k: string; t?: string; h?: number; ev?: CellEv }
 interface WireRow { id: string; zone: "top" | "body" | "bottom"; cols: WireCol[] }
-interface Wire { version?: number; screen: string; org: string; title?: string; lnb: boolean; rows: WireRow[] }
+interface Wire { version?: number; screen: string; org: string; title?: string; lnb: boolean; rows: WireRow[]; style?: string; variant?: number }
 interface WireIssue { sev: "error" | "warn" | "info"; code: string; row?: number; msg: string; fix: string }
-interface WireCheck { score: number; pass: boolean; issues: WireIssue[]; stats: { rows: number; cells: number; body_rows: number } }
+/** 레퍼런스 닮음 — 점수·통과와 무관한 참고(서버 Wire::fit) */
+interface WireFit { score: number | null; label: string; cells: number; uncommon: number; uncommon_share: number; uncommon_types: string[]; missing: string[]; n: number }
+interface WireCheck { score: number; pass: boolean; issues: WireIssue[]; stats: { rows: number; cells: number; body_rows: number }; fit?: WireFit | null }
+interface WireDist { pattern: string; n: number; label: string; lnb: number; items: ({ k: string; name: string } & CellEv)[]; ev: Record<string, CellEv> }
+interface WireRec { style: string; variant: number; label: string; why: string; fit: number | null; current: boolean; rows: { zone: WireRow["zone"]; cols: { k: string; span: number; h: number }[] }[] }
+interface WireBasis {
+  samples: number; note?: string; asked?: { add: string[]; remove: string[] }; pattern?: string;
+  style?: { asked?: string; used?: string; label?: string; variant?: number; variants?: number; note?: string | null };
+  org_fallback?: string; skipped?: string; merged?: string[]; fit?: WireFit | null; dist?: WireDist; recommended?: WireRec[];
+  refine?: { why?: string; changes?: string[] };
+}
 interface WireOptions { screens: { id: string; label: string; desc: string; samples: number }[]; orgs: { id: string; label: string }[]; styles?: { id: string; label: string; desc: string; main_only: boolean }[]; types: { k: string; name: string; scope: string; group?: string; kit?: boolean; h?: number }[] }
-interface GenResult { wire: Wire; check: WireCheck; source: "rule" | "ai"; note: string | null; basis: { samples: number; note: string; asked: { add: string[]; remove: string[] }; style?: { asked: string; used: string; label: string; variant: number; variants: number; note?: string | null } }; prompt: string }
+interface GenResult { wire: Wire; check: WireCheck; source: "rule" | "ai"; note: string | null; basis: WireBasis; prompt: string }
+/** 내용 보기 — 칸마다 예시 글(서버 WireContent::fill, 가상 기관) */
+interface ContentCol extends WireCol { s?: string; items?: string[]; img?: { kind: string; label: string }; label?: string }
+interface ContentWire { rows: { cols: ContentCol[] }[]; persona?: { org: string; kind: string; title: string } }
 interface SavedWire { id: string; title: string; screen: string; screen_label: string; org: string; score: number | null; pass: boolean; rows: number; source: string; updated_at: string }
 
 const ZONE_KO = { top: "위", body: "본문", bottom: "아래" } as const;
@@ -53,10 +68,30 @@ type WireDrag =
   | { kind: "height"; r: number; c: number; h: number };
 type Live = { kind: "row" | "cell" | "resize" | "height"; r: number; c: number; target: number | null; ind: { left: number; top: number; width: number; height: number } | null; ghost: { x: number; y: number; label: string } | null; span?: number; next?: number | null; h?: number };
 
-function WirePreview({ wire, names, device, sel, onSelect, onRow, onDrop }: {
+/** 내용 보기 칸 — 예시 제목·한 줄·항목·그림 종류. 칸 높이를 넘치는 것은 잘린다(미리보기는 축소본). */
+function ContentArt({ c, narrow }: { c: ContentCol; narrow: boolean }) {
+  return (
+    <span className="flex h-full flex-col gap-1 overflow-hidden px-2.5 pb-2 pt-1 text-left">
+      <span className="line-clamp-2 break-keep text-[13px] font-bold leading-snug text-ink">{c.t}</span>
+      {c.s && <span className="line-clamp-2 break-keep text-[11px] leading-snug text-ink-3">{c.s}</span>}
+      {c.items && c.items.length > 0 && (
+        <span className={cn("flex gap-x-2 gap-y-0.5 text-[11px] leading-snug text-ink-2", narrow ? "flex-col" : "flex-wrap")}>
+          {c.items.slice(0, narrow ? 3 : 6).map((x, i) => <span key={i} className="break-keep before:mr-1 before:text-ink-4 before:content-['·']">{x}</span>)}
+        </span>
+      )}
+      {c.img && <span className="mt-auto w-fit rounded-sm border border-dashed border-line-3 px-1.5 py-[1px] text-[10px] text-ink-4">그림: {c.img.label}</span>}
+    </span>
+  );
+}
+
+function WirePreview({ wire, names, device, sel, onSelect, onRow, onDrop, adoptOf, content }: {
   wire: Wire; names: Map<string, string>; device: "pc" | "mobile";
   sel: { r: number; c: number } | null; onSelect: (r: number, c: number) => void; onRow: (r: number, op: "up" | "down" | "del" | "split") => void;
   onDrop: (d: WireDrag) => void;
+  /** 칸 오른쪽 위 작은 채택률 표시(구조 보기) */
+  adoptOf?: (k: string) => number | null;
+  /** 내용 보기 — 있으면 칸 그림 대신 예시 글 */
+  content?: ContentWire | null;
 }) {
   const mobile = device === "mobile";
   const body = wire.rows.map((r, i) => ({ r, i })).filter((x) => x.r.zone === "body");
@@ -182,6 +217,9 @@ function WirePreview({ wire, names, device, sel, onSelect, onRow, onDrop }: {
           const dragging = live?.kind === "cell" && live.r === i && live.c === ci;
           const lh = live?.kind === "height" && live.r === i && live.c === ci;
           const hh = boxH(lh ? live.h : c.h);
+          const cc = content?.rows[i]?.cols[ci];
+          const shown = cc && cc.k === c.k ? cc : null;
+          const pct = !content && adoptOf ? adoptOf(c.k) : null;
           return (
             <button key={ci} type="button" data-wcell={ci}
               onClick={() => { if (moved.current) { moved.current = false; return; } onSelect(i, ci); }}
@@ -193,12 +231,19 @@ function WirePreview({ wire, names, device, sel, onSelect, onRow, onDrop }: {
                 dragging && "opacity-40",
                 on ? "outline-2 outline-offset-1 outline-ink" : "hover:shadow-[0_2px_10px_rgba(0,0,0,.12)]")}>
               <span className={cn("pointer-events-none absolute inset-x-0 bottom-0 block", hh >= 60 ? "top-[18px]" : "top-0")}>
-                <SectionArt k={c.k} span={mobile ? 12 : span} mobile={mobile} />
+                {shown ? <ContentArt c={shown} narrow={mobile || span <= 4} /> : <SectionArt k={c.k} span={mobile ? 12 : span} mobile={mobile} />}
               </span>
+              {/* 레퍼런스 채택률 — 오른쪽 위 작은 숫자(같은 화면 레퍼런스 중 이 섹션을 두는 비율) */}
+              {pct != null && hh >= 30 && (
+                <span title="같은 화면 레퍼런스 중 이 섹션을 두는 비율" className="pointer-events-none absolute right-1 top-1 rounded-sm bg-white/95 px-1 text-[10px] font-semibold leading-[16px] text-ink-4 ring-1 ring-line-3">
+                  {pct > 0 ? `${pct}%` : "드묾"}
+                </span>
+              )}
               {/* 칸 이름 — 와이어 표기처럼 왼쪽 위 작은 꼬리표 */}
-              <span className={cn("pointer-events-none absolute left-0 top-0 max-w-full truncate rounded-br-md px-1.5 py-[2px] text-[11px] font-semibold leading-tight",
+              <span className={cn("pointer-events-none absolute left-0 top-0 truncate rounded-br-md px-1.5 py-[2px] text-[11px] font-semibold leading-tight",
+                pct != null ? "max-w-[calc(100%-44px)]" : "max-w-full",
                 on ? "bg-ink text-white" : "bg-white/95 text-ink-3 ring-1 ring-line-3")}>
-                {names.get(c.k) ?? c.k}{c.t ? ` · ${c.t}` : ""}{!mobile && span < 12 ? ` · ${span}/12` : ""}
+                {names.get(c.k) ?? c.k}{c.t && !shown ? ` · ${c.t}` : ""}{!mobile && span < 12 ? ` · ${span}/12` : ""}
               </span>
               {/* 폭 조절 손잡이 — 오른쪽 끝, 12칸 격자에 붙는다 */}
               {!mobile && (
@@ -260,6 +305,128 @@ function WirePreview({ wire, names, device, sel, onSelect, onRow, onDrop }: {
   );
 }
 
+// ---------------------------------------------------------------- 근거(수집 레퍼런스 집계만 — 사이트 이름·캡처는 보이지 않는다, 기획 §20)
+
+/** 추천안 미리보기 — 줄·칸 상자만(높이는 레퍼런스 px 비율) */
+function WireThumb({ rows, height = 132 }: { rows: WireRec["rows"]; height?: number }) {
+  const hs = rows.map((r) => Math.max(...r.cols.map((c) => c.h || 200)));
+  const total = hs.reduce((a, b) => a + b, 0) || 1;
+  const gaps = (rows.length - 1) * 2;
+  const k = Math.max(0, height - gaps) / total;
+  return (
+    <span aria-hidden className="grid content-start gap-[2px] overflow-hidden" style={{ height }}>
+      {rows.map((r, i) => (
+        <span key={i} className="grid grid-cols-12 gap-[2px]">
+          {r.cols.map((c, j) => (
+            <span key={j} className={cn("block rounded-[1px]", r.zone === "body" ? "border border-ink-4/50 bg-white" : "bg-line-3")}
+              style={{ gridColumn: `span ${c.span} / span ${c.span}`, height: Math.max(3, Math.round(hs[i]! * k)) }} />
+          ))}
+        </span>
+      ))}
+    </span>
+  );
+}
+
+/** 추천 3안 — 평균·가장 많이 쓰는 실제 구성·기관에 맞는 원형. 누르면 그 안으로 다시 짠다. */
+function RecommendPicker({ recs, busy, onPick }: { recs: WireRec[]; busy: boolean; onPick: (r: WireRec) => void }) {
+  return (
+    <div className="grid gap-3 sm:grid-cols-3" role="group" aria-label="추천 구성">
+      {recs.map((r) => (
+        <button key={`${r.style}-${r.variant}`} type="button" disabled={busy} aria-pressed={r.current} onClick={() => !r.current && onPick(r)}
+          className={cn("grid content-start gap-2 rounded-card border bg-white p-3 text-left transition-shadow",
+            r.current ? "border-ink outline-1 outline-ink" : "border-line-3 hover:shadow-[0_2px_10px_rgba(0,0,0,.10)]")}>
+          <span className="flex items-center justify-between gap-2">
+            <span className="truncate text-sm font-bold">{r.label}</span>
+            {r.fit != null && <span title="레퍼런스 닮음(0~100)" className="shrink-0 text-xs font-semibold text-ink-4">닮음 {r.fit}</span>}
+          </span>
+          <span className="rounded-md border border-line-3 bg-ground-2 p-2"><WireThumb rows={r.rows} /></span>
+          <Copy className="text-xs leading-[1.5] text-ink-3" text={r.why} />
+        </button>
+      ))}
+    </div>
+  );
+}
+
+/** 막대 하나 — 채택률(%) */
+const AdoptBar = ({ pct, strong }: { pct: number; strong?: boolean }) => (
+  <span className="block h-2 w-full overflow-hidden rounded-full bg-ground-3">
+    <span className={cn("block h-full rounded-full", strong ? "bg-ink-2" : "bg-ink-4/50")} style={{ width: `${Math.max(2, Math.min(100, pct))}%` }} />
+  </span>
+);
+
+/** 이 칸의 근거 — 선택한 칸 종류가 같은 화면 레퍼런스에서 얼마나·어디에·어떤 크기로 놓이나 */
+function CellEvidence({ name, ev, n }: { name: string; ev: CellEv | null; n: number }) {
+  return (
+    <div className="rounded-card border border-line p-5">
+      <h4 className="text-md font-bold">이 칸의 근거</h4>
+      <p className="mt-1 text-sm font-semibold text-ink-2">{name}</p>
+      {!ev || ev.kit ? (
+        <Copy className="mt-2 text-sm text-ink-4" text={ev?.kit ? "키트 부품이라 레퍼런스 집계가 없습니다." : "이 화면 레퍼런스에서 3% 미만으로 드문 섹션입니다."} />
+      ) : (
+        <div className="mt-3 grid gap-3">
+          <div>
+            <div className="flex items-baseline justify-between text-sm"><span className="text-ink-3">두는 비율</span><span className="font-bold">{ev.adopt > 0 ? `${ev.adopt}%` : "3% 미만"}</span></div>
+            <div className="mt-1.5"><AdoptBar pct={ev.adopt} strong /></div>
+          </div>
+          <dl className="grid grid-cols-3 gap-2 text-center">
+            {[["위치", ev.pos != null ? `위 ${ev.pos}%` : "—"], ["보통 폭", ev.span ? `${ev.span}/12` : "—"], ["보통 높이", ev.h ? `${ev.h}px` : "—"]].map(([k, v]) => (
+              <div key={k} className="rounded-md bg-ground-2 px-1 py-2"><dt className="text-xs text-ink-4">{k}</dt><dd className="mt-0.5 text-sm font-semibold">{v}</dd></div>
+            ))}
+          </dl>
+          {ev.pair != null && <Copy className="text-sm text-ink-3" text={`이 줄의 칸 조합은 레퍼런스 ${ev.pair}%가 같은 줄에 둡니다.`} />}
+          <p className="text-xs text-ink-4">표본 {n.toLocaleString()}장 · 위치는 화면 맨 위 0%, 맨 아래 100%</p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** 근거 — 레퍼런스 닮음 + 분포 막대(이 와이어에 있는 섹션은 진하게, 흔한데 빠진 섹션은 "없음") + 안내 글 */
+function BasisCard({ basis, fit, has, source }: { basis: WireBasis; fit: WireFit | null | undefined; has: Set<string>; source: "rule" | "ai" }) {
+  const dist = basis.dist;
+  const notes = [basis.note, basis.style?.note, basis.org_fallback, basis.skipped, ...(basis.merged ?? []).map((m) => `같은 역할이라 합침: ${m}`)].filter((x): x is string => !!x);
+  return (
+    <div className="rounded-card border border-line p-5">
+      <div className="flex items-baseline justify-between gap-2">
+        <h4 className="text-md font-bold">근거</h4>
+        {fit?.score != null && <span className="text-2xl font-extrabold">{fit.score}<span className="text-sm font-semibold text-ink-4"> 닮음</span></span>}
+      </div>
+      {fit?.score != null && <p className="mt-1 text-sm font-semibold text-ink-2">{fit.label}</p>}
+      {dist && <p className="mt-1 text-sm text-ink-4">{dist.label} 레퍼런스 {dist.n.toLocaleString()}장 기준</p>}
+      {dist && dist.items.length > 0 && (
+        <div className="mt-4">
+          <p className="text-sm font-semibold">레퍼런스 분포</p>
+          <ul className="mt-2 grid gap-2">
+            {dist.items.map((it) => {
+              const on = has.has(it.k);
+              const miss = !on && it.adopt >= 50;
+              return (
+                <li key={it.k} className="grid grid-cols-[minmax(0,1fr)_44px] items-center gap-x-2 gap-y-1 text-sm">
+                  <span className={cn("flex min-w-0 items-center gap-1.5", on ? "font-semibold text-ink" : "text-ink-4")}>
+                    <span className="truncate">{it.name}</span>
+                    {miss && <span className="shrink-0 rounded-sm border border-line-3 px-1 text-[10px] font-semibold text-ink-3">없음</span>}
+                  </span>
+                  <span className="text-right tabular-nums text-ink-3">{it.adopt}%</span>
+                  <span className="col-span-2"><AdoptBar pct={it.adopt} strong={on} /></span>
+                </li>
+              );
+            })}
+          </ul>
+          <Copy className="mt-2 text-xs text-ink-4" text="진한 막대는 이 와이어에 있는 섹션입니다. 닮음 점수는 판정 점수와 무관합니다." />
+        </div>
+      )}
+      {source === "ai" && basis.refine && (
+        <div className="mt-4 rounded-md bg-ground-2 p-3 text-sm">
+          <p className="font-semibold">AI 가 바꾼 점</p>
+          {basis.refine.changes && basis.refine.changes.length > 0 && <ul className="mt-1 grid gap-0.5 text-ink-2">{basis.refine.changes.map((c, i) => <li key={i}>{c}</li>)}</ul>}
+          {basis.refine.why && <Copy className="mt-1 text-ink-3" text={basis.refine.why} />}
+        </div>
+      )}
+      {notes.length > 0 && <div className="mt-4 grid gap-1.5">{notes.map((n, i) => <Copy key={i} className="text-sm text-ink-3" text={n} />)}</div>}
+    </div>
+  );
+}
+
 // ---------------------------------------------------------------- 화면
 export function WireframeScreen() {
   const { me } = useMe();
@@ -280,7 +447,18 @@ export function WireframeScreen() {
   const [sel, setSel] = useState<{ r: number; c: number } | null>(null);
   const [title, setTitle] = useState("");
   const [savedId, setSavedId] = useState<string | null>(null);
+  const [view, setView] = useState<"structure" | "content">("structure");
+  const [content, setContent] = useState<ContentWire | null>(null);
   const firstCheck = useRef(true);
+
+  // 내용 보기·요청문 — 지금 와이어로 예시 글을 받는다(결정적·비용 0, 편집하면 묶어서 다시)
+  useEffect(() => {
+    if (!wire) return;
+    const t = setTimeout(() => {
+      postJson<{ wire: ContentWire }>("/mock/wire/content", { wire }).then((r) => setContent(r.wire), () => setContent(null));
+    }, 250);
+    return () => clearTimeout(t);
+  }, [wire]);
 
   const names = useMemo(() => new Map((opt.data?.types ?? []).map((t) => [t.k, t.name])), [opt.data]);
   // 칸 종류 = 수집 섹션 유형 + 키트 부품. 서버가 묶음 순서로 주므로 목록에서 같은 묶음끼리 모여 보이고, 아래 줄(hint)에 묶음 이름을 단다
@@ -300,10 +478,10 @@ export function WireframeScreen() {
     return () => clearTimeout(t);
   }, [wire]);
 
-  const generate = async (v = 0) => {
+  const generate = async (v = 0, st = style) => {
     setBusy(true);
     try {
-      const r = await postJson<GenResult>("/mock/wire/generate", { screen, org, style, variant: v, request, ai });
+      const r = await postJson<GenResult>("/mock/wire/generate", { screen, org, style: st, variant: v, request, ai });
       setVariant(r.basis.style?.variant ?? v);
       firstCheck.current = true;
       setGen(r); setWire(r.wire); setCheck(r.check); setSel(null); setSavedId(null);
@@ -390,7 +568,9 @@ export function WireframeScreen() {
   const save = async () => {
     if (!wire) return;
     try {
-      const body = { title, wire: { ...wire, title }, request, source: gen?.source ?? "rule" };
+      // 근거 요약(표본 수·안내·스타일·AI 가 바꾼 점)을 같이 저장 — 다시 열 때 근거가 0 으로 사라지지 않게(분포·추천은 서버가 다시 계산)
+      const basis = gen ? { samples: gen.basis.samples, pattern: gen.basis.pattern, note: gen.basis.note, style: gen.basis.style, org_fallback: gen.basis.org_fallback, skipped: gen.basis.skipped, merged: gen.basis.merged, refine: gen.basis.refine } : undefined;
+      const body = { title, wire: { ...wire, title, basis }, request, source: gen?.source ?? "rule" };
       const r = savedId ? await postJson<{ id: string }>(`/mock/wireframes/${savedId}`, body, "PUT") : await postJson<{ id: string }>("/mock/wireframes", body);
       setSavedId(r.id); void qc.invalidateQueries({ queryKey: ["mock", "wire", "mine"] });
       toast.success(savedId ? "고친 내용을 저장했습니다." : "내 와이어에 저장했습니다.");
@@ -398,11 +578,13 @@ export function WireframeScreen() {
   };
   const open = async (id: string) => {
     try {
-      const r = await apiFetch<{ id: string; title: string; request: string; wire: Wire; check: WireCheck; prompt: string }>(`/mock/wireframes/${id}`);
+      const r = await apiFetch<{ id: string; title: string; request: string; source?: string; wire: Wire; check: WireCheck; prompt: string; basis?: WireBasis }>(`/mock/wireframes/${id}`);
       firstCheck.current = true;
       setWire(r.wire); setCheck(r.check); setTitle(r.title); setRequest(r.request); setSavedId(r.id); setSel(null);
       setScreen(r.wire.screen); setOrg(r.wire.org);
-      setGen({ wire: r.wire, check: r.check, source: "rule", note: null, basis: { samples: 0, note: "", asked: { add: [], remove: [] } }, prompt: r.prompt });
+      if (r.wire.style) { setStyle(r.wire.style); setVariant(r.wire.variant ?? 0); }
+      // 저장해 둔 근거 요약 + 서버가 다시 계산한 분포·닮음(옛 저장본은 표본 수만이라도 서버 값으로)
+      setGen({ wire: r.wire, check: r.check, source: r.source === "ai" ? "ai" : "rule", note: null, basis: r.basis ?? { samples: 0 }, prompt: r.prompt });
       window.scrollTo({ top: 0, behavior: "smooth" });
     } catch (e) { toastError(e); }
   };
@@ -414,20 +596,32 @@ export function WireframeScreen() {
     if (!wire) return "";
     const sc = opt.data?.screens.find((s) => s.id === wire.screen)?.label ?? wire.screen;
     const og = opt.data?.orgs.find((o) => o.id === wire.org)?.label ?? "";
-    const lines = wire.rows.map((r, i) => `${i + 1}. [${r.zone}] ${r.cols.map((c) => `${names.get(c.k) ?? c.k}(${c.k}, ${c.span}/12${c.t ? `, ${c.t}` : ""})`).join(" | ")}`);
+    // 서버 Wire::prompt 와 같은 꼴 — 칸 끝 % = 같은 화면 레퍼런스에서 그 섹션을 두는 비율, 아래에 칸별 예시 내용
+    const evMap = gen?.basis.dist?.ev;
+    const pctOf = (k: string) => { const e = evMap?.[k]; return !evMap || k.startsWith("kit_") ? "" : `, 레퍼런스 ${e && e.adopt > 0 ? `${e.adopt}%` : "3% 미만"}`; };
+    const lines = wire.rows.map((r, i) => `${i + 1}. [${r.zone}] ${r.cols.map((c) => `${names.get(c.k) ?? c.k}(${c.k}, ${c.span}/12${c.t ? `, ${c.t}` : ""}${pctOf(c.k)})`).join(" | ")}`);
+    const filled = content && content.rows.length === wire.rows.length ? content : null;
+    const contentLines = filled ? filled.rows.flatMap((r, i) => r.cols.map((c) => [`${i + 1}. ${names.get(c.k) ?? c.k} — "${c.t ?? ""}"`, c.s, c.items?.length ? `항목: ${c.items.slice(0, 6).join(", ")}` : null, c.img ? `그림: ${c.img.label}(${c.img.kind})` : null].filter(Boolean).join(" / "))) : [];
     return [`powerMock 으로 ${og} 홈페이지의 '${sc}' 화면 시안을 만들어 줘.${request ? ` 요청: ${request}` : ""}`,
-      `아래 와이어프레임의 줄 순서와 칸 폭(12칸 격자)을 지켜 줘.${wire.lnb ? " 본문 왼쪽에 LNB(왼쪽 메뉴)를 둔다." : ""}`,
+      `아래 와이어프레임의 줄 순서와 칸 폭(12칸 격자)을 지켜 줘.${wire.lnb ? " 본문 왼쪽에 LNB(왼쪽 메뉴)를 둔다." : ""}${evMap ? " 괄호 끝 %는 같은 화면 레퍼런스에서 그 섹션을 두는 비율이다." : ""}`,
       ...lines,
+      ...(contentLines.length ? ["", `칸별 예시 내용(가상 기관 '${filled?.persona?.org ?? ""}' 기준 — 실제 기관이면 이름만 바꿔 쓴다):`, ...contentLines] : []),
       "순서: mock_get_replica_kit 으로 재료를 받고 → 이 구성대로 만들고 → mock_check_mockup 으로 판정 → 통과하면 mock_publish_mockup."].join("\n");
-  }, [wire, names, opt.data, request]);
+  }, [wire, names, opt.data, request, gen, content]);
 
   if (opt.isPending) return <Skeleton className="mt-6 h-64 rounded-card" />;
   const screens = (opt.data?.screens ?? []).map((s) => ({ id: s.id, label: s.label, hint: s.desc }));
   const orgs = (opt.data?.orgs ?? []).map((o) => ({ id: o.id, label: o.label }));
   // 원형 스타일(포털·LLM·랜딩…)은 메인 전용 — 서브 화면이면 레퍼런스 구성만 고른다
   const styles = [{ id: "auto", label: "자동(요청 글로 판단)" }, ...(opt.data?.styles ?? []).filter((x) => screen === "main" || !x.main_only).map((x) => ({ id: x.id, label: x.label, hint: x.desc }))];
-  const vs = gen?.basis.style;
+  const vs0 = gen?.basis.style;
+  const vs = vs0 ? { ...vs0, label: vs0.label ?? "", variants: vs0.variants ?? 1 } : undefined;
   const issues = check?.issues ?? [];
+  const dist = gen?.basis.dist;
+  const adoptOf = (k: string): number | null => (!dist || k.startsWith("kit_") ? null : dist.ev[k]?.adopt ?? 0);
+  const has = new Set((wire?.rows ?? []).flatMap((r) => r.cols.map((c) => c.k)));
+  const fitNow = check?.fit ?? gen?.basis.fit;
+  const recs = gen?.basis.recommended ?? [];
 
   return (
     <div className="mt-6 grid gap-8">
@@ -454,7 +648,21 @@ export function WireframeScreen() {
       {wire && check && (
         <section aria-label="와이어프레임 결과" className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_340px]">
           <div className="min-w-0">
+            {recs.length > 1 && (
+              <div className="mb-5">
+                <p className="mb-2 text-sm font-semibold text-ink-2">추천 구성 {recs.length}안</p>
+                <RecommendPicker recs={recs} busy={busy} onPick={(x) => { setStyle(x.style); void generate(x.variant, x.style); }} />
+              </div>
+            )}
             <div className="flex flex-wrap items-center gap-2">
+              <div className="inline-flex rounded-field bg-ground-3 p-1" role="group" aria-label="보기">
+                {(["structure", "content"] as const).map((v) => (
+                  <button key={v} type="button" onClick={() => setView(v)} aria-pressed={view === v}
+                    className={cn("inline-flex h-8 items-center rounded-md px-3 text-sm font-semibold", view === v ? "bg-white text-ink shadow-sm" : "text-ink-3")}>
+                    {v === "structure" ? "구조 보기" : "내용 보기"}
+                  </button>
+                ))}
+              </div>
               <div className="inline-flex rounded-field bg-ground-3 p-1" role="group" aria-label="미리보기 폭">
                 {(["pc", "mobile"] as const).map((d) => (
                   <button key={d} type="button" onClick={() => setDevice(d)} aria-pressed={device === d}
@@ -468,15 +676,18 @@ export function WireframeScreen() {
               {vs && <Tag tone="soft">{vs.label}</Tag>}
               {vs && vs.variants > 1 && (
                 <div className="inline-flex items-center gap-1" role="group" aria-label="다른 구성">
-                  <Button size="icon-sm" variant="outline" aria-label="이전 구성" disabled={busy} onClick={() => generate((variant - 1 + vs.variants) % vs.variants)}><ChevronLeft /></Button>
+                  <Button size="icon" variant="outline" aria-label="이전 구성" disabled={busy} onClick={() => generate((variant - 1 + vs.variants) % vs.variants)}><ChevronLeft /></Button>
                   <span className="w-14 text-center text-sm font-semibold">{variant + 1}/{vs.variants}</span>
-                  <Button size="icon-sm" variant="outline" aria-label="다음 구성" disabled={busy} onClick={() => generate((variant + 1) % vs.variants)}><ChevronRight /></Button>
+                  <Button size="icon" variant="outline" aria-label="다음 구성" disabled={busy} onClick={() => generate((variant + 1) % vs.variants)}><ChevronRight /></Button>
                 </div>
               )}
-              <Button size="sm" variant="outline" className="ml-auto" onClick={addRow}><Plus aria-hidden />본문 줄 추가</Button>
+              {/* 같은 줄 컨트롤은 모두 높이 40(보기·폭 묶음과 같게) */}
+              <Button size="md" variant="outline" className="ml-auto" onClick={addRow}><Plus aria-hidden />본문 줄 추가</Button>
             </div>
             <div className="mt-3">
-              <WirePreview wire={wire} names={names} device={device} sel={sel} onSelect={(r, c) => setSel(sel?.r === r && sel.c === c ? null : { r, c })} onRow={onRow} onDrop={onDrop} />
+              <WirePreview wire={wire} names={names} device={device} sel={sel} onSelect={(r, c) => setSel(sel?.r === r && sel.c === c ? null : { r, c })} onRow={onRow} onDrop={onDrop}
+                adoptOf={dist ? adoptOf : undefined} content={view === "content" ? content : null} />
+              {view === "content" && content?.persona && <Copy className="mt-2 text-sm text-ink-4" text={`예시 글은 가상 기관 '${content.persona.org}' 기준입니다. 실제 기관 이름으로 바꿔 쓰세요.`} />}
             </div>
             {cur && sel && (
               <div className="mt-3 flex flex-wrap items-center gap-2 rounded-card border border-line bg-ground-2 p-3">
@@ -494,6 +705,7 @@ export function WireframeScreen() {
           </div>
 
           <aside className="grid content-start gap-4">
+            {cur && sel && <CellEvidence name={names.get(cur.k) ?? cur.k} ev={dist ? (cur.k.startsWith("kit_") ? { adopt: 0, kit: true } : dist.ev[cur.k] ?? null) : cur.ev ?? null} n={dist?.n ?? cur.ev?.n ?? 0} />}
             <div className="rounded-card border border-line p-5">
               <div className="flex items-baseline justify-between gap-2">
                 <h4 className="text-md font-bold">판정</h4>
@@ -512,6 +724,8 @@ export function WireframeScreen() {
                 </ul>
               )}
             </div>
+
+            {gen && (dist || gen.basis.note) && <BasisCard basis={gen.basis} fit={fitNow} has={has} source={gen.source} />}
 
             <div className="rounded-card border border-line p-5">
               <h4 className="text-md font-bold">저장</h4>

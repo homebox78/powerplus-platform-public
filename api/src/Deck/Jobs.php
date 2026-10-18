@@ -1003,11 +1003,14 @@ final class Jobs
         self::event($id, 'info', '내용 입력으로 돌아왔습니다. 자료를 더하거나 뺀 뒤 「검토 시작」을 누르면 기획을 처음부터 다시 짭니다.');
     }
 
-    /** 자료가 바뀌면 서버에 저장된 사업 요약(context.md)은 낡은 것 — 지워서 다음 기획이 새 자료로 다시 요약하게 */
+    /** 자료가 바뀌면 서버에 저장된 사업 요약(context.md)·자료 데이터(facts.json — 표·시계열·수치, 2026-10-18)는 낡은 것 — 지워서 다음 기획이 새 자료로 다시 만들게.
+     *  facts.json 은 안에 자료 목록 서명(sig)도 있어 엔진이 한 번 더 거른다 */
     private static function dropDigest(string $id): void
     {
-        @unlink(self::dir($id, 'mockup') . '/context.md');
-        Db::pdo()->prepare("DELETE FROM deck_job_files WHERE job_id = ? AND kind = 'mockup' AND name = 'context.md'")->execute([$id]);
+        foreach (['context.md', 'facts.json'] as $n) {
+            @unlink(self::dir($id, 'mockup') . '/' . $n);
+            Db::pdo()->prepare("DELETE FROM deck_job_files WHERE job_id = ? AND kind = 'mockup' AND name = ?")->execute([$id, $n]);
+        }
     }
 
     /** 삭제 — 기록·파일까지 지운다. 진행 중이면 먼저 취소해야 한다. */

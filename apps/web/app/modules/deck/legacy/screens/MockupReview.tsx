@@ -587,6 +587,12 @@ export function MockupReview({ job, onChange, isAdmin, me, onLogout }: { job: Jo
             sel={wEdit ? wsel : []} onSel={setWsel} onChange={wEdit ? (b) => setWire(cur.n, b) : undefined} />
         : <img src={imgSrc(m!.name, m!.ts)} alt={`${cur.n}쪽 시안`} draggable={false} className={cn("block max-w-full object-contain bg-white", SLIDE)} style={{ maxHeight: `max(346px, calc(100vh - ${roomY}px))` }} />}
       {showWire ? <GenStamp at={cur.wire_at} utc /> : <GenStamp at={m!.ts} />}
+      {/* 와이어 일치 — 엔진이 와이어 스케치와 시안을 맞대 본 점수(2026-10-18). 70 밑이면 한 번 더 그린 뒤 나은 쪽 */}
+      {!showWire && typeof cur.mockup_fit === "number" && (
+        <span className="absolute top-1.5 left-1.5 z-[5] pointer-events-none rounded-md bg-ink/70 px-1.5 py-[1px] text-[11.5px] font-semibold text-white whitespace-nowrap">
+          와이어 일치 {cur.mockup_fit}{cur.mockup_fit < 70 ? " · 확인" : ""}
+        </span>
+      )}
       <PinLayer p={pins} slide={sel} />
     </div>
   ) : <div className={cn("w-full max-w-[720px] aspect-[3/2] bg-white grid place-items-center text-[13.5px] text-faint", SLIDE)}>아직 시안·와이어프레임이 없습니다</div>;

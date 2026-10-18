@@ -12,3 +12,7 @@ engine/** text eol=lf
 *.woff binary
 *.woff2 binary
 *.pdf binary
+*.xlsx binary
+*.docx binary
+*.hwpx binary
+*.hwp binary

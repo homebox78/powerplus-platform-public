@@ -18,6 +18,7 @@ cd "$ROOT/engine"
 PY=$(command -v python3 || command -v python)
 "$PY" tests/test_known.py || { echo "회귀 시험 실패 — 배포 중단"; exit 3; }
 "$PY" tests/test_wire_kinds.py || { echo "와이어 종류 시험 실패 — 배포 중단(R62)"; exit 3; }
+"$PY" -X utf8 tests/test_datafacts.py || { echo "자료 데이터·와이어 다양성·시안 일치 시험 실패 — 배포 중단(R64~R66)"; exit 3; }
 FILES=$(ls *.py *.md *.sh *.ps1 *.bat config.example.json 2>/dev/null | grep -v '^README.md$')
 FILES="$FILES known_errors.json wire_kinds.json pipeline skill templates"   # wire_kinds.json = 와이어 상자 종류 한 벌(2026-10-18, wirekinds.py 가 읽는다)   # 기본 규칙 원천 · 초안 다듬기 도구·si-deck 스킬 사본(2026-10-12) · 세로 제안서 기본 양식(2026-10-14)
 

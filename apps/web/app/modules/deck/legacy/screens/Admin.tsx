@@ -13,7 +13,7 @@ type Usage = {
 };
 const p2 = (n: number) => String(n).padStart(2, "0");
 const when = (s: string) => { const d = parseTs(s); return d ? `${p2(d.getMonth() + 1)}.${p2(d.getDate())} ${p2(d.getHours())}:${p2(d.getMinutes())}` : s; };   // 작업 목록과 같은 꼴(10.05 14:29)
-const KIND: Record<string, string> = { plan: "기획(글)", image: "시안(이미지)", digest: "자료 요약", engine: "장표 제작 (엔진)", eplan: "기획 (엔진)", edigest: "자료 요약 (엔진)", script: "발표 대본", escript: "발표 대본 (엔진)", ewire: "와이어프레임 (엔진)", hf: "Higgsfield 그림", wire: "와이어프레임" };
+const KIND: Record<string, string> = { plan: "기획(글)", image: "시안(이미지)", check: "와이어 일치 판정", digest: "자료 요약", engine: "장표 제작 (엔진)", eplan: "기획 (엔진)", edigest: "자료 요약 (엔진)", script: "발표 대본", escript: "발표 대본 (엔진)", ewire: "와이어프레임 (엔진)", hf: "Higgsfield 그림", wire: "와이어프레임" };
 const kTok = (n: number) => `${(n / 1000).toFixed(0)}k`;
 const DAYS = ["7", "30", "90", "365"].map((d) => [d, `최근 ${d}일`] as const);
 

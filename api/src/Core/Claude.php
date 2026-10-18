@@ -149,6 +149,11 @@ final class Claude
                 $e = 'high';
             }
             $body['output_config'] = ['effort' => $e];
+            // 생각(thinking)도 max_tokens 안에서 쓴다 — 부르는 쪽이 정한 값은 '답 몫'이라, 강도만큼 생각 몫을 더한다.
+            // 2026-10-17 운영 시험: 기획·와이어가 생각에 한도를 다 써 빈 답(Expecting value)으로 와이어 한 묶음이 비었다.
+            // 위는 64k — 스트리밍 없이 한 번에 받으므로(엔진 대기 300초) 너무 크게 잡지 않는다
+            $think = ['low' => 4000, 'medium' => 12000, 'high' => 24000, 'xhigh' => 48000, 'max' => 48000][$e];
+            $body['max_tokens'] = min(max($body['max_tokens'], 64000), $body['max_tokens'] + $think);   // 부른 쪽이 더 크게 정했으면 그 값은 줄이지 않는다
         }
         // 같은 지시·앞 대화를 되풀이하는 장표 제작 반복에서 입력값을 아낀다(짧으면 캐시되지 않을 뿐 해는 없다)
         $body['cache_control'] = ['type' => 'ephemeral'];

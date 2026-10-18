@@ -7,6 +7,7 @@ const STAGE: Record<string, [string, string]> = {
   digest: ["자료 요약", "배경 자료를 읽어 사업 요약으로"],
   plan: ["기획", "장 나누기 · 메시지 · 장면 · 구성"],
   image: ["시안 디자인", "장별 시안 이미지"],
+  check: ["와이어 일치 판정", "시안이 와이어를 따랐는지 — 낮으면 한 번 더 그린다"],
   engine: ["장표 제작", "시안을 PowerPoint 로 — 엔진 PC 의 Claude 구독"],
   edigest: ["자료 요약", "배경 자료를 읽어 사업 요약으로 — 엔진 PC 의 Claude 구독"],
   eplan: ["기획", "장 나누기 · 메시지 · 장면 · 구성 — 엔진 PC 의 Claude 구독"],
@@ -22,12 +23,12 @@ function useCost(job: Job) {
   const slides = job.plan?.slides.length || job.slides || (job.files?.after ?? []).length || 0;
   const by = (k: string) => rows.filter((r) => r.kind === k);
   const sum = (k: string) => by(k).reduce((n, r) => n + r.usd, 0);
-  const billed = sum("digest") + sum("plan") + sum("image") + sum("script");      // OpenRouter 실제 청구
+  const billed = sum("digest") + sum("plan") + sum("image") + sum("check") + sum("script");      // OpenRouter 실제 청구(check = 시안 와이어 일치 판정, 2026-10-18)
   const engine = SUB.reduce((n, k) => n + sum(k), 0);                                    // 구독 사용분 환산
   const engineSec = SUB.flatMap(by).reduce((n, r) => n + r.b, 0);
   const won = (v: number) => `₩${Math.round(v * rate).toLocaleString()}`;
   // 청구서 줄 — 단계 · 내역 · 수량 · 단가 · 금액
-  const lines = (["digest", "edigest", "plan", "eplan", "image", "script", "engine"] as const).flatMap((k) => by(k).map((r) => {
+  const lines = (["digest", "edigest", "plan", "eplan", "image", "check", "script", "engine"] as const).flatMap((k) => by(k).map((r) => {
     const sub = SUB.includes(k);
     return { k, sub, name: STAGE[k]![0], model: r.model, desc: `${STAGE[k]![1]} · ${r.model}${sub ? ` · ${r.a.toLocaleString()}턴 · ${fmtDur(r.b)}` : ""}`,
       short: `${r.model}${sub ? ` · ${r.a.toLocaleString()}턴 · ${fmtDur(r.b)}` : ` · ${r.n}${k === "image" ? "장" : "회"}`}`,

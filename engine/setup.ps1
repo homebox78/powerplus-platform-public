@@ -14,7 +14,7 @@ $py = (Get-Command py -ErrorAction SilentlyContinue)
 if (-not $py) { $py = (Get-Command python -ErrorAction SilentlyContinue) }
 if ($py) {
     Ok "$($py.Source)"
-    & $py.Source -m pip install --quiet --disable-pip-version-check python-pptx pywin32 lxml pillow pypdf python-docx openpyxl olefile
+    & $py.Source -m pip install --quiet --disable-pip-version-check python-pptx pywin32 lxml pillow pypdf python-docx openpyxl olefile pdfplumber
     if ($LASTEXITCODE -eq 0) { Ok "꾸러미: python-pptx pywin32 lxml pillow pypdf python-docx openpyxl olefile" } else { No "pip 설치 실패 — 위 오류를 확인하세요" }
 } else { No "파이썬이 없습니다 — https://www.python.org 에서 설치(3.11 이상)" }
 

@@ -29,18 +29,22 @@ interface Props {
   minCard?: number;
 }
 
-/** 작업창 폭을 실측해 한 줄 열 수를 정한다(2~7열). */
+/**
+ * 작업창 폭을 실측해 한 줄 열 수를 정한다 — 폭으로 계산한 열 수 + 1(3~8열).
+ * 사용자 2026-10-18 "애드온 기본 화면 한 줄에 3개씩, 크기를 키울 때는 기존보다 한 개씩 더" — 기본 작업창(카드 영역 약 320px)이 2열 → 3열.
+ */
+const EXTRA_COL = 1;
 function useGridCols(minCard: number) {
   const ref = React.useRef<HTMLDivElement | null>(null);
-  const [cols, setCols] = React.useState(2);
+  const [cols, setCols] = React.useState(2 + EXTRA_COL);
   React.useEffect(() => {
     const el = ref.current;
     if (!el) return;
     const GAP = 11; // .grid gap
     const calc = (w: number) => {
       if (!w) return;
-      const n = Math.floor((w + GAP) / (minCard + GAP));
-      setCols(Math.max(1, Math.min(7, n)));
+      const n = Math.floor((w + GAP) / (minCard + GAP)) + EXTRA_COL;
+      setCols(Math.max(1, Math.min(7 + EXTRA_COL, n)));
     };
     // contentRect.width = padding 제외한 실제 카드 영역 폭
     const ro = new ResizeObserver((es) => calc(es[0].contentRect.width));

@@ -544,8 +544,10 @@ async function doCheck({ html, ref, refImage, launch, sharp, width = 1920, peers
     const segNotes = [];
     for (const [k, lab] of [["foot", "바닥글"], ["hero", "히어로"], ["sv", "서브 비주얼"]]) { const s = seg[k]; if (s && Math.abs(s.mock - s.ref) > Math.max(40, s.ref * 0.15)) segNotes.push(`높이 참고 · ${lab} 구간이 레퍼런스 ${s.ref}px · 시안 ${s.mock}px — kit 이 정하는 구간이라 전체 높이 차에서 뺐다(감점·치명 아님). 첫 화면·바닥글 규칙을 따른다.`); }
 
-    let sim = null; let compare = null;
-    if (refImage) {
+    let sim = null; let compare = null; let refBroken = null;
+    // 레퍼런스 그림이 깨졌거나(잘린 캡처·HTML 본문·sharp 가 모르는 형식) 비교 중 실패해도 앞의 레이아웃·게이트·동작 판정은 버리지 않는다 —
+    // 예전엔 이 가지만 catch 가 없어 판정 전체가 RENDER_FAILED 가 되고, 같은 레퍼런스라 다시 불러도 늘 실패했다(2026-10-18 전수조사 A)
+    if (refImage) try {
       const meta = await sharp(refImage, { limitInputPixels: false }).metadata();
       const kRef = (meta.width ?? ref.width) / ref.width;
       const refBox = ref.sub ? { from: ref.sub.body_y_from, to: ref.sub.body_y_to, k: kRef } : { from: 0, to: Math.min(ref.height, (meta.height ?? 0) / kRef), k: kRef };
@@ -553,6 +555,9 @@ async function doCheck({ html, ref, refImage, launch, sharp, width = 1920, peers
       const schoolOrg = /학교|초등|중학|고등|유치원|어린이|복지|도서관|아동|청소년/.test(want || (html.match(/<title[^>]*>([^<]*)/i) || [])[1] || ""); // layout.mjs darkBand 와 같은 대상
       sim = await similarity(sharp, refImage, refBox, shot, mockBox, { skipDark: schoolOrg });
       compare = await sideBySide(sharp, refImage, shot);
+    } catch (e) {
+      sim = null; compare = null;
+      refBroken = String(e?.message ?? e).slice(0, 120);
     } else if (wm && wmeas) {
       // 와이어 묶음: 왼쪽 = 와이어 도식(시안 줄 위치에 맞춤, 안 맞는 줄은 빨강) · 오른쪽 = 시안 (2026-10-18 시험 4건 '비교 이미지 없음')
       const sch = wireSchematicSvg(wmeas, wire, { width, height: Math.min(m.height, 16000), match: wm });
@@ -579,6 +584,7 @@ async function doCheck({ html, ref, refImage, launch, sharp, width = 1920, peers
     }
     if (m.badSvg?.length) { hard.push("깨진 아이콘(svg 경로)"); score -= Math.min(12, 4 + m.badSvg.length * 2); fixes.push(`깨진 아이콘 ${m.badSvg.length}개: ${m.badSvg.slice(0, 3).join(" | ")} — svg path 의 d 에 경로 글자(예: icons.brand 의 .d)를 넣는다. 객체를 그대로 넣으면 [object Object] 가 되어 빈 모양이 된다.`); }
     if (consoleErr.length) { score -= Math.min(8, consoleErr.length * 2); fixes.push(`콘솔 오류 ${consoleErr.length}건: ${[...new Set(consoleErr)].slice(0, 3).join(" | ")} — 브라우저 개발자 도구 콘솔에 오류가 없게 고친다(잘못된 속성 값·없는 요소 참조).`); }
+    if (refBroken) preNotes.push(`레퍼런스 그림을 읽지 못해(${refBroken}) 밝기 구성 비교·나란히 이미지를 건너뛰었다 — 레퍼런스 쪽 문제(시안 탓 아님). 나머지 판정은 그대로다.`);
     if (!textKeys.length) preNotes.push("글자 든 샘플 목록(textKeys)을 받지 못해 글자 그림 잘림·'배너 자리에 글자 없는 사진' 판정을 건너뛰었다 — 판정기 설정 문제(시안 탓 아님).");
     if (m.broken.length) { score -= Math.min(20, m.broken.length * 4); fixes.push(`안 뜨는 이미지 ${m.broken.length}개: ${m.broken.slice(0, 5).join(", ")} — samples 의 url 을 그대로 쓴다.`); }
     if (m.foreign.length) { score -= 10; fixes.push(`홈박스 밖 이미지 주소: ${m.foreign.join(", ")} — 사진은 samples 만 쓴다(레퍼런스 사이트 이미지·외부 이미지 금지).`); }

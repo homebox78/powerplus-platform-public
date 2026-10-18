@@ -22,9 +22,17 @@ DAY=$(date +%Y%m%d)
 shopt -s nullglob
 dumps=("$HOME"/db-backup/nightly/*-"$DAY"-*.sql.gz)
 [ ${#dumps[@]} -gt 0 ] || { status "fail 오늘 덤프 없음"; exit 1; }
-"${GS[@]}" cp "${dumps[@]}" "$GCS_BUCKET/db/$DAY/"
+# ①·② 는 서로 막지 않는다 — 예전엔 set -e 로 ① 이 실패하면 ② 를 시도도 안 했고, rsync 는 파일 하나(복사 중 사라짐·권한)에 전체가 멈췄다
+#   (2026-10-18 전수조사 B). 이제 둘 다 끝까지 돌리고(rsync -C = 오류 난 파일만 건너뛰고 계속), 하나라도 실패면 fail 로 남긴다.
+fails=()
+"${GS[@]}" cp "${dumps[@]}" "$GCS_BUCKET/db/$DAY/" || fails+=("db")
 # ② 데이터 폴더 — 바뀐 것만 올린다(지운 파일은 버킷에 남긴다 — 실수로 지운 것도 되살릴 수 있게). 임시·캐시는 뺀다
 sudo -n true 2>/dev/null && READ=(sudo) || READ=()
-"${READ[@]}" "${GS[@]}" rsync -r -x '(^|/)(tmp|cache|\.cache|sessions)/' /var/www/platform_data "$GCS_BUCKET/data"
+"${READ[@]}" "${GS[@]}" rsync -C -r -x '(^|/)(tmp|cache|\.cache|sessions)/' /var/www/platform_data "$GCS_BUCKET/data" || fails+=("data")
+if [ ${#fails[@]} -gt 0 ]; then
+  echo "$(date '+%F %T') 서버 밖 백업 일부 실패: ${fails[*]} (나머지는 올림)" >&2
+  status "fail ${fails[*]} db=${#dumps[@]}"
+  exit 1
+fi
 echo "$(date '+%F %T') DB ${#dumps[@]}개 · 데이터 동기화 → $GCS_BUCKET"
 status "ok db=${#dumps[@]}"

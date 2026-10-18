@@ -113,9 +113,18 @@ final class Keys
     public static function quota(Actor $a): array
     {
         $limit = (int) Access::limit($a, 'api_daily', 0);
-        $used = $a->key === null ? 0 : (int) Db::val('SELECT COALESCE(SUM(calls),0) FROM core_api_usage WHERE api_key_id = ? AND day = ?', [$a->key['id'], date('Y-m-d')]);
+        $used = $a->key === null ? 0 : (int) Db::val('SELECT COALESCE(SUM(calls),0) FROM core_api_usage WHERE api_key_id = ? AND day = ?', [$a->key['id'], self::day()]);
         $reset = (new \DateTimeImmutable('tomorrow', new \DateTimeZone('Asia/Seoul')))->format('Y-m-d\TH:i:sP');
         return ['limit' => $limit, 'used' => $used, 'remaining' => $limit > 0 ? max(0, $limit - $used) : null, 'reset' => $reset];
+    }
+
+    /**
+     * 일 한도·일 사용량(core_api_usage.day)의 날짜 — 한국 0시 기준(2026-10-18 사용자 결정 "한국 0시").
+     * PHP 기본 시간대(bootstrap)에 기대지 않고 Asia/Seoul 을 직접 쓴다 — 시간대 설정이 빠진 진입점(크론·CLI)에서도 같은 날로 센다.
+     */
+    public static function day(?int $ts = null): string
+    {
+        return (new \DateTimeImmutable('@' . ($ts ?? time())))->setTimezone(new \DateTimeZone('Asia/Seoul'))->format('Y-m-d');
     }
 
     /** 일 한도 검사 + 사용량 1 증가. 플랜별 한도는 core_plans.limits.api_daily. staff 도 한도 있음(Pro 의 5배, §17.1). */
@@ -132,7 +141,7 @@ final class Keys
         }
         self::$counted = true;
         $limit = (int) Access::limit($a, 'api_daily', 0);
-        $day = date('Y-m-d');
+        $day = self::day();
         Db::exec(
             'INSERT INTO core_api_usage (api_key_id, day, tool, calls) VALUES (?,?,?,1) ON DUPLICATE KEY UPDATE calls = calls + 1',
             [$a->key['id'], $day, mb_substr($tool, 0, 40)]
@@ -140,7 +149,9 @@ final class Keys
         if ($limit > 0) {
             $used = (int) Db::val('SELECT COALESCE(SUM(calls),0) FROM core_api_usage WHERE api_key_id = ? AND day = ?', [$a->key['id'], $day]);
             if ($used > $limit) {
-                throw new HttpError('RATE_LIMITED', '오늘 호출 한도를 넘었습니다.', 429, "일 한도 {$limit}건");
+                // 언제 풀리는지·어디서 늘리는지까지(2026-10-18 전수조사 C) — 예전 글은 "한도를 넘었습니다"뿐이었다. 날짜는 self::day()(한국 0시 기준)
+                throw new HttpError('RATE_LIMITED', '오늘 호출 한도를 넘었습니다. 자정(한국 시각)에 다시 채워집니다.', 429,
+                    "일 한도 {$limit}건(키 전체·모든 도구 합산). 더 필요하면 계정 › 플랜(/account/plan)에서 올리거나 관리자에게 요청하세요.");
             }
         }
     }

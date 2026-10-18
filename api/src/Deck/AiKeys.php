@@ -633,6 +633,73 @@ final class AiKeys
         return ['ok' => true];
     }
 
+    /** 한도 판정에 들어가는 사용 종류의 이름 — 오류 글에서 "어느 단계가 한도를 썼는지" 보이게 */
+    private const KIND_LABEL = ['plan' => '기획·와이어', 'digest' => '자료 요약', 'image' => '시안 그림', 'check' => '시안 판정', 'build' => '장표 제작', 'script' => '발표 대본'];
+
+    /**
+     * 작업당 한도에 닿았을 때의 글 — 얼마를 어느 단계가 썼는지 + 어디서 무엇을 올리면 되는지(2026-10-18 전수조사 C).
+     * 한도는 작업 하나에 기획·시안·장표 제작·대본을 합친 금액이라, 장표 단계 시작 전에 이미 한도 근처일 수 있다 — 그 사실을 글로 알린다.
+     * $byKind = [kind => usd]. DB 없이 시험할 수 있게 순수 함수로 둔다.
+     */
+    public static function budgetStopMessage(float $budget, float $spent, array $byKind, float $base = 0.0): string
+    {
+        $parts = [];
+        foreach ($byKind as $k => $usd) {
+            if ((float) $usd <= 0 || $k === 'script') continue;   // 대본·예상 질문은 작업 한도 밖(2026-10-18 사용자 결정)
+            $parts[] = (self::KIND_LABEL[$k] ?? (string) $k) . sprintf(' $%.2f', (float) $usd);
+        }
+        // 한도는 시안 확정 때 다시 채운다(0043 budget_base_usd) — 확정 전에 멈췄는지 뒤에 멈췄는지에 따라 할 말이 다르다
+        $stage = $base > 0
+            ? sprintf('시안 확정 때 한도를 다시 채웠고, 확정 전 사용 $%.2f 은 빼고 셉니다. ', $base)
+            : '시안을 확정하면 장표 제작용으로 한도가 다시 채워집니다. ';
+        return sprintf('이 작업의 비용 한도($%.2f)에 도달했습니다 (한도에 드는 사용 $%.4f). ', $budget, $spent)
+            . ($parts ? '작업 전체 내역: ' . implode(' · ', $parts) . '. ' : '')
+            . $stage
+            . '발표 대본·예상 질문은 작업 한도에 들지 않습니다(월 상한만 봅니다). '
+            . '관리자 › AI 설정 › 비용 한도(작업당)를 올리면 이 작업에도 적용되고, 다시 돌리면 멈춘 단계부터 다시 합니다.';
+    }
+
+    /** 작업 한도에 드는 사용액 = spent_usd − 기준선(budget_base_usd, 0043). 기준선은 시안 확정 때 다시 잡고, 대본·예상 질문 비용만큼 올린다 */
+    public static function countedSpend(array $job): float
+    {
+        return max(0.0, (float) ($job['spent_usd'] ?? 0) - (float) ($job['budget_base_usd'] ?? 0));
+    }
+
+    /** 엔진에게 줄 한도 — 엔진은 누계(spent_usd)와 견주므로 기준선을 더한 값. 한도 없음이면 null */
+    public static function engineCap(array $job): ?float
+    {
+        if (($job['budget_usd'] ?? null) === null) return null;
+        return round((float) $job['budget_usd'] + (float) ($job['budget_base_usd'] ?? 0), 4);
+    }
+
+    /** 월 상한에 닿았을 때의 글 — 어디서 올리는지, 언제 풀리는지 */
+    public static function monthlyStopMessage(float $cap, float $spent): string
+    {
+        return sprintf('이달 AI 비용 상한($%.2f)에 도달했습니다 (사용 $%.4f). ', $cap, $spent)
+            . '관리자 › AI 설정 › 비용 한도(사용자별 월 상한)를 올리거나, 다음 달 1일에 풀립니다.';
+    }
+
+    /**
+     * 작업 한도·월 상한 확인 — chatForJob(엔진 대리 호출)과 ask(서버 직접 호출)가 같은 판정·같은 글을 쓰게.
+     * $jobCap=false = 작업 한도는 보지 않고 월 상한만(발표 대본·예상 질문, 2026-10-18 사용자 결정 "대본 제외").
+     */
+    private static function budgetGuard(array $job, string $email, bool $jobCap = true): void
+    {
+        $budget = $job['budget_usd'] !== null ? (float) $job['budget_usd'] : null;
+        $spent = self::countedSpend($job);   // 시안 확정 때 다시 잡은 기준선 이후(0043)
+        if ($jobCap && $budget !== null && $spent >= $budget) {
+            $by = [];
+            try {
+                $st = Db::pdo()->prepare("SELECT kind, COALESCE(SUM(cost_usd),0) usd FROM deck_ai_usage WHERE job_id = ? AND kind NOT IN " . self::SUBS_SQL . " AND kind <> 'script' GROUP BY kind ORDER BY MIN(id)");
+                $st->execute([(string) $job['id']]);
+                foreach ($st->fetchAll() as $r) $by[(string) $r['kind']] = (float) $r['usd'];
+            } catch (Throwable) {}   // 내역을 못 읽어도 멈추는 판정은 그대로
+            Legacy::fail(self::budgetStopMessage($budget, $spent, $by, (float) ($job['budget_base_usd'] ?? 0)), 402);
+        }
+        $bi = self::budgetInfo($email);
+        if ($bi['monthly_cap'] !== null && $bi['month_spent'] >= $bi['monthly_cap']) Legacy::fail(self::monthlyStopMessage($bi['monthly_cap'], $bi['month_spent']), 402);
+    }
+
     public static function jobBudget(): ?float
     {
         $d = self::setting('job_budget_usd');
@@ -649,11 +716,8 @@ final class AiKeys
     {
         $email = strtolower((string) $job['email']);
         $jid = (string) $job['id'];
-        $budget = $job['budget_usd'] !== null ? (float) $job['budget_usd'] : null;
-        $spent = (float) $job['spent_usd'];
-        if ($budget !== null && $spent >= $budget) Legacy::fail(sprintf('이 작업의 비용 한도($%.2f)에 도달했습니다 (사용 $%.4f). 관리자 › AI 설정 › 비용 한도(작업당)를 올리면 이 작업에도 적용되고, 다시 돌리면 이어서 만듭니다.', $budget, $spent), 402);
-        $bi = self::budgetInfo($email);
-        if ($bi['monthly_cap'] !== null && $bi['month_spent'] >= $bi['monthly_cap']) Legacy::fail(sprintf('이달 AI 비용 상한($%.2f)에 도달했습니다 (사용 $%.4f). AI 키 설정에서 상한을 올려 주세요.', $bi['monthly_cap'], $bi['month_spent']), 402);
+        $budget = self::engineCap($job);   // 엔진은 누계와 견준다 — 기준선(시안 확정 때 다시 채움)을 더한 한도를 준다(0043)
+        self::budgetGuard($job, $email);   // 한도 글에 단계별 사용액·올리는 곳(전수조사 C, 2026-10-18)
 
         // check = 시안이 와이어를 따랐는지 보는 판정(와이어 스케치 + 시안 두 그림을 함께 보는 글 모델, 2026-10-18) — 사용 기록에서 따로 보이게
         $kind = in_array($b['kind'] ?? '', ['image', 'digest', 'build', 'check'], true) ? $b['kind'] : 'plan';
@@ -722,10 +786,10 @@ final class AiKeys
     public static function ask(array $job, string $kind, array $b): array
     {
         $email = strtolower((string) $job['email']);
-        $budget = $job['budget_usd'] !== null ? (float) $job['budget_usd'] : null;
-        if ($budget !== null && (float) $job['spent_usd'] >= $budget) Legacy::fail(sprintf('이 작업의 비용 한도($%.2f)에 도달했습니다.', $budget), 402);
-        $bi = self::budgetInfo($email);
-        if ($bi['monthly_cap'] !== null && $bi['month_spent'] >= $bi['monthly_cap']) Legacy::fail(sprintf('이달 AI 비용 상한($%.2f)에 도달했습니다.', $bi['monthly_cap']), 402);
+        // 대본·예상 질문은 완성된 작업에서 부른다 — 예전 글은 '한도에 도달했습니다'뿐이라 무엇을 올릴지 몰랐다(전수조사 C)
+        // 대본·예상 질문(script)은 작업 한도에서 뺀다 — 월 상한만 본다(2026-10-18 사용자 결정). 와이어(plan)는 작업 한도 그대로
+        $side = $kind === 'script';
+        self::budgetGuard($job, $email, !$side);
         $b['model'] = self::textModelFor(strtolower((string) $job['email']));   // 대본·와이어 등 서버 직접 호출도 글 모델 하나로(관리자가 고른 경로)
         [$status, $raw, $b['model']] = self::sendText($email, $b, 280, $kind === 'script' ? 'script' : 'plan');
         $d = json_decode($raw, true);
@@ -734,6 +798,10 @@ final class AiKeys
         Db::pdo()->prepare('INSERT INTO deck_ai_usage (email, job_id, kind, model, cost_usd, tokens_in, tokens_out, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, NOW())')
             ->execute([$email, (string) $job['id'], $kind, mb_substr((string) $b['model'], 0, 128), (float) ($u['cost'] ?? 0), (int) ($u['prompt_tokens'] ?? 0), (int) ($u['completion_tokens'] ?? 0)]);
         Jobs::addSpend((string) $job['id'], (float) ($u['cost'] ?? 0));
+        // 사용액(spent_usd)·사용 기록은 그대로 남기고, 기준선을 같은 만큼 올려 작업 한도 판정에서만 뺀다(0043)
+        if ($side && (float) ($u['cost'] ?? 0) > 0) {
+            Db::pdo()->prepare('UPDATE deck_jobs SET budget_base_usd = budget_base_usd + ? WHERE id = ?')->execute([(float) $u['cost'], (string) $job['id']]);
+        }
         $d['model'] = $b['model'];
         return $d;
     }

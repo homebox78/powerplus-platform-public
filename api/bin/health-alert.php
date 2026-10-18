@@ -65,23 +65,53 @@ if ($total && $free !== false) {
     }
 }
 
-// 3. 야간 백업
-if (is_file($statusFile) && is_readable($statusFile)) {
-    $line = trim((string) file_get_contents($statusFile));
-    [$ts, $state] = array_pad(preg_split('/\s+/', $line, 3) ?: [], 2, '');
-    $age = time() - (int) $ts;
-    if ((int) $ts <= 0) {
-        $checks['backup'] = "백업 상태 파일을 읽을 수 없습니다: {$line}";
-    } elseif ($state !== 'ok') {
-        $checks['backup'] = '야간 DB 백업이 실패했습니다(' . date('Y-m-d H:i', (int) $ts) . "): {$line}";
-    } else {
-        $checks['backup'] = $age > 26 * 3600 ? '야간 DB 백업이 ' . intdiv($age, 3600) . '시간째 없습니다(마지막 성공 ' . date('Y-m-d H:i', (int) $ts) . ').' : null;
-    }
-} else {
-    if ($dry) {
-        echo "backup: 상태 파일 없음({$statusFile}) — 모름(경보 안 함)\n";
+// 3. 야간 백업 · 서버 밖 백업 — offsite-backup.sh 도 같은 꼴의 상태 파일을 쓰는데 아무도 읽지 않았다(2026-10-18 전수조사 B)
+$offsiteFile = (string) Config::get('ops.offsite_status', $dataDir . '/offsite-backup.status');
+foreach (['backup' => [$statusFile, '야간 DB 백업'], 'offsite' => [$offsiteFile, '서버 밖 백업(GCS)']] as $bk => [$file, $label]) {
+    if (is_file($file) && is_readable($file)) {
+        $line = trim((string) file_get_contents($file));
+        [$ts, $state] = array_pad(preg_split('/\s+/', $line, 3) ?: [], 2, '');
+        $age = time() - (int) $ts;
+        if ((int) $ts <= 0) {
+            $checks[$bk] = "{$label} 상태 파일을 읽을 수 없습니다: {$line}";
+        } elseif ($state !== 'ok') {
+            $checks[$bk] = "{$label}이 실패했습니다(" . date('Y-m-d H:i', (int) $ts) . "): {$line}";
+        } else {
+            $checks[$bk] = $age > 26 * 3600 ? "{$label}이 " . intdiv($age, 3600) . '시간째 없습니다(마지막 성공 ' . date('Y-m-d H:i', (int) $ts) . ').' : null;
+        }
+    } elseif ($dry) {
+        echo "{$bk}: 상태 파일 없음({$file}) — 모름(경보 안 함)\n";
     }
 }
+
+/**
+ * 경보를 보낸 시각 — DB 가 죽어도 경보는 나가야 한다. 예전엔 알리는 단계가 DB(core_settings·core_user_roles·Notify)를 try 없이 써서,
+ * 가장 알려야 할 DB 장애 때 예외로 끝나 메일까지 못 갔다(2026-10-18 전수조사 B). DB 를 못 쓰면 임시 폴더 파일로 6시간 간격을 지킨다.
+ */
+$alertFile = static fn (string $k): string => sys_get_temp_dir() . '/pp-health-' . preg_replace('/[^a-z0-9_.-]/i', '_', $k);
+$lastAlert = static function (string $k) use ($alertFile): int {
+    try {
+        return (int) (Db::val('SELECT v FROM core_settings WHERE k = ?', [$k]) ?? 0);
+    } catch (\Throwable) {
+        return is_file($alertFile($k)) ? (int) file_get_contents($alertFile($k)) : 0;
+    }
+};
+$markAlert = static function (string $k, ?int $at) use ($alertFile): void {
+    if ($at === null) {
+        @unlink($alertFile($k));
+    } else {
+        @file_put_contents($alertFile($k), (string) $at);
+    }
+    try {
+        if ($at === null) {
+            Db::exec('DELETE FROM core_settings WHERE k = ?', [$k]);
+        } else {
+            Db::exec('INSERT INTO core_settings (k, v) VALUES (?, ?) ON DUPLICATE KEY UPDATE v = VALUES(v)', [$k, (string) $at]);
+        }
+    } catch (\Throwable $e) {
+        fwrite(STDERR, '[health-alert] 경보 시각 DB 기록 실패(파일로 대신): ' . $e->getMessage() . "\n");
+    }
+};
 
 $sent = 0;
 foreach ($checks as $key => $problem) {
@@ -93,16 +123,24 @@ foreach ($checks as $key => $problem) {
         continue;
     }
     if ($problem === null) {
-        Db::exec('DELETE FROM core_settings WHERE k = ?', [$k]);
+        $markAlert($k, null);
         continue;
     }
-    $lastAt = (int) (Db::val('SELECT v FROM core_settings WHERE k = ?', [$k]) ?? 0);
+    $lastAt = $lastAlert($k);
     if (time() - $lastAt < ALERT_EVERY) {
         continue;
     }
-    $title = '[운영 경보] ' . ['engine' => '변환 엔진 응답 없음', 'disk' => '디스크 부족', 'backup' => 'DB 백업 이상'][$key];
-    foreach (Db::rows("SELECT DISTINCT user_id FROM core_user_roles WHERE role IN ('superadmin','admin')") as $r) {
-        Notify::send((int) $r['user_id'], 'system', $title, '/admin', null, $problem);
+    $title = '[운영 경보] ' . (['engine' => '변환 엔진 응답 없음', 'disk' => '디스크 부족', 'backup' => 'DB 백업 이상', 'offsite' => '서버 밖 백업 이상'][$key] ?? $key);
+    try {   // 헤더 종 알림 — 실패해도(=DB 장애) 아래 메일은 보낸다. 한 사람 실패가 뒤 사람을 막지 않게 건마다
+        foreach (Db::rows("SELECT DISTINCT user_id FROM core_user_roles WHERE role IN ('superadmin','admin')") as $r) {
+            try {
+                Notify::send((int) $r['user_id'], 'system', $title, '/admin', null, $problem);
+            } catch (\Throwable $e) {
+                fwrite(STDERR, "[health-alert] 알림 실패(#{$r['user_id']}): " . $e->getMessage() . "\n");
+            }
+        }
+    } catch (\Throwable $e) {
+        fwrite(STDERR, '[health-alert] 관리자 목록을 못 읽음(메일만 보냄): ' . $e->getMessage() . "\n");
     }
     $to = (string) Config::get('mail.ops_to', '') ?: (string) Config::get('superadmin.email', '');
     if ($to !== '') {
@@ -112,7 +150,7 @@ foreach ($checks as $key => $problem) {
             fwrite(STDERR, '[health-alert] 메일 실패: ' . $e->getMessage() . "\n");
         }
     }
-    Db::exec('INSERT INTO core_settings (k, v) VALUES (?, ?) ON DUPLICATE KEY UPDATE v = VALUES(v)', [$k, (string) time()]);
+    $markAlert($k, time());
     $sent++;
 }
 if ($sent > 0) {

@@ -254,7 +254,7 @@ function LimitRow({ ai, busy, run }: { ai: AiSettings; busy: boolean; run: Run }
     <input className={cn("field !w-[120px] text-right font-mono", isBad(v) && "!border-[var(--color-warn)]")} inputMode="decimal" value={v} onChange={(e) => set(e.target.value)} placeholder="없음" aria-label={label} />
   );
   return (
-    <Row label="비용 한도 (USD)" desc="작업당 한도에 닿으면 그 작업이 멈추고(관리자가 올리면 이어서), 월 상한에 닿으면 그 사람의 새 호출을 막습니다. 비우면 한도 없음" last>
+    <Row label="비용 한도 (USD)" desc="작업당 한도는 시안까지 한 번, 시안 확정 뒤 장표 제작에 다시 한 번 채워집니다. 닿으면 그 작업이 멈추고, 올리면 이어서 합니다. 발표 대본·예상 질문은 작업 한도에 들지 않고 월 상한만 봅니다. 월 상한에 닿으면 그 사람의 새 호출을 막습니다. 비우면 한도 없음" last>
       <div className="flex items-center gap-2 flex-wrap">
         <label className="flex items-center gap-2 text-[13px] text-dim whitespace-nowrap">작업당 {inp(def, setDef, "작업당 한도 (USD)")}</label>
         <label className="flex items-center gap-2 text-[13px] text-dim whitespace-nowrap ml-2">사용자별 월 상한 {inp(cap, setCap, "사용자별 월 상한 (USD)")}</label>

@@ -837,7 +837,8 @@ final class Jobs
         $j['report'] = $j['report'] ? json_decode((string) $j['report'], true) : null;
         $j['budget_usd'] = $j['budget_usd'] !== null ? (float) $j['budget_usd'] : null;
         $j['spent_usd'] = round((float) ($j['spent_usd'] ?? 0), 4);
-        $j['plan'] = !empty($j['plan']) ? json_decode((string) $j['plan'], true) : null;
+        $j['budget_base_usd'] = round((float) ($j['budget_base_usd'] ?? 0), 4);   // 작업 한도 기준선(0043) — 화면은 spent − base 를 한도와 견준다
+        $j['plan'] =!empty($j['plan']) ? json_decode((string) $j['plan'], true) : null;
         $j['review'] = !empty($j['review']) ? json_decode((string) $j['review'], true) : null;
         $j['opts'] = !empty($j['opts']) ? json_decode((string) $j['opts'], true) : null;
         unset($j['brief']); // 화면엔 내용 전문을 보내지 않는다 (길다). 필요하면 별도 요청
@@ -1159,9 +1160,11 @@ final class Jobs
             $st->execute([':w' => $worker, ':i' => $id]);
             if ($st->rowCount() === 1) {
                 self::event((string) $id, 'info', "변환 엔진이 작업을 시작했습니다 ({$worker}).");
-                $j = $pdo->prepare('SELECT id, email, title, filename, size, slides, note, phase, pilot_slide, feedback, kind, source_kind, brief, budget_usd, spent_usd, plan, review, theme, opts FROM deck_jobs WHERE id = :i');
+                $j = $pdo->prepare('SELECT id, email, title, filename, size, slides, note, phase, pilot_slide, feedback, kind, source_kind, brief, budget_usd, spent_usd, budget_base_usd, plan, review, theme, opts FROM deck_jobs WHERE id = :i');
                 $j->execute([':i' => $id]);
                 $row = $j->fetch();
+                $row['budget_usd'] = AiKeys::engineCap($row);   // 엔진은 누계(spent_usd)와 견준다 — 기준선을 더한 한도(0043)
+                unset($row['budget_base_usd']);
                 $rf = glob(self::dir((string) $id, 'result') . '/*.pptx') ?: [];
                 $row['result_file'] = $rf ? basename($rf[0]) : null;   // 글 고치기(phase=edit)가 받아 갈 결과 파일
                 $row['comments'] = self::comments((string) $id, true);  // 해결 안 된 핀 의견 — 엔진이 시안·장표에 반영
@@ -1255,6 +1258,8 @@ final class Jobs
         }
         if ($status === 'done' && ($j0['phase'] ?? 'full') === 'pilot') return self::finishPilot($id, $b);
         if ($status === 'review') return self::finishPlan($id, $b);
+        // 기획 단계가 실패해도(시안 0장 등) 엔진이 보낸 기획은 남긴다 — 다시 돌리면 기획을 다시 짜지 않고 시안부터(R81)
+        if ($status === 'failed' && isset($b['plan']) && is_array($b['plan'])) self::keepPlan($j0, $b['plan']);
         Db::pdo()->prepare('UPDATE deck_jobs SET status = :s, progress = :p, stage = :st, finished_at = NOW(), heartbeat_at = NOW(),
                             result_name = COALESCE(:r, result_name), report = COALESCE(:rep, report), error = :e WHERE id = :i')
             ->execute([':s' => $status, ':p' => $status === 'done' ? 100 : 0, ':st' => $status === 'done' ? '완료' : ($status === 'canceled' ? '취소됨' : '실패'),
@@ -1301,6 +1306,30 @@ final class Jobs
         } catch (Throwable $e) {
             error_log('[pp-deck] notify ' . $id . ': ' . $e->getMessage());
         }
+    }
+
+    /**
+     * 기획을 먼저 저장 — 엔진이 기획을 마치자마자(시안 전) 부른다. 상태는 그대로(진행 중), plan 칸만.
+     * 시안이 0장으로 실패하거나 도중에 예외가 나도 다시 돌리면 이 기획을 쓴다(R81, 기획 비용 $0.45~1.45 를 다시 쓰지 않게).
+     * 엔진은 plan.pre_mockup=true 를 붙여 보낸다 — '시안 전 기획' 이라 다시 돌릴 때 시작 옵션(기획만·샘플·전체)대로 시안을 고른다.
+     */
+    public static function savePlan(string $id, string $worker, array $b): array
+    {
+        $j = self::mine($id, $worker);
+        if (!isset($b['plan']) || !is_array($b['plan']) || empty($b['plan']['slides']) || !is_array($b['plan']['slides'])) Legacy::fail('기획(plan.slides)이 비었습니다.');
+        if (!self::keepPlan($j, $b['plan'])) Legacy::fail('기획 단계의 내용→장표 작업이 아닙니다.', 409);
+        Db::pdo()->prepare('UPDATE deck_jobs SET heartbeat_at = NOW() WHERE id = :i')->execute([':i' => $id]);
+        return ['ok' => true];
+    }
+
+    /** 기획 단계(design·plan) 작업이면 plan 칸에 저장. 와이어 시각은 이전 기획과 비교해 잇는다. 저장했으면 true */
+    private static function keepPlan(array $j, array $plan): bool
+    {
+        if (($j['kind'] ?? '') !== 'design' || !in_array($j['phase'] ?? 'plan', ['plan', '', null], true) || empty($plan['slides'])) return false;
+        $old = !empty($j['plan']) ? json_decode((string) $j['plan'], true) : null;
+        Db::pdo()->prepare('UPDATE deck_jobs SET plan = :pl WHERE id = :i')
+            ->execute([':pl' => json_encode(self::stampWires(is_array($old) ? $old : null, $plan), JSON_UNESCAPED_UNICODE), ':i' => (string) $j['id']]);
+        return true;
     }
 
     /** design 기획 또는 시안 단계 완료 — 시안 확인을 기다린다. plan 은 장별 기획(JSON). */
@@ -1430,7 +1459,8 @@ final class Jobs
         if ($mode === 'build') {
             if ($j['status'] !== 'review') Legacy::fail('시안 확인 단계가 아닙니다.', 409);
             $all = trim(((string) ($j['feedback'] ?? '')) . ($fb !== '' ? "\n- " . mb_substr($fb, 0, 3000) : ''));
-            Db::pdo()->prepare("UPDATE deck_jobs SET $requeue, phase = 'build', plan = COALESCE(:pl, plan), review = NULL, feedback = :f WHERE id = :i")
+            // budget_base_usd = spent_usd — 시안 확정 때 작업 한도를 다시 채워 장표 제작이 한도만큼 온전히 쓴다(0043, 2026-10-18 사용자 결정)
+            Db::pdo()->prepare("UPDATE deck_jobs SET $requeue, phase = 'build', plan = COALESCE(:pl, plan), review = NULL, feedback = :f, budget_base_usd = spent_usd WHERE id = :i")
                 ->execute([':pl' => $planJson, ':f' => $all !== '' ? $all : null, ':i' => $id]);
             self::event($id, 'info', '시안 확정 — 장표를 만듭니다.' . ($fb !== '' ? " 요청: $fb" : ''));
             self::dropDocs($id, '장표 만들기로 넘어가 — 기획에만 쓰는');

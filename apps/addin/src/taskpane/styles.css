@@ -678,11 +678,11 @@ body {
 /* ===== 그리드 ===== */
 .grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 11px;
   padding: 8px 15px 16px;
 }
-/* 열 수는 AssetGrid 가 작업창 폭을 실측해 1~7열로 정한다(인라인 style) */
+/* 열 수는 AssetGrid 가 작업창 폭을 실측해 폭 계산 + 1열(기본 3열, 최대 8열)로 정한다(인라인 style) */
 
 .card {
   position: relative;

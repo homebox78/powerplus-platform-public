@@ -103,7 +103,9 @@ export type Job = {
   report: Report | null; error?: string | null; phase?: "pilot" | "full" | "plan" | "build" | "edit"; pilot_slide?: number | null; feedback?: string | null; cancel_requested?: boolean; queue_pos: number | null; thumb?: string | null; thumb_kind?: string | null;
   /** 목록용 — 시안이 아직 없을 때 첫 장의 와이어프레임(썸네일로 그린다) */
   wire1?: { title: string; keyword?: string; section?: string; blocks: WireBlock[] } | null;
-  kind?: JobKind; source_kind?: "pptx" | "md" | "text"; budget_usd?: number | null; spent_usd?: number; plan?: Plan | null; theme?: string | null;
+  kind?: JobKind; source_kind?: "pptx" | "md" | "text"; budget_usd?: number | null; spent_usd?: number;
+  /** 작업 한도 기준선(0043) — 시안 확정 때 spent_usd 로 다시 잡고 대본·예상 질문 비용만큼 오른다. 한도 판정 = spent_usd − budget_base_usd ≥ budget_usd */
+  budget_base_usd?: number; plan?: Plan | null; theme?: string | null;
   review?: { redo?: { n: number; feedback: string }[]; feedback?: string } | null;
   files?: Record<"before" | "after" | "result" | "extra" | "source" | "live" | "frames" | "draft" | "pilot" | "mockup", JobFile[]>;
   docs?: JobDoc[];

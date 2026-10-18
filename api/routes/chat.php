@@ -370,7 +370,8 @@ return static function (Router $r): void {
     });
 
     // 자료 올리기 시작 — 무료 한도(월 1건·30MB) 확인 뒤 powerDeck 분할 업로드를 연다. 조각은 /deck/uploads/{id}/{n} 로.
-    $r->post('/chat/projects/{pid}/upload', static function (array $p, Actor $a) use ($need, $proj, $paid, $usage, $bump, $msg): void {
+    // 몫은 여기서 세지 않는다 — 조각 올리기가 끊기면 몫만 깎이고 다시 올리면 402 였다(2026-10-18 전수조사 B). 끝내기(complete)가 성공했을 때 센다.
+    $r->post('/chat/projects/{pid}/upload', static function (array $p, Actor $a) use ($need, $proj, $paid, $usage, $msg): void {
         [$uid, $email] = $need($a);
         $row = $proj((string) $p['pid'], $uid);
         $b = Response::input();
@@ -380,8 +381,24 @@ return static function (Router $r): void {
             if ($size > CHAT_FREE_MB * 1024 * 1024) throw new HttpError('LIMIT', $msg('size_limit'), 413, 'size');
         }
         $up = Uploads::create($email, ['filename' => (string) ($b['filename'] ?? ''), 'size' => $size, 'purpose' => 'doc', 'job_id' => (string) $row['deck_job_id']]);
-        $bump($uid, 'upload_n');
         Response::json($up, 201);
+    });
+
+    // 자료 올리기 끝내기 — 조각을 다 받아 작업에 붙인 뒤(성공)에만 몫을 1 센다. 실패(조각 모자람·크기 다름)는 세지 않는다.
+    // 무료 회원이 두 파일을 동시에 시작했어도, 끝내기 직전에 다시 보고 이미 1건이면 붙이지 않는다(작업에 들어가기 전이라 몫·자료가 어긋나지 않는다).
+    $r->post('/chat/projects/{pid}/upload/{up}/complete', static function (array $p, Actor $a) use ($need, $proj, $paid, $usage, $bump, $msg): void {
+        [$uid, $email] = $need($a);
+        $row = $proj((string) $p['pid'], $uid);   // 내 대화인지
+        $upId = (string) $p['up'];
+        // 이 대화 작업에 붙일 자료 업로드만(장표 원본 업로드를 이 길로 끝내 새 작업을 만들지 못하게)
+        $st = preg_match('/^[0-9a-f]{24}$/', $upId) ? Db::val('SELECT status FROM deck_uploads WHERE id = ? AND email = ?', [$upId, $email]) : null;
+        if ($st === null || $st === false || !in_array((string) $st, ['open:doc:' . (string) $row['deck_job_id'], 'done'], true)) {
+            throw new HttpError('NOT_FOUND', '업로드를 찾을 수 없습니다.', 404);
+        }
+        if (!$paid($a) && $usage($uid)['upload'] >= 1) throw new HttpError('LIMIT', $msg('upload_limit'), 402, 'upload');
+        $res = Uploads::complete($email, $upId, []);
+        $bump($uid, 'upload_n');
+        Response::json($res, 201);
     });
 
     // 말 보내기 — 지금 단계에 맞게 처리한다

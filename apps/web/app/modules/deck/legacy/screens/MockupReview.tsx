@@ -160,7 +160,7 @@ export function MockupReview({ job, onChange, isAdmin, me, onLogout }: { job: Jo
   const missing = slides.filter((s) => !mock(s.n));
   const have = slides.length - missing.length;
   const est = job.est_image_usd ?? null;
-  const spent = job.spent_usd ?? 0;
+  const spent = Math.max(0, (job.spent_usd ?? 0) - (job.budget_base_usd ?? 0));   // 작업 한도에 드는 사용액(기준선 이후, 0043)
   const over = job.budget_usd != null && spent >= job.budget_usd;
   const allPicked = slides.length > 0 && picked.length === slides.length;
   const pickAll = (on: boolean) => setEdits((e) => { const n = { ...e }; for (const s of slides) n[s.n] = { ...n[s.n], pick: on }; return n; });

@@ -230,7 +230,9 @@ export function Running({ job, engine, onCancel, onStart, onBack, onReload }: { 
     job.slides ? `${job.slides}장` : null,
     job.size > 0 ? fmtSize(job.size) : "내용 입력",
     docs > 0 && !hold ? `맥락 자료 ${docs}개 반영` : null,
-    design && (job.spent_usd ?? 0) > 0 ? `AI 비용 ${usd(job.spent_usd, 3)}${job.budget_usd != null ? ` / ${usd(job.budget_usd)}` : ""}` : null,
+    // 시안 확정 뒤에는 한도를 다시 채운다(0043) — 한도와 견주는 값은 확정 뒤 사용액
+    design && (job.spent_usd ?? 0) > 0 ? `AI 비용 ${usd(job.spent_usd, 3)}${job.budget_usd != null ? ((job.budget_base_usd ?? 0) > 0
+      ? ` (확정 뒤 ${usd(Math.max(0, (job.spent_usd ?? 0) - (job.budget_base_usd ?? 0)), 3)} / 한도 ${usd(job.budget_usd)})` : ` / ${usd(job.budget_usd)}`) : ""}` : null,
   ].filter(Boolean).join(" · ");
 
   // 오른쪽 클릭 — 멈추기 · 내 작업

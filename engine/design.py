@@ -4406,6 +4406,15 @@ def push_plan_preview(job, plan):
         job.event(f"기획 미리 보기를 올리지 못했습니다(진행에는 영향 없음): {str(e)[:120]}", "warn")
 
 
+def save_plan_early(job, plan):
+    """기획이 나오면 시안 전에 서버 작업(plan 칸)에 먼저 저장한다(R81). 시안이 0장으로 끝나거나 도중에 예외가 나도
+    다시 돌리면 이 기획을 쓴다 — 기획·와이어 비용($0.45~1.45)을 다시 쓰지 않게. pre_mockup 표시는 '시안 전 기획'(시작 옵션대로 시안을 고른다)"""
+    try:
+        W["req"]("POST", f"/worker/jobs/{job.id}/plan", {"plan": dict(plan, pre_mockup=True)})
+    except Exception as e:
+        W["log"]("기획 먼저 저장 실패(진행에는 영향 없음):", e)
+
+
 def run_plan_phase(job, j):
     """기획 → 시안. 끝나면 서버에 review 로 보고한다. 취소는 감시 스레드가 처리한다."""
     watch(job)
@@ -4474,7 +4483,9 @@ def _plan_phase(job, j):
         import company   # 회사소개용 = 회사소개서(테마 A·B) — 레이아웃 카탈로그 → HTML 렌더 → 편집 가능한 PPT, 시안 확인 단계 없음(2026-10-16)
         company.run(job, j, opts, brief, note)
         return
-    first_run = not (plan and plan.get("slides"))
+    # 앞 실행이 기획까지 마치고(서버에 먼저 저장) 시안에서 멈췄다 — 기획은 그대로 쓰고 시작 옵션대로 시안부터(R81)
+    resumed = bool(isinstance(plan, dict) and plan.pop("pre_mockup", False) and plan.get("slides"))
+    first_run = not (plan and plan.get("slides")) or resumed
 
     # 2) 기획 (다시 만들기면 기존 기획을 쓴다)
     redo = {int(x["n"]): x.get("feedback", "") for x in (review or {}).get("redo", [])} if review else {}
@@ -4509,6 +4520,10 @@ def _plan_phase(job, j):
         n_chk = fact_check(plan, brief + chr(10) + (context or ""), raw_ctx + chr(10) + datafacts.sources_text(job.facts))
         if n_chk:
             job.event(f"근거 확인 {n_chk}곳 — 자료에서 찾지 못한 수치·강한 표현·메타 문구를 장마다 표시했습니다. 시안 전에 확인해 주세요.", "warn")
+        save_plan_early(job, plan)
+    elif resumed:
+        job.event(f"앞 실행에서 저장한 기획을 다시 씁니다 — {len(plan['slides'])}장 (기획 AI 호출 없음, 비용 0). 시안부터 이어 갑니다.", "done")
+        push_plan_preview(job, plan)
     else:
         job.event(f"기존 기획을 씁니다 — {len(plan['slides'])}장" + (f", {len(redo)}장 다시" if redo else ""))
     job.push("기획", 18)
@@ -4548,6 +4563,8 @@ def _plan_phase(job, j):
                 if s not in todo:
                     todo.append(s)
             todo.sort(key=lambda s: s["n"])
+            if resumed:   # 앞 실행에서 이미 그린 샘플은 다시 그리지 않는다
+                todo = [s for s in todo if s["n"] not in have]
         else:
             todo = [s for s in plan["slides"] if s["n"] not in have]
     else:
@@ -4574,6 +4591,8 @@ def _plan_phase(job, j):
         ftodo = [f for f in specs if f["id"] in fredo or f["kind"] in fredo]
     elif first_run:
         ftodo = specs if opts.get("mockups", "plan") == "all" else []
+        if resumed:
+            ftodo = [f for f in ftodo if f["id"] not in fhave]
     else:   # 본문 시안을 만들 때(고른 장이든 남은 장이든) 아직 없는 앞장도 함께 만든다
         ftodo = [f for f in specs if f["id"] not in fhave]
     for f in specs:
@@ -4741,8 +4760,9 @@ def _plan_phase(job, j):
         req("POST", f"/worker/jobs/{job.id}/finish", {"status": "review", "plan": plan, "message": msg, "report": {"summary": msg, "stats": stats}})
         return
     if ok == 0:
+        # 기획은 남긴다(R81) — 다시 돌리면 기획 없이 시안부터. 처음 시안이면 '시안 전 기획' 표시로 시작 옵션을 지킨다
         req("POST", f"/worker/jobs/{job.id}/finish", {"status": "failed", "error": stopped or ("시안을 한 장도 만들지 못했습니다. " + "; ".join(f"{n}쪽: {next(s.get('error', '') for s in plan['slides'] if s['n'] == n)}" for n in fails[:3])),
-                                                     "report": {"stats": stats}})
+                                                     "plan": dict(plan, pre_mockup=True) if first_run else plan, "report": {"stats": stats}})
         return
     msg = f"시안 {ok}/{total}장이 나왔습니다. 장마다 확인하고 확정하면 장표를 만듭니다."
     if stopped:

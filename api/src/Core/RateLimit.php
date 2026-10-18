@@ -20,12 +20,26 @@ final class RateLimit
         return substr(hash('sha256', $ip . '|' . (string) Config::get('app.secret', '')), 0, 16);
     }
 
+    /** 한국 시각(UTC+9) 초 — 창 경계를 한국 0시·정시에 맞춘다 */
+    private const KST_OFFSET = 32400;
+
+    /**
+     * 이번 창의 시작(한국 시각 문자열, DB time_zone +09:00 과 같은 기준). 하루 창은 한국 0시에 바뀐다(2026-10-18 사용자 결정 "한국 0시").
+     * 예전엔 intdiv(time(), 86400) 이라 UTC 0시(한국 09시)에 바뀌어 "내일 다시"가 오전 9시까지 거짓이었다. 시간 창은 9시간이 정시 배수라 그대로.
+     */
+    public static function windowStart(int $window, ?int $now = null): string
+    {
+        $t = $now ?? time();
+        $start = intdiv($t + self::KST_OFFSET, $window) * $window - self::KST_OFFSET;
+        return (new \DateTimeImmutable('@' . $start))->setTimezone(new \DateTimeZone('Asia/Seoul'))->format('Y-m-d H:i:s');
+    }
+
     /** 한 번 세고, 이번 창에서 max 를 넘었으면 429 */
     public static function hit(string $bucket, int $max, int $window, string $message = '요청이 너무 잦습니다. 잠시 뒤 다시 시도해 주세요.'): void
     {
         if (!self::take($bucket, $max, $window)) {
             $mins = (int) ceil($window / 60);
-            throw HttpError::tooMany($message, $window >= self::DAY ? "하루 {$max}번" : "{$mins}분에 {$max}번");
+            throw HttpError::tooMany($message, $window >= self::DAY ? "하루 {$max}번 — 자정(한국 시각)에 다시 채워집니다" : "{$mins}분에 {$max}번");
         }
     }
 
@@ -33,7 +47,7 @@ final class RateLimit
     public static function take(string $bucket, int $max, int $window): bool
     {
         try {
-            $start = date('Y-m-d H:i:s', intdiv(time(), $window) * $window);
+            $start = self::windowStart($window);
             $key = mb_substr($bucket, 0, 120);
             Db::exec('INSERT INTO core_rate_limits (bucket, win_start, hits) VALUES (?, ?, 1) ON DUPLICATE KEY UPDATE hits = hits + 1', [$key, $start]);
             return (int) Db::val('SELECT hits FROM core_rate_limits WHERE bucket = ? AND win_start = ?', [$key, $start]) <= $max;
@@ -47,7 +61,7 @@ final class RateLimit
     public static function count(string $bucket, int $window): int
     {
         try {
-            $start = date('Y-m-d H:i:s', intdiv(time(), $window) * $window);
+            $start = self::windowStart($window);
             return (int) (Db::val('SELECT hits FROM core_rate_limits WHERE bucket = ? AND win_start = ?', [mb_substr($bucket, 0, 120), $start]) ?? 0);
         } catch (\Throwable) {
             return 0;

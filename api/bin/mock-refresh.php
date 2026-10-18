@@ -26,9 +26,13 @@ if ($css === '' || $js === '') {
     exit(1);
 }
 
-$fix = static function (string $html) use ($css, $js): string {
-    $html = (string) preg_replace_callback('/<style\b[^>]*\bdata-hb-base\b[^>]*>.*?<\/style>/is', static fn () => "<style data-hb-base=\"1\">\n" . $css . "\n</style>", $html);
-    return (string) preg_replace_callback('/<script\b[^>]*\bdata-hb-behavior\b[^>]*>.*?<\/script>/is', static fn () => "<script data-hb-behavior=\"1\">\n" . $js . "\n</script>", $html);
+// 정규식이 백트랙·JIT 한도에 걸리면 preg_replace_callback 은 null 을 준다 — 예전엔 (string) 이 '' 로 바꿔 큰 시안 HTML 을 빈 값으로 덮어썼다.
+// 이제 null 이면 그 시안은 원문 그대로 둔다(= 바꾸지 않음으로 세고, 실패 목록에 남긴다)(2026-10-18 전수조사 B)
+$failed = [];
+$fix = static function (string $html) use ($css, $js): ?string {
+    $a = preg_replace_callback('/<style\b[^>]*\bdata-hb-base\b[^>]*>.*?<\/style>/is', static fn () => "<style data-hb-base=\"1\">\n" . $css . "\n</style>", $html);
+    if ($a === null) return null;
+    return preg_replace_callback('/<script\b[^>]*\bdata-hb-behavior\b[^>]*>.*?<\/script>/is', static fn () => "<script data-hb-behavior=\"1\">\n" . $js . "\n</script>", $a);
 };
 
 $tally = ['mockups' => 0, 'gallery' => 0, 'same' => 0];
@@ -43,6 +47,10 @@ foreach ([['mock_mockups', 'mockups'], ['mock_gallery', 'gallery']] as [$table, 
             $last = (int) $r['id'];
             $old = (string) $r['html'];
             $new = $fix($old);
+            if ($new === null) {
+                $failed[] = "{$table}#{$last}(" . preg_last_error_msg() . ')';
+                continue;
+            }
             if ($new === $old) {
                 $tally['same']++;
                 continue;
@@ -55,4 +63,4 @@ foreach ([['mock_mockups', 'mockups'], ['mock_gallery', 'gallery']] as [$table, 
         }
     }
 }
-echo ($dry ? '[DRY] ' : '') . "갱신: 시안 {$tally['mockups']} · 갤러리 {$tally['gallery']} · 그대로 {$tally['same']}\n";
+echo ($dry ? '[DRY] ' : '') . "갱신: 시안 {$tally['mockups']} · 갤러리 {$tally['gallery']} · 그대로 {$tally['same']}" . ($failed ? ' · 건너뜀(정규식 실패) ' . count($failed) . ': ' . implode(', ', array_slice($failed, 0, 20)) : '') . "\n";

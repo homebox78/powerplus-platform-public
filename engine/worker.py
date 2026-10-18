@@ -12,7 +12,7 @@ powerDeck 변환 엔진(작업자) — 사무실·집 윈도우 PC 에서 상시
 실행:  py worker.py            (config.json 필요 — config.example.json 참고)
        py worker.py --once     (작업 하나만 하고 끝)
 """
-import json, os, sys, time, shutil, socket, subprocess, threading, traceback, urllib.request, urllib.error, urllib.parse, glob, re
+import io, json, os, sys, time, shutil, socket, subprocess, threading, traceback, urllib.request, urllib.error, urllib.parse, glob, re
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 CFG = json.load(open(os.path.join(HERE, "config.json"), encoding="utf-8"))
@@ -84,10 +84,22 @@ def req(method, path, body=None, raw=None, timeout=60):
     if body is not None:
         h["Content-Type"] = "application/json"
     r = urllib.request.Request(API + path, data=data, headers=h, method=method)
-    with urllib.request.urlopen(r, timeout=timeout) as res:
-        b = res.read()
-        ct = res.headers.get("Content-Type", "")
-        return json.loads(b) if "json" in ct else b
+    try:
+        with urllib.request.urlopen(r, timeout=timeout) as res:
+            b = res.read()
+            ct = res.headers.get("Content-Type", "")
+            return json.loads(b) if "json" in ct else b
+    except urllib.error.HTTPError as e:
+        # 서버가 적어 준 이유를 오류 글에 싣는다 — 'HTTP Error 402: Payment Required' 만 남아 작업당 비용 한도를
+        # OpenRouter 잔액 부족으로 읽게 하던 것(2026-10-18 작업 55ae9b…). 부르는 쪽이 e.code·e.read() 를 그대로 쓸 수 있게 같은 형으로 다시 던진다.
+        body = e.read() or b""
+        msg = e.reason
+        try:
+            err = json.loads(body).get("error")
+            msg = (err.get("message") if isinstance(err, dict) else err) or msg
+        except Exception:
+            pass
+        raise urllib.error.HTTPError(e.url, e.code, f"{msg} (서버 {e.code})", e.headers, io.BytesIO(body)) from None
 
 
 def download(path, dest):

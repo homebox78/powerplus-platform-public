@@ -617,7 +617,18 @@ final class AiKeys
     public static function saveBudget(array $b): array
     {
         $num = static function ($v): ?string { $f = (float) ($v ?? 0); if ($f > 10000) Legacy::fail('$10,000 이하로 적어 주세요.'); return $f > 0 ? (string) round($f, 2) : null; };
-        if (array_key_exists('default_budget_usd', $b)) self::setSetting('job_budget_usd', $num($b['default_budget_usd']));
+        if (array_key_exists('default_budget_usd', $b)) {
+            $new = $num($b['default_budget_usd']);
+            self::setSetting('job_budget_usd', $new);
+            // 한도는 작업을 만들 때 작업마다 복사된다 — 전역값만 올리면 한도에 걸려 멈춘 작업은 그대로 $2 라 "다시 돌리기"도 또 멈췄다
+            // (2026-10-18 사용자 "변경했는데도 이러네?", R75). 올리거나 없앨 때 아직 안 끝난 작업(완료·취소 제외)의 낮은 한도도 같이 올린다. 내리는 것은 새 작업부터.
+            $pdo = Db::pdo();
+            if ($new === null) {
+                $pdo->exec("UPDATE deck_jobs SET budget_usd = NULL WHERE budget_usd IS NOT NULL AND status NOT IN ('done','canceled')");
+            } else {
+                $pdo->prepare("UPDATE deck_jobs SET budget_usd = ? WHERE budget_usd IS NOT NULL AND budget_usd < ? AND status NOT IN ('done','canceled')")->execute([$new, $new]);
+            }
+        }
         if (array_key_exists('monthly_cap_usd', $b)) self::setSetting('monthly_cap_usd', $num($b['monthly_cap_usd']));
         return ['ok' => true];
     }
@@ -640,7 +651,7 @@ final class AiKeys
         $jid = (string) $job['id'];
         $budget = $job['budget_usd'] !== null ? (float) $job['budget_usd'] : null;
         $spent = (float) $job['spent_usd'];
-        if ($budget !== null && $spent >= $budget) Legacy::fail(sprintf('이 작업의 비용 한도($%.2f)에 도달했습니다 (사용 $%.4f). 한도를 올리면 이어서 만듭니다.', $budget, $spent), 402);
+        if ($budget !== null && $spent >= $budget) Legacy::fail(sprintf('이 작업의 비용 한도($%.2f)에 도달했습니다 (사용 $%.4f). 관리자 › AI 설정 › 비용 한도(작업당)를 올리면 이 작업에도 적용되고, 다시 돌리면 이어서 만듭니다.', $budget, $spent), 402);
         $bi = self::budgetInfo($email);
         if ($bi['monthly_cap'] !== null && $bi['month_spent'] >= $bi['monthly_cap']) Legacy::fail(sprintf('이달 AI 비용 상한($%.2f)에 도달했습니다 (사용 $%.4f). AI 키 설정에서 상한을 올려 주세요.', $bi['monthly_cap'], $bi['month_spent']), 402);
 

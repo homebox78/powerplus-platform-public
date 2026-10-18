@@ -346,11 +346,11 @@ def launch_or_agent(job, prompt, cwd=None, prog_file=None, quiet=False):
             proc._rc = 0
         except Exception as e:
             traceback.print_exc()
-            final.update({"text": f"OpenRouter 에이전트 실패: {str(e)[:500]}", "is_error": True, "cost": final.get("cost", 0)})
+            final.update({"text": f"장표 제작 에이전트 실패: {str(e)[:500]}", "is_error": True, "cost": final.get("cost", 0)})   # 서버가 Claude API 로 보낼 수도 있어 'OpenRouter' 라고 적지 않는다
             proc._rc = 1
         if not quiet:
             try:
-                job.event(f"엔진 모델: {model} (OpenRouter)")
+                job.event(f"엔진 모델: {model} (서버 경로 — Claude API 키가 있으면 서버가 claude-opus-5-5 로 보낸다)")
             except Exception:
                 pass
 

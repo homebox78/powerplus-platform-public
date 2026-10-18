@@ -312,6 +312,8 @@ const INSTRUCTIONS = [
   "  - 다 만들면 mock_check_mockup(ref_id=reference.ref_id, html) 을 반드시 부른다. 홈박스가 시안을 보관하고 실제로 렌더해 레퍼런스와 줄·칸·높이·밝기를(와이어 묶음이면 와이어와 줄 순서·칸 수·칸 폭·칸 종류를) 대조하고 동작을 눌러 본 뒤 점수·fixes·token 을 준다(85점 이상·치명 0 이 통과). 스스로 다 됐다고 판단하지 않고, 통과할 때까지 고쳐 다시 판정한다(미통과 시안은 결과로 남지 않는다).",
   "  - 미통과면 HTML 을 처음부터 다시 쓰지 않는다. mock_check_mockup(token, edits=[{find, replace}]) 로 고친 부분만 보낸다(ref_id 는 보관된 것을 쓴다. 전체를 다시 쓰면 10분씩 걸린다).",
   "  mock_build_homepage·mock_get_main_mockup 은 빠른 초안용이다(자동 조립이라 레퍼런스 수준에는 못 미친다). 사용자가 초안을 직접 요청하지 않았으면 쓰지 않는다.",
+  "  - ★ 최우선 품질 기준: 한 섹션 안 좌우 균형(나란한 칸·단의 끝선이 같고, 한쪽만 비지 않게)과 이미지 비율(찌그러짐·글자 든 그림 잘림 금지). 같은 묶음(카드·목록·배너·탭)은 높이·그림 비율·제목 줄 수·단추 위치가 서로 같아야 한다 — 어떤 건 길고 어떤 건 짧고 어떤 건 찌그러지고 어떤 건 줄바꿈되면 판정이 치명으로 막는다. 만든 뒤 getBoundingClientRect 로 직접 재 본다.",
+  "  - 사진·배너·아이콘은 늘 응답의 samples·icons(파워에셋 최신 목록 — 새로 올라온 세트가 바로 실린다)에서 고르고 그대로 쓴다. 아이콘은 한 시안에 한 스타일.",
   "  - 사진·배너·아이콘은 samples·icons 에 있는 것을 그대로 쓴다. 그림을 SVG 로 직접 그려 대신하지 않는다(만화처럼 보여 시안 품질이 크게 떨어진다).",
   "  - mock_check_mockup 을 통과하면 mock_publish_mockup(token, title) 으로 게시해 받은 url 을 사용자에게 준다(HTML 을 다시 보내지 않는다 — 홈박스가 보관하고 있다). claude.ai 아티팩트처럼 외부 이미지가 막힌 곳에서는 홈박스 사진이 안 보이기 때문이다. 그림을 직접 그려 사진을 대신하지 않는다. 무료 키라 못 올리면 HTML 파일로 저장해 브라우저로 열도록 안내한다.",
   "",
@@ -457,7 +459,8 @@ function buildServer(key: string | null): McpServer {
   const pageTypeDesc = `페이지 유형 id. 허용값: ${pageTypes.join("·")}`;
   const deviceDesc = "pc(기본) 또는 mobile";
   // 아이콘 스타일(O-22) — 레퍼런스 엔진 Samples::styleOf 값. 목록이 늘 수 있어 enum 대신 글자로 받고, 틀리면 엔진이 허용값을 돌려준다(BAD_ICON_STYLE)
-  const iconStyleDesc = "아이콘 스타일 — 생략하면 주색에 어울리는 스타일을 하나 골라 쓴다(기본). 고객이 정했을 때만 준다. 허용값: icon-blue(파랑 단색)·icon-glass(유리 질감 입체)·icon-gradient(그라데이션)·icon-color-3(컬러 입체)·icon-color-gradient-flat(컬러 그라데이션 평면)·icon-flat-9(평면 파스텔)·icon-iso(아이소메트릭)·icon-handdrawn-blue(손그림 파랑)·icon-si-deck-blue(SI 장표 파랑)·icon-set-line(선형)·icon-set-duotone(투톤). 틀린 값이면 오류에 지금 허용값이 온다";
+  // 허용값을 여기 적어 두면 파워에셋에 새 세트가 올라와도 안내에 안 나온다(2026-10-18 픽토그램 6세트) — 응답 samples.icon_style.allowed 가 늘 최신
+  const iconStyleDesc = "아이콘 스타일 — 생략하면 주색에 어울리는 스타일을 하나 골라 쓴다(기본). 고객이 정했을 때만 준다. 허용값은 파워에셋 최신 아이콘 세트 이름이고 응답 samples.icon_style.allowed 에 늘 최신 목록이 온다(예: icon-pict-line-navy·icon-pict-line-point·icon-pict-solid-navy·icon-pict-circle-badge·icon-pict-duotone-blue·icon-pict-flat-color 픽토그램, icon-blue·icon-glass·icon-gradient·icon-iso·icon-pale-clay 등). 틀린 값이면 오류에 지금 허용값이 온다";
   const get =<T,>(path: string) => api<T>(path, pro ? "pro" : "free"); // guard 뒤에 불러야 pro 가 채워져 있다
 
   // ================================================================ [mock] powerMock

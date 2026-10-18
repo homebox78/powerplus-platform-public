@@ -11,7 +11,7 @@ import { measureVisual, visualFixes, capByKinds } from "./visual.mjs";
 import { guardContext } from "./netguard.mjs";
 import { collectOverlayText, overlayContrast, collectNames, nameFixes, contrastFixes } from "./extra.mjs";
 import { measureWire, wireMatch, wireRefRows, wireSchematicSvg } from "./wire.mjs";
-import { eyeChecks } from "./eye.mjs";
+import { eyeChecks, consistencyChecks } from "./eye.mjs";
 
 let browserP = null;
 let idleTimer = null;
@@ -289,6 +289,8 @@ async function doCheck({ html, ref, refImage, launch, sharp, width = 1920, peers
     const hasHb = await p.evaluate(() => !!document.querySelector("[data-hb],[data-hb-open]"));
     // 사람 눈 점검(eye.mjs, 2026-10-18 w02 96점 통과 미탐): 날짜 줄바꿈·나란한 상자 빈 면·글자 그림 잘림·펼침판 글자 대비. behavior 가 판을 열기 전에, 연 것은 되돌린다
     const eye = await eyeChecks(p, { textKeys }).catch(() => ({ items: [] }));
+    // 같은 묶음 일관성(eye.mjs consistencyChecks, 2026-10-18 사용자 최우선 기준): 형제 카드 높이·그림 비율·제목/설명 줄 수·단추 위치
+    const cons = await consistencyChecks(p).catch(() => ({ items: [] }));
     const beh = await behavior(p, { force: hasHb, errors });
     // data-hb 가 없어도 표준 접근성 속성(role=tab·aria-controls)으로 만든 조작이 실제로 움직이면 감점하지 않는다
     // — 홈박스 자체 조립(메인·서브 키트)은 자기 스크립트를 쓰는데 매번 -10 이었다(2026-10-12 MCP 예시 시험)
@@ -611,6 +613,15 @@ async function doCheck({ html, ref, refImage, launch, sharp, width = 1920, peers
     if (lay.fails.length) { score -= Math.min(30, lay.fails.length * 4); for (const f of lay.fails.slice(0, 12)) fixes.push(`구성 · ${f}`); }
     { const ef = eye.items.filter((x) => !(x.key && lay.fails.some((f) => f.includes(x.key)))); // 보이는 글자 그림 잘림은 구성 ⑦ 이 이미 감점 — 같은 그림을 두 번 깎지 않는다
       if (ef.length) { score -= Math.min(16, ef.length * 4); for (const x of ef.slice(0, 8)) fixes.push(`눈 점검 · ${x.msg}`); } }
+    // 최우선 기준(2026-10-18 사용자 "목업 제작 시 한 섹션 내 좌우 균형이 제일 중요함, 이미지 노출 시에 비율도") —
+    // 좌우 균형(나란한 칸·단 끝선·나란한 상자 빈 면)과 이미지 비율(자리와 비율 불일치·글자 든 그림 잘림)은 감점만이 아니라 치명. 하나라도 있으면 통과하지 못한다
+    { const lr = lay.r ?? {};
+      const balN = (lr.balance?.length ?? 0) + (lr.colEnd?.length ?? 0) + eye.items.filter((x) => x.kind === "D").length;
+      const ratioN = (lr.crop?.length ?? 0) + eye.items.filter((x) => x.kind === "E").length;
+      if (balN) hard.push(`좌우 균형 · 한 섹션 안 좌우 끝선·빈 면 ${balN}곳(구성 '나란한 칸'·'단 끝선', 눈 점검 '나란한 상자 빈 면')`);
+      if (ratioN) hard.push(`이미지 비율 · 자리와 비율이 안 맞거나 글자 든 그림이 잘린 곳 ${ratioN}곳(구성 '이미지 비율', 눈 점검 '글자 든 그림 잘림')`); }
+    // 같은 묶음 일관성(같은 최우선 기준 — "어떤 건 길고 어떤 건 짧고 어떤 건 찌그러지고 어떤 건 줄바꿈되고") — 치명
+    if (cons.items.length) { for (const x of cons.items.slice(0, 8)) fixes.push(`일관성 · ${x.msg}`); hard.push(`일관성 · 같은 묶음 ${cons.items.length}곳`); }
     if (dev.length) { score -= Math.min(16, dev.length * 3); for (const f of dev.slice(0, 8)) fixes.push(`반응형 · ${f}`); }
     if (beh.fails.length) { score -= Math.min(30, beh.fails.length * 5); for (const f of beh.fails.slice(0, 10)) fixes.push(`동작 · ${f}`); }
     if (beh.hard?.length) { score -= Math.min(10, beh.hard.length * 5); for (const h of beh.hard.slice(0, 5)) { hard.push(`주 메뉴 · ${h}`); fixes.push(`동작 · ${h} — 펼친 판에 z-index 를 주고 머리 띠 위로 올린다.`); } }

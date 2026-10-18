@@ -242,7 +242,9 @@ final class Samples
         $src = (string) \Config::get('app.samples_url', 'https://powerplus.hom2box.com/api/v1/assets/mock-samples');
         if ($src === '' || $src === 'off') { return null; }
         // Pro 목록은 플랫폼 worker 키(app.samples_key)로만 받는다. 비었으면 조용히 기본 목록만(로그 없음)
-        $key = $pro ? trim((string) \Config::get('app.samples_key', '')) : '';
+        // 기본 목록도 키가 있으면 싣는다 — 10-16 회원 전용 전환 뒤 키 없는 요청이 401 이라 10-15 캐시(4,902건)에 멈춰,
+        // 그 뒤 파워에셋에 올린 에셋(10-18 픽토그램 아이콘 6세트 등)이 시안 재료에 안 들어갔다(2026-10-18 사용자 "항상 최신 에셋을")
+        $key = trim((string) \Config::get('app.samples_key', ''));
         if ($pro && $key === '') { return null; }
         if ($pro) { $src .= (str_contains($src, '?') ? '&' : '?') . 'pool=pro'; }
         // 캐시는 기본·Pro 따로 — 주소가 달라 md5 가 다르고, 이름에도 -pro 를 붙여 눈으로 구분
@@ -255,10 +257,15 @@ final class Samples
             $c = $read();
             if ($c !== null) { return $c; }
         }
-        $hdr = "Accept: application/json\r\n" . ($pro ? "Authorization: Bearer $key\r\nX-Worker: mockref\r\n" : '');
+        $hdr = "Accept: application/json\r\n" . ($key !== '' ? "Authorization: Bearer $key\r\nX-Worker: mockref\r\n" : '');
         $ctx = stream_context_create(['http' => ['timeout' => 8, 'header' => $hdr, 'ignore_errors' => true]]);
         $raw = @file_get_contents($src, false, $ctx);
         $j = is_string($raw) ? json_decode($raw, true) : null;
+        $code = (int) (preg_match('#^HTTP/\S+ (\d{3})#', (string) ($http_response_header[0] ?? ''), $mm) ? $mm[1] : 0);
+        if ($code !== 200) {
+            // 받지 못하면 지난 캐시로 돈다 — 조용히 오래된 에셋을 쓰지 않게 로그를 남긴다
+            error_log("[mockref] 샘플 목록 {$code} ({$src}) — 지난 캐시를 쓴다" . (is_file($cache) ? ' · 캐시 ' . date('m-d H:i', (int) filemtime($cache)) : ''));
+        }
         // Pro 는 플랫폼이 pool:"pro" 라고 답했을 때만 쓴다(키가 틀리면 기본 목록이 오므로 그대로 쓰면 안 된다)
         if ($pro && (($j['data']['pool'] ?? $j['pool'] ?? '') !== 'pro')) { return $read(); }
         $items = $j['data']['items'] ?? $j['items'] ?? null;

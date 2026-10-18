@@ -33,6 +33,7 @@ return static function (Router $r): void {
             'ids' => isset($_GET['ids']) ? array_slice(array_filter(explode(',', (string) $_GET['ids'])), 0, 200) : null,
             'tag' => (string) ($_GET['tag'] ?? ''),
             'logo_topic' => (string) ($_GET['logo_topic'] ?? ''),
+            'except' => (string) ($_GET['except'] ?? ''),
             'slide_kind' => (string) ($_GET['slide_kind'] ?? ''),
             'slide_page' => (string) ($_GET['slide_page'] ?? ''),
         ], $limit, $offset);

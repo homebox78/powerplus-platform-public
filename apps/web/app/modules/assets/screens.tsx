@@ -25,6 +25,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { apiFetch, postJson } from "@/lib/api";
 import { CATEGORY_KO, REQUEST_STATUS_KO, SORT_KO, setLabel, assetCategoriesQuery, assetDetailQuery, assetListQuery, assetRequestsQuery, assetSetsQuery, frequentLogosQuery, logoTopicsQuery, type AssetCategory, type AssetItem, type AssetListParams, type AssetRequest } from "@/lib/assets";
@@ -58,8 +59,8 @@ function AssetCard({ a, onOpen }: { a: AssetItem; onOpen: (id: string) => void; 
           className="bg-ground-3 p-[4.5%]"
           hover={<><Button variant="white" size="icon-sm" type="button" asChild onClick={(e) => e.stopPropagation()}>{me ? <a href={a.thumb_url.replace(/\/thumb$/, "/original")} download aria-label="내려받기" title="내려받기" onClick={() => { void postJson(`/assets/items/${a.id}/use`, { channel: "web" }).catch(() => {}); }}><Download aria-hidden /></a> : <Link to={loginNext()} aria-label="로그인 후 내려받기" title="로그인 후 내려받기"><Lock aria-hidden /></Link>}</Button><SaveButton type="asset" id={a.id} size="icon-sm" iconOnly /></>}
         >
-          {/* 흰 로고·흰 아이콘은 칸 바탕을 짙게(ContrastImg, 사용자 2026-10-18) */}
-          <ContrastImg boxClassName="relative flex w-full items-center justify-center overflow-hidden rounded-md shadow-[0_1px_3px_rgba(0,0,0,0.08)] aspect-square" src={a.thumb_url} loading="lazy" className={cn("size-full", photo ? "object-contain" : "object-contain p-[12%]")} />
+          {/* 흰 로고·흰 아이콘은 칸 바탕을 짙게(ContrastImg, 사용자 2026-10-18). 로고는 가로로 긴 그림이라 칸 높이 60%(5:3, 사용자 2026-10-18) */}
+          <ContrastImg boxClassName={cn("relative flex w-full items-center justify-center overflow-hidden rounded-md shadow-[0_1px_3px_rgba(0,0,0,0.08)]", a.category === "logo" ? "aspect-[5/3]" : "aspect-square")} src={a.thumb_url} loading="lazy" className={cn("size-full", photo ? "object-contain" : a.category === "logo" ? "object-contain px-[12%] py-[8%]" : "object-contain p-[12%]")} />
         </ThumbFrame>
         {saved && <SavedBadge />}
       </div>
@@ -103,7 +104,7 @@ function AssetGrid({ params, emptyText, requestCta }: { params: AssetListParams;
   const [sp] = useSearchParams();
   const [open, setOpen] = useState<string | null>(() => sp.get("item"));
   const dense = params.category === "icon" || params.category === "illust" || params.category === "logo";
-  if (q.isPending) return <div className={cn("mt-10", dense ? GRID_DENSE : GRID)}>{Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className={cn("rounded-panel", dense ? "aspect-square" : "aspect-[16/10]")} />)}</div>;
+  if (q.isPending) return <div className={cn("mt-10", dense ? GRID_DENSE : GRID)}>{Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className={cn("rounded-panel", params.category === "logo" ? "aspect-[5/3]" : dense ? "aspect-square" : "aspect-[16/10]")} />)}</div>;
   if (q.isError) return <p className="py-16 text-center text-ink-4">목록을 불러오지 못했습니다.</p>;
   const { data, total = 0, limit = 40, meta } = q.data;
   const pages = Math.max(1, Math.ceil(total / limit));
@@ -191,7 +192,9 @@ function useCategoryOptions() {
   const cats = useQuery(assetCategoriesQuery);
   return (cats.data ?? []).map((c) => ({ id: c.id, label: c.label, count: c.count }));
 }
-const SORT_OPTIONS = (Object.entries(SORT_KO) as Array<[keyof typeof SORT_KO, string]>).filter(([v]) => v !== "newest").map(([id, label]) => ({ id, label }));
+/** 둘러보기 하위 탭(에셋 | 로고) — powerMock 내 시안·갤러리 탭과 같은 줄 탭 */
+const SUB_TAB = "h-12 flex-none rounded-none px-4 text-md font-medium text-ink-4 group-data-horizontal/tabs:after:-bottom-px after:h-0.5 data-active:font-bold data-active:text-ink";
+const SORT_OPTIONS =(Object.entries(SORT_KO) as Array<[keyof typeof SORT_KO, string]>).filter(([v]) => v !== "newest").map(([id, label]) => ({ id, label }));
 
 // ---- 화면
 
@@ -213,14 +216,28 @@ function AssetsBrowse() {
   const topicOptions = (topics.data ?? []).filter((t) => t.count > 0);
   const logoTopic = cat === "logo" ? (sp.get("lt") ?? "") : "";
   const put = (k: string, v: string) => { const n = new URLSearchParams(sp); if (v) n.set(k, v); else n.delete(k); if (k === "category" || k === "set" || k === "q") n.delete("all"); if (k === "category" || k === "q") n.delete("set"); if (k === "category") n.delete("lt"); setSp(n, { replace: true }); };
+  // 하위 탭 에셋 | 로고(사용자 2026-10-18 "로고 직관적으로 바로 검색") — 로고 탭 = 종류 logo 고정. 주소는 ?category=logo 그대로라 예전 링크도 로고 탭으로 열린다.
+  // 에셋 탭은 종류 목록·세트·'전체' 목록에서 로고를 뺀다(로고 수천 개가 최신순을 덮지 않게)
+  const tab = cat === "logo" ? "logo" : "assets";
+  const goTab = (t: string) => { const n = new URLSearchParams(); if (t === "logo") n.set("category", "logo"); setSp(n, { replace: true }); };
+  const assetCats = catOptions.filter((o) => o.id !== "logo");
+  const shownSets = (sets.data ?? []).filter((s) => (tab === "logo" ? s.category === "logo" : s.category !== "logo"));
+  const except = tab === "assets" && !cat ? "logo" : undefined;
   const curSet = sets.data?.find((s) => s.id === set);
   // 세트 아래에 최신 에셋 전체 목록을 항상 보여 준다(사용자 2026-10-12 — 예전엔 "전체 보기"를 눌러야 나왔다)
-  const hasSets = (sets.data?.length ?? 0) > 0;
+  const hasSets = shownSets.length > 0;
   return (
     <>
-      <form className="mt-8 flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center" role="search" onSubmit={(e) => { e.preventDefault(); put("q", String(new FormData(e.currentTarget).get("q") ?? "").trim()); }}>
-        <SearchInput key={q} name="q" defaultValue={q} kbd={false} placeholder="에셋 검색 — 예: 파랑 행정, 악수, 표지" className="min-w-0 sm:min-w-[280px] sm:flex-1" />
-        <ChoiceButton label="종류" value={cat} onChange={(v) => put("category", v)} options={catOptions} />
+      <Tabs value={tab} onValueChange={goTab} className="mt-6 gap-0">
+        <TabsList variant="line" className="h-auto w-full justify-start gap-0 border-b border-line p-0">
+          <TabsTrigger value="assets" className={SUB_TAB}>에셋</TabsTrigger>
+          <TabsTrigger value="logo" className={SUB_TAB}>로고</TabsTrigger>
+        </TabsList>
+      </Tabs>
+      {/* 검색줄 — 검색칸 폭 PC(lg~) 1/3 · 태블릿(md~lg) 70% · 모바일 100%, 버튼과 한 덩어리로 가운데(사용자 2026-10-18). 버튼이 안 들어가는 폭에선 다음 줄 가운데로 */}
+      <form className="mt-8 flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-center" role="search" onSubmit={(e) => { e.preventDefault(); put("q", String(new FormData(e.currentTarget).get("q") ?? "").trim()); }}>
+        <SearchInput key={tab + q} name="q" defaultValue={q} kbd={false} autoFocus={tab === "logo"} placeholder={tab === "logo" ? "로고 검색 — 기관·회사 이름, 예: 서울특별시, 국토교통부" : "에셋 검색 — 예: 파랑 행정, 악수, 표지"} aria-label={tab === "logo" ? "로고 검색" : "에셋 검색"} className="w-full min-w-0 sm:flex-none md:w-[70%] lg:w-1/3 lg:min-w-[280px]" />
+        {tab === "assets" && <ChoiceButton label="종류" value={cat} onChange={(v) => put("category", v)} options={assetCats} />}
         {cat === "logo" && topicOptions.length > 0 && <ChoiceButton label="분류" value={logoTopic} onChange={(v) => put("lt", v)} options={topicOptions} />}
         {!q && <ChoiceButton label="정렬" allLabel="최신순" value={sort === "newest" ? "" : sort} onChange={(v) => put("sort", v)} options={SORT_OPTIONS} />}
         <Button type="submit" size="md">검색</Button>
@@ -229,16 +246,16 @@ function AssetsBrowse() {
       </form>
       {cat === "logo" && me?.user && <FrequentLogos uid={String(me.user.id)} />}
       {q ? (
-        <AssetGrid params={{ q, category: cat || undefined, logo_topic: logoTopic || undefined }} emptyText={`“${q}” 에 맞는 에셋이 없습니다. 자료 요청으로 알려 주시면 등록 후 알려 드립니다.`} requestCta={q} />
+        <AssetGrid params={{ q, category: cat || undefined, logo_topic: logoTopic || undefined, except }} emptyText={`“${q}” 에 맞는 ${tab === "logo" ? "로고" : "에셋"}가 없습니다. 자료 요청으로 알려 주시면 등록 후 알려 드립니다.`} requestCta={q} />
       ) : (
         <>
           {!set && hasSets && (
             <section className="mt-7" aria-label="같은 스타일 세트">
               <div className="mb-4 flex items-center justify-between gap-3">
-                <span className="text-sm text-ink-4">같은 스타일 세트 {sets.data!.length}개 · 세트를 누르면 그 세트만 보입니다</span>
+                <span className="text-sm text-ink-4">같은 스타일 세트 {shownSets.length}개 · 세트를 누르면 그 세트만 보입니다</span>
               </div>
               <div className="grid grid-cols-4 gap-x-3 gap-y-4 md:grid-cols-6 lg:grid-cols-12">
-                {sets.data!.map((s) => (
+                {shownSets.map((s) => (
                   <button key={s.id} type="button" onClick={() => put("set", s.id)} className="group flex min-w-0 flex-col gap-2 text-center" aria-label={`${setLabel(s.name)} 세트`}>
                     <span className="relative block"><ThumbFrame radius="lg" ratio="auto" className="bg-ground-3 p-[4.5%]">{s.cover_url ? <ContrastImg boxClassName="flex aspect-square items-center justify-center overflow-hidden rounded-md shadow-[0_1px_3px_rgba(0,0,0,0.08)]" src={s.cover_url} loading="lazy" className="size-full object-contain p-[12%]" /> : <span className="flex aspect-square rounded-md bg-white shadow-[0_1px_3px_rgba(0,0,0,0.08)]" />}</ThumbFrame>{/* 24시간 안에 올린 자료가 있는 세트에만 'New'(사용자 2026-10-18 — 개수 대신 글자만) */}{(s.recent ?? 0) > 0 && <span className="absolute right-1 top-1 rounded-full bg-point px-1.5 py-0.5 text-xs font-bold leading-none text-white">New</span>}</span>
                     <span className="flex min-w-0 flex-col items-center"><span className="w-full line-clamp-2 text-xs font-bold tracking-[-0.01em]" title={setLabel(s.name)}>{setLabel(s.name)}</span><span className="text-xs text-ink-4">{s.count.toLocaleString()}개</span></span>
@@ -247,7 +264,7 @@ function AssetsBrowse() {
               </div>
             </section>
           )}
-          <AssetGrid params={set ? { set, sort } : { category: cat || undefined, sort, logo_topic: logoTopic || undefined }} emptyText="이 조건에 보이는 에셋이 없습니다." />
+          <AssetGrid params={set ? { set, sort } : { category: cat || undefined, sort, logo_topic: logoTopic || undefined, except }} emptyText="이 조건에 보이는 에셋이 없습니다." />
         </>
       )}
     </>

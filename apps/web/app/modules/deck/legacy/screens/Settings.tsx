@@ -254,7 +254,8 @@ function LimitRow({ ai, busy, run }: { ai: AiSettings; busy: boolean; run: Run }
     <input className={cn("field !w-[120px] text-right font-mono", isBad(v) && "!border-[var(--color-warn)]")} inputMode="decimal" value={v} onChange={(e) => set(e.target.value)} placeholder="없음" aria-label={label} />
   );
   return (
-    <Row label="비용 한도 (USD)" desc="작업당 한도는 시안까지 한 번, 시안 확정 뒤 장표 제작에 다시 한 번 채워집니다. 닿으면 그 작업이 멈추고, 올리면 이어서 합니다. 발표 대본·예상 질문은 작업 한도에 들지 않고 월 상한만 봅니다. 월 상한에 닿으면 그 사람의 새 호출을 막습니다. 비우면 한도 없음" last>
+    // 긴 설명은 왼쪽 라벨 밑이 아니라 입력칸 아래에(사용자 2026-10-18 — 왼쪽 좁은 칸에서 꼬리 줄이 생겼다)
+    <Row label="비용 한도 (USD)" last>
       <div className="flex items-center gap-2 flex-wrap">
         <label className="flex items-center gap-2 text-[13px] text-dim whitespace-nowrap">작업당 {inp(def, setDef, "작업당 한도 (USD)")}</label>
         <label className="flex items-center gap-2 text-[13px] text-dim whitespace-nowrap ml-2">사용자별 월 상한 {inp(cap, setCap, "사용자별 월 상한 (USD)")}</label>
@@ -262,6 +263,7 @@ function LimitRow({ ai, busy, run }: { ai: AiSettings; busy: boolean; run: Run }
           onClick={() => run(async () => { await saveBudget({ default_budget_usd: num(def), monthly_cap_usd: num(cap) }); return "비용 한도를 저장했습니다."; })}><Ms name="save" size={19} />저장</button>
         {bad && <span className="text-[13px] font-semibold text-[var(--color-warn)] whitespace-nowrap">0 이상의 숫자로 적어 주세요</span>}
       </div>
+      <div className="text-[13px] text-dim mt-3 leading-[1.6] break-keep">{sent("작업당 한도는 시안까지 한 번, 시안 확정 뒤 장표 제작에 다시 한 번 채워집니다. 닿으면 그 작업이 멈추고, 올리면 이어서 합니다. 발표 대본·예상 질문은 작업 한도에 들지 않고 월 상한만 봅니다. 월 상한에 닿으면 그 사람의 새 호출을 막습니다. 비우면 한도가 없습니다.")}</div>
     </Row>
   );
 }

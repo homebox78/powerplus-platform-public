@@ -8,7 +8,7 @@ import { cn, Ms, SecTitle, Seg, useToastOn, toast, useContextMenu, type CtxItem,
 import { DesignTypePicker, typeName } from "../DesignTypes";
 import { VerticalStylePicker, VerticalTonePicker, verticalStyleName, verticalToneName } from "../VerticalThemes";
 import { COMPANY_THEMES, CompanyThemePicker, CompanyTonePicker, companyThemeName, companyToneName } from "../CompanyThemes";
-import { BODY_FONTS, FontPicker, TITLE_FONTS, VERTICAL_BODY_FONTS, fontName } from "../FontPicker";
+import { BODY_FONTS, FontPicker, TITLE_FONTS, VERTICAL_BODY_FONTS, fitFont, fontName } from "../FontPicker";
 import { LogoSearch } from "../LogoSearch";
 
 /** 제작 언어 — 장표 글·시안·대본(서버 Jobs::LANGS 와 같은 목록) */
@@ -114,6 +114,11 @@ export function Upload({ engine, isAdmin = false, onUploaded, onCancel, onSettin
     const list = purpose === "submit" ? VERTICAL_BODY_FONTS : BODY_FONTS;
     if (!list.some((f) => f.id === fontBody)) setFontBody(list[0]?.id ?? "freesentation");
   }, [purpose, fontBody]);
+  // 제작 언어가 바뀌면 — 고른 서체에 그 언어 글자가 없으면 그 언어 기본 서체로(엔진 fontset.for_lang 과 같은 표, R82)
+  useEffect(() => {
+    setFontTitle((t) => fitFont("title", t, lang));
+    setFontBody((b) => fitFont("body", b, lang));
+  }, [lang]);
   const [logos, setLogos] = useState<{ client: File[]; vendor: File[] }>({ client: [], vendor: [] });   // 기관이 둘 이상이면 여러 개(3개까지) — 올릴 때 한 줄로 이어 붙인다
   // 흰색 로고(선택, 어두운 바탕용) — 기본 로고마다 하나(같은 순서). 없으면 기본 로고 모양을 흰색으로 바꿔 쓴다
   const [whites, setWhites] = useState<{ client: (File | undefined)[]; vendor: (File | undefined)[] }>({ client: [], vendor: [] });
@@ -446,7 +451,7 @@ export function Upload({ engine, isAdmin = false, onUploaded, onCancel, onSettin
               </Sec>
               <Sec id="dfont" style={hl("dfont")} className="!gap-2.5">
                 <SecTitle icon="text_fields" title="서체" desc="모든 글을 통일 · 20pt 이상은 제목용, 나머지는 본문용 굵기 4단계" />
-                <FontPicker compact title={fontTitle} body={fontBody} onTitle={setFontTitle} onBody={setFontBody} disabled={working} />
+                <FontPicker compact title={fontTitle} body={fontBody} onTitle={setFontTitle} onBody={setFontBody} disabled={working} lang={lang} />
               </Sec>
               <Sec id="dreq" style={hl("dreq")} grow>
                 <SecTitle icon="chat" title="요청 사항" desc="선택" />
@@ -554,7 +559,7 @@ export function Upload({ engine, isAdmin = false, onUploaded, onCancel, onSettin
               </Sec>
               <Sec id="font" style={hl("font")} className="!gap-3">
                 {company ? <SecTitle icon="text_fields" title="서체" desc="프리텐다드 다섯 굵기로 고정입니다 — 산출물에 서체 파일을 함께 넣습니다" />
-                  : <FontPicker vertical={purpose === "submit"} title={fontTitle} body={fontBody} onTitle={setFontTitle} onBody={setFontBody} disabled={working} />}
+                  : <FontPicker vertical={purpose === "submit"} title={fontTitle} body={fontBody} onTitle={setFontTitle} onBody={setFontBody} disabled={working} lang={lang} />}
               </Sec>
             </>}
 

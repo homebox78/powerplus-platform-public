@@ -126,7 +126,7 @@ export const isDesign = (j: Job) => j.kind === "design";
 export const isEditing = (j: Job) => j.phase === "edit" && (j.status === "queued" || j.status === "running");
 /** 산출물 링크 — 기획 MD, 전체 zip (세션 쿠키 인증) */
 export const refZipUrl = () => `${API}/reference.zip`;
-export const jobUrl = (jobId: string, what: "plan.md" | "export.zip" | "script.html" | "script.md" | "script.html?dl=1" | "script.md?dl=1" | "practice.html" | "practice.html?dl=1") => `${API}/jobs/${jobId}/${what}`;
+export const jobUrl = (jobId: string, what: "plan.md" | "export.zip" | "fonts.zip" | "script.html" | "script.md" | "script.html?dl=1" | "script.md?dl=1" | "practice.html" | "practice.html?dl=1") => `${API}/jobs/${jobId}/${what}`;
 export const usd = (n: number | null | undefined, digits = 2) => (n == null ? "—" : `$${n.toFixed(digits)}`);
 export type Engine = { online: boolean; workers: { name: string; seen_at: string; info: string }[]; queued: number; running: number;
   /** 내가 동시에 진행 중인 작업 수와 한도(한도에 차면 새 작업을 시작할 수 없다) */

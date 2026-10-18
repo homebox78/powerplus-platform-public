@@ -546,7 +546,20 @@ def font_env(j):
         except Exception:
             o = None
     o = o or {}
-    return fontset.env(o.get("font_title"), o.get("font_body"))
+    t, b, _ = font_choice(j)
+    return fontset.env(t, b, lang=design.lang_of(j))
+
+
+def font_choice(j):
+    """(제목 id, 본문 id, 알림) — 장표 언어·기획 글에 맞게(fontset.for_lang). 한국어도 기획 글자가 서체에 없으면 같은 판단을 한다"""
+    o = j.get("opts") if isinstance(j, dict) else None
+    if isinstance(o, str):
+        try:
+            o = json.loads(o)
+        except Exception:
+            o = None
+    o = o or {}
+    return fontset.for_lang(o.get("font_title"), o.get("font_body"), design.lang_of(j), fontset.text_of(j.get("plan") or ""))
 
 
 def font_ids(j):
@@ -1054,6 +1067,9 @@ def process(j):
             design.run_plan_phase(job, j)  # 기획 → 시안 → review 보고까지
             log("시안 단계 끝:", job.id)
             return
+        job.font_notes = font_choice(j)[2]   # 장표 언어·기획 글에 없는 글자가 있는 서체 → 바꾼 내용(진행 기록 + 확인 목록)
+        for m in job.font_notes:
+            job.event(m, "warn")
         if design_job:
             job.push("준비", 2)
             design.prepare_build(job, j)
@@ -1193,6 +1209,8 @@ def process(j):
         except Exception as e:
             log("마무리 실패(무시):", e)
             fin_warn.append({"slide": 0, "title": "마무리 단계 실패", "detail": f"키메시지·가이드·세로 가운데 보정이 적용되지 않았습니다 ({str(e)[:120]})", "level": "warn"})
+        fin_warn = [{"slide": 0, "title": "서체를 장표 언어에 맞게 바꿈", "detail": m, "level": "warn" if "그대로" in m else "info"}
+                    for m in getattr(job, "font_notes", [])] + fin_warn
         if fin_warn:
             rep["checklist"] = fin_warn + list(rep.get("checklist") or [])
         if guard_hits:   # 자가 개선 — 게이트가 되돌린 '한 번 나온 오류'를 서버 개선 체크리스트(known:<slug>)에 쌓는다
@@ -1209,6 +1227,14 @@ def process(j):
             except Exception as e:
                 log("표지·목차·간지 실패(무시):", e)
                 rep["checklist"] = [{"slide": 0, "title": "표지·목차·간지를 넣지 못함", "detail": str(e)[:200], "level": "warn"}] + list(rep.get("checklist") or [])
+        try:   # 표지·목차·간지까지 붙은 최종 장표에 실제로 적힌 서체로 다시 모은다(앞장에 섞인 언어 서체도 — R82)
+            import fontbundle
+            _fp, _miss, _ = fontbundle.bundle(out, os.path.join(job.dir, "_fonts"))
+            _nf = sum(1 for x in _fp if re.search(r"\.(ttf|otf|ttc)$", x, re.I))
+            if _nf:
+                job.event(f"이 장표에 쓰인 서체 {_nf}개를 설치 안내·라이선스와 함께 산출물에 넣습니다.", "done")
+        except Exception as e:
+            log("서체 다시 모으기 실패(무시):", e)
         job.event("결과 장별 렌더 중(" + ("PowerPoint" if osdep.IS_WIN else "LibreOffice") + ")")
         upload_after(job, out)
         put_file(job.id, "result", out)
@@ -1218,7 +1244,7 @@ def process(j):
         rep["extras"] += [os.path.relpath(p, job.dir) for p in glob.glob(os.path.join(job.dir, "_fonts", "*"))]  # 장표에 쓴 서체
         for extra in rep.get("extras", []):  # 부가 파일 — 형식이 안 맞거나 올리기에 실패해도 결과를 버리지 않는다
             ep = os.path.join(job.dir, str(extra))
-            if not os.path.isfile(ep) or not re.search(r"\.(png|jpg|jpeg|pptx|json|md|txt|ttf|otf|ttc)$", ep, re.I):
+            if not os.path.isfile(ep) or not re.search(r"\.(png|jpg|jpeg|pptx|json|md|txt|pdf|ttf|otf|ttc)$", ep, re.I):
                 continue
             try:
                 put_file(job.id, "extra", ep)

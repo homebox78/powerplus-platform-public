@@ -518,7 +518,7 @@ async function auditDeck(clients, ctx) {
           const allowed = own || c.who.admin || (!ownerOnly && canView);
           if (!allowed && served(f.status)) leak(`장표 파일(${kind})`, c.name, fu, j.id, `shared=${j.shared} 작업의 ${kind} 파일이 ${f.status}`);
         }
-        for (const sub of ['plan.md', 'export.zip', 'script.html', 'events', 'comments']) {
+        for (const sub of ['plan.md', 'export.zip', 'fonts.zip', 'script.html', 'events', 'comments']) {
           const su = `/deck/jobs/${j.id}/${sub}`;
           const s = await c.get(su); tally('장표 산출물·기록', c.name);
           const allowed = own || c.who.admin || ((sub === 'events' || sub === 'comments') && logged && canView);

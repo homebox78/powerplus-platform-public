@@ -1,8 +1,11 @@
 // 결과 산출물 파일 묶음 — 출처: powerDeck web/src/screens/ResultFiles.tsx (옛 화면 그대로 이식, eslint.config.js legacy 구역).
 import { fileUrl, fmtSize, jobUrl, type Job } from "../api";
 import { Ms } from "../ui";
+import { ShareLinks } from "./ResultLinks";
 
 const isFont = (n: string) => /\.(ttf|otf|ttc)$/i.test(n);
+/** 서체 묶음에 드는 문서 — 엔진 fontbundle 이 서체와 함께 넣는 라이선스·설치 안내(api Jobs::isFontFile 과 같은 규칙, R82) */
+const isFontDoc = (n: string) => /^(서체_라이선스|서체_설치안내)\.txt$|-(OFL|COPYRIGHT)\.txt$|-license\.(txt|pdf)$/i.test(n);
 const extOf = (n: string) => (/\.([a-z0-9]{1,5})$/i.exec(n)?.[1] ?? "file").toUpperCase();
 
 type Row = { name: string; file: string; href: string; size?: number };
@@ -15,6 +18,7 @@ export function Files({ job, ok, onScript }: { job: Job; ok: boolean; onScript: 
   const results = f?.result ?? [];
   const draft = f?.draft?.[0];
   const fonts = (f?.extra ?? []).filter((x) => isFont(x.name));
+  const fontDocs = (f?.extra ?? []).filter((x) => isFontDoc(x.name));
   const slides = job.plan?.slides.length || job.slides || (f?.after ?? []).filter((x) => x.slide).length || 0;
   const groups: { title: string; hint?: string; rows: Row[] }[] = [
     // 결과 파일이 여럿이면(드문 경우) 나머지도 받을 수 있게
@@ -22,12 +26,12 @@ export function Files({ job, ok, onScript }: { job: Job; ok: boolean; onScript: 
     { title: "기획 · 문서", hint: "기획(.md)을 다시 올리면 기획 단계 없이 그대로 씁니다", rows: [
       ...(job.plan ? [{ name: "기획.md", file: "plan.md", href: jobUrl(job.id, "plan.md") }] : []),
       ...(f?.mockup ?? []).filter((x) => x.name === "context.md").map((x) => ({ name: "사업 요약.md", file: x.name, href: fileUrl(job.id, "mockup", x.name, true), size: x.size })),
-      ...(f?.extra ?? []).filter((x) => !isFont(x.name)).map((x) => ({ name: x.name, file: x.name, href: fileUrl(job.id, "extra", x.name, true), size: x.size })),
+      ...(f?.extra ?? []).filter((x) => !isFont(x.name) && !isFontDoc(x.name)).map((x) => ({ name: x.name, file: x.name, href: fileUrl(job.id, "extra", x.name, true), size: x.size })),
       ...(f?.mockup ?? []).filter((x) => x.name === "plan.json").map((x) => ({ name: "plan.json (기획 원본 데이터)", file: x.name, href: fileUrl(job.id, "mockup", x.name, true), size: x.size })),
     ] },
     { title: "시안 이미지", hint: `${mock.length}장`, rows: mock.map((x) => ({ name: `${x.slide}쪽 시안 (${x.name})`, file: x.name, href: fileUrl(job.id, "mockup", x.name, true), size: x.size })) },
     { title: "결과 렌더", hint: `${(f?.after ?? []).length}장`, rows: (f?.after ?? []).map((x) => ({ name: x.slide ? `${x.slide}쪽 결과 (${x.name})` : `${/cover/.test(x.name) ? "표지" : /toc/.test(x.name) ? "목차" : "간지"} (${x.name})`, file: x.name, href: fileUrl(job.id, "after", x.name, true), size: x.size })) },
-    { title: "서체", hint: "장표에 쓴 서체입니다. 글자가 다르게 보이면 설치하세요", rows: fonts.map((x) => ({ name: x.name, file: x.name, href: fileUrl(job.id, "extra", x.name, true), size: x.size })) },
+    { title: `서체 ${fonts.length}개`, hint: "이 장표에 쓰인 서체입니다(장표 언어 서체 포함). 설치 안내·라이선스를 함께 받으세요", rows: [...fonts, ...fontDocs].map((x) => ({ name: x.name, file: x.name, href: fileUrl(job.id, "extra", x.name, true), size: x.size })) },
     ...(job.source_kind === "pptx" ? [{ title: "원본", hint: "처음 올린 초안입니다", rows: [{ name: job.filename, file: "source.pptx", href: fileUrl(job.id, "source", "source.pptx", true), size: job.size }] }] : []),
   ].filter((g) => g.rows.length);
   const total = groups.reduce((n, g) => n + g.rows.length, 0) + (results[0] ? 1 : 0);
@@ -43,15 +47,18 @@ export function Files({ job, ok, onScript }: { job: Job; ok: boolean; onScript: 
                 <div className="font-bold truncate" title={results[0] ? job.result_name || results[0].name : undefined}>{results[0] ? job.result_name || results[0].name : "장표 (.pptx)"}</div>
                 <div className="text-[13px] text-dim mt-0.5 truncate">
                   {results[0]
-                    ? `${slides ? `${slides}장 · ` : ""}${fmtSize(results[0].size)}${fonts.length ? " · 고른 서체 포함" : ""} · 산출물 ${total}개`
+                    ? `${slides ? `${slides}장 · ` : ""}${fmtSize(results[0].size)}${fonts.length ? ` · 서체 ${fonts.length}개 포함` : ""} · 산출물 ${total}개`
                     : draft ? "멈춘 지점까지 만든 판을 받을 수 있습니다" : total ? "시안 · 기획 문서부터 받을 수 있습니다" : "아직 산출물이 없습니다"}
                 </div>
               </div>
+              {fonts.length > 0 && <a className="btn-back" href={jobUrl(job.id, "fonts.zip")} title={`설치 안내·라이선스 포함 — ${fonts.map((x) => x.name).join(", ")}`}><Ms name="download" size={17} />이 장표에 쓰인 서체 {fonts.length}개 함께 받기</a>}
               <a className="btn-back" href={jobUrl(job.id, "export.zip")} title="이 작업에서 만든 것 전부를 한 번에 받습니다"><Ms name="download" size={17} />전체 (.zip)</a>
               {results[0]
                 ? <a className="btn-next" href={fileUrl(job.id, "result", results[0].name, true)}><Ms name="download" size={17} />{job.kind === "design" ? "내보내기" : "결과 내려받기"}</a>
                 : draft && <a className="btn-next" href={fileUrl(job.id, "draft", draft.name, true) + `&v=${draft.ts ?? 0}`}><Ms name="download" size={17} />멈춘 지점까지 받기</a>}
             </div>
+            {/* 받기 링크 — 완성 작업의 주인·관리자에게만(email 은 그 둘에게만 온다). 서버가 다시 거른다 */}
+            {job.status === "done" && !!job.email && results[0] && <ShareLinks job={job} hasFonts={fonts.length > 0} />}
             {groups.map((g) => (
               <div key={g.title} className="flex flex-col gap-2">
                 <div className="flex items-baseline gap-2 min-w-0"><span className="font-bold whitespace-nowrap flex-none">{g.title}</span>{g.hint && <span className="text-[13px] text-dim truncate">{g.hint}</span>}</div>

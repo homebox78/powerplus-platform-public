@@ -184,8 +184,13 @@ def _carry(fn):
 FONT = _PerJob("font", lambda: {"title": TITLE0, "body": VBODY[VBODY_DEFAULT]})
 
 
-def use_fonts(title=None, body=None):
-    """opts.font_title · font_body → FONT. 모르는 값이면 기본(목록 첫 줄)"""
+def use_fonts(title=None, body=None, lang="ko"):
+    """opts.font_title · font_body → FONT. 모르는 값이면 기본(목록 첫 줄). lang = 장표 언어(글 런 lang 속성 — refont 가 넣는다)"""
+    try:
+        import fontcover
+        FONT["lang"] = fontcover.LANG_TAG.get(lang, "ko-KR")
+    except Exception:
+        FONT["lang"] = "ko-KR"
     t = TITLE0
     TITLE_IS_BOLD[0] = False
     TITLE_SCALE[0] = 1.0
@@ -235,10 +240,13 @@ def refont(prs):
     for part in prs.part.package.iter_parts():
         el = getattr(part, "_element", None)
         if el is not None:
+            lt = FONT["lang"] if "lang" in FONT._v() else "ko-KR"
             for e in el.iter():
                 tf = e.get("typeface") if isinstance(e.tag, str) else None
                 if tf and fface(tf) != tf:
                     e.set("typeface", fface(tf))
+                if lt != "ko-KR" and isinstance(e.tag, str) and e.tag.endswith(("}rPr", "}endParaRPr", "}defRPr")):   # 장표 언어(ja-JP·zh-CN …) — 맞춤법·한자 자형
+                    e.set("lang", lt)
         elif "theme" in str(part.partname) and str(part.partname).endswith(".xml"):
             part._blob = re.sub(r'typeface="([^"]+)"', sub, part._blob.decode("utf-8")).encode("utf-8")
     track_title(prs)
@@ -3053,7 +3061,11 @@ def run(job, j, opts, brief, note):
     logo = client_logo(o)
     job.push("시안 생성", 70)
     out = os.path.join(job.dir, "결과.pptx")
-    use_fonts(opts.get("font_title"), opts.get("font_body"))
+    import fontset   # 장표 언어·기획 글에 없는 글자의 서체 → 그 언어 기본 서체(가로 장표와 같은 판단, 2026-10-18)
+    _ft, _fb, _fn = fontset.for_lang(opts.get("font_title"), opts.get("font_body"), getattr(job, "lang", "ko"), fontset.text_of(o))
+    for m in _fn:
+        job.event(m, "warn")
+    use_fonts(_ft, _fb, getattr(job, "lang", "ko"))
     bd = Build(o, bgs, logo, style, tone)
     n = bd.build(chapters_pages, out)
     if bd.trimmed:
@@ -3074,14 +3086,17 @@ def run(job, j, opts, brief, note):
     except Exception as e:
         job.event(f"작성 가이드를 만들지 못했습니다(결과 장표는 정상): {str(e)[:120]}", "warn")
     try:   # 쓴 서체 파일 — 산출물 묶음(zip)의 '5_서체'(가로 장표와 같은 규칙). 사용자 2026-10-14 "산출물에 폰트가 없는데?"
-        fp, skip = font_paths()
-        for f in fp:
+        # 결과 pptx 에 실제로 적힌 서체를 모은다(fontbundle — 섞인 언어 글은 그 언어 서체로 바꾼 뒤, 라이선스·설치 안내 포함, 2026-10-18)
+        import fontbundle
+        fbk = fontbundle.fallback_pptx(out)
+        if fbk:
+            job.event(f"다른 언어 글 {len(fbk)}곳을 그 글자가 있는 서체로 바꿨습니다(" + " · ".join(dict.fromkeys(f"{a} → {b}" for a, b, _ in fbk)) + ")", "warn")
+        allp, miss_, noship_ = fontbundle.bundle(out, os.path.join(job.dir, "_fonts"))
+        fp = [f for f in allp if re.search(r"\.(ttf|otf|ttc)$", f, re.I)]
+        skip = miss_ + noship_
+        for f in allp:
             put_file(job.id, "extra", f)
-        if fp:   # OFL — 저작권 고지·라이선스 전문(서체_라이선스.txt)과 배포처 동봉 문서를 함께
-            import fontlicense
-            for f in fontlicense.write_notice(fp, os.path.join(job.dir, "_fonts_notice")):
-                put_file(job.id, "extra", f)
-        job.event(f"서체 파일 {len(fp)}개를 산출물에 넣었습니다(" + ", ".join(os.path.basename(f) for f in fp) + ")"
+        job.event(f"이 장표에 쓰인 서체 {len(fp)}개를 산출물에 넣었습니다(" + ", ".join(os.path.basename(f) for f in fp) + ") · 설치 안내·라이선스 포함"
                   + (f" · 넣지 않음: {', '.join(skip)}(재배포가 안 되거나 엔진에 없음 — 받는 사람이 따로 설치, 작성 가이드의 설치 안내 참고)" if skip else ""), "done" if fp else "warn")
     except Exception as e:
         job.event(f"서체 파일을 산출물에 넣지 못했습니다: {str(e)[:100]}", "warn")

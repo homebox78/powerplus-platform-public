@@ -92,6 +92,14 @@ def unify_fonts(part_el):
 
 def fix_rpr(rPr):
     face = next((el.get("typeface") for el in (rPr.find(A + "latin"), rPr.find(A + "ea")) if el is not None and el.get("typeface")), None)
+    if fontset.LANG_TAG != "ko-KR":   # 장표 언어(ja-JP·zh-CN …) — PowerPoint 가 일본어·중국어 글을 그 언어로 읽고 ea 서체로 그린다(2026-10-18)
+        rPr.set("lang", fontset.LANG_TAG)
+    if face and face != KEY_FONT and (face in fontset.TITLE_FACES or re.match(r"^(G마켓|Gmarket)", face, re.I)) and not fontset.face_usable(face):
+        face = KEY_FONT   # 장표 언어 글자가 없는 제목 서체(일본어 + G마켓 산스 등) — 언어에 맞게 고른 제목 서체로(fontset.for_lang)
+        for tag in ("latin", "ea", "cs"):
+            el = rPr.find(A + tag)
+            if el is not None:
+                el.set("typeface", KEY_FONT)
     if face and (KEEP.match(face) or face in fontset.TITLE_FACES):   # 제목 서체(키메시지·표지 큰 글자)는 그대로
         lvl = None
     else:
@@ -546,6 +554,12 @@ if "--unify-only" in sys.argv:   # 표지·목차·간지처럼 키메시지·�
                 d = (t_bot + 360000) - f_txt_top   # 1cm = 360000 EMU
                 for sh in below:
                     sh.top = sh.top + d
+    try:   # 표지·목차·간지에도 섞인 언어 글(그 글자가 없는 서체) — 그 런만 그 글자가 있는 서체로(fontbundle.fallback). 서체 모으기는 본문 마무리가 한다
+        import fontbundle
+        for part in list(prs.slides):
+            fontbundle.fallback(part._element)
+    except Exception as e:
+        print("다른 언어 글 서체 검사 실패(무시):", str(e)[:120])
     prs.save(src)
     print(f"서체 {fontset.NAME} 로 {nswap}곳 · 큰 글자 {nbig}곳 {KEY_FONT}")
     sys.exit(0)
@@ -717,34 +731,17 @@ elif not FONTS_ONLY:
     if TEXT_OUT:
         json.dump(deck, open(TEXT_OUT, "w", encoding="utf-8"), ensure_ascii=False)
 
-# ── 쓴 서체 → 설치된 파일
-faces = set()
-with zipfile.ZipFile(src) as z:
-    for n in z.namelist():
-        if re.match(r"ppt/(slides|slideMasters|slideLayouts)/[^/]+\.xml$", n):
-            faces |= set(re.findall(r'typeface="([^"+][^"]*)"', z.read(n).decode("utf-8", "ignore")))
-SKIP = re.compile(r"^(맑은 고딕|malgun|arial|calibri|times|segoe|굴림|돋움|바탕|궁서|gulim|dotum|batang|tahoma|verdana|wingdings|symbol|consolas|courier)", re.I)
-reg = osdep.installed_fonts()
-os.makedirs(fonts_dir, exist_ok=True)
-got, miss, noship = set(), [], []
-for f in sorted(faces):
-    if SKIP.match(f):
-        continue
-    fl = f.lower()
-    hit = [reg[n] for n in (fl, fl + " bold") if n in reg] or [p for n, p in reg.items() if n.startswith(fl + " ")]
-    hit = [p for p in dict.fromkeys(hit) if os.path.isfile(p)]
-    if not hit:
-        miss.append(f)
-    for p in hit:
-        ok_, why_ = fontlicense.shippable(p)   # 재배포 안 되는 서체(상용 등)는 산출물에 넣지 않는다(2026-10-14)
-        if not ok_:
-            noship.append(f"{f}({why_})")
-            continue
-        shutil.copy2(p, os.path.join(fonts_dir, os.path.basename(p)))
-        got.add(os.path.basename(p))
-noship = list(dict.fromkeys(noship))
-if got:   # OFL — 다시 배포할 때 저작권 고지·라이선스 전문을 함께(2026-10-14)
-    fontlicense.write_notice([os.path.join(fonts_dir, g) for g in sorted(got)], fonts_dir)
+# ── 섞인 언어 — 글 런마다 서체에 없는 글자가 있으면 그 글자를 다 가진 같은 굵기 서체로(fontbundle.fallback, 2026-10-18)
+import fontbundle
+try:
+    _fb = fontbundle.fallback_pptx(src)
+    if _fb:
+        print("다른 언어 글 " + str(len(_fb)) + "곳 서체 바꿈 — " + " · ".join(dict.fromkeys(f"{a} → {b}" for a, b, _ in _fb)))
+except Exception as e:   # 바꾸지 못해도 장표는 그대로 — 알리기만
+    warn(0, "다른 언어 글 서체 검사 실패", str(e)[:160])
+# ── 쓴 서체 → 산출물 '5_서체'(pptx 에 실제로 적힌 a:latin·a:ea 서체를 모은다 — fontbundle.bundle, 라이선스·설치 안내 포함)
+_paths, miss, noship = fontbundle.bundle(src, fonts_dir)
+got = {os.path.basename(x) for x in _paths if re.search(r"\.(ttf|otf|ttc)$", x, re.I)}
 if noship:
     warn(0, "산출물에 넣지 않은 서체", ", ".join(noship) + " — 재배포가 안 되는 서체라 받는 사람이 따로 설치해야 합니다")
 if miss:

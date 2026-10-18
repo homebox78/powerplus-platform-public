@@ -4430,6 +4430,20 @@ def run_plan_phase(job, j):
         job.plan_done = True
 
 
+def apply_lang_fonts(job, j, plan=None):
+    """job.font_title·font_body 를 장표 언어·기획 글에 맞게(fontset.for_lang — 엔진 전 단계가 같은 판단). 바꾼 내용은 진행 기록에 한 번씩"""
+    import fontset
+    o = j.get("opts") if isinstance(j.get("opts"), dict) else json.loads(j.get("opts") or "{}")
+    t, b, notes = fontset.for_lang((o or {}).get("font_title"), (o or {}).get("font_body"), getattr(job, "lang", "ko"), fontset.text_of(plan) if plan else "")
+    job.font_title, job.font_body = t, b
+    said = job.__dict__.setdefault("_font_said", set())
+    for m in notes:
+        if m not in said:
+            said.add(m)
+            job.event(m, "warn")
+    return notes
+
+
 def _plan_phase(job, j):
     req, put_file, download = W["req"], W["put_file"], W["download"]
     job.style = styles.get(styles.of_job(j))
@@ -4437,6 +4451,7 @@ def _plan_phase(job, j):
     job.lang = lang_of(j)
     job.font_body = str(((j.get("opts") if isinstance(j.get("opts"), dict) else json.loads(j.get("opts") or "{}")) or {}).get("font_body") or "")   # 비면 fontset 기본(목록 첫 줄)
     job.font_title = str(((j.get("opts") if isinstance(j.get("opts"), dict) else json.loads(j.get("opts") or "{}")) or {}).get("font_title") or "")
+    apply_lang_fonts(job, j)   # 장표 언어에 없는 글자의 서체 → 그 언어 기본 서체(기획 글이 생기면 글자까지 다시 본다)
     job.spent = float(j.get("spent_usd") or 0)
     job.budget = float(j["budget_usd"]) if j.get("budget_usd") not in (None, "") else None
     note = (j.get("note") or "").strip()
@@ -4541,6 +4556,7 @@ def _plan_phase(job, j):
                 have.add(n)
             except Exception:
                 pass
+    apply_lang_fonts(job, j, plan)   # 기획 글의 글자마다 서체에 있는지 — 시안 틀·키메시지·앞장 그림 글자 전에
     total = len(plan["slides"])
     if redo:  # 사용자가 고른 장만
         todo = [s for s in plan["slides"] if s["n"] in redo]

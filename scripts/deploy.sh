@@ -11,6 +11,7 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 bash "$ROOT/scripts/preflight.sh" web || exit 1   # 배포 전 자가 검사(docs/오류-재발방지-체크리스트.md)
 php "$ROOT/engine/tests/test_plan_keep.php" 2>/dev/null || { echo "기획 먼저 저장(Jobs::savePlan·finish) 시험 실패 — 배포 중단(R81)"; exit 3; }
+php "$ROOT/engine/tests/test_deck_links.php" >/dev/null 2>&1 || { echo "받기 링크(Deck/Links.php·/d/ 관문) 시험 실패 — 배포 중단. php engine/tests/test_deck_links.php 로 확인"; exit 3; }
 HOST="${PP_HOST:?PP_HOST=user@host 필요}"
 KEY_SRC="${PP_SSH_KEY:-}"
 for k in "$HOME/google_key.pem"; do [ -n "$KEY_SRC" ] && break; [ -f "$k" ] && KEY_SRC="$k"; done

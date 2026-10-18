@@ -30,7 +30,8 @@ asset_items ─┬─< asset_files      asset_sets(style_group) >─ asset_items
 deck_jobs ─┬─< deck_job_files  deck_uploads · deck_upload_parts
            ├─< deck_job_events(파티션)
            ├─< deck_wires(장별 rows JSON)   deck_feedback
-           └─< deck_comments
+           ├─< deck_comments
+           └─< deck_share_links(받기 링크, 토큰 해시만)
 mock_orgs ─< mock_sites ─< mock_screens ─< mock_sections ─< mock_section_krds
    (org_types·site_types·page_types·section_types 사전 = taxonomy 시드)
 mock_site_design · mock_nav_states · mock_components · mock_flows
@@ -98,6 +99,7 @@ comm_posts ─< comm_comments · comm_likes
 | `deck_feedback` | job_id, slide_no, text, user_id, created_at | `ix_job` |
 | `deck_comments` · `deck_comment_replies` | 현행 이관 | |
 | `deck_ai_usage` | job_id, model, tokens_in/out/reasoning, usd, created_at | `ix_job`, 파티션 월(크레딧 원가 대조) |
+| `deck_share_links` (0044) | token_hash CHAR(64)(sha256 — 원문 토큰은 만들 때 한 번만 돌려줌), token_tail(끝 4자, 목록 식별용), job_id, kind(result·export·fonts), created_by(이메일), created_at, expires_at(1·7·30일, 기본 7일), revoked_at, downloads, last_download_at | `ux_token`, `ix_job_created`, `ix_expires` — 완성 산출물 받기 링크 `/api/v1/d/{토큰}`(로그인 없이, 2026-10-18). 작업 id·파일 경로는 주소·응답 어디에도 안 나간다. 만료·끊김·작업 삭제는 모두 같은 404. 작업을 지우면 같이 지운다(FK 없음) |
 
 이관: `jobs`→`deck_jobs`(소유자 = OTP 이메일 → core_users), `job_files`→`deck_job_files`(파일은 `/var/www/powerdeck_data` 그대로 두고 `core_files.path` 로 가리킴), `workers`→`core_jobs` 워커 id, `ai_settings/ai_user_keys`→`core_settings`(회사 키 하나) — 사용자 개인 키는 이관하지 않는다.
 

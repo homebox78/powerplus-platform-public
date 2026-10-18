@@ -26,6 +26,14 @@ const GROUPS = {
   "S4_원형배지": { key: "cbadge", set: "icon-pict-circle-badge", style: "pict-circle-badge", ko: ["원형", "배지", "동그라미", "파랑", "흰아이콘"], en: ["circle", "badge", "round", "blue", "white glyph"] },
   "S5_듀오톤블루": { key: "duoblue", set: "icon-pict-duotone-blue", style: "pict-duotone-blue", ko: ["듀오톤", "투톤", "파랑", "라인", "옅은면"], en: ["duotone", "two tone", "blue", "line"] },
   "S6_플랫컬러": { key: "flatcolor", set: "icon-pict-flat-color", style: "pict-flat-color", ko: ["플랫", "컬러", "다색", "알록달록", "평면"], en: ["flat", "color", "multicolor", "colorful"] },
+  // 2026-10-18 12차 — 스타일 7종(세트 icon-pict-*) × 같은 주제 100개(하드웨어·의료·도시 시설·생활·사무·경영). S1~S6 은 109~144 추가·일부 다시 그린 판 교체
+  "T1_그라데이션채움": { key: "gradfill", set: "icon-pict-gradient-fill", style: "pict-gradient-fill", ko: ["그라데이션", "채움", "솔리드", "파랑", "단색"], en: ["gradient", "filled", "solid", "blue", "glyph"] },
+  "T2_아이소메트릭": { key: "isoblue", set: "icon-pict-isometric", style: "pict-isometric-blue", ko: ["아이소메트릭", "입체", "3D", "파랑", "투톤"], en: ["isometric", "3d", "blue", "two tone"] },
+  "T3_클레이3D": { key: "clay3d", set: "icon-pict-clay-3d", style: "pict-clay-3d-blue", ko: ["클레이", "3D", "입체", "점토", "파랑", "노랑포인트"], en: ["clay", "3d", "render", "blue", "yellow accent"] },
+  "T4_굵은선어긋난채움": { key: "boldoff", set: "icon-pict-bold-offset", style: "pict-bold-offset", ko: ["굵은선", "라인", "어긋난채움", "파랑", "노랑", "투톤"], en: ["bold line", "outline", "offset fill", "blue", "yellow"] },
+  "T5_둥근사각앱타일": { key: "apptile", set: "icon-pict-app-tile", style: "pict-app-tile", ko: ["앱아이콘", "둥근사각", "타일", "컬러", "다색", "흰아이콘"], en: ["app icon", "rounded square", "tile", "color", "multicolor"] },
+  "T6_가는선그라데이션": { key: "thingrad", set: "icon-pict-thin-gradient", style: "pict-thin-gradient", ko: ["가는선", "라인", "외곽선", "그라데이션", "파랑", "청록"], en: ["thin line", "outline", "gradient", "blue", "teal"] },
+  "T7_반투명겹침면": { key: "overlap", set: "icon-pict-overlap", style: "pict-overlap-blue", ko: ["반투명", "겹침", "면", "플랫", "파랑", "하늘색"], en: ["translucent", "overlap", "flat", "blue", "sky blue"] },
   "컬러플랫아이콘": { key: "color", set: "icon-color-gradient-flat", style: "color-gradient-flat", ko: ["컬러", "플랫", "그라데이션", "알록달록"], en: ["color", "flat", "gradient"] },
 };
 const norm = (t) => String(t).normalize("NFC").trim().toLowerCase().slice(0, 64);

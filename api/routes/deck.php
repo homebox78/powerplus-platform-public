@@ -20,6 +20,7 @@ use Pp\Core\Router;
 use Pp\Deck\AiKeys;
 use Pp\Deck\Jobs;
 use Pp\Deck\Legacy;
+use Pp\Deck\Links;
 use Pp\Deck\Logos;
 use Pp\Deck\Script;
 use Pp\Deck\Uploads;
@@ -195,6 +196,32 @@ return static function (Router $r): void {
         set_time_limit(120);
         header('X-AI-Generated: true'); // LEGAL-003
         Jobs::export($hex16($p['id']), $e, $admin);
+    });
+    // 이 장표에 쓰인 서체만(서체 + 라이선스 + 설치 안내) — 결과 pptx 를 따로 받은 사람용(R82)
+    $r->get('/deck/jobs/{id}/fonts.zip', static function (array $p, Actor $a) use ($user, $hex16): void {
+        [$e, $admin] = $user($a);
+        set_time_limit(120);
+        Jobs::exportFonts($hex16($p['id']), $e, $admin);
+    });
+
+    // ── 받기 링크(완성 산출물을 URL 로 보내기, 0044) — 만들기·목록·끊기는 주인·관리자, 받기(/d/{토큰})는 로그인 없이
+    $r->get('/deck/jobs/{id}/links', static function (array $p, Actor $a) use ($user, $hex16): void {
+        [$e, $admin] = $user($a);
+        Legacy::jsonOut(['data' => Links::list($hex16($p['id']), $e, $admin)]);
+    });
+    $r->post('/deck/jobs/{id}/links', static function (array $p, Actor $a) use ($user, $hex16): void {
+        [$e, $admin] = $user($a);
+        // 로그인 없이 열리는 주소라 화면에서 확인을 한 번 받고 만든다 — 키(MCP)로는 만들지 않는다(엠바고)
+        if ($a->via !== 'session') Legacy::fail('받기 링크는 웹 화면에서만 만들 수 있습니다.', 403);
+        Legacy::jsonOut(Links::create($hex16($p['id']), $e, $admin, Legacy::body(), $a), 201);
+    });
+    $r->delete('/deck/jobs/{id}/links/{lid}', static function (array $p, Actor $a) use ($user, $hex16): void {
+        [$e, $admin] = $user($a);
+        if (!ctype_digit($p['lid'])) Legacy::fail('Not Found', 404);
+        Legacy::jsonOut(Links::revoke($hex16($p['id']), (int) $p['lid'], $e, $admin, $a));
+    });
+    $r->get('/d/{token}', static function (array $p, Actor $a): void {
+        Links::download((string) $p['token'], strtoupper((string) ($_SERVER['REQUEST_METHOD'] ?? 'GET')) === 'HEAD');
     });
 
     // 대본 문서(script.html) · 노래방식 연습 화면(practice.html) · 글(script.md)

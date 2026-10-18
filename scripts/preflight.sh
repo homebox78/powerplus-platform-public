@@ -95,6 +95,18 @@ if [ "$SCOPE" = web ] || [ "$SCOPE" = engine ]; then
   cmp -s api/src/Deck/wire_templates.json apps/web/app/modules/deck/legacy/data/wire_templates.json || bad "apps/web/…/data/wire_templates.json 이 api/src/Deck/wire_templates.json 과 다르다 — cp 로 맞출 것(R67)"
 fi
 
+# 11. 언어별 서체(R82) — 서체 목록·지원율 표는 엔진(engine/fonts)과 웹 서체 고르기(data/)가 같은 파일을 읽어야 한다.
+#     표는 손으로 고치지 않는다 — 엔진 배포 때 서체 파일로 다시 재서 표와 다르면 막는다(새 서체를 넣고 표를 안 다시 쓴 경우)
+if [ "$SCOPE" = web ] || [ "$SCOPE" = engine ]; then
+  for c in fonts.json font_cover.json; do
+    cmp -s "engine/fonts/$c" "apps/web/app/modules/deck/legacy/data/$c" || bad "apps/web/…/data/$c 가 engine/fonts/$c 와 다르다 — python engine/fontcover.py 로 다시 쓰거나 cp 로 맞출 것(R82)"
+  done
+fi
+if [ "$SCOPE" = engine ]; then
+  PYX=$(command -v python3 || command -v python)
+  "$PYX" -X utf8 engine/fontcover.py --check || bad "서체 지원율 표(font_cover.json)가 서체 파일 실측과 다르다 — python engine/fontcover.py (R82)"
+fi
+
 # 알림 — 다른 배포가 필요한지
 LAST=$(git log -1 --name-only --format= 2>/dev/null || true)
 echo "$LAST" | grep -q '^services/mockref-api/' && [ "$SCOPE" != mockref ] && echo "ℹ️  마지막 커밋이 mockref 를 고쳤다 → bash scripts/deploy-mockref.sh 도"

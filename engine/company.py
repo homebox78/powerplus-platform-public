@@ -6,7 +6,7 @@
   - 빛·그라데이션·격자·큰 바탕 글자 같은 꾸밈은 위 요소를 숨기고 찍은 배경 그림으로 굳힌다 — 화면은 HTML 그대로.
 그림 모델로 쪽 시안을 그리지 않는다(세로 제안서처럼 시안 확인 없이 PPT 를 바로 만든다). 그림은 powerAssets(아이콘 세트)에서 고른다.
 참고: design/type g sample(evolve·trialo 웹 덱 — HTML 덱을 PDF 로 뽑던 방식), design/ppt sample/ref_025·042·058·204(파랑 기업 덱)."""
-import base64, html, io, json, os, re, time
+import base64, contextvars, html, io, json, os, re, time
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 FONT_DIR = os.path.join(HERE, "fonts")
@@ -17,6 +17,16 @@ PT = 0.5                 # 1px = 0.5pt
 FACES = {200: ("Pretendard ExtraLight", "Pretendard-ExtraLight.ttf"), 400: ("Pretendard", "Pretendard-Regular.ttf"),
          600: ("Pretendard SemiBold", "Pretendard-SemiBold.ttf"), 800: ("Pretendard ExtraBold", "Pretendard-ExtraBold.ttf"),
          900: ("Pretendard Black", "Pretendard-Black.ttf")}
+# 장표 언어가 일본어·중국어면 Pretendard 에 가나·한자가 없다 — 같은 굵기 자리에 그 언어 서체(fontset.for_lang 이 고른 본문 서체)를 끼운다(2026-10-18).
+# 작업마다 따로(엔진 한 프로세스가 여러 작업을 돌린다) — run() 이 정하고 _faces() 가 읽는다
+_FACES = contextvars.ContextVar("company_faces", default=None)
+_LANG_TAG = contextvars.ContextVar("company_lang", default="ko-KR")
+
+
+def _faces():
+    return _FACES.get() or FACES
+
+
 ICON_SET = "icon-flat-blue-glass"   # 세로 제안서 본문과 같은 세트 — 파랑 유리 아이콘(투명 배경)
 
 # ───────────────────────── 테마(파랑 기업 덱) — 색은 여기 한 곳
@@ -164,7 +174,7 @@ PLAN_SYSTEM = """너는 국내 IT·SI 기업의 회사소개서를 만드는 카
 # ───────────────────────── HTML
 def _font_css():
     out = []
-    for w, (_, f) in FACES.items():
+    for w, (_, f) in _faces().items():
         p = os.path.join(FONT_DIR, f).replace("\\", "/")
         out.append(f"@font-face{{font-family:'PD';src:url('file:///{p}');font-weight:{w};font-display:block}}")
     return "\n".join(out)
@@ -1216,8 +1226,9 @@ def _mix(c, base):
 
 def _face(w):
     w = int(w or 400)
-    k = min(FACES, key=lambda x: abs(x - w) + (0.5 if x < w else 0))   # 같은 거리면 굵은 쪽
-    return FACES[k][0]
+    fs = _faces()
+    k = min(fs, key=lambda x: abs(x - w) + (0.5 if x < w else 0))   # 같은 거리면 굵은 쪽
+    return fs[k][0]
 
 
 def _set_font(run, face, size_px, color, ls_px):
@@ -1230,6 +1241,8 @@ def _set_font(run, face, size_px, color, ls_px):
     f.bold = False
     f.color.rgb = RGBColor.from_string(color)
     rpr = run._r.get_or_add_rPr()
+    if _LANG_TAG.get() != "ko-KR":
+        rpr.set("lang", _LANG_TAG.get())   # 장표 언어(ja-JP·zh-CN …)
     for tag in ("a:ea", "a:cs"):
         el = rpr.find(qn(tag))
         if el is None:
@@ -1577,6 +1590,22 @@ def attach_assets(job, deck, d, log=print, ctone="blue", ctheme="a", free=False)
                 it["_img"] = "file:///" + tint_icon(it["_img"], it["_img"][:-4] + f"_{ctone}.png", ctone).replace("\\", "/")
 
 
+def lang_faces(job, deck):
+    """장표 언어·구성 글에 맞는 서체 — Pretendard 가 맞으면 그대로, 아니면 fontset.for_lang 이 고른 본문 서체 4단계를 굵기 자리에"""
+    import fontcover, fontset
+    lang = getattr(job, "lang", "ko")
+    _LANG_TAG.set(fontcover.LANG_TAG.get(lang, "ko-KR"))
+    _, b, notes = fontset.for_lang("pretendard", "pretendard", lang, fontset.text_of(deck))
+    if b == "pretendard" or b not in fontset.BODIES or not fontset.BODIES[b][2]:
+        _FACES.set(None)
+        return
+    nm, faces, files = fontset.BODIES[b]
+    _FACES.set({200: (faces[0], files[0]), 400: (faces[1], files[1]), 600: (faces[2], files[2]), 800: (faces[3], files[3]), 900: (faces[3], files[3])})
+    for m in notes:
+        if m.startswith("본문 서체"):
+            job.event("회사소개서 " + m[3:], "warn")
+
+
 def run(job, j, opts, brief, note):
     import design
     req, put_file = design.W["req"], design.W["put_file"]
@@ -1606,18 +1635,21 @@ def run(job, j, opts, brief, note):
         pass
     job.push("시안 생성", 50)
     job.event("HTML 로 쪽을 그리고, 글·도형·그림을 재서 PPT 로 옮깁니다.")
+    lang_faces(job, deck)
     rendered = render(deck["slides"], os.path.join(d, "html"), log=lambda m: None, ctone=ctone, ctheme=ctheme)
     out = os.path.join(job.dir, "결과.pptx")
     n = to_pptx(rendered, out)
     job.event(f"회사소개서 {n}장을 만들었습니다(글·카드는 편집 가능, 빛·그라데이션은 배경 그림).", "done")
-    try:   # 쓴 서체(Pretendard 5굵기, OFL) — 산출물 '5_서체'. 받는 PC 에 없으면 줄바꿈이 달라진다(세로 제안서와 같은 규칙)
-        import fontlicense
-        fp = [os.path.join(FONT_DIR, f) for _, f in FACES.values() if os.path.isfile(os.path.join(FONT_DIR, f))]
-        for f in fp:
+    try:   # 결과 pptx 에 실제로 쓰인 서체(Pretendard, 일본어·중국어면 그 언어 서체) — 산출물 '5_서체'. 받는 PC 에 없으면 줄바꿈이 달라진다(세로 제안서와 같은 규칙)
+        import fontbundle   # pptx 의 a:latin·a:ea 를 모아 판단(2026-10-18) — 섞인 언어 글은 그 글자가 있는 서체로 바꾼 뒤 모은다
+        fbk = fontbundle.fallback_pptx(out)
+        if fbk:
+            job.event(f"다른 언어 글 {len(fbk)}곳을 그 글자가 있는 서체로 바꿨습니다", "warn")
+        allp, _, _ = fontbundle.bundle(out, os.path.join(job.dir, "_fonts"))
+        for f in allp:
             put_file(job.id, "extra", f)
-        for f in fontlicense.write_notice(fp, os.path.join(job.dir, "_fonts_notice")):
-            put_file(job.id, "extra", f)
-        job.event(f"서체 파일 {len(fp)}개(Pretendard)를 산출물에 넣었습니다.", "done")
+        nf = sum(1 for f in allp if re.search(r"[.](ttf|otf|ttc)$", f, re.I))
+        job.event(f"이 장표에 쓰인 서체 {nf}개({_faces()[400][0]} 등)를 설치 안내·라이선스와 함께 산출물에 넣었습니다.", "done")
     except Exception as e:
         job.event(f"서체 파일을 산출물에 넣지 못했습니다: {str(e)[:100]}", "warn")
     job.push("시안 정리", 92)

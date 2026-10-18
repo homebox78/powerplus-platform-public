@@ -757,14 +757,25 @@ final class Wire
         if ($isMain) {
             [$a, $why] = self::ORG_ARCH[$org] ?? self::ORG_ARCH['all'];
             $plan[] = [$a, 0, self::STYLES[$a]['label'], $why];
-        } elseif (isset($order[1])) {
-            $plan[] = ['reference', $order[1], '두 번째로 많이 쓰는 구성', $refWhy($order[1])];
+        } else {
+            // 서브 화면의 셋째 = 두 번째로 많이 쓰는 실제 구성 — 원형(포털형 등 메인 전용)은 절대 넣지 않는다(2026-10-18 1단계 시험:
+            // 서브 화면에서 '포털형(정보 많음): 부처 메인에 …'이 셋째로 보였다). 둘째와 줄 구성이 같은 레이아웃은 건너뛴다.
+            for ($i = 1; $i < count($order); $i++) {
+                $plan[] = ['reference', $order[$i], $i === 1 ? '두 번째로 많이 쓰는 구성' : '다음으로 많이 쓰는 구성', $refWhy($order[$i]), true];
+            }
         }
-        $out = [];
-        foreach ($plan as [$st, $v, $label, $why]) {
+        $out = []; $shapes = [];
+        foreach ($plan as $pl) {
+            [$st, $v, $label, $why] = $pl;
+            if (!$isMain && count($out) >= 3) { break; }
             $d = self::draft($screen, $org, $req, $st, $v, false);
-            $out[] = ['style' => $st, 'variant' => (int) $d['variant'], 'label' => $label, 'why' => $why, 'fit' => $d['basis']['fit']['score'] ?? null,
-                'current' => $d['style'] === $curStyle && (int) $d['variant'] === $curVariant, 'rows' => self::thumb($d)];
+            if (!$isMain && isset(self::ARCHETYPES[(string) $d['style']])) { continue; } // 안전망 — 서브에 원형이 섞이지 않게
+            $thumb = self::thumb($d);
+            $sig = json_encode(array_map(static fn ($r) => array_map(static fn ($c) => [$c['k'], $c['span']], $r['cols']), $thumb));
+            if (!empty($pl[4]) && isset($shapes[$sig])) { continue; } // 같은 구성이면 다음 레이아웃
+            $shapes[$sig] = true;
+            $out[] = ['style' => (string) $d['style'], 'variant' => (int) $d['variant'], 'label' => $label, 'why' => $why, 'fit' => $d['basis']['fit']['score'] ?? null,
+                'current' => $d['style'] === $curStyle && (int) $d['variant'] === $curVariant, 'rows' => $thumb];
         }
         return $out;
     }
@@ -1591,8 +1602,11 @@ final class Wire
         return $out ?: ['바뀐 점 없음'];
     }
 
-    /** 시안 재료 요청문(MCP) — 이 와이어로 시안을 만들 때 AI 에게 붙여 넣는 글. 칸마다 레퍼런스 채택률과 예시 내용(가상 기관)을 붙인다. */
-    public static function prompt(array $w, string $req = ''): string
+    /**
+     * 시안 재료 요청문(MCP) — 이 와이어로 시안을 만들 때 AI 에게 붙여 넣는 글. 칸마다 레퍼런스 채택률과 예시 내용(가상 기관)을 붙인다.
+     * $id(저장한 와이어 id)가 있으면 mock_get_replica_kit(wire_id=…) 로 부르게 한다 — 배치 기준이 와이어가 되고 판정도 와이어와 대조한다(2026-10-18 고도화 2단계).
+     */
+    public static function prompt(array $w, string $req = '', ?string $id = null): string
     {
         $lines = [];
         $ann = self::annotate($w);
@@ -1614,6 +1628,9 @@ final class Wire
             . " 괄호 끝 %는 같은 화면 레퍼런스에서 그 섹션을 두는 비율이다."
             . "\n" . implode("\n", $lines)
             . "\n\n칸별 예시 내용(가상 기관 '" . $p['org'] . "' 기준 — 실제 기관이면 이름만 바꿔 쓴다):\n" . implode("\n", $content)
-            . "\n순서: mock_get_replica_kit 으로 재료를 받고 → 이 구성대로 만들고 → mock_check_mockup 으로 판정 → 통과하면 mock_publish_mockup.";
+            . ($id !== null && $id !== ''
+                ? "\n와이어 id: {$id}"
+                    . "\n순서: mock_get_replica_kit(wire_id=\"{$id}\") 으로 재료를 받고(배치 기준 = 이 와이어, 칸마다 레퍼런스 재료·예시 내용이 붙는다) → 와이어 줄·칸 그대로 만들고(본문 줄·칸에 data-wire-row·data-wire-cell) → mock_check_mockup 으로 판정(와이어와 대조) → 통과하면 mock_publish_mockup."
+                : "\n순서: 이 와이어를 저장해 받은 wire_id 로 mock_get_replica_kit(wire_id=…) 을 부르거나, 위 줄 구성을 wire JSON({screen, org, rows:[{zone, cols:[{k, span}]}]})으로 mock_get_replica_kit(wire=…) 에 넘겨 재료를 받고(배치 기준 = 이 와이어) → 와이어 줄·칸 그대로 만들고 → mock_check_mockup 으로 판정(와이어와 대조) → 통과하면 mock_publish_mockup.");
     }
 }

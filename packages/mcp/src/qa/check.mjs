@@ -10,6 +10,7 @@ import { measureDesign, designFixes, colorShare } from "./design.mjs";
 import { measureVisual, visualFixes, capByKinds } from "./visual.mjs";
 import { guardContext } from "./netguard.mjs";
 import { collectOverlayText, overlayContrast, collectNames, nameFixes, contrastFixes } from "./extra.mjs";
+import { measureWire, wireMatch, wireRefRows } from "./wire.mjs";
 
 let browserP = null;
 let idleTimer = null;
@@ -224,7 +225,7 @@ export function checkMockup(o) {
   return run;
 }
 
-async function doCheck({ html, ref, refImage, launch, sharp, width = 1920, peers = [], want = "", textKeys = [], iconKeys = [] }) {
+async function doCheck({ html, ref, refImage, launch, sharp, width = 1920, peers = [], want = "", textKeys = [], iconKeys = [], wire = null }) {
   const browser = await getBrowser(launch);
   // serviceWorkers block: 서비스 워커 요청은 route 를 거치지 않아 막이를 우회한다
   const ctx = await browser.newContext({ viewport: { width, height: width < 800 ? 844 : 1080 }, reducedMotion: "reduce", serviceWorkers: "block" });
@@ -249,6 +250,15 @@ async function doCheck({ html, ref, refImage, launch, sharp, width = 1920, peers
     const lay = width >= 800 ? await layoutChecks(p, { textKeys, iconKeys, sub: !!ref.sub, viewportH: 900, org: want }).catch(() => ({ r: {}, fails: [] })) : { r: {}, fails: [] };
     // 구성 일관성(compose.mjs — '한국미래에너지공사' 88점 통과 지적): 구역 간격·원색 면·한 줄 카드·칸 아래 빈칸·꼬리 한 줄. 같은 '구성 ·' 감점으로 합친다
     if (width >= 800) lay.fails.push(...(await composeChecks(p, { sharp }).catch(() => ({ fails: [] }))).fails);
+    // 와이어 묶음(2026-10-18): 줄·칸 대조 기준을 레퍼런스가 아니라 와이어로. 시안의 data-wire-row·data-wire-cell 을 읽어 와이어와 견주고,
+    // 가로 틀·세로 간격 검사(measure)는 시안 자신의 와이어 줄로 돌린다(레퍼런스 줄 좌표에 맞추라고 하지 않는다). 높이는 참고만.
+    let wm = null; const kitH = Number(ref.height ?? 0);
+    if (wire) {
+      const wmeas = await measureWire(p).catch(() => ({ rows: [], marks: 0 }));
+      wm = wireMatch(wmeas, wire, { mobile: width < 800 });
+      const H0 = await p.evaluate(() => document.documentElement.scrollHeight);
+      ref = { ...ref, rows: ref.sub || width < 800 ? [] : wireRefRows(wmeas, wire), height: ref.sub ? ref.height : H0 };
+    }
     const m = await measure(p, ref);
     const shot = await p.screenshot({ fullPage: true, type: "png", clip: { x: 0, y: 0, width, height: Math.min(m.height, 16000) } });
     // D1·D25: 그림 위 글자는 캡처 픽셀로 대비를 잰다 / D5·D6: 기관명·화면 종류 이름 (behavior 가 메뉴를 열기 전에)
@@ -498,6 +508,8 @@ async function doCheck({ html, ref, refImage, launch, sharp, width = 1920, peers
       if (r0 && hbx) { seg.hero = { ref: r0.h, mock: hbx.h }; refH -= r0.h; mockH -= hbx.h; }
       else if (r0 && !(lay.r.hero ?? []).length) refH -= Math.max(0, Math.round(r0.y + r0.h - 900)); // 시안 히어로를 못 찾으면 예전대로 900 넘는 만큼만 뺀다
     }
+    // 와이어 묶음은 높이를 kit 이 계산한 와이어 배치 높이(reference.height)와 견주되 참고만 한다 — 와이어를 따르면 레퍼런스와 달라지는 게 정상
+    if (wire) { refH = kitH; mockH = m.height; for (const k of Object.keys(seg)) seg[k] = null; }
     const diffPct = refH > 0 ? Math.round(((mockH - refH) / refH) * 1000) / 10 : 0;
     const segNotes = [];
     for (const [k, lab] of [["foot", "바닥글"], ["hero", "히어로"], ["sv", "서브 비주얼"]]) { const s = seg[k]; if (s && Math.abs(s.mock - s.ref) > Math.max(40, s.ref * 0.15)) segNotes.push(`높이 참고 · ${lab} 구간이 레퍼런스 ${s.ref}px · 시안 ${s.mock}px — kit 이 정하는 구간이라 전체 높이 차에서 뺐다(감점·치명 아님). 첫 화면·바닥글 규칙을 따른다.`); }
@@ -515,13 +527,18 @@ async function doCheck({ html, ref, refImage, launch, sharp, width = 1920, peers
 
     // ---- 점수·고칠 목록
     const fixes = []; let score = 100; const hard = [];
+    // 와이어 일치가 맨 앞 — 와이어와 다르면 다른 점수가 좋아도 통과하지 않는다(치명)
+    if (wm) {
+      if (!wm.pass) { hard.push(...(wm.hard.length ? wm.hard : ["와이어와 줄·칸이 다름"])); score -= Math.min(30, Math.max(8, Math.round((100 - wm.score) / 2))); }
+      fixes.push(...wm.fixes);
+    }
     if (ref.copy_risk) { hard.push("한 사이트 배치를 통째로 따름"); score -= 30; fixes.push("이 ref_id 는 메인 화면 한 장이다 — 한 사이트를 통째로 따른 시안은 게시할 수 없다. get_replica_kit 을 다시 받아 reference.ref_id(mix1:… 로 시작)와 그 배치(여러 레퍼런스의 줄을 섞은 것)로 만든다."); }
     if (m.leaks.length) { hard.push("레퍼런스 기관 정보 노출"); score -= 30; fixes.push(`레퍼런스 기관 정보가 시안에 남아 있다: ${m.leaks.join(", ")} — persona 의 가상 값으로 바꾼다.`); }
     if (blockedNet.length) { score -= 10; fixes.push(`막힌 요청 ${blockedNet.length}개(내부 주소·허용 안 하는 방식): ${blockedNet.slice(0, 3).join(" | ")} — 공개 https 주소만 쓴다.`); }
     if (errors.length) { hard.push("스크립트 오류"); score -= 10; fixes.push(`스크립트 오류: ${errors.slice(0, 3).join(" | ")}`); }
     if (m.broken.length) { score -= Math.min(20, m.broken.length * 4); fixes.push(`안 뜨는 이미지 ${m.broken.length}개: ${m.broken.slice(0, 5).join(", ")} — samples 의 url 을 그대로 쓴다.`); }
     if (m.foreign.length) { score -= 10; fixes.push(`홈박스 밖 이미지 주소: ${m.foreign.join(", ")} — 사진은 samples 만 쓴다(레퍼런스 사이트 이미지·외부 이미지 금지).`); }
-    const miss = m.rows.filter((r) => r.mock_cols < r.ref_cols);
+    const miss = wm ? [] : m.rows.filter((r) => r.mock_cols < r.ref_cols); // 와이어 묶음은 칸 수를 와이어 일치에서 본다(같은 것을 두 번 깎지 않는다)
     if (miss.length) { score -= Math.min(30, miss.length * 6); for (const r of miss.slice(0, 6)) fixes.push(`레퍼런스 ${r.row}번째 줄(y ${r.ref_y}~${r.ref_y + r.ref_h}, ${r.types.join("·")})은 ${r.ref_cols}칸인데 시안의 같은 자리(y ${r.mock_y}~${r.mock_y + r.mock_h})는 ${r.mock_cols}칸으로 보인다 — 칸을 빠뜨리거나 합치지 않았는지, 줄 위치가 밀리지 않았는지 확인한다.`); }
     if (m.frame.off.length) { hard.push("줄마다 본문 폭이 다름"); score -= Math.min(18, m.frame.off.length * 6); for (const o of m.frame.off.slice(0, 4)) fixes.push(`가로 틀 · y ${o.y} 줄의 내용(${o.who || "?"})이 x ${o.left}~${o.right} 인데 다른 줄은 x ${m.frame.left}~${m.frame.right} 이다 — 이 줄도 같은 왼쪽 선·같은 폭 안에 넣는다(배경 면만 화면 폭 가득, 내용은 본문 폭).`); }
     if (m.frame.gap_off.length) { score -= Math.min(12, m.frame.gap_off.length * 4); for (const o of m.frame.gap_off.slice(0, 4)) fixes.push(`칸 간격 · y ${o.y} 줄의 좌우 칸 사이가 ${o.gaps.join("·")}px 인데 다른 줄은 ${m.frame.gap}px 이다 — 칸 사이 간격을 한 값으로 맞춘다.`); }
@@ -544,8 +561,9 @@ async function doCheck({ html, ref, refImage, launch, sharp, width = 1920, peers
     if (m.spill.length) { score -= Math.min(20, m.spill.length * 10); for (const o of m.spill) fixes.push(`덮임 · y ${o.y} 의 상자(${o.cls}, 높이 ${o.h})가 부모 밖으로 ${o.over}px 삐져나와 다른 구역을 덮는다 — 클래스 이름이 다른 규칙과 겹치지 않는지 본다.`); }
     { const df = designFixes(design, { sub: !!ref.sub, peers, frame: m.frame, width }); score -= df.minus; hard.push(...df.hard); fixes.push(...df.fixes); }
     { const vf = visualFixes(visual, { sub: !!ref.sub, peers }); score -= vf.minus; hard.push(...vf.hard); fixes.push(...vf.fixes); }
-    if (!ref.sub && Math.abs(diffPct) > 6) hard.push("높이 차 6% 초과(배치를 따르지 않음)");
-    if (ref.sub ? diffPct > 15 : Math.abs(diffPct) > 2) { score -=Math.min(25, Math.round((Math.abs(diffPct) - 2) * 1.5)); fixes.push(`${ref.sub ? "본문 구간" : "전체"} 높이가 레퍼런스 ${refH}px 대비 ${mockH}px (${diffPct > 0 ? "+" : ""}${diffPct}%) — ${diffPct > 0 ? "여백·글이 너무 길거나 칸이 세로로 늘어났다" : "빠진 줄이 있거나 칸이 납작하다"}. 2% 이내로 맞춘다 — 높이는 각 줄의 칸 높이(sections 의 h)와 줄별 y 간격 그대로로 맞춘다(mix 면 줄별 실측 간격으로 다시 계산한 값이다). 줄 사이를 한 값으로 통일하거나 빈 상자·min-height 로 채우지 않는다(빈칸은 따로 감점).`); }
+    if (wm) { if (Math.abs(diffPct) > 30) { score -= 3; fixes.push(`높이 참고 · 시안 ${mockH}px 이 와이어 배치 높이 ${refH}px 와 ${diffPct > 0 ? "+" : ""}${diffPct}% 다르다 — 칸 높이를 wire.rows 의 h·ev 근처로(치명 아님, 레퍼런스 높이에 맞출 필요는 없다).`); } }
+    else if (!ref.sub && Math.abs(diffPct) > 6) hard.push("높이 차 6% 초과(배치를 따르지 않음)");
+    if (!wm && (ref.sub ? diffPct > 15 : Math.abs(diffPct) > 2)) { score -=Math.min(25, Math.round((Math.abs(diffPct) - 2) * 1.5)); fixes.push(`${ref.sub ? "본문 구간" : "전체"} 높이가 레퍼런스 ${refH}px 대비 ${mockH}px (${diffPct > 0 ? "+" : ""}${diffPct}%) — ${diffPct > 0 ? "여백·글이 너무 길거나 칸이 세로로 늘어났다" : "빠진 줄이 있거나 칸이 납작하다"}. 2% 이내로 맞춘다 — 높이는 각 줄의 칸 높이(sections 의 h)와 줄별 y 간격 그대로로 맞춘다(mix 면 줄별 실측 간격으로 다시 계산한 값이다). 줄 사이를 한 값으로 통일하거나 빈 상자·min-height 로 채우지 않는다(빈칸은 따로 감점).`); }
     if (!ref.sub && diffPct < -2 && pc.blanks.length) fixes.push("높이·빈칸 같이 걸림 · 높이를 맞추려 여백을 늘린 것으로 보인다 — 여백을 원래대로 줄이고, 레퍼런스보다 납작한 칸(사진·카드·목록 줄 수)을 sections 의 h 만큼 키운다.");
     if (g.fails.length) { score -= Math.min(35, g.fails.length * 5); for (const f of g.fails.slice(0, 10)) fixes.push(`게이트 · ${f}`); }
     if (lay.fails.length) { score -= Math.min(30, lay.fails.length * 4); for (const f of lay.fails.slice(0, 12)) fixes.push(`구성 · ${f}`); }
@@ -555,11 +573,11 @@ async function doCheck({ html, ref, refImage, launch, sharp, width = 1920, peers
     { const cf = contrastFixes(overBad); score -= cf.minus; hard.push(...cf.hard); fixes.push(...cf.fixes); }
     { const nf = nameFixes(names, { want, sub: !!ref.sub, pageType: ref.page_type }); score -= nf.minus; hard.push(...nf.hard); fixes.push(...nf.fixes); }
     if (!hasHb && !ownOk) { score -= 10; fixes.push("동작 규약(data-hb)이 없다 — get_behavior_kit 의 script 를 넣고 캐러셀·탭·메뉴·레이어·검색에 data-hb 속성을 붙인다."); }
-    if (sim && sim.sim < 70) { score -= Math.min(15, Math.round((70 - sim.sim) / 2)); }
+    if (sim && sim.sim < 70 && !wm) { score -= Math.min(15, Math.round((70 - sim.sim) / 2)); } // 와이어 묶음은 레퍼런스 밝기 구성과 달라도 감점하지 않는다(참고 notes 만)
     // 밝기 구간은 감점이 있을 때(유사도 70 미만)만 고칠 목록에 — 그 밖엔 참고(notes). 참고 이미지가 없는 섞기 조각·서브 비주얼 차이로 고칠 방법이 없는 경고가 남던 것(2026-10-03 시험)
     const notes = [...segNotes];
     // 서브는 sub_shell(서브 비주얼 띠·왼쪽 흰 메뉴)을 쓰라고 지시하므로 레퍼런스와 밝기 구성이 다른 게 정상이다 — 감점이 없으면 메모도 내지 않는다(2026-10-05 R3·R4·R5·R6: 100점에도 계속 떠 혼란)
-    if (sim && !(ref.sub && sim.sim >= 70)) for (const [a, b] of sim.bands.slice(0, 4)) (sim.sim < 70 ? fixes : notes).push(`밝기 구성이 크게 다른 구간: ${ref.sub ? "본문" : "화면"} ${Math.round(a * 100)}~${Math.round(b * 100)}% 지점 — 어두운 띠·사진 면·흰 면의 위치가 레퍼런스와 다르다(나란히 이미지 확인).`);
+    if (sim && !(ref.sub && sim.sim >= 70)) for (const [a, b] of sim.bands.slice(0, 4)) (sim.sim < 70 && !wm ? fixes : notes).push(`밝기 구성이 크게 다른 구간: ${ref.sub ? "본문" : "화면"} ${Math.round(a * 100)}~${Math.round(b * 100)}% 지점 — 어두운 띠·사진 면·흰 면의 위치가 레퍼런스와 다르다(나란히 이미지 확인).`);
     score = Math.max(0, Math.min(100, score));
     // D11: 같은 종류 고칠 점이 3개 넘게 몰리면 통과시키지 않는다(84점 상한)
     { const many = capByKinds(fixes); if (many.length && score > 84) { score = 84; notes.push(`같은 종류 고칠 점이 3개 이상(${many.join(", ")}) — 고치기 전엔 통과하지 않는다.`); } }
@@ -572,7 +590,8 @@ async function doCheck({ html, ref, refImage, launch, sharp, width = 1920, peers
         pass, score, hard_fails: hard,
         summary: pass ? "통과 — publish_mockup(token) 으로 게시해 주소를 사용자에게 준다." : `미통과(${score}점) — fixes 를 위에서부터 고치고 check_mockup(ref_id, token, edits) 로 고친 부분만 보내 다시 판정한다. 85점 이상·치명 항목 0 이 통과다.`,
         sources: ref.sources ?? 1,
-        height: { reference: refH, mockup: mockH, diff_pct: diffPct, scope: ref.sub ? `본문 구간(머리·바닥${seg.sv ? "·서브 비주얼" : ""} 제외)` : `바닥글 위까지${seg.hero ? "(히어로 제외)" : ""}`, kit_segments: seg },
+        height: { reference: refH, mockup: mockH, diff_pct: diffPct, scope: wm ? "와이어 배치 높이와 전체(참고만, 30% 넘을 때 -3)" : ref.sub ? `본문 구간(머리·바닥${seg.sv ? "·서브 비주얼" : ""} 제외)` : `바닥글 위까지${seg.hero ? "(히어로 제외)" : ""}`, kit_segments: seg },
+        wire_match: wm ? { score: wm.score, pass: wm.pass, expected_rows: wm.expected, found_rows: wm.found, order_ok: wm.order_ok, rows: wm.rows, basis: "와이어 일치 — 본문 줄마다 순서·칸 수·칸 종류·칸 폭 비율(±8%)·내용 종류. 레퍼런스 줄·높이 대신 이것으로 배치를 판정한다." } : null,
         rows: m.rows, frame: m.frame, mobile: mob, pc, design, visual, similarity: sim ? sim.sim : null,
         behavior: beh.stats, images: { total: m.images, broken: m.broken, foreign: m.foreign },
         fixes,

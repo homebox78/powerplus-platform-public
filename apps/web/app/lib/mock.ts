@@ -10,7 +10,7 @@ export interface MockupItem {
 }
 export interface GalleryOwner { name: string; avatar: string | null; badge: { id: string; name: string } | null }
 export interface GalleryItem {
-  id: number; title: string; score: number; device: "pc" | "mobile"; kind: "mix" | "single"; thumb_url: string;
+  id: number; title: string; score: number; device: "pc" | "mobile"; kind: "mix" | "single" | "wire"; thumb_url: string;
   /** 메인·서브 구분, 서브의 페이지 유형(greeting·board_list…), 세트 열쇠(메인 token)와 보이는 범위 안 세트 장수 */
   role?: "main" | "sub"; page?: string | null; set?: string; set_size?: number;
   status: "study" | "shared" | "hidden"; likes: number; views: number; unlocks: number; note: string | null;

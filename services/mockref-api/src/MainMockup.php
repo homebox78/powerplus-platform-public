@@ -103,7 +103,7 @@ final class MainMockup
             $mainFont = $fams ? (string) array_key_first($fams) : WebFont::canonical((string) preg_replace("/^'([^']+)'.*/", '$1', (string) ($tok['font'] ?? '')));
             $tok['font'] = WebFont::stack($mainFont);
         }
-        $lay = MainLayout::render((array) ($hints['sections'] ?? []), $p, $take, (int) ($hints['vw'] ?? 1920), (int) ($tok['container'] ?? 1280));
+        $lay = MainLayout::render((array) ($hints['sections'] ?? []), $p, $take, (int) ($hints['vw'] ?? 1920), (int) ($tok['container'] ?? 1280), !empty($hints['wire'])); // wire = 와이어 배치(빠진 블록을 더하지 않고 표시를 단다)
         $h[] = '<main id="mm-main">' . $lay['html'] . '</main>';
 
         // 푸터 (87%) — 관련사이트 드롭다운(32%) + 정책 링크 + 주소 + 인증

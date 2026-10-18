@@ -85,7 +85,7 @@ function MyMockups({ onGallery }: { onGallery: (id: number) => void }) {
               <TableCell className="text-left">
                 <span className="flex items-center gap-3">
                   {it.thumb_url ? <img src={it.thumb_url} alt="" className="h-10 w-16 shrink-0 rounded-md object-cover object-top max-md:hidden" /> : <span className="h-10 w-16 shrink-0 rounded-md bg-ground-3 max-md:hidden" aria-hidden />}
-                  <span className="min-w-0"><span className="block truncate font-semibold max-md:line-clamp-2 max-md:whitespace-normal">{it.title}</span><span className="block truncate text-sm text-ink-4"><span title={it.ref_id || undefined}>{it.ref_id ? `참고 ${it.ref_id.startsWith("mix") ? Math.max(1, it.ref_id.split(":").length - 1) : 1}곳` : "참고 없음"}</span> · 판정 {it.check_count}회{it.score !== null && <span className="md:hidden"> · {it.score}점</span>}</span></span>
+                  <span className="min-w-0"><span className="block truncate font-semibold max-md:line-clamp-2 max-md:whitespace-normal">{it.title}</span><span className="block truncate text-sm text-ink-4"><span title={it.ref_id || undefined}>{it.ref_id ? (it.ref_id.startsWith("wire1:") ? `와이어 · 참고 ${(it.ref_id.split(":")[3] ?? "").split(".").filter(Boolean).length || 1}곳` : `참고 ${it.ref_id.startsWith("mix") ? Math.max(1, it.ref_id.split(":").length - 1) : 1}곳`) : "참고 없음"}</span> · 판정 {it.check_count}회{it.score !== null && <span className="md:hidden"> · {it.score}점</span>}</span></span>
                 </span>
               </TableCell>
               <TableCell className="max-md:hidden">{DEVICE_KO[it.device]}</TableCell>

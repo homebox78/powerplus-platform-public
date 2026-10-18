@@ -265,7 +265,7 @@ function homebox_main_mockup(array $sc, array $rows, array $site = []): array
     $persona = Homebox\SampleContent::persona((string) ($sc['persona_type'] ?? $sc['org_type'] ?? ''), $who);
     $persona['real'] = (string) $sc['org_name']; // 지울 실제 이름은 언제나 레퍼런스 기관 — 고객 기관명으로 바꾸면 '서구랑'·'서람이'가 남는다
     $hints = ['gnb' => $labels(['header', 'gnb']), 'quick' => $labels(['quick_links']), 'tabs' => $labels(['news_tabs', 'notice_list']),
-        'rural' => (bool) preg_match('/군$|군청|농촌|어촌/u', $who), 'sections' => $rows, 'vw' => (int) ($sc['viewport_w'] ?? 1920)];
+        'rural' => (bool) preg_match('/군$|군청|농촌|어촌/u', $who), 'sections' => $rows, 'vw' => (int) ($sc['viewport_w'] ?? 1920), 'wire' => !empty($site['wire'])];
     // 메인도 캡처 픽셀로 푸터 밝기 판정 (예산군 밝은 푸터를 어둡게 그리던 것, 2026-09-26 자가 검증 C31)
     $foot = null; foreach ($rows as $r) { if ($r['type'] === 'footer') { $foot = [(int) $r['y'], (int) $r['h']]; } }
     $asset = Db::row('SELECT a.bucket, a.`key` FROM screens s JOIN assets a ON a.id = s.public_asset_id WHERE s.id = ?', [(int) $sc['id']]);
@@ -296,6 +296,8 @@ $router->get('/api/mockups/main', static function (): void {
     }
     $ref = trim((string) ($_GET['ref'] ?? ''));
     $ot = homebox_infer_ot(trim((string) ($_GET['org_type'] ?? '')), (string) ($_GET['org_name'] ?? ''));
+    $wire = homebox_wire_param();
+    if ($ot === '' && $wire !== null) { $ot = Homebox\ReplicaKit::WIRE_ORG_TYPE[$wire['org']] ?? ''; } // 기관 유형이 비면 와이어 묶음의 기본 유형
     $sc = homebox_main_ref($ot, $ref, (int) ($_GET['rank'] ?? 1), true); // 자동 조립 — 분해 품질 조건
     if ($sc === null) {
         Response::error(404, 'NOT_FOUND', '조건에 맞는 메인 레퍼런스가 없습니다.');
@@ -304,6 +306,12 @@ $router->get('/api/mockups/main', static function (): void {
     if ($on !== '') { $sc['persona_name'] = $on; }
     if ($ot !== '') { $sc['persona_type'] = $ot; } // 요청·짐작한 종류가 레퍼런스 종류보다 먼저(대학 요청이 공공기관 레퍼런스로 넓혀져도 대학 페르소나)
     $rows = Db::rows('SELECT id, section_type_id AS type, bbox_x AS x, bbox_y AS y, bbox_w AS w, bbox_h AS h, structure FROM sections WHERE screen_id = ? ORDER BY bbox_y, bbox_x', [(int) $sc['id']]);
+    // 와이어(2026-10-18): 주면 본문 줄을 와이어 순서·칸 폭으로 놓고(빠진 블록을 더하지 않는다) 줄·칸에 와이어 표시를 단다. 판정 ref_id 도 와이어 묶음(wire1:)
+    if ($wire !== null) {
+        $wr = homebox_wire_main_rows($wire, $sc, $ot, (int) ($_GET['rank'] ?? 1), (string) ($_GET['wire_ref'] ?? '-'));
+        $m = homebox_main_mockup($sc, $wr['rows'], ['wire' => true]);
+        Response::json($m + ['ref_id' => $wr['ref_id'], 'wire' => ['tally' => $wr['tally'], 'sources' => $wr['sources'], 'rule' => '본문 줄은 와이어 순서·칸 폭을 따랐다(빠진 필수 블록을 더하지 않았다). 판정은 ref_id 로 — 와이어와 줄·칸을 대조한다.']], 200, ['Cache-Control' => 'private, no-store']);
+    }
     Response::json(homebox_main_mockup($sc, $rows), 200, ['Cache-Control' => 'private, no-store']);
 });
 
@@ -525,6 +533,8 @@ $router->get('/api/mockups/site', static function (): void {
         Response::error(402, 'UPGRADE_REQUIRED', '홈페이지 목업은 Pro 이상에서 제공합니다.', ['plan' => $plan['id']]);
     }
     $ot = homebox_infer_ot(trim((string) ($_GET['org_type'] ?? '')), (string) ($_GET['org_name'] ?? ''));
+    $wire = homebox_wire_param(); // 메인 와이어(2026-10-18) — 메인 본문을 와이어대로. 서브는 그대로
+    if ($ot === '' && $wire !== null) { $ot = Homebox\ReplicaKit::WIRE_ORG_TYPE[$wire['org']] ?? ''; }
     $sc = homebox_main_ref($ot, trim((string) ($_GET['ref'] ?? '')), (int) ($_GET['rank'] ?? 1), true); // 자동 조립 — 분해 품질 조건
     if ($sc === null) { Response::error(404, 'NOT_FOUND', '조건에 맞는 메인 레퍼런스가 없습니다.'); }
     $on = homebox_client_org((string) ($_GET['org_name'] ?? ''));
@@ -539,13 +549,15 @@ $router->get('/api/mockups/site', static function (): void {
     $font = trim((string) ($_GET['font'] ?? ''));
     if ($font !== '') { $site['tok']['font'] = Homebox\WebFont::stack(Homebox\WebFont::canonical($font) ?? $font); }
     $rows = Db::rows('SELECT id, section_type_id AS type, bbox_x AS x, bbox_y AS y, bbox_w AS w, bbox_h AS h, structure FROM sections WHERE screen_id = ? ORDER BY bbox_y, bbox_x', [(int) $sc['id']]);
-    $main = homebox_main_mockup($sc, $rows, $site);
+    $wr = $wire !== null ? homebox_wire_main_rows($wire, $sc, $ot, (int) ($_GET['rank'] ?? 1), (string) ($_GET['wire_ref'] ?? '-')) : null;
+    $main = homebox_main_mockup($sc, $wr['rows'] ?? $rows, $site + ($wr !== null ? ['wire' => true] : []));
     // 홈페이지 공통값 = 메인이 실제로 쓴 값(가상 기관·토큰·주 메뉴와 그 하위 메뉴)
     preg_match_all('/<button type="button" class="mm-gnb-btn"[^>]*>([^<]+)<\/button>/u', (string) $main['html'], $m);
     // real = 메인 레퍼런스 기관명 — 서브의 주 메뉴는 메인 것을 쓰므로 그 기관명도 서브에서 지운다(2026-10-12 build-leaks-real-org)
     $shared = ['persona' => $main['persona'], 'tok' => $main['tokens'], 'gnb' => array_map('trim', $m[1] ?? []), 'real' => (string) $sc['org_name']];
     // 판정용 ref_id (2026-10-12 build-no-ref-id) — 메인은 single:(숫자 id 로 판정하면 복제 위험 치명), 서브는 화면 id
-    $main['ref_id'] = 'single:' . (int) $sc['id'];
+    $main['ref_id'] = $wr !== null ? $wr['ref_id'] : 'single:' . (int) $sc['id']; // 와이어 메인은 와이어 묶음 ref_id(판정이 와이어와 대조)
+    if ($wr !== null) { $main['wire'] = ['tally' => $wr['tally'], 'sources' => $wr['sources']]; }
     // 응답 중복 덜기 (2026-10-12 build-response-big) — 장마다 같은 persona·tokens·근거는 site 에 한 번만
     $slim = static fn (array $p): array => array_diff_key($p, ['persona' => 1, 'tokens' => 1, 'content_basis' => 1, 'layout_basis' => 1]);
     $out = [];

@@ -186,7 +186,7 @@ final class ReplicaKit
         }
 
         return [
-            'preflight' => self::PREFLIGHT,
+            'preflight' => isset($mix['wire']) ? self::wirePreflight() : self::PREFLIGHT,
             'preferences' => [ // 디자이너 선호 규칙(2026-10-03) — 관공서 사례(무엇을 만들었나)와 함께 쓰는 두 번째 근거(무엇이 더 낫다고 골랐나)
                 'how' => '디자이너 A/B 투표에서 뚜렷하게 갈린 결과(300명 이상·한쪽 65% 이상)다. 시안에 같은 요소가 있으면 rule 쪽으로 만들고 instead_of 쪽은 피한다. 레퍼런스 배치(무엇이 어디에)는 그대로 따르고, 이 규칙은 요소를 어떻게 그릴지만 정한다. 더 찾으려면 get_design_preferences.',
                 'rules' => Preferences::compact(Preferences::find(match ((string) ($sc['page_type'] ?? 'main')) { 'main' => ['layout', 'nav', 'button', 'visual', 'overlay'], 'board_list', 'board_view', 'search' => ['list', 'form', 'data'], 'form', 'login', 'apply' => ['form', 'feedback', 'button'], default => ['layout', 'data', 'nav'] }, '', 10, true, true)),
@@ -215,7 +215,8 @@ final class ReplicaKit
                 'width' => $vw, 'height' => (int) ($mix['height'] ?? ($sc['full_h'] ?? 0)),
                 'capture_url' => $mix === null ? Plan::kurl((int) ($sc['site_id'] ?? 0), $sc['public_asset_id'] ?? null) : null,
                 'kogl' => Plan::koglInfo((int) ($sc['site_id'] ?? 0)),
-                'mix' => $mix === null ? null : [
+                'wire' => isset($mix['wire']) ? self::wireOut($mix, $secs) : null,
+                'mix' => $mix === null || isset($mix['wire']) ? null : [
                     'sources' => $mix['sources'], 'pieces' => $mix['pieces'], 'share' => $mix['share'], 'frame' => $mix['frame'] ?? null, 'style' => $mix['style'] ?? null,
                     'variation' => ['rule' => '출처 구역을 색만 바꿔 그대로 옮기면 운영 중인 그 사이트와 똑같아 보인다. 구역마다 뼈대(칸 수·폭·높이)는 sections 대로 두고, 아래 change 한 가지를 반드시 적용해 표현을 바꾼다. 이 변화들도 한 사이트처럼 보이게 같은 둥글기·같은 선 굵기·같은 주색 쓰임으로 맞춘다.', 'items' => $mix['variation'] ?? []],
                     'rule' => '이 시안은 레퍼런스 ' . count($mix['sources']) . '곳의 줄을 섞어 만든 배치다(한 사이트를 베끼지 않기 위해). 머리·첫 화면·바닥은 A, 본문 줄은 출처(sections[].src)가 줄마다 다르다. '
@@ -235,7 +236,9 @@ final class ReplicaKit
                     ? 'PC 본문 폭은 최소 ' . self::MIN_W . 'px 다(요청이 없을 때). 레퍼런스 본문이 ' . (int) $custom['widened']['from'] . 'px 로 좁아 칸 비율은 그대로 두고 ' . (int) $custom['widened']['to'] . 'px 로 늘렸다. 참고 이미지의 좁은 폭을 따르지 말고 sections·frame 좌표를 따른다.'
                     : 'PC 본문 폭은 최소 ' . self::MIN_W . 'px 다(요청이 없을 때). 고객이 다른 폭을 원하면 width 로 다시 받는다.',
                 'sub' => $sub,
-                'note' => '배치(위치·크기·칸 나눔·밀도)의 기준이다. 글·사진·로고·색은 가져오지 않는다. 다 만들면 check_mockup(ref_id=reference.ref_id) 로 판정한다.',
+                'note' => isset($mix['wire'])
+                    ? '배치의 기준은 reference.wire(사용자 와이어)다 — 레퍼런스는 칸마다 그리는 법(안쪽 구성·밀도)의 재료다. 글·사진·로고·색은 가져오지 않는다. 다 만들면 check_mockup(ref_id=reference.ref_id) 로 판정한다(와이어와 줄·칸 대조).'
+                    : '배치(위치·크기·칸 나눔·밀도)의 기준이다. 글·사진·로고·색은 가져오지 않는다. 다 만들면 check_mockup(ref_id=reference.ref_id) 로 판정한다.',
             ],
             'rows' => $rowsOut,
             'columns' => $mix !== null ? null : self::columns($secs, $vw),
@@ -269,8 +272,8 @@ final class ReplicaKit
                 'how' => '스크립트를 직접 쓰지 않는다 — </body> 앞에 <script data-hb-behavior></script> 한 줄만 넣으면 check_mockup 이 보관할 때 홈박스 동작 스크립트를 채운다. contract 의 data-hb 속성만 마크업에 붙인다. (판정 없이 파일로만 저장할 때는 get_behavior_kit 의 script 를 넣는다.)',
                 'reuse' => '서브 페이지는 메인과 같은 부분을 다시 쓰지 않는다 — check_mockup 에 base_token(메인 시안의 token)을 주고, 같은 자리에 <!--hb:use style--> · <!--hb:use header--> · <!--hb:use footer--> 를 적으면 홈박스가 메인의 그 부분(모든 <style>, 첫 <header>, 마지막 <footer>)을 넣는다. 다른 구간을 나눠 쓰려면 메인에서 <!--hb:part 이름-->…<!--/hb:part--> 로 감싸고 서브에서 <!--hb:use 이름-->. 서브만의 CSS 는 <!--hb:use style--> 뒤에 <style> 을 하나 더 둔다. 그래서 메인의 CSS 는 서브에서도 쓸 공통 규칙(머리·바닥·단추·카드·서브 비주얼 띠·왼쪽 메뉴)을 처음부터 포함해 쓴다.',
             ],
-            'procedure' => self::PROCEDURE,
-            'acceptance' => self::ACCEPTANCE,
+            'procedure' => isset($mix['wire']) ? self::wireProcedure() : self::PROCEDURE,
+            'acceptance' => isset($mix['wire']) ? self::wireAcceptance() : self::ACCEPTANCE,
         ] + (isset($custom['lang']) ? ['language' => self::langBlock((string) $custom['lang'])] : []);
     }
 
@@ -633,6 +636,469 @@ final class ReplicaKit
         $boxGap = $boxGaps ? (int) $boxGaps[intdiv(count($boxGaps), 2)] : $rowGap;
         return ['frame' => ['x' => (int) $A['cx'], 'w' => (int) $A['cw'], 'col_gap' => $colGap, 'row_gap' => $rowGap, 'box_gap' => $boxGap], 'variation' => $vary, 'style' => $style,
             'secs' => $secs, 'pieces' => $pieces, 'sources' => $sources, 'share' => $share, 'height' => $cursor, 'ref_id' => $refId, 'replaced' => count(array_filter($plan, static fn ($p) => $p[0] !== 'A')), 'head_rows' => $headN];
+    }
+
+    // ================================================================ 와이어 → 재현 묶음 (2026-10-18 powerMock 와이어 고도화 2단계)
+    // 사용자: "제작된 와이어프레임 기획이 실제 이미지(시안) 제작 시 반영될 수 있게 — 가끔 와이어와 전혀 상관없는 시안이 나온다."
+    // 와이어(줄 순서·12칸 폭·칸 종류)를 받으면 배치의 기준을 레퍼런스 줄이 아니라 와이어로 바꾼다. 레퍼런스는 칸마다 "그 종류를 어떻게 그렸나"의 재료다.
+
+    /**
+     * 와이어 기관 묶음 ↔ 레퍼런스 기관 유형(org_type) — 이 표 한 곳에 둔다(양방향).
+     *   정방향 WIRE_ORG_TYPE: 와이어 org 만 있고 org_type·org_name 이 없을 때 레퍼런스를 고르는 기본 org_type.
+     *   역방향 wireOrgOf(): org_type → 와이어 묶음. db/scripts/build-wire-patterns.mjs GROUP_OF 와 같은 규칙이다(그쪽을 바꾸면 여기도).
+     */
+    public const WIRE_ORG_TYPE = [
+        'all' => '', 'local' => 'local_basic', 'central' => 'central_ministry', 'public' => 'public_corp', 'education' => 'edu_school',
+        'university' => 'edu_univ_private', 'civic' => 'etc_assoc', 'culture' => 'public_culture', 'private' => 'private_corp',
+    ];
+
+    /** org_type(+사이트 수집 출처) → 와이어 기관 묶음. 모르는 값은 all. */
+    public static function wireOrgOf(string $ot, string $sourceKind = ''): string
+    {
+        $t = strtolower(trim($ot));
+        return match (true) {
+            $t === '' => 'all',
+            in_array($t, ['edu_univ', 'edu_univ_private', 'edu_college'], true) => 'university',
+            str_starts_with($t, 'edu') => 'education',
+            $sourceKind === 'private' || str_starts_with($t, 'private') => 'private',
+            str_starts_with($t, 'local_basic') || $t === 'local_wide' || $t === 'council' => 'local',
+            str_starts_with($t, 'central') => 'central',
+            $t === 'etc_assoc' || $t === 'etc_welfare' => 'civic',
+            $t === 'public_culture' => 'culture',
+            str_starts_with($t, 'public') || $t === 'local_public' || $t === 'etc' || $t === 'judicial' => 'public',
+            default => 'all',
+        };
+    }
+
+    /** 와이어 화면 종류 — Wire::SCREENS 와 같다(레퍼런스 page_type 과 이름이 같다). */
+    public const WIRE_SCREENS = ['main', 'board_list', 'board_gallery', 'board_view', 'form', 'content', 'greeting', 'org_chart', 'location', 'history', 'vision', 'procedure', 'faq', 'search', 'sitemap', 'info_disclosure'];
+
+    /** 서브 공통 틀이 정하는 칸 — 재료를 다른 화면에서 찾지 않는다(없으면 sub_shell 대로) */
+    private const WIRE_SHELL = ['sub_visual', 'breadcrumb', 'page_title', 'lnb', 'satisfaction', 'skip_nav'];
+
+    /** 머리 줄로 보는 칸 — 와이어 top 구역의 이 칸들은 A 의 머리 줄을 그대로 쓴다 */
+    private const WIRE_HEAD = ['masthead', 'header', 'gnb', 'skip_nav'];
+
+    /**
+     * 와이어 받기 — JSON 글이나 배열. 줄 40·칸 6 상한, 폭 1~12, 칸 종류는 영문 소문자·밑줄.
+     * @return array{screen: string, org: string, lnb: bool, rows: list<array{no: int, zone: string, cols: list<array{k: string, span: int, h: int}>}>}|null
+     */
+    public static function parseWire(mixed $raw): ?array
+    {
+        if (is_string($raw)) { $raw = json_decode($raw, true); }
+        if (!is_array($raw) || !is_array($raw['rows'] ?? null)) { return null; }
+        $screen = in_array((string) ($raw['screen'] ?? 'main'), self::WIRE_SCREENS, true) ? (string) ($raw['screen'] ?? 'main') : 'main';
+        $org = isset(self::WIRE_ORG_TYPE[(string) ($raw['org'] ?? 'all')]) ? (string) ($raw['org'] ?? 'all') : 'all';
+        $rows = [];
+        foreach (array_slice($raw['rows'], 0, 40) as $r) {
+            if (!is_array($r) || !is_array($r['cols'] ?? null)) { continue; }
+            $zone = in_array($r['zone'] ?? 'body', ['top', 'body', 'bottom'], true) ? (string) $r['zone'] : 'body';
+            $cols = [];
+            foreach (array_slice($r['cols'], 0, 6) as $c) {
+                $k = is_array($c) ? (string) ($c['k'] ?? '') : '';
+                if (!preg_match('/^[a-z][a-z0-9_]{1,40}$/', $k)) { continue; }
+                $cols[] = ['k' => $k, 'span' => max(1, min(12, (int) ($c['span'] ?? 12))), 'h' => max(0, min(2000, (int) ($c['h'] ?? 0)))];
+            }
+            if ($cols) { $rows[] = ['no' => count($rows) + 1, 'zone' => $zone, 'cols' => $cols]; }
+        }
+        if (!$rows) { return null; }
+        return ['screen' => $screen, 'org' => $org, 'lnb' => !empty($raw['lnb']), 'rows' => $rows];
+    }
+
+    /** 와이어 칸이 머리 줄인가 */
+    private static function wireHeadRow(array $wr): bool
+    {
+        if ($wr['zone'] !== 'top') { return false; }
+        foreach ($wr['cols'] as $c) { if (!in_array($c['k'], self::WIRE_HEAD, true)) { return false; } }
+        return true;
+    }
+
+    /**
+     * 와이어 배치 — 줄 순서·칸 폭은 와이어, 칸마다 같은 종류를 그린 레퍼런스 섹션(구성·안쪽 실측·참고 이미지)을 붙인다.
+     *   ① 와이어 줄과 칸 종류가 똑같은 레퍼런스 줄이 있으면 그 줄 하나(A 먼저, 다음은 덜 쓴 출처) — match=row
+     *   ② 없으면 칸마다 같은 종류 섹션(A 먼저, 칸 폭 비율이 가까운 것) — match=cell, 같은 역할 묶음이면 match=family
+     *   ③ 그래도 없으면 $find(k) 로 다른 레퍼런스 화면에서 찾고 — match=lookup, 끝내 없으면 칸만(와이어 근거로 새로 만든다) — match=none
+     * 머리(top 의 masthead·header)·바닥(footer)은 A 그대로. 가로는 A 본문 틀(frame) 안을 12칸 폭 비율로 나누고 칸 사이는 col_gap 한 값.
+     * @param list<array{label: string, sc: array, secs: list<array>}> $refs A 가 첫째
+     * @param callable(string $k, int $span, list<int> $have, int $h): ?array{sc: array, secs: list<array>} $find 다른 화면에서 그 종류 섹션 찾기(선택)
+     * @return array<string, mixed> mixPlan 과 같은 꼴 + wire
+     */
+    public static function wirePlan(array $wire, array $refs, int $vw, ?callable $find = null, string $wireRef = '-'): array
+    {
+        $labels = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+        $info = [];
+        $addRef = static function (array $r) use (&$info, $vw): string {
+            $rows = self::rows($r['secs'], $vw);
+            $head = []; $body = []; $foot = []; $phase = 'head';
+            foreach ($rows as $i => $rw) {
+                $types = array_column($rw['cells'], 'type');
+                $isHead = $rw['y'] < 420 && array_intersect($types, ['header', 'masthead', 'gnb', 'skip_nav']);
+                if ($phase === 'head' && $isHead) { $head[] = $i; continue; }
+                if (in_array('footer', $types, true) || $phase === 'foot') { $phase = 'foot'; $foot[] = $i; continue; }
+                $phase = 'body'; $body[] = $i;
+            }
+            [$cw, $cx] = self::containerOf($rows, $vw, (int) ($r['sc']['container_px'] ?? 0));
+            $byNo = [];
+            foreach ($r['secs'] as $s) { $byNo[$s['no']] = $s; }
+            $info[$r['label']] = ['rows' => $rows, 'head' => $head, 'body' => $body, 'foot' => $foot, 'cw' => $cw, 'cx' => $cx, 'byNo' => $byNo, 'ref' => $r];
+            return $r['label'];
+        };
+        foreach ($refs as $i => $r) { $r['label'] = $r['label'] ?? $labels[$i]; $addRef($r); }
+        $A = $info['A'];
+        $fx = (int) $A['cx']; $fw = (int) $A['cw'];
+        if ($fw < 600) { $fw = min($vw - 40, (int) ($A['ref']['sc']['container_px'] ?? 0) ?: 1200); $fx = intdiv($vw - $fw, 2); }
+        // 칸 사이 = A 의 나란한 칸 간격 가운데값(16~32), 줄 사이 = A 본문 줄 간격 가운데값(48~100)
+        $gs = []; $vg = [];
+        foreach ($A['body'] as $i) {
+            $cols = self::colGroups(array_map(static fn ($c) => ['x' => $c['x'], 'w' => $c['w']], $A['rows'][$i]['cells']));
+            for ($q = 1; $q < count($cols); $q++) { $g = $cols[$q][0] - $cols[$q - 1][1]; if ($g >= 8 && $g <= 120) { $gs[] = $g; } }
+            $ga = (int) ($A['rows'][$i]['gap_above'] ?? 0); if ($ga >= 24 && $ga <= 200) { $vg[] = $ga; }
+        }
+        sort($gs); sort($vg);
+        $colGap = $gs ? max(16, min(32, (int) $gs[intdiv(count($gs), 2)])) : 24;
+        $rowGap = $vg ? max(48, min(100, (int) $vg[intdiv(count($vg), 2)])) : 72;
+
+        $cnt = []; $usedRow = []; $usedSec = [];
+        // 한 줄 안 같은 종류 칸 묶음(카드 4장이 섹션 4개로 잡힌 경우) — [x, y, w, h, secs]
+        $groupOf = static function (array $src, int $ri, string $k) use (&$info): ?array {
+            $g = [];
+            foreach ($src['rows'][$ri]['cells'] as $c) { if ($c['type'] === $k && isset($src['byNo'][$c['no']])) { $g[] = $src['byNo'][$c['no']]; } }
+            if (!$g) { return null; }
+            $x1 = min(array_column($g, 'x')); $y1 = min(array_column($g, 'y'));
+            $x2 = max(array_map(static fn ($s) => $s['x'] + $s['w'], $g)); $y2 = max(array_map(static fn ($s) => $s['y'] + $s['h'], $g));
+            return ['x' => $x1, 'y' => $y1, 'w' => max(1, $x2 - $x1), 'h' => max(1, $y2 - $y1), 'secs' => $g];
+        };
+        // 재료로 쓸 만한 묶음인가 — 자동 분해가 잘게 자른 조각(폭 281·높이 108 '메인 비주얼')을 칸 재료로 고르던 것(2026-10-18 시험).
+        // 그 출처 본문 폭 대비 칸 폭 비율이 와이어 span 비율의 45% 이상, 높이 60 이상, 와이어가 높이를 주면 그 35%~300% 안
+        $usable = static function (array $src, array $g, array $c) use ($vw): bool {
+            if ($g['h'] < 60) { return false; }
+            if ($g['w'] / max(1, (int) $src['cw'] ?: $vw) < 0.45 * $c['span'] / 12) { return false; }
+            $wh = (int) ($c['h'] ?? 0);
+            return $wh <= 0 || ($g['h'] >= 0.35 * $wh && $g['h'] <= 3 * $wh);
+        };
+        $order = static function () use (&$info, &$cnt): array {
+            $ls = array_keys($info);
+            usort($ls, static fn ($a, $b) => ($a === 'A' ? 0 : 1) <=> ($b === 'A' ? 0 : 1) ?: ($cnt[$a] ?? 0) <=> ($cnt[$b] ?? 0) ?: strcmp($a, $b));
+            return $ls;
+        };
+        // ① 줄 통째 — 칸 종류 집합이 와이어와 같고 칸 수도 같은 레퍼런스 줄. 폭 비율 차가 작은 것, A 먼저
+        $rowMatch = static function (array $wr) use (&$info, &$usedRow, $order, $groupOf, $usable): ?array {
+            $ks = array_column($wr['cols'], 'k');
+            if (count(array_unique($ks)) !== count($ks)) { return null; }
+            $want = $ks; sort($want);
+            $sumSpan = max(1, array_sum(array_column($wr['cols'], 'span')));
+            $best = null;
+            foreach ($order() as $rank => $L) {
+                $src = $info[$L];
+                foreach ($src['body'] as $ri) {
+                    if (isset($usedRow[$L . ':' . $ri])) { continue; }
+                    $types = array_values(array_unique(array_filter(array_column($src['rows'][$ri]['cells'], 'type'), static fn ($t) => !in_array($t, ['floating_quick', 'unknown'], true))));
+                    sort($types);
+                    if ($types !== $want) { continue; }
+                    $gw = []; $tot = 0;
+                    foreach ($wr['cols'] as $c) { $g = $groupOf($src, $ri, $c['k']); if ($g === null || !$usable($src, $g, $c)) { continue 2; } $gw[] = $g['w']; $tot += $g['w']; }
+                    $d = 0.0;
+                    foreach ($wr['cols'] as $j => $c) { $d += abs($gw[$j] / max(1, $tot) - $c['span'] / $sumSpan); }
+                    if ($d > 0.5) { continue; } // 폭 비율이 너무 다르면 칸마다 고른다
+                    $score = $d + $rank * 0.15;
+                    if ($best === null || $score < $best[2]) { $best = [$L, $ri, $score]; }
+                }
+            }
+            return $best;
+        };
+        // ② 칸 하나 — 같은 종류(없으면 같은 역할 묶음) 섹션 묶음, A 먼저·폭 비율이 가까운 것
+        $cellPick = static function (array $c, bool $family) use (&$info, &$usedSec, $order, $groupOf, $usable, $vw): ?array {
+            $k = $c['k']; $span = $c['span'];
+            $best = null; $fam = self::family($k);
+            foreach ($order() as $rank => $L) {
+                $src = $info[$L];
+                foreach ([...$src['body'], ...($family ? [] : $src['head'])] as $ri) {
+                    foreach (array_unique(array_column($src['rows'][$ri]['cells'], 'type')) as $t) {
+                        // 같은 역할 묶음(news·quick·banner·media·info·search)만 대신 쓴다 — 묶음이 없는 종류(family 가 자기 이름)는 대신할 것이 없다
+                        if ($family ? ($t === $k || $fam === $k || self::family($t) !== $fam) : $t !== $k) { continue; }
+                        $g = $groupOf($src, $ri, $t); if ($g === null || !$usable($src, $g, $c)) { continue; }
+                        $key = $L . ':' . $ri . ':' . $t;
+                        $d = abs($g['w'] / max(1, $src['cw'] ?: $vw) - $span / 12) + (isset($usedSec[$key]) ? 0.6 : 0.0) + $rank * 0.12;
+                        if ($best === null || $d < $best[3]) { $best = [$L, $ri, $t, $d, $g]; }
+                    }
+                }
+            }
+            return $best;
+        };
+
+        $secs = []; $pieces = []; $wrows = []; $cursor = 0; $no = 0; $headDone = false; $footDone = false; $prev = null; $shareH = []; $bodyH = 0;
+        $emitRaw = static function (string $L, int $ri, int $ny, int $wno) use (&$info, &$secs, &$no): void {
+            $src = $info[$L]; $row = $src['rows'][$ri]; $dy = $ny - $row['y'];
+            foreach ($row['cells'] as $c) {
+                $s = $src['byNo'][$c['no']] ?? null; if ($s === null) { continue; }
+                $secs[] = ['no' => ++$no, 'type' => $s['type'], 'x' => $s['x'], 'y' => $s['y'] + $dy, 'w' => $s['w'], 'h' => $s['h'], 'src' => $L, 'src_y' => $s['y'],
+                    'structure' => $s['structure'] ?? [], 'wire_row' => $wno, 'wire_col' => 0, 'match' => 'kit'];
+            }
+        };
+        foreach ($wire['rows'] as $wr) {
+            $wno = (int) $wr['no'];
+            // 머리: A 의 머리 줄 전부를 한 번(와이어 top 구역 머리 칸이 여러 줄이어도)
+            if (self::wireHeadRow($wr)) {
+                $cells = [];
+                if (!$headDone) {
+                    $headDone = true; $start = $cursor;
+                    // A 의 머리 줄끼리 간격·위치는 그대로(첫 머리 줄 y 기준으로 옮긴다)
+                    $off = $cursor - ($A['head'] ? max(0, (int) $A['rows'][$A['head'][0]]['y']) : 0);
+                    foreach ($A['head'] as $ri) { $row = $A['rows'][$ri]; $ny = max(0, $row['y']) + $off; $emitRaw('A', $ri, $ny, $wno); $cursor = max($cursor, $ny + $row['h']); }
+                    if ($A['head']) { $pieces[] = ['src' => 'A', 'screen_id' => (int) $A['ref']['sc']['id'], 'src_y' => $A['rows'][$A['head'][0]]['y'], 'src_h' => $cursor - $start, 'y' => $start, 'h' => $cursor - $start, 'wire_row' => $wno]; }
+                }
+                foreach ($wr['cols'] as $c) { $cells[] = ['k' => $c['k'], 'span' => $c['span'], 'src' => 'A', 'match' => 'kit', 'note' => '머리 — A 의 머리 줄(공식 배너·로고·주 메뉴)을 쓴다']; }
+                $wrows[] = ['no' => $wno, 'zone' => $wr['zone'], 'cells' => $cells];
+                $prev = 'head';
+                continue;
+            }
+            // 바닥: A 의 바닥 줄
+            if ($wr['zone'] === 'bottom' && in_array('footer', array_column($wr['cols'], 'k'), true) && count($wr['cols']) === 1) {
+                if (!$footDone && $A['foot']) {
+                    $footDone = true; $start = $cursor + $rowGap; $cursor = $start;
+                    foreach ($A['foot'] as $ri) { $row = $A['rows'][$ri]; $emitRaw('A', $ri, $cursor, $wno); $cursor += $row['h']; }
+                    $pieces[] = ['src' => 'A', 'screen_id' => (int) $A['ref']['sc']['id'], 'src_y' => $A['rows'][$A['foot'][0]]['y'], 'src_h' => $cursor - $start, 'y' => $start, 'h' => $cursor - $start, 'wire_row' => $wno];
+                }
+                $wrows[] = ['no' => $wno, 'zone' => $wr['zone'], 'cells' => [['k' => 'footer', 'span' => 12, 'src' => 'A', 'match' => 'kit', 'note' => '바닥 — A 의 바닥 줄을 쓴다']]];
+                $prev = 'foot';
+                continue;
+            }
+            // 본문(그리고 머리·바닥이 아닌 top·bottom 칸): 칸마다 재료를 고른다
+            $sumSpan = max(12, array_sum(array_column($wr['cols'], 'span')));
+            $n = count($wr['cols']);
+            $avail = $fw - $colGap * ($n - 1);
+            $picks = []; $whole = $rowMatch($wr);
+            if ($whole !== null) {
+                [$L, $ri] = $whole; $usedRow[$L . ':' . $ri] = true; $cnt[$L] = ($cnt[$L] ?? 0) + 1;
+                foreach ($wr['cols'] as $j => $c) { $picks[$j] = ['L' => $L, 'g' => $groupOf($info[$L], $ri, $c['k']), 'match' => 'row', 'ri' => $ri]; }
+            } else {
+                foreach ($wr['cols'] as $j => $c) {
+                    $p = $cellPick($c, false); $how = 'cell';
+                    // 서브 공통 틀(sub_shell)이 정하는 칸(서브 비주얼·경로·쪽 제목·만족도)은 다른 화면을 뒤지지 않는다 — 틀이 한 가지라 재료가 필요 없다
+                    if ($p === null && $find !== null && !in_array($c['k'], self::WIRE_SHELL, true)) {
+                        $have = array_values(array_map(static fn ($x) => (int) $x['ref']['sc']['id'], $info));
+                        $got = $find($c['k'], $c['span'], $have, (int) ($c['h'] ?? 0));
+                        if (is_array($got) && isset($got['sc'], $got['secs']) && strlen($labels) > count($info)) {
+                            $L2 = $addRef(['label' => $labels[count($info)], 'sc' => $got['sc'], 'secs' => $got['secs']]);
+                            $p = $cellPick($c, false); $how = 'lookup';
+                            if ($p !== null && $p[0] !== $L2) { $how = 'cell'; }
+                        }
+                    }
+                    if ($p === null) { $p = $cellPick($c, true); $how = 'family'; }
+                    if ($p === null) { $picks[$j] = ['L' => null, 'g' => null, 'match' => 'none']; continue; }
+                    [$L, $ri, $t, , $g] = $p;
+                    $usedSec[$L . ':' . $ri . ':' . $t] = true; $cnt[$L] = ($cnt[$L] ?? 0) + 1;
+                    $picks[$j] = ['L' => $L, 'g' => $g, 'match' => $how, 'ri' => $ri, 'as' => $t];
+                }
+            }
+            // 폭 가득 줄: 한 칸·12칸이고 재료가 화면 폭 가득이면 배경은 폭 가득, 내용은 frame 안
+            $fullRow = $n === 1 && $wr['cols'][0]['span'] >= 12 && ($picks[0]['g']['w'] ?? 0) >= $vw - 8;
+            $rowH = 0;
+            foreach ($wr['cols'] as $j => $c) { $rowH = max($rowH, (int) ($picks[$j]['g']['h'] ?? ($c['h'] ?: 300))); }
+            $gap = match (true) { $prev === null => 0, $prev === 'head' => $fullRow ? 0 : 40, $prev === 'full' && $fullRow => 0, default => $rowGap };
+            $ny = $cursor + $gap;
+            $x = $fx; $cells = [];
+            foreach ($wr['cols'] as $j => $c) {
+                $tw = $fullRow ? $vw : (int) round($avail * $c['span'] / $sumSpan);
+                $tx = $fullRow ? 0 : $x;
+                $pk = $picks[$j]; $g = $pk['g'];
+                if ($g === null) {
+                    $h = $c['h'] ?: 300;
+                    $secs[] = ['no' => ++$no, 'type' => $c['k'], 'x' => $tx, 'y' => $ny, 'w' => $tw, 'h' => $h, 'src' => 'W', 'src_y' => 0, 'structure' => [],
+                        'wire_row' => $wno, 'wire_col' => $j + 1, 'match' => 'none'];
+                    $cells[] = ['k' => $c['k'], 'span' => $c['span'], 'src' => null, 'match' => 'none', 'note' => in_array($c['k'], self::WIRE_SHELL, true)
+                        ? '서브 공통 틀 — sub_shell(서브 비주얼·경로·쪽 제목)과 기본 CSS 대로 만든다'
+                        : '레퍼런스에 이 종류가 없다 — 칸 근거(ev)와 예시 내용(content)으로 새로 만든다'];
+                } else {
+                    $L = $pk['L']; $kx = $fullRow ? 1.0 : $tw / max(1, $g['w']);
+                    foreach ($g['secs'] as $s) {
+                        $st = is_array($s['structure'] ?? null) ? $s['structure'] : [];
+                        if (!$fullRow && abs($kx - 1.0) > 0.005) { $st = self::scaleInner($st, $kx, 0, 0); }
+                        $one = ['no' => ++$no, 'type' => $c['k'], 'x' => $fullRow ? $s['x'] : (int) round($tx + ($s['x'] - $g['x']) * $kx), 'y' => $ny + ($s['y'] - $g['y']),
+                            'w' => $fullRow ? $s['w'] : max(1, (int) round($s['w'] * $kx)), 'h' => $s['h'], 'src' => $L, 'src_y' => $s['y'], 'structure' => $st,
+                            'wire_row' => $wno, 'wire_col' => $j + 1, 'match' => $pk['match']];
+                        if ($fullRow) { $one['frame'] = ['x' => $fx, 'w' => $fw]; }
+                        if (($pk['as'] ?? $c['k']) !== $c['k']) { $one['drawn_as'] = $pk['as']; }
+                        $secs[] = $one;
+                    }
+                    // 참고 이미지 조각: 줄 통째면 그 줄 띠 하나(아래에서), 칸마다면 그 칸만 잘라서
+                    if ($pk['match'] !== 'row') {
+                        $piece = ['src' => $L, 'screen_id' => (int) $info[$L]['ref']['sc']['id'], 'src_y' => $g['y'], 'src_h' => $g['h'], 'y' => $ny, 'h' => $g['h'], 'wire_row' => $wno, 'wire_col' => $j + 1];
+                        if (!$fullRow) { $piece += ['src_x' => $g['x'], 'src_w' => $g['w'], 'x' => $tx, 'w' => $tw]; }
+                        $pieces[] = $piece;
+                    }
+                    $shareH[$L] = ($shareH[$L] ?? 0) + $g['h'];
+                    $cells[] = ['k' => $c['k'], 'span' => $c['span'], 'src' => $L, 'match' => $pk['match'],
+                        'note' => match ($pk['match']) {
+                            'row' => '레퍼런스 ' . $L . ' 의 같은 구성 줄 — 칸 안 그리는 법을 그 줄에서 읽는다',
+                            'cell', 'lookup' => '레퍼런스 ' . $L . ' 의 같은 종류 섹션 — 칸 안 그리는 법만 읽고 폭은 와이어대로',
+                            default => '같은 종류가 없어 같은 역할(' . ($pk['as'] ?? '') . ') 섹션을 참고 — 내용은 이 칸 종류로 만든다',
+                        }];
+                }
+                $x += $tw + $colGap;
+            }
+            if ($whole !== null) {
+                $wrRow = $info[$whole[0]]['rows'][$whole[1]];
+                $pieces[] = ['src' => $whole[0], 'screen_id' => (int) $info[$whole[0]]['ref']['sc']['id'], 'src_y' => (int) $wrRow['y'], 'src_h' => (int) $wrRow['h'], 'y' => $ny, 'h' => (int) $wrRow['h'], 'wire_row' => $wno];
+            }
+            $bodyH += $rowH;
+            $wrows[] = ['no' => $wno, 'zone' => $wr['zone'], 'cells' => $cells, 'full_bleed' => $fullRow, 'whole_row' => $whole !== null ? $whole[0] : null];
+            $cursor = $ny + $rowH; // 줄 높이 = 가장 큰 칸
+            $prev = $fullRow ? 'full' : 'body';
+        }
+        if (!$footDone && $A['foot']) { // 와이어에 바닥 줄이 없어도 A 바닥은 붙인다(판정이 바닥글을 본다)
+            $start = $cursor + $rowGap; $cursor = $start;
+            foreach ($A['foot'] as $ri) { $emitRaw('A', $ri, $cursor, 0); $cursor += $A['rows'][$ri]['h']; }
+            $pieces[] = ['src' => 'A', 'screen_id' => (int) $A['ref']['sc']['id'], 'src_y' => $A['rows'][$A['foot'][0]]['y'], 'src_h' => $cursor - $start, 'y' => $start, 'h' => $cursor - $start, 'wire_row' => 0];
+        }
+        $share = [];
+        foreach ($shareH as $L => $h) { $share[$L] = (int) round($h * 100 / max(1, array_sum($shareH))); }
+        $sources = [];
+        foreach ($info as $L => $s) {
+            $used = count(array_filter($pieces, static fn ($p) => $p['src'] === $L));
+            if ($used === 0 && $L !== 'A') { continue; }
+            $sources[] = ['label' => $L, 'screen_id' => (int) $s['ref']['sc']['id'], 'site_slug' => $s['ref']['sc']['slug'] ?? '', 'pieces_used' => $used];
+        }
+        $sids = array_values(array_unique(array_map(static fn ($s) => (int) $s['screen_id'], $sources)));
+        $wref = preg_match('/^[A-Za-z0-9_-]{1,40}$/', $wireRef) ? $wireRef : '-';
+        $refId = 'wire1:' . $wref . ':' . $cursor . ':' . implode('.', $sids);
+        $tally = ['row' => 0, 'cell' => 0, 'lookup' => 0, 'family' => 0, 'none' => 0, 'kit' => 0];
+        foreach ($wrows as $r) { foreach ($r['cells'] as $c) { $tally[$c['match']] = ($tally[$c['match']] ?? 0) + 1; } }
+        return ['frame' => ['x' => $fx, 'w' => $fw, 'col_gap' => $colGap, 'row_gap' => $rowGap, 'box_gap' => $rowGap], 'variation' => [], 'style' => self::wireStyle($secs),
+            'secs' => $secs, 'pieces' => $pieces, 'sources' => $sources, 'share' => $share, 'height' => $cursor, 'ref_id' => $refId,
+            'replaced' => count($wrows), 'head_rows' => count($A['head']),
+            'wire' => ['screen' => $wire['screen'], 'org' => $wire['org'], 'lnb' => $wire['lnb'], 'wire_ref' => $wref, 'rows' => $wrows, 'tally' => $tally]];
+    }
+
+    /** 묶음 reference.wire — 와이어 줄·칸마다 최종 좌표(폭 늘린 뒤)·재료 출처·일치 방식, 참고 이미지 조각, 규약. */
+    private static function wireOut(array $mix, array $secs): array
+    {
+        $box = [];
+        foreach ($secs as $s) {
+            if (!isset($s['wire_row'])) { continue; }
+            $key = (int) $s['wire_row'] . ':' . (int) ($s['wire_col'] ?? 0);
+            $b = $box[$key] ?? ['x1' => PHP_INT_MAX, 'y1' => PHP_INT_MAX, 'x2' => 0, 'y2' => 0, 'nos' => []];
+            $fx = isset($s['frame']) ? (int) $s['frame']['x'] : (int) $s['x']; $fw = isset($s['frame']) ? (int) $s['frame']['w'] : (int) $s['w'];
+            $b['x1'] = min($b['x1'], $fx); $b['x2'] = max($b['x2'], $fx + $fw); $b['y1'] = min($b['y1'], (int) $s['y']); $b['y2'] = max($b['y2'], (int) $s['y'] + (int) $s['h']);
+            $b['nos'][] = (int) $s['no'];
+            $box[$key] = $b;
+        }
+        $rows = [];
+        foreach ($mix['wire']['rows'] as $r) {
+            $cells = [];
+            foreach ($r['cells'] as $j => $c) {
+                $b = $box[$r['no'] . ':' . ($j + 1)] ?? $box[$r['no'] . ':0'] ?? null;
+                $cells[] = $c + ($b === null ? [] : ['x' => $b['x1'], 'y' => $b['y1'], 'w' => $b['x2'] - $b['x1'], 'h' => $b['y2'] - $b['y1'], 'sections' => $b['nos']]);
+            }
+            $r['cells'] = $cells;
+            $rows[] = $r;
+        }
+        return [
+            'screen' => $mix['wire']['screen'], 'org' => $mix['wire']['org'], 'lnb' => $mix['wire']['lnb'], 'wire_ref' => $mix['wire']['wire_ref'],
+            'rule' => self::WIRE_RULE, 'markup' => self::WIRE_MARKUP, 'rows' => $rows, 'tally' => $mix['wire']['tally'],
+            'sources' => $mix['sources'], 'pieces' => $mix['pieces'], 'share' => $mix['share'], 'frame' => $mix['frame'] ?? null, 'style' => $mix['style'] ?? null,
+            'one_site' => '칸마다 재료 출처가 달라도 한 사이트처럼 보여야 한다 — 섹션 제목 크기·굵기와 카드 둥글기는 style 값을 모든 칸에 쓰고, 칸 사이는 frame.col_gap, 본문 줄 사이는 frame.row_gap 한 값. 참고 이미지의 폭·간격은 따르지 않는다(칸 구성만 읽는다).',
+        ];
+    }
+
+    /**
+     * 와이어 묶음의 절차·검사·사전 점검 — 레퍼런스 배치를 따르라는 항목(MC-07: 같은 낱말로 충돌부터 지운다)을 와이어 기준으로 바꾼다.
+     * 바꾸는 것: 절차 1·2·2-1·9, 사전 점검 ③④⑤, 검사 '변주·높이 2%·참고 이미지 줄 수'. 나머지(색·글자·동작·반응형·누출)는 그대로.
+     */
+    private static function wireProcedure(): array
+    {
+        $out = [
+            'W. 이 묶음은 와이어 묶음이다(reference.wire). 배치 = wire.rows — 줄 순서·칸 수·칸 폭(12칸 비율)·칸 종류를 그대로 두고, 레퍼런스는 칸마다 그리는 법의 재료로만 쓴다. wire.markup 의 data-wire-row·data-wire-cell 표시를 반드시 단다(판정이 이것으로 와이어와 대조한다).',
+        ];
+        foreach (self::PROCEDURE as $p) {
+            $out[] = match (true) {
+                str_starts_with($p, '1. ') => '1. wire.rows 를 위에서 아래로 읽고 줄마다 칸 종류·폭(span/12)·좌표(x·y·w·h)를 확인한다. 칸마다 cells[].content(예시 글·항목·그림 종류)와 ev(레퍼런스에서 그 섹션을 두는 비율·보통 높이)를 본다. 참고 이미지는 칸 재료(출처 조각)라 칸 안 구성·밀도·글자 크기만 읽는다.',
+                str_starts_with($p, '2. ') => '2. 배치는 와이어와 같게 만든다 — 줄 순서, 줄마다 칸 수, 칸 폭 비율(grid-template-columns 에 span 을 fr 로), 칸 종류. 칸 안쪽(탭 위치·목록 줄 수·카드 수·아이콘 수·단추 위치)은 그 칸의 재료 섹션(sections, 참고 이미지 조각)을 따른다. 와이어에 없는 줄·칸을 더하거나 있는 칸을 빼지 않는다.',
+                str_starts_with($p, '2-1. ') => '2-1. 칸마다 재료 출처(src)가 달라도 한 사이트처럼 — 제목 크기·굵기와 카드 둥글기는 wire.style, 칸 사이는 frame.col_gap, 본문 줄 사이는 frame.row_gap 한 값(wire.one_site). match=none 칸은 같은 종류의 레퍼런스가 없어 content 와 ev 로 새로 만든다.',
+                str_starts_with($p, '9. ') => '9. 다 만들면 렌더해 wire.rows 와 줄마다 비교한다 — 줄 순서·칸 수·칸 폭 비율·칸 종류가 같은지, data-wire-row·data-wire-cell 이 다 달렸는지. 높이는 reference.height 근처면 된다(와이어를 따르면 레퍼런스와 달라지는 게 정상).',
+                default => $p,
+            };
+        }
+        return $out;
+    }
+
+    private static function wireAcceptance(): array
+    {
+        $out = ['와이어 일치 — wire.rows 의 본문 줄마다 data-wire-row 줄이 있고 순서가 같다 · 줄마다 data-wire-cell 칸 수·종류가 같다 · 칸 폭 비율이 span 비율과 ±8% 안'];
+        foreach (self::ACCEPTANCE as $a) {
+            if (str_contains($a, 'reference.mix.variation') || str_contains($a, '전체 높이가 reference.height') || str_contains($a, '참고 이미지와 같다')) { continue; }
+            $out[] = str_replace('줄마다 sections 좌표대로(±40px 안)', 'frame.row_gap 한 값', $a);
+        }
+        return $out;
+    }
+
+    private static function wirePreflight(): array
+    {
+        $p = self::PREFLIGHT;
+        $p['items'] = array_values(array_map(static fn (string $i): string => match (true) {
+            str_starts_with($i, '③') => '③ 본문 폭(치명, 줄당 -6): 머리·바닥을 뺀 모든 줄이 같은 시작선과 폭(wire.frame.x·w). 와이어 줄의 칸은 그 폭을 span 비율로 나누고 칸 사이는 col_gap 한 값.',
+            str_starts_with($i, '④') => '④ 줄 순서·칸(와이어 일치, 어기면 치명): 본문 줄마다 data-wire-row="줄 번호", 칸마다 data-wire-cell="칸 종류" — 줄 순서·칸 수·칸 종류·칸 폭 비율이 wire.rows 와 같아야 한다. 줄 사이 간격은 frame.row_gap 한 값, 위아래 상자가 맞닿지 않게.',
+            str_starts_with($i, '⑤') => '⑤ 높이(참고만): 와이어 묶음은 레퍼런스 높이로 치명을 주지 않는다 — reference.height 와 30% 넘게 다를 때만 작게 감점. min-height·빈 상자로 늘리면 빈칸 감점(-8)은 그대로.',
+            default => $i,
+        }, $p['items']));
+        return $p;
+    }
+
+    /** 와이어 배치의 한 가지 체계 — A 섹션 제목 크기·굵기, 카드 둥글기(mixPlan 의 measure 와 같은 규칙). */
+    private static function wireStyle(array $secs): array
+    {
+        $measure = static function (?string $only, int $minPx) use ($secs): array {
+            $hs = []; $ws = []; $rs = [];
+            foreach ($secs as $s) {
+                if (($only !== null && ($s['src'] ?? '') !== $only) || in_array($s['type'], ['header', 'masthead', 'gnb', 'footer'], true)) { continue; }
+                foreach ((array) ($s['structure']['inner'] ?? []) as $it) {
+                    if (!is_array($it)) { continue; }
+                    if (($it[0] ?? '') === 't' && ($it[5] ?? 0) >= $minPx && ($it[5] ?? 0) <= 56 && ($it[6] ?? 0) >= 600) { $k = (int) $it[5]; $hs[$k] = ($hs[$k] ?? 0) + 1; $ws[$k] = (int) $it[6]; }
+                    if (in_array($it[0] ?? '', ['b', 'i'], true) && ($it[8] ?? 0) >= 4 && ($it[8] ?? 0) <= 40 && ($it[3] ?? 0) >= 200) { $k = (int) $it[8]; $rs[$k] = ($rs[$k] ?? 0) + 1; }
+                }
+            }
+            arsort($hs); arsort($rs);
+            return [$hs, $ws, $rs];
+        };
+        $src = 'A_measured';
+        [$hs, $ws, $rs] = $measure('A', 26);
+        if (!$hs) { [$hs, $ws] = $measure('A', 20); $src = 'A_relaxed'; }
+        if (!$hs) { [$hs, $ws] = $measure(null, 20); $src = 'mix_measured'; }
+        if (!$rs) { [, , $rs] = $measure(null, 99); }
+        return ['heading_px' => $hs ? min(40, (int) array_key_first($hs)) : 28, 'heading_weight' => $hs ? $ws[array_key_first($hs)] : 700,
+            'card_radius_px' => $rs ? (int) array_key_first($rs) : 12, 'source' => $hs ? $src : 'default'];
+    }
+
+    /** 와이어 묶음 지시 — 배치의 기준이 와이어임을, 칸 표시(data-wire-row·data-wire-cell) 규약과 함께. */
+    public const WIRE_RULE = '이 시안은 사용자가 기획한 와이어프레임을 따른다 — 배치의 기준은 레퍼런스가 아니라 wire 다. 줄 순서·줄마다 칸 수·칸 폭(12칸 비율)·칸 종류는 wire.rows 그대로 두고, 바꾸지도 빼지도 더하지도 않는다. '
+        . '레퍼런스(sections·참고 이미지)는 칸마다 "그 종류를 실제 사이트가 어떻게 그렸나"(안쪽 구성·밀도·글자 크기·둥글기)를 읽는 재료다 — 레퍼런스의 줄 순서·칸 수·폭은 따르지 않는다. '
+        . '칸마다 cells[].content(예시 글·항목·그림 종류)를 채우고, ev(같은 화면 레퍼런스에서 그 섹션을 두는 비율·보통 위치·폭·높이)는 높이·밀도를 정할 때 참고한다. match=none 인 칸은 레퍼런스에 같은 종류가 없어 근거와 내용만으로 새로 만든다. '
+        . 'mock_check_mockup 은 레퍼런스가 아니라 이 와이어와 줄 순서·칸 수·칸 폭·칸 종류를 대조한다(높이는 참고만).';
+    public const WIRE_MARKUP = '와이어 표시(필수 — 판정이 이것으로 칸을 찾는다): 본문 구역(zone=body) 줄마다 그 줄을 감싼 요소에 data-wire-row="와이어 줄 번호(rows[].no)"를, 그 안 칸마다 data-wire-cell="칸 종류(k)"를 단다. '
+        . '예: <section data-wire-row="3" class="hb-wrap hb-grid" style="grid-template-columns:8fr 4fr"><div data-wire-cell="news_tabs">…</div><div data-wire-cell="quick_links">…</div></section>. '
+        . '한 칸짜리 줄도 칸 요소에 data-wire-cell 을 단다(줄 요소와 같은 요소여도 된다). 칸 폭은 12칸 비율 그대로(grid-template-columns 에 span 값을 fr 로), 칸 사이는 frame.col_gap 한 값. 머리·바닥(top·bottom 구역)은 표시하지 않아도 된다.';
+
+    /**
+     * 와이어 판정 기준 — ref_id(wire1:{와이어 id 또는 -}:{높이}:{출처 화면 id.…}). 줄·칸 대조 기준은 MCP 가 와이어로 갖고 있으므로
+     * 여기서는 출처 화면들의 누출 검사 문자열·A 의 서브 구간만 준다(레퍼런스 줄 대조는 하지 않는다 — rows 빈 배열).
+     * @return array<string, mixed>|null
+     */
+    public static function checkRefWire(string $refId, bool $judge = false): ?array
+    {
+        if (!preg_match('/^wire1:([A-Za-z0-9_-]{1,40}):(\d+):(\d+(?:\.\d+){0,24})$/', $refId, $m)) { return null; }
+        $leak = []; $first = null;
+        foreach (array_unique(array_map('intval', explode('.', $m[3]))) as $sid) {
+            $one = self::checkRef($sid, $judge);
+            if ($one === null) { continue; }
+            $first ??= $one;
+            foreach ($one['leak'] as $l) { $leak[] = $l; }
+        }
+        if ($first === null) { return null; }
+        return [
+            'screen_id' => $first['screen_id'], 'ref_id' => $refId, 'site_slug' => 'wire', 'page_type' => $first['page_type'],
+            'width' => $first['width'], 'height' => (int) $m[2], 'sub' => $first['sub'], 'rows' => [], 'capture_url' => null, 'pieces' => [],
+            'sources' => count(explode('.', $m[3])), 'wire_ref' => $m[1] === '-' ? null : $m[1], 'leak' => array_values(array_unique($leak)),
+        ];
     }
 
     /** 주색 고르기 — 고객 색이 없을 때 레퍼런스들의 주색과 색상이 45도 이상 떨어진 색(관공서에 어울리는 후보 중). */

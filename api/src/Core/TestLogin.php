@@ -93,7 +93,8 @@ final class TestLogin
 
     /**
      * 테스트 계정 요청의 공통 관문(Router 가 라우트 찾은 직후 한 번) — 사이트 종합 평가 리포트 1-1.
-     *  - 쓰기(POST·PUT·PATCH·DELETE)는 로그아웃만 빼고 전부 403(읽기 전용)
+     *  - 쓰기(POST·PUT·PATCH·DELETE)는 로그아웃·약관 동의만 빼고 전부 403(읽기 전용)
+     *    약관 동의를 막으면 동의 창이 안 닫혀 보기조차 못 한다(2026-10-18 사용자 지적, R84)
      *  - 관리자 화면 열람(GET …/admin…)은 core_audit 에 남긴다(테스트 계정만 — 일반 관리자 열람까지 남기면 기록이 넘친다)
      *  - 응답 JSON 에서 다른 회원의 이메일·이름·연락처를 가린다(Mask, 출력 버퍼)
      */
@@ -103,7 +104,7 @@ final class TestLogin
             return;
         }
         if (in_array($method, ['POST', 'PUT', 'PATCH', 'DELETE'], true)
-            && !in_array($path, ['/auth/logout', '/auth/logout-all', '/auth/test-login'], true)) {
+            && !in_array($path, ['/auth/logout', '/auth/logout-all', '/auth/test-login', '/me/consents'], true)) {
             throw new HttpError('TEST_READ_ONLY', '테스트 계정은 읽기 전용입니다.', 403, '보기만 할 수 있습니다. 바꾸려면 본인 계정으로 로그인하세요.');
         }
         if ($method === 'GET' && preg_match('#(^|/)admin(/|$)#', $path)) {

@@ -27,7 +27,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
 import { apiFetch, postJson } from "@/lib/api";
-import { CATEGORY_KO, REQUEST_STATUS_KO, SORT_KO, setLabel, assetCategoriesQuery, assetDetailQuery, assetListQuery, assetRequestsQuery, assetSetsQuery, type AssetCategory, type AssetItem, type AssetListParams, type AssetRequest } from "@/lib/assets";
+import { CATEGORY_KO, REQUEST_STATUS_KO, SORT_KO, setLabel, assetCategoriesQuery, assetDetailQuery, assetListQuery, assetRequestsQuery, assetSetsQuery, frequentLogosQuery, logoTopicsQuery, type AssetCategory, type AssetItem, type AssetListParams, type AssetRequest } from "@/lib/assets";
 import { useMe } from "@/lib/auth";
 import { useIsSaved } from "@/lib/saved";
 import { cn } from "@/lib/utils";
@@ -56,7 +56,7 @@ function AssetCard({ a, onOpen }: { a: AssetItem; onOpen: (id: string) => void; 
           radius="lg"
           ratio="auto"
           className="bg-ground-3 p-[4.5%]"
-          hover={<><Button variant="white" size="icon-sm" type="button" asChild onClick={(e) => e.stopPropagation()}>{me ? <a href={a.thumb_url.replace(/\/thumb$/, "/original")} download aria-label="내려받기" title="내려받기"><Download aria-hidden /></a> : <Link to={loginNext()} aria-label="로그인 후 내려받기" title="로그인 후 내려받기"><Lock aria-hidden /></Link>}</Button><SaveButton type="asset" id={a.id} size="icon-sm" iconOnly /></>}
+          hover={<><Button variant="white" size="icon-sm" type="button" asChild onClick={(e) => e.stopPropagation()}>{me ? <a href={a.thumb_url.replace(/\/thumb$/, "/original")} download aria-label="내려받기" title="내려받기" onClick={() => { void postJson(`/assets/items/${a.id}/use`, { channel: "web" }).catch(() => {}); }}><Download aria-hidden /></a> : <Link to={loginNext()} aria-label="로그인 후 내려받기" title="로그인 후 내려받기"><Lock aria-hidden /></Link>}</Button><SaveButton type="asset" id={a.id} size="icon-sm" iconOnly /></>}
         >
           {/* 흰 로고·흰 아이콘은 칸 바탕을 짙게(ContrastImg, 사용자 2026-10-18) */}
           <ContrastImg boxClassName="relative flex w-full items-center justify-center overflow-hidden rounded-md shadow-[0_1px_3px_rgba(0,0,0,0.08)] aspect-square" src={a.thumb_url} loading="lazy" className={cn("size-full", photo ? "object-contain" : "object-contain p-[12%]")} />
@@ -173,6 +173,20 @@ function AssetDialog({ id, onClose }: { id: string | null; onClose: () => void }
   );
 }
 
+/** 자주 사용하는 로고(나만) — 로고 검색란 아래. 내려받기·애드인 삽입·powerDeck 로고 찾기 + 같은 이름 검색 횟수 순(Service::frequentLogos) */
+function FrequentLogos({ uid }: { uid: string }) {
+  const q = useQuery(frequentLogosQuery(uid));
+  const [open, setOpen] = useState<string | null>(null);
+  const list = q.data ?? [];
+  return (
+    <section className="mt-7" aria-label="자주 사용하는 로고">
+      <div className="mb-4 text-sm text-ink-4">{list.length > 0 ? `자주 사용하는 로고 ${list.length}개` : "자주 사용하는 로고 · 로고를 내려받거나 이름으로 찾으면 여기에 모입니다."}</div>
+      {q.isPending ? <Skeleton className="h-24 rounded-panel" /> : list.length > 0 && <div className={GRID_DENSE}>{list.map((a) => <AssetCard key={a.id} a={a} onOpen={setOpen} dense />)}</div>}
+      <AssetDialog id={open} onClose={() => setOpen(null)} />
+    </section>
+  );
+}
+
 function useCategoryOptions() {
   const cats = useQuery(assetCategoriesQuery);
   return (cats.data ?? []).map((c) => ({ id: c.id, label: c.label, count: c.count }));
@@ -193,7 +207,12 @@ function AssetsBrowse() {
   const rawSort = sp.get("sort") ?? "newest";
   const sort = (rawSort in SORT_KO ? rawSort : "newest") as keyof typeof SORT_KO;
   const sets = useQuery({ ...assetSetsQuery(set || q ? undefined : cat || undefined), enabled: !q });
-  const put = (k: string, v: string) => { const n = new URLSearchParams(sp); if (v) n.set(k, v); else n.delete(k); if (k === "category" || k === "set" || k === "q") n.delete("all"); if (k === "category" || k === "q") n.delete("set"); setSp(n, { replace: true }); };
+  // 로고 분류(사용자 2026-10-18 "로고 검색시에 카테고리 선택") — 종류가 로고일 때만, 건수 0 인 분류는 뺀다
+  const { me } = useMe();
+  const topics = useQuery({ ...logoTopicsQuery, enabled: cat === "logo" });
+  const topicOptions = (topics.data ?? []).filter((t) => t.count > 0);
+  const logoTopic = cat === "logo" ? (sp.get("lt") ?? "") : "";
+  const put = (k: string, v: string) => { const n = new URLSearchParams(sp); if (v) n.set(k, v); else n.delete(k); if (k === "category" || k === "set" || k === "q") n.delete("all"); if (k === "category" || k === "q") n.delete("set"); if (k === "category") n.delete("lt"); setSp(n, { replace: true }); };
   const curSet = sets.data?.find((s) => s.id === set);
   // 세트 아래에 최신 에셋 전체 목록을 항상 보여 준다(사용자 2026-10-12 — 예전엔 "전체 보기"를 눌러야 나왔다)
   const hasSets = (sets.data?.length ?? 0) > 0;
@@ -202,13 +221,15 @@ function AssetsBrowse() {
       <form className="mt-8 flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center" role="search" onSubmit={(e) => { e.preventDefault(); put("q", String(new FormData(e.currentTarget).get("q") ?? "").trim()); }}>
         <SearchInput key={q} name="q" defaultValue={q} kbd={false} placeholder="에셋 검색 — 예: 파랑 행정, 악수, 표지" className="min-w-0 sm:min-w-[280px] sm:flex-1" />
         <ChoiceButton label="종류" value={cat} onChange={(v) => put("category", v)} options={catOptions} />
+        {cat === "logo" && topicOptions.length > 0 && <ChoiceButton label="분류" value={logoTopic} onChange={(v) => put("lt", v)} options={topicOptions} />}
         {!q && <ChoiceButton label="정렬" allLabel="최신순" value={sort === "newest" ? "" : sort} onChange={(v) => put("sort", v)} options={SORT_OPTIONS} />}
         <Button type="submit" size="md">검색</Button>
         {q && <Button type="button" variant="ghost" size="md" onClick={() => put("q", "")}><RotateCcw aria-hidden />검색 해제</Button>}
         {!q && curSet && <Button type="button" variant="ghost" size="md" onClick={() => put("set", "")}><RotateCcw aria-hidden />세트 해제 · {setLabel(curSet.name)}</Button>}
       </form>
+      {cat === "logo" && me?.user && <FrequentLogos uid={String(me.user.id)} />}
       {q ? (
-        <AssetGrid params={{ q, category: cat || undefined }} emptyText={`“${q}” 에 맞는 에셋이 없습니다. 자료 요청으로 알려 주시면 등록 후 알려 드립니다.`} requestCta={q} />
+        <AssetGrid params={{ q, category: cat || undefined, logo_topic: logoTopic || undefined }} emptyText={`“${q}” 에 맞는 에셋이 없습니다. 자료 요청으로 알려 주시면 등록 후 알려 드립니다.`} requestCta={q} />
       ) : (
         <>
           {!set && hasSets && (
@@ -226,7 +247,7 @@ function AssetsBrowse() {
               </div>
             </section>
           )}
-          <AssetGrid params={set ? { set, sort } : { category: cat || undefined, sort }} emptyText="이 조건에 보이는 에셋이 없습니다." />
+          <AssetGrid params={set ? { set, sort } : { category: cat || undefined, sort, logo_topic: logoTopic || undefined }} emptyText="이 조건에 보이는 에셋이 없습니다." />
         </>
       )}
     </>

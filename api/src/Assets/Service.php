@@ -143,6 +143,15 @@ final class Service
             $where[] = 'i.slide_page = ?';
             $params[] = $f['slide_page'];
         }
+        // 로고 분류(중앙부처·지자체·식품·음료…) — style_group 'logo-<분류>', 목록은 Deck\Logos::TOPICS 한 곳
+        if (!empty($f['logo_topic'])) {
+            if (!isset(\Pp\Deck\Logos::TOPICS[(string) $f['logo_topic']])) {
+                throw HttpError::invalid('없는 로고 분류입니다.', implode('·', array_keys(\Pp\Deck\Logos::TOPICS)));
+            }
+            \Pp\Deck\Logos::ensureTopics();
+            $where[] = "i.category = 'logo' AND i.style_group = ?";
+            $params[] = 'logo-' . $f['logo_topic'];
+        }
         // 애드인 주제 칩 — 태그 정확 일치
         if (!empty($f['tag'])) {
             $where[] = "EXISTS (SELECT 1 FROM asset_tags tg WHERE tg.item_id = i.id AND tg.axis = 'kw' AND tg.tag = ?)";
@@ -350,6 +359,34 @@ final class Service
         // SEC-004: 권한 밖 수(사내 전용 포함)는 관리자·임직원에게만 — 밖에는 0(잠금 안내 없음)
         $hidden = self::seesTotals($a) ? max(0, $all - $total) : 0;
         return ['rows' => $out, 'total' => $total, 'hidden' => $hidden, 'corrected' => $corrected ?: null, 'relaxed' => $relaxed, 'notes' => $notes];
+    }
+
+    /**
+     * 자주 사용하는 로고(나만) — 최근 180일 내 사용(내려받기·애드인 삽입·powerDeck 로고 찾기, 1회 = 3점)
+     * + 내가 검색한 말이 로고 이름과 같은 횟수(1회 = 1점). 사용자 2026-10-18 "내가 자주 검색하는 로고는 로고 검색란 하단에".
+     */
+    public static function frequentLogos(Actor $a, int $limit = 12): array
+    {
+        if ($a->id() === null) {
+            return [];
+        }
+        $rows = Db::rows(
+            "SELECT i.public_id, SUM(x.pt) AS score FROM (
+                 SELECT u.item_id, 3 AS pt FROM asset_uses u WHERE u.user_id = ? AND u.created_at >= NOW() - INTERVAL 180 DAY
+                 UNION ALL
+                 SELECT i2.id, 1 FROM asset_search_logs l JOIN asset_items i2 ON i2.category = 'logo' AND i2.deleted_at IS NULL AND i2.name = l.q
+                 WHERE l.user_id = ? AND l.day >= CURDATE() - INTERVAL 180 DAY
+             ) x JOIN asset_items i ON i.id = x.item_id AND i.category = 'logo' AND i.deleted_at IS NULL
+             GROUP BY i.id ORDER BY score DESC, MAX(i.id) DESC LIMIT " . max(1, min(30, $limit)),
+            [$a->id(), $a->id()],
+        );
+        if (!$rows) {
+            return [];
+        }
+        $rank = array_flip(array_column($rows, 'public_id'));
+        $items = self::list($a, ['category' => 'logo', 'ids' => array_keys($rank), 'addin' => true], 30, 0)['rows'];
+        usort($items, static fn(array $x, array $y): int => $rank[$x['id']] <=> $rank[$y['id']]);
+        return $items;
     }
 
     /**

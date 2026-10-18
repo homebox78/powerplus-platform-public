@@ -9,7 +9,7 @@ use Pp\Deck\AiKeys;
  * 글을 쓰는 LLM — 메인 채팅·챗봇(powerLLM)이 답을 쓸 때 부른다. OpenRouter chat/completions, 회사 키(AiKeys::serverKey).
  *  - 관리자 AI 설정에 Claude API 키가 있으면(AiKeys::textProvider) Core\Claude 로 간다 — 답 꼴은 같다.
  *  - 모델: 관리자 AI 설정(core_settings ai.chat.model) > 기본 anthropic/claude-haiku-4.5(빠르고 한국어가 자연스럽다).
- *  - 하루 상한(ai.chat.daily_usd, 기본 3달러)을 넘거나·키가 없거나·실패하면 null — 부른 쪽은 도움말 원문 카드로 계속한다.
+ *  - 하루 상한·켜기 스위치는 없앴다(2026-10-18). 키가 없거나 실패하면 null — 부른 쪽은 도움말 원문 카드로 계속한다.
  *  - 비용은 deck_ai_usage(kind='chat') 에 남겨 이력·과금 화면 하나로 본다. 개인 정보는 넣지 않는다(부르는 쪽이 Triage::scrub).
  */
 final class Llm
@@ -57,21 +57,12 @@ final class Llm
      */
     public static function chat(array $messages, int $maxTokens = 700, int $timeout = 40): ?string
     {
+        // 켜기·하루 상한은 없앴다(2026-10-18 사용자 지시 "상한 이런거 없애고") — 예전에 꺼 둔 값이 남아 있어도 보지 않는다
         $cfg = self::config();
-        if (!$cfg['enabled']) {
-            return null;
-        }
-        try {
-            if (self::spentToday() >= $cfg['daily_usd']) {
-                return null;
-            }
-        } catch (\Throwable) {
-            return null;
-        }
         $body = ['model' => $cfg['model'], 'messages' => $messages, 'max_tokens' => $maxTokens, 'temperature' => 0.4, 'usage' => ['include' => true]];
-        // Claude 키가 있으면 먼저 — 답변 모델이 Claude 면 그 모델(기본 Haiku 4.5), 아니면 Sonnet 5.5.
+        // Claude 키가 있으면 먼저 — 모델 고정 Claude::CHAT_MODEL(관리자 Claude API 칸 '지금 쓰는 모델'에 보인다).
         // 키를 풀 수 없음·크레딧 소진·키 거절이면 null → 아래 OpenRouter 로 이어서
-        $r = AiKeys::textProvider() === 'claude' ? AiKeys::claudeCall(Claude::modelFor($cfg['model'], Claude::DEFAULT_MODEL), $body, $timeout, 'low') : null;
+        $r = AiKeys::textProvider() === 'claude' ? AiKeys::claudeCall(Claude::CHAT_MODEL, $body, $timeout, 'low') : null;
         if ($r !== null) {
             [$status, $raw] = $r;
         } else {

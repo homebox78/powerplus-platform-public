@@ -245,8 +245,12 @@ final class AiKeys
         $w = "model LIKE 'claude-%' AND kind NOT IN " . self::SUBS_SQL . " AND created_at >= ?";
         $spent = (float) Db::val("SELECT COALESCE(SUM(cost_usd), 0) FROM deck_ai_usage WHERE $w", [$since->format('Y-m-d')]);
         $calls = (int) Db::val("SELECT COUNT(*) FROM deck_ai_usage WHERE $w", [$since->format('Y-m-d')]);
+        // 키별 기록(2026-10-18 c0b6d22) 전 사용분은 어느 키인지 모른다 — 화면이 키 줄 아래 따로 보인다(키마다 0회로 보여 헷갈리던 것)
+        $kSpent = 0.0; $kCalls = 0;
+        foreach (self::claudeKeys() as $k) { [$s1, $c1] = self::claudeKeySpend((string) $k['id']); $kSpent += $s1; $kCalls += $c1; }
         return ['credit' => round($credit, 2), 'per_key' => round($perKey, 2), 'keys' => $n, 'reset_day' => $day, 'since' => $since->format('Y-m-d'),
-            'spent' => round($spent, 4), 'left' => round(max(0.0, $credit - $spent), 4), 'calls' => $calls];
+            'spent' => round($spent, 4), 'left' => round(max(0.0, $credit - $spent), 4), 'calls' => $calls,
+            'untracked' => round(max(0.0, $spent - $kSpent), 4), 'untracked_calls' => max(0, $calls - $kCalls)];
     }
 
     /** 서버가 쓸 수 있는 Claude API 키 하나(풀 수 있는 첫 키) — 하나도 없으면 null. 화면의 "키를 풀 수 없음" 판정용 */

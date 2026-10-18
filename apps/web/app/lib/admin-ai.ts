@@ -27,7 +27,7 @@ export interface AiProvider {
     /** 전체 — 키가 하나라도 쓸 수 있으면 ok, 전부 막히면 no_credits·bad_key 로 OpenRouter 가 대신 돈다 */
     status: { state: AiClaudeState; message?: string; at?: string };
     /** 이번 기간 사용 추정 — 잔액 API 가 없어 이 서버 기록으로 셈. credit = per_key × keys */
-    budget: { credit: number; per_key: number; keys: number; reset_day: number; since: string; spent: number; left: number; calls: number } | null;
+    budget: { credit: number; per_key: number; keys: number; reset_day: number; since: string; spent: number; left: number; calls: number; untracked: number; untracked_calls: number } | null;
   };
 }
 interface AdminAi {

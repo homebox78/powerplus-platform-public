@@ -45,7 +45,24 @@ return static function (Router $r): void {
             } catch (\Throwable) {
             }
         }
-        Response::list($res['rows'], $res['total'], $page, $limit, ['hidden' => $res['hidden'], 'plan' => $a->plan, 'corrected' => $res['corrected'], 'relaxed' => $res['relaxed'] ?? null, 'notes' => $res['notes'] ?? []]);
+        // rerank=1(powerMCP assets_search by_image) — 첫 쪽 앞쪽 12개를 그림을 보고 요청에 맞는 순서로 다시 세운다(Jev 1.14).
+        // 기본으로 켜지 않는다: 2026-10-19 시험에서 '악수·서버실'은 같거나 나았지만 '드론 배송'은 드론 아닌 배송 아이콘이 올라와 나빠졌다
+        $reranked = false;
+        if ($q !== '' && $page === 1 && ($_GET['rerank'] ?? '0') === '1' && Service::isMember($a) && count($res['rows']) >= 3 && !Service::isJunkQuery($q)) {
+            $head = array_slice($res['rows'], 0, 12);
+            $labels = [];
+            foreach ($head as $row) {
+                $labels[$row['id']] = trim((string) ($row['name'] ?? '') . ' · ' . ($row['category_ko'] ?? ''), ' ·');
+            }
+            $rk = \Pp\Core\Pick::rank('asset_rerank', "검색 요청: {$q}", Service::thumbPaths(array_keys($labels)), '이 검색 요청에 가장 맞는 결과', $labels);
+            if ($rk !== null) {
+                $pos = array_flip($rk['order']);
+                usort($head, static fn ($x, $y) => ($pos[$x['id']] ?? 99) <=> ($pos[$y['id']] ?? 99));
+                $res['rows'] = array_merge($head, array_slice($res['rows'], 12));
+                $reranked = true;
+            }
+        }
+        Response::list($res['rows'], $res['total'], $page, $limit, ['hidden' => $res['hidden'], 'plan' => $a->plan, 'corrected' => $res['corrected'], 'relaxed' => $res['relaxed'] ?? null, 'notes' => $res['notes'] ?? [], 'reranked' => $reranked]);
     });
 
     // 로고 분류(공공 6 + 기업 12, 건수 포함) — powerDeck 로고 찾기와 같은 목록(Deck\Logos::TOPICS)
@@ -88,6 +105,15 @@ return static function (Router $r): void {
             header('Cache-Control: private, no-store');
         }
         Response::json(['count' => count($items), 'pool' => $pro ? 'pro' : 'base', 'items' => $items]);
+    });
+    // 사업 설명에 맞게 샘플 후보 순서 다시 세우기 — 레퍼런스 엔진(워커 키)·MCP 키·회원만(Jev 비용). {project, slot, ids[]} → {order, top, confidence}|null
+    $r->post('/assets/mock-samples/rank', function (array $p, Actor $a): void {
+        if ($a->kind !== 'worker' && !\Pp\Assets\Service::isMember($a)) {
+            throw HttpError::unauthorized();
+        }
+        $in = Response::input();
+        $res = \Pp\Assets\MockSamples::rank(mb_substr(trim((string) ($in['project'] ?? '')), 0, 600), (string) ($in['slot'] ?? ''), (array) ($in['ids'] ?? []));
+        Response::json($res);
     });
     $r->get('/assets/samples/{id}/{kind}', function (array $p, Actor $a): void {
         \Pp\Assets\MockSamples::sendFile((string) $p['id'], (string) $p['kind'], (string) ($_GET['s'] ?? ''));

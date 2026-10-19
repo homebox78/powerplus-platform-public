@@ -112,6 +112,49 @@ final class Samples
         self::$recent = array_filter(is_array($j) ? $j : [], static fn ($t) => is_int($t) && $t >= $cut);
     }
 
+    /**
+     * 사업 설명(MCP project 인자 — "기후위기 적응 정보 시스템, 환경부 산하 공단")이 있으면 사진 자리 후보를 플랫폼에 보내
+     * Jev 1.14 가 그림을 보고 가장 어울리는 순서로 다시 세운다(사용자 2026-10-19 "프로젝트에 가장 어울리는 이미지를 빠르게 판단해 적용").
+     * 한 요청에 RANK_BUDGET 번까지(시간·비용), 못 받으면 원래 순서.
+     */
+    private const RANK_KINDS = ['hero-city', 'hero-nature', 'hero-illust', 'hero-keyvisual', 'sub-visual', 'news-thumb', 'citizen', 'place', 'tour', 'video-thumb', 'leader-field'];
+    private const RANK_BUDGET = 8;
+    private static int $rankUsed = 0;
+    /** @var array<string, list<string>> 같은 요청 안의 같은 후보 묶음 */
+    private static array $rankMemo = [];
+
+    public static function project(): string
+    {
+        return mb_substr(trim((string) ($_GET['project'] ?? '')), 0, 600);
+    }
+
+    /** 플랫폼에 순서를 묻는다 — public_id 목록 → 다시 세운 public_id 목록(못 받으면 null) */
+    private static function rankRemote(string $slot, array $pids): ?array
+    {
+        $memo = $slot . '|' . implode(',', $pids);
+        if (isset(self::$rankMemo[$memo])) { return self::$rankMemo[$memo]; }
+        if (self::$rankUsed >= self::RANK_BUDGET) { return null; }
+        $src = (string) \Config::get('app.samples_url', 'https://powerplus.hom2box.com/api/v1/assets/mock-samples');
+        $key = trim((string) \Config::get('app.samples_key', ''));
+        if ($src === '' || $src === 'off' || $key === '') { return null; }
+        self::$rankUsed++;
+        $url = preg_replace('/\?.*$/', '', $src) . '/rank';
+        $ctx = stream_context_create(['http' => ['method' => 'POST', 'timeout' => 6, 'ignore_errors' => true,
+            'header' => "Content-Type: application/json\r\nAccept: application/json\r\nAuthorization: Bearer $key\r\nX-Worker: mockref\r\n",
+            'content' => json_encode(['project' => self::project(), 'slot' => $slot, 'ids' => $pids], JSON_UNESCAPED_UNICODE)]]);
+        $raw = @file_get_contents($url, false, $ctx);
+        $j = is_string($raw) ? json_decode($raw, true) : null;
+        $order = $j['data']['order'] ?? $j['order'] ?? null;
+        if (!is_array($order)) { error_log('[mockref] 이미지 고르기 실패 ' . mb_substr((string) $raw, 0, 200)); return null; }
+        return self::$rankMemo[$memo] = array_values(array_filter($order, 'is_string'));
+    }
+
+    /** 샘플 항목 → 플랫폼 public_id(파일 주소 /assets/samples/{pid}/…) */
+    private static function pidOf(array $it): ?string
+    {
+        return preg_match('#/samples/([a-z0-9]{8,32})/#', (string) ($it['thumb'] ?? $it['file'] ?? ''), $m) ? $m[1] : null;
+    }
+
     /** 고객이 고른 아이콘 스타일(O-22) — 주면 find() 가 자동 고르기 대신 이 스타일만 쓴다(없으면 아이콘을 빼고 사진으로) */
     private static bool $iconForced = false;
 
@@ -355,6 +398,33 @@ final class Samples
             $rows[] = ['it' => $it, 'k' => [$used > 0 ? 1 : 0, self::targetRank($it), self::orgRank($it), $used, -$hit, $it['temporary'] ? 1 : 0, crc32($seed . $it['id'])]];
         }
         usort($rows, static fn ($a, $b) => $a['k'] <=> $b['k']);
+        // 사업 설명이 있으면 사진 자리 후보 앞쪽 12장을 그림을 보고 다시 세운다(기관 맞춤·반복 방지로 거른 뒤라 그 규칙은 그대로)
+        if (self::project() !== '' && $rows !== [] && in_array((string) $rows[0]['it']['kind'], self::RANK_KINDS, true)) {
+            // 후보 12장 = 사업 설명 낱말이 태그·설명에 맞는 것 8장 먼저 + 원래 순서 앞쪽으로 채움 — 원래 순서만 쓰면
+            // 기후위기 사업에도 후보에 기후 그림이 없어 'AI 식중독 예측지도'가 1위였다(2026-10-19 운영 시험)
+            $words = array_values(array_filter(preg_split('/[\s·,()\/]+/u', (string) preg_replace('/(을|를|이|가|은|는|의|에|와|과|로|으로|하는|하고|만드는|구축하는|운영하는|도입하는)(?=\s|$)/u', '', self::project())) ?: [], static fn ($w) => mb_strlen($w) >= 2));
+            $score = static function (array $it) use ($words): int {
+                $hay = (string) $it['alt'] . ' ' . implode(' ', (array) $it['tags']);
+                $n = 0;
+                foreach ($words as $w) { if (mb_stripos($hay, $w) !== false) { $n++; } }
+                return $n;
+            };
+            $hit = array_filter($rows, static fn ($r) => $score($r['it']) > 0);
+            usort($hit, static fn ($a, $b) => $score($b['it']) <=> $score($a['it']));
+            $head = array_slice($hit, 0, 8);
+            foreach ($rows as $r) { if (count($head) >= 12) { break; } if (!in_array($r, $head, true)) { $head[] = $r; } }
+            $rest = array_values(array_filter($rows, static fn ($r) => !in_array($r, $head, true)));
+            $pids = [];
+            foreach ($head as $i => $r) { $pid = self::pidOf($r['it']); if ($pid !== null) { $pids[$pid] = $i; } }
+            $order = count($pids) >= 2 ? self::rankRemote((string) $rows[0]['it']['kind'], array_keys($pids)) : null;
+            if ($order !== null) {
+                $new = [];
+                foreach ($order as $pid) { if (isset($pids[$pid])) { $new[] = $head[$pids[$pid]]; unset($pids[$pid]); } }
+                foreach ($pids as $i) { $new[] = $head[$i]; }
+                foreach ($head as $r) { if (!in_array($r, $new, true)) { $new[] = $r; } }
+                $rows = array_merge($new, $rest);
+            }
+        }
         // 아이콘은 한 스타일만 — 바로가기 6칸에 유리 입체·평면·아이소가 섞여 들어가던 것(사용자 지적 2026-10-05).
         // 이 목업에서 이미 고른 스타일이 있으면 그것, 없으면 순위가 가장 높은 아이콘의 스타일(자리 수만큼 있는 것).
         $cnt = [];

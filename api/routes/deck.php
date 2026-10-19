@@ -105,6 +105,13 @@ return static function (Router $r): void {
         $w = $worker($a);
         Legacy::jsonOut(Jobs::workerUsage($hex16($p['id']), $w, Legacy::body()));
     });
+    // 장표 글 검사(완성 전) — 오타·기획과 다른 숫자·개인 정보(Deck\TextCheck, Jev 1.14). 엔진 마무리 단계가 부르고 확인 목록에 올린다
+    $r->post('/deck/worker/jobs/{id}/text-check', static function (array $p, Actor $a) use ($worker, $hex16): void {
+        $worker($a);
+        $hex16($p['id']);
+        $b = Legacy::body();
+        Legacy::jsonOut(['findings' => \Pp\Deck\TextCheck::run((array) ($b['plan'] ?? []), array_values((array) ($b['slides'] ?? [])))]);
+    });
     $r->get('/deck/worker/jobs/{id}/source', static function (array $p, Actor $a) use ($worker, $hex16, $sendFile): void {
         $worker($a);
         $f = Jobs::dir($hex16($p['id']), 'source') . '/source.pptx';

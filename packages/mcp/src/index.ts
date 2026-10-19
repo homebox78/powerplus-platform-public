@@ -462,6 +462,7 @@ function buildServer(key: string | null): McpServer {
   const deviceDesc = "pc(기본) 또는 mobile";
   // 아이콘 스타일(O-22) — 레퍼런스 엔진 Samples::styleOf 값. 목록이 늘 수 있어 enum 대신 글자로 받고, 틀리면 엔진이 허용값을 돌려준다(BAD_ICON_STYLE)
   // 허용값을 여기 적어 두면 파워에셋에 새 세트가 올라와도 안내에 안 나온다(2026-10-18 픽토그램 6세트) — 응답 samples.icon_style.allowed 가 늘 최신
+  const projectDesc = "고객 사업·홈페이지 설명 한두 문장(예: \"기후위기 적응 정보 시스템, 환경부 산하 공단\", \"AI 민원 상담 챗봇 도입하는 시청\") — 주면 사진 자리(메인 비주얼·서브 띠·소식 썸네일·주민·관광)마다 파워에셋 후보를 그림으로 보고 이 사업에 가장 어울리는 것을 골라 넣는다(Jev 1.14). 개인 정보는 넣지 말 것";
   const iconStyleDesc = "아이콘 스타일 — 생략하면 주색에 어울리는 스타일을 하나 골라 쓴다(기본). 고객이 정했을 때만 준다. 허용값은 파워에셋 최신 아이콘 세트 이름이고 응답 samples.icon_style.allowed 에 늘 최신 목록이 온다(예: icon-pict-line-navy·icon-pict-line-point·icon-pict-solid-navy·icon-pict-circle-badge·icon-pict-duotone-blue·icon-pict-flat-color 픽토그램, icon-blue·icon-glass·icon-gradient·icon-iso·icon-pale-clay 등). 틀린 값이면 오류에 지금 허용값이 온다";
   const get =<T,>(path: string) => api<T>(path, pro ? "pro" : "free"); // guard 뒤에 불러야 pro 가 채워져 있다
 
@@ -602,14 +603,14 @@ function buildServer(key: string | null): McpServer {
   server.registerTool("mock_get_main_mockup", {
     title: "메인 목업(조립형)",
     description: "[빠른 초안 전용 — 사용자가 초안을 직접 요청했을 때만. 시안·홈페이지 요청은 mock_get_replica_kit] 관공서 메인을 한 장으로 조립한다. 본문 = 레퍼런스 메인 화면의 행 구성(칸 너비 비율·섹션 모양: 최근 게시물 사진 히어로·알림판 캐러셀·분야 탭 띠·달력·인물 띠·배너 롤링…)을 그대로 따른다 — 같은 유형이라도 rank 를 바꾸면 다른 레퍼런스(다른 구성)가 나온다. 레퍼런스에 없는 필수 블록은 메인 118곳 채택률(바로가기 99%·소식 탭 92%·푸터 87%·배너모음 81%·전자정부 표지 75%·캐러셀 제어 70%…, composition 에 근거), 디자인 토큰 = 레퍼런스 사이트, 메뉴·바로가기·탭 이름 = 레퍼런스 화면 수집값. 메인 비주얼·알림판·배너 캐러셀(자동 재생·이전·정지·다음), 소식 탭(방향키), 메가 메뉴, 통합검색·전체메뉴 레이어, 관련사이트 드롭다운이 실제로 동작한다. 기관·인물·글은 가상 샘플. org_type 만 주면 가중 점수 1위 레퍼런스, ref(slug)로 지정 가능. Pro 이상.",
-    inputSchema: { org_type: z.string().optional(), org_name: z.string().max(30).optional().describe("고객 기관명(예: 청주시청) — 기관 종류(시·군·구·도·청…)에 맞는 가상 기관(한빛시·새솔군·푸른구…)으로 만든다. 레퍼런스가 구청이어도 시청 요청은 시로 나온다. 실제 기관명·로고로 바꾸는 것은 받은 HTML 에서"), ref: z.string().optional(), rank: z.number().int().min(1).max(50).optional().describe("1=가중 점수 1위 레퍼런스, 2·3…=다음 순위(다른 구성)"),
+    inputSchema: { org_type: z.string().optional(), project: z.string().max(600).optional().describe(projectDesc), org_name: z.string().max(30).optional().describe("고객 기관명(예: 청주시청) — 기관 종류(시·군·구·도·청…)에 맞는 가상 기관(한빛시·새솔군·푸른구…)으로 만든다. 레퍼런스가 구청이어도 시청 요청은 시로 나온다. 실제 기관명·로고로 바꾸는 것은 받은 HTML 에서"), ref: z.string().optional(), rank: z.number().int().min(1).max(50).optional().describe("1=가중 점수 1위 레퍼런스, 2·3…=다음 순위(다른 구성)"),
       wire_id: wireIdArg.optional().describe("메인 와이어 id(저장한 와이어) — 주면 본문 줄을 와이어 순서·칸 폭으로 놓는다(빠진 블록을 더하지 않는다). 서브 화면 와이어는 mock_get_replica_kit"),
       wire: wireArg.optional().describe("메인 와이어 JSON — wire_id 가 없을 때(내 와이어에 저장해 id 를 만든다)") },
   }, async (a) => {
     const g = await guard("mock_get_main_mockup"); if (g) return g;
     let wd: { id: string | null; wire: WireDoc } | null = null;
     if (a.wire_id || a.wire) { const rw = await resolveWire({ pp, key, ppMsg }, { wire: a.wire, wire_id: a.wire_id }, true); if (!rw.ok) return err(rw.message, rw.code); wd = rw; }
-    const r = await get<Record<string, unknown> & { html?: string; sample_images?: SampleImage[]; site_slug?: string; screen_id?: number }>(`/mockups/main?${qs({ org_type: a.org_type, org_name: a.org_name, ref: a.ref, rank: a.rank, wire: wd ? JSON.stringify(compactWire(wd.wire)) : undefined, wire_ref: wd?.id ?? undefined })}`);
+    const r = await get<Record<string, unknown> & { html?: string; sample_images?: SampleImage[]; site_slug?: string; screen_id?: number }>(`/mockups/main?${qs({ org_type: a.org_type, org_name: a.org_name, project: a.project, ref: a.ref, rank: a.rank, wire: wd ? JSON.stringify(compactWire(wd.wire)) : undefined, wire_ref: wd?.id ?? undefined })}`);
     const html = (r.html ?? "").replace(/src="(\/[^"]*\/api\/samples\/file\/|\/api\/samples\/file\/)/g, (_m, p: string) => `src="${PUBLIC_ORIGIN}${p}`);
     return { content: [{ type: "text" as const, text: JSON.stringify({ ...r, html, sample_images: (r.sample_images ?? []).map(absSample), attribution: ATTRIBUTION }) }] };
   });
@@ -619,6 +620,7 @@ function buildServer(key: string | null): McpServer {
     description: "[빠른 초안 전용 — 사용자가 초안을 직접 요청했을 때만. 시안·홈페이지 요청은 mock_get_replica_kit] 메인과 서브페이지 여러 장을 한 홈페이지로 만든다 — 모든 페이지가 같은 가상 기관·색·글꼴·주 메뉴를 쓴다(mock_get_main_mockup·mock_get_page_code 를 따로 부르면 페이지마다 레퍼런스 기관이 달라 기관명·색·메뉴가 섞인다). 메인 = mock_get_main_mockup 과 같은 조립(레퍼런스 메인의 행 구성·동작하는 캐러셀·탭·메가 메뉴), 서브 = 메인과 같은 사이트의 그 유형 화면을 먼저 쓰고 없으면 같은 기관 유형에서 분해 품질이 좋은 화면으로 키트(KRDS) 블록 조립. pages 에 서브 유형(board_list·board_view·content·greeting·org_chart·faq·location·history·vision·form…)을 쉼표로, 최대 8장. primary(#RRGGBB)·font 를 주면 고객 브랜드로 전체를 칠한다. 기관·인물·글은 가상 샘플. Pro 이상.",
     inputSchema: {
       org_type: z.string().optional().describe("기관 유형 id — 예 local_basic·central_ministry·public_corp·edu_univ_private·edu_school·etc_welfare·etc_assoc·private_corp·private_culture. 비우면 org_name 으로 짐작한다(대학교·학교·복지관·재단·협회·미술관·회사 등). 게시 레퍼런스가 없는 종류는 가까운 종류로 넓혀 고른다"),
+      project: z.string().max(600).optional().describe(projectDesc),
       org_name: z.string().max(30).optional().describe("고객 기관명(예: 청주시청) — 기관 종류(시·군·구·도·청…)에 맞는 가상 기관(한빛시·새솔군·푸른구…)으로 만든다. 레퍼런스가 구청이어도 시청 요청은 시로 나온다. 실제 기관명·로고로 바꾸는 것은 받은 HTML 에서"),
       ref: z.string().optional().describe("메인 레퍼런스 사이트 slug(선택)"),
       rank: z.number().int().min(1).max(50).optional().describe("1=가중 점수 1위 레퍼런스, 2·3…=다른 구성"),
@@ -632,7 +634,7 @@ function buildServer(key: string | null): McpServer {
     const g = await guard("mock_build_homepage"); if (g) return g;
     let wd: { id: string | null; wire: WireDoc } | null = null;
     if (a.wire_id || a.wire) { const rw = await resolveWire({ pp, key, ppMsg }, { wire: a.wire, wire_id: a.wire_id }, true); if (!rw.ok) return err(rw.message, rw.code); wd = rw; }
-    const r = await get<{ main?: { html?: string; sample_images?: SampleImage[] }; pages?: { html?: string; sample_images?: SampleImage[] }[] } & Record<string, unknown>>(`/mockups/site?${qs({ org_type: a.org_type, org_name: a.org_name, ref: a.ref, rank: a.rank, pages: a.pages, primary: a.primary, font: a.font, wire: wd ? JSON.stringify(compactWire(wd.wire)) : undefined, wire_ref: wd?.id ?? undefined })}`);
+    const r = await get<{ main?: { html?: string; sample_images?: SampleImage[] }; pages?: { html?: string; sample_images?: SampleImage[] }[] } & Record<string, unknown>>(`/mockups/site?${qs({ org_type: a.org_type, org_name: a.org_name, project: a.project, ref: a.ref, rank: a.rank, pages: a.pages, primary: a.primary, font: a.font, wire: wd ? JSON.stringify(compactWire(wd.wire)) : undefined, wire_ref: wd?.id ?? undefined })}`);
     const abs = (h?: string) => (h ?? "").replace(/src="(\/[^"]*\/api\/samples\/file\/|\/api\/samples\/file\/)/g, (_m, p: string) => `src="${PUBLIC_ORIGIN}${p}`);
     const main = r.main ? { ...r.main, html: abs(r.main.html), sample_images: (r.main.sample_images ?? []).map(absSample) } : r.main;
     const pages = (r.pages ?? []).map((p) => ({ ...p, html: abs(p.html), sample_images: (p.sample_images ?? []).map(absSample) }));
@@ -644,6 +646,7 @@ function buildServer(key: string | null): McpServer {
     description: "[시안·목업·홈페이지 제작 요청의 기본 도구] 실제 관공서 사이트 수준의 시안이 필요할 때 쓴다. 레퍼런스 화면 한 장의 캡처(여러 장으로 잘라 첨부)·줄 묶음(rows)·섹션 좌표와 구성(sections)과 함께, 가상 기관(persona)·색(theme)·샘플 이미지 전체(samples)·머티리얼 아이콘(icons)·동작 스크립트와 규약(behavior)·제작 절차(procedure)·검사 기준(acceptance)을 한 번에 준다. 받은 AI 가 직접 HTML 한 파일을 만든다 — 배치(줄·칸·크기·간격·밀도)는 레퍼런스와 같게, 글·이미지·색은 전부 바꾸고, 캐러셀·탭·메뉴·레이어·검색은 behavior 규약으로 실제 동작하게. mock_get_main_mockup(자동 조립)보다 품질이 높지만 만드는 데 시간이 든다. 서브페이지는 page 에 유형을 준다(같은 사이트의 화면을 먼저 고른다). 사용자 와이어(wire_id 또는 wire)를 주면 배치의 기준이 와이어가 된다 — 줄 순서·칸 수·12칸 폭·칸 종류는 와이어 그대로(reference.wire.rows), 칸마다 같은 종류를 그린 레퍼런스 섹션(참고 이미지 조각)·예시 내용(content)·근거(ev)가 붙고, 판정도 와이어와 대조한다. 와이어가 있는데 빼고 부르지 않는다.",
     inputSchema: {
       org_type: z.string().optional().describe("기관 유형 id — 예 local_basic·central_ministry·public_corp·edu_univ_private·edu_school·etc_welfare·etc_assoc·private_corp·private_culture. 비우면 org_name 으로 짐작한다(대학교·학교·복지관·재단·협회·미술관·회사 등). 게시 레퍼런스가 없는 종류는 가까운 종류로 넓혀 고른다"),
+      project: z.string().max(600).optional().describe(projectDesc),
       org_name: z.string().max(30).optional().describe("고객 기관명(예: 청운군청·한빛대학교·한빛복지관·한빛문화재단·한빛솔루션) — 관공서·대학·학교·복지관·재단·협회·문화시설·기업 어느 종류든 된다. 기관장 직함(시장·총장·교장·관장·이사장·대표이사)·주 메뉴·문구가 그 종류에 맞게 나온다. 없으면 레퍼런스 종류에 맞는 가상 기관"),
       ref: z.string().optional().describe("레퍼런스 사이트 slug(선택)"),
       rank: z.number().int().min(1).max(50).optional().describe("1=가중 점수 1위 레퍼런스, 2·3…=다른 레퍼런스(시안을 여러 개 만들 때)"),
@@ -666,7 +669,7 @@ function buildServer(key: string | null): McpServer {
       if (!rw.ok) return err(rw.message, rw.code, "wire_id 는 내 와이어 id, wire 는 {screen, org, rows:[{zone, cols:[{k, span}]}]} 꼴");
       wd = rw;
     }
-    const r = await get<Record<string, unknown> & { reference?: { capture_url?: string | null; site_slug?: string; screen_id?: number; width?: number; height?: number } }>(`/mockups/replica?${qs({ org_type: a.org_type, org_name: a.org_name ?? wd?.wire.org_name, ref: a.ref, rank: a.rank, page: wd ? wd.wire.screen : a.page, primary: a.primary, width: a.width, font: a.font, lang: a.lang, icon_style: a.icon_style, wire: wd ? JSON.stringify(compactWire(wd.wire)) : undefined, wire_ref: wd?.id ?? undefined })}`);
+    const r = await get<Record<string, unknown> & { reference?: { capture_url?: string | null; site_slug?: string; screen_id?: number; width?: number; height?: number } }>(`/mockups/replica?${qs({ org_type: a.org_type, org_name: a.org_name ?? wd?.wire.org_name, project: a.project, ref: a.ref, rank: a.rank, page: wd ? wd.wire.screen : a.page, primary: a.primary, width: a.width, font: a.font, lang: a.lang, icon_style: a.icon_style, wire: wd ? JSON.stringify(compactWire(wd.wire)) : undefined, wire_ref: wd?.id ?? undefined })}`);
     const ref = r.reference ?? {};
     const cbox = (ref as { content?: { x: number; w: number } }).content;
     const zoom = a.zoom && cbox ? { x: cbox.x, w: cbox.w, vw: ref.width ?? 1920 } : undefined;
@@ -925,22 +928,23 @@ function buildServer(key: string | null): McpServer {
     return text({ ...parsed.data, attribution: ATTRIBUTION });
   });
 
-  const sampleKinds = ["hero-city", "hero-nature", "sub-visual", "leader", "leader-field", "citizen", "news-thumb", "place", "banner", "popup", "card-news", "poster", "infographic", "emblem", "signature", "icon-set"] as const;
+  const sampleKinds = ["hero-city", "hero-nature", "sub-visual", "leader", "leader-field", "citizen", "news-thumb", "place", "banner", "popup", "card-news", "poster", "infographic", "emblem", "signature", "icon-set", "hero-keyvisual", "hero-illust", "tour", "video-thumb"] as const;
   server.registerTool("mock_get_sample_images", {
     title: "샘플 이미지(목업용 사진·배너)",
     description: "목업의 사진·배너 자리에 넣을 홈박스 자체 제작 이미지(가상 한국인·한국 풍경, 실존 인물·기관 아님). 메인 비주얼(도시·자연)·서브 상단 띠·기관장 인사말 사진·기관장 현장 활동·주민·소식 썸네일·시설·배너·팝업·카드뉴스(정사각 SNS 표지)·행사 포스터(세로)·숫자 인포그래픽·가상 기관 로고. 배너·팝업 등 글자가 든 이미지엔 가상 기관명이 박혀 있으니 목업 기관과 같은 이름(tags)을 먼저 쓴다. 시안을 여러 장 만들 때는 앞 시안에서 쓴 id 를 피해 seed 를 바꿔 부른다(목업 도구는 같은 키로 부르면 자동으로 겹치지 않게 고른다). 결과의 url 을 <img src> 나 background-image 에 그대로 쓴다(공개 주소, 서명 없음). 넓은 사진은 text_safe.side(글자를 얹을 쪽)·text_color·scrim(어둡게 깔지)을 준다. section_type 을 주면 그 섹션에 맞는 종류를 고른다. 회색 빈 박스 대신 반드시 이 이미지를 쓴다.",
     inputSchema: {
       // 허용값을 설명에 그대로 적는다 — "hero" 처럼 비슷한 말로 부르면 -32602 로 첫 호출이 실패했다(2026-10-09 시험)
-      kind: listOf(z.enum(sampleKinds)).optional().describe(`이미지 종류(여러 개면 쉼표). 허용값만 받는다: ${sampleKinds.join("·")} — hero-city(도시 메인 비주얼)·hero-nature(자연 메인 비주얼)·sub-visual(서브 상단 띠)·leader(기관장 인사말 사진)·leader-field(기관장 현장)·citizen(주민)·news-thumb(소식 썸네일)·place(시설·장소)·banner(가로 배너)·popup(세로 팝업)·card-news(정사각 SNS)·poster(세로 포스터)·infographic(숫자 인포그래픽)·emblem(가상 기관 로고)·signature(서명)·icon-set(아이콘). "hero" 같은 줄임말은 안 된다`),
+      kind: listOf(z.enum(sampleKinds)).optional().describe(`이미지 종류(여러 개면 쉼표). 허용값만 받는다: ${sampleKinds.join("·")} — hero-city(도시 메인 비주얼)·hero-nature(자연 메인 비주얼)·sub-visual(서브 상단 띠)·leader(기관장 인사말 사진)·leader-field(기관장 현장)·citizen(주민)·news-thumb(소식 썸네일)·place(시설·장소)·banner(가로 배너)·popup(세로 팝업)·card-news(정사각 SNS)·poster(세로 포스터)·infographic(숫자 인포그래픽)·emblem(가상 기관 로고)·signature(서명)·icon-set(아이콘)·hero-keyvisual(산업·공공사업 키비주얼, 왼쪽 글자 자리)·hero-illust(메인 일러스트)·tour(관광·축제)·video-thumb(영상 썸네일). "hero" 같은 줄임말은 안 된다`),
       section_type: z.string().optional().describe("섹션 유형 id(예: main_visual·quick_links). kind 대신 주면 그 섹션에 맞는 종류를 고른다"),
       tags: listOf(z.string()).optional().describe("태그(가상 기관명 등, 쉼표 구분)"),
       limit: z.number().int().min(1).max(24).optional().describe("개수 1~24, 기본 6"),
       seed: z.number().int().optional().describe("같은 조건에서 다른 묶음을 받을 때 바꾼다"),
+      project: z.string().max(600).optional().describe(projectDesc),
       icon_style: z.string().max(40).optional().describe(iconStyleDesc),
     },
   }, async (a) => {
     const g = await guard("mock_get_sample_images"); if (g) return g;
-    const r = await get<{ count: number; library: Record<string, number>; items: SampleImage[]; usage: string }>(`/samples?${qs({ kind: a.kind, section_type: a.section_type, tags: a.tags, limit: a.limit ?? 6, seed: a.seed, icon_style: a.icon_style })}`);
+    const r = await get<{ count: number; library: Record<string, number>; items: SampleImage[]; usage: string }>(`/samples?${qs({ kind: a.kind, section_type: a.section_type, tags: a.tags, project: a.project, limit: a.limit ?? 6, seed: a.seed, icon_style: a.icon_style })}`);
     const items = r.items.map(absSample);
     return withImages({ ...r, items }, pro, items.slice(0, 6).map((s) => ({ url: s.thumb_url, label: s.id, caption: `${s.id} — ${s.alt}${s.text_safe ? ` (글자는 ${s.text_safe.side === "left" ? "왼쪽" : "오른쪽"}, ${s.text_safe.text_color === "light" ? "흰 글자" : "검은 글자"}${s.text_safe.scrim ? ", 어두운 그라데이션 필요" : ""})` : ""}${s.temporary ? " · 임시본" : ""}`, maxW: 480, maxH: 480 })));
   });
@@ -1020,11 +1024,11 @@ function buildServer(key: string | null): McpServer {
   server.registerTool("assets_search", {
     title: "자산 검색",
     description: "powerAssets 자산(아이콘·사진·일러스트·다이어그램·장표·로고) 검색. 검색어는 이름·태그(국문·영문)에 낱말별로 일치. 결과의 thumb_url 은 미리보기, 원본은 assets_get. 키 소유자 플랜·등급에서 볼 수 있는 것만 나온다(meta.hidden = 등급 때문에 가려진 수).",
-    inputSchema: { query: z.string().optional().describe("검색어(예: '파랑 행정', 'handshake')"), category: z.enum(assetCats).optional().describe(assetCatDesc), set: z.string().optional().describe("세트 id(assets_style_set 결과)"), topic: z.string().optional().describe("assets_list_topics 의 주제 낱말 — 검색어에 더해진다"), sort: z.enum(["newest", "popular", "name"]).optional().describe("허용값: newest·popular·name"), limit: z.number().int().min(1).max(60).optional(), page: z.number().int().min(1).optional() },
+    inputSchema: { query: z.string().optional().describe("검색어(예: '파랑 행정', 'handshake')"), category: z.enum(assetCats).optional().describe(assetCatDesc), set: z.string().optional().describe("세트 id(assets_style_set 결과)"), topic: z.string().optional().describe("assets_list_topics 의 주제 낱말 — 검색어에 더해진다"), sort: z.enum(["newest", "popular", "name"]).optional().describe("허용값: newest·popular·name"), limit: z.number().int().min(1).max(60).optional(), page: z.number().int().min(1).optional(), by_image: z.boolean().optional().describe("true 면 첫 쪽 앞쪽 12개를 그림을 보고 검색어에 맞는 순서로 다시 놓는다(약 1초 더). 이름이 비슷한 후보가 많을 때('보안' 아이콘처럼) 쓴다. 응답 meta.reranked") },
   }, async (a) => {
     const g = await guard("assets_search"); if (g) return g;
     const q = [a.query, a.topic].filter(Boolean).join(" ");
-    return assets(`/assets/items?${qs({ q, category: a.category, set: a.set, sort: a.sort, limit: a.limit ?? 24, page: a.page, channel: "mcp" })}`,
+    return assets(`/assets/items?${qs({ q, category: a.category, set: a.set, sort: a.sort, limit: a.limit ?? 24, page: a.page, channel: "mcp", rerank: a.by_image ? "1" : undefined })}`,
       "0건입니다. 낱말을 줄이거나 assets_suggest_keywords(words=[…]) 로 등록된 다른 표현을 찾아 다시 검색한다. meta.hidden 이 있으면 키 등급 때문에 가려진 것이다.");
   });
 

@@ -488,6 +488,37 @@ final class Service
     }
 
     /**
+     * public_id 목록 → [public_id => 썸네일 로컬 경로](없으면 원본). 그림을 보고 고르는 Core\Pick 에 넘긴다 — 권한은 부른 쪽이 이미 거른 목록이다.
+     * @param list<string> $ids
+     * @return array<string,string>
+     */
+    public static function thumbPaths(array $ids): array
+    {
+        $ids = array_values(array_filter($ids, 'is_string'));
+        if (!$ids) {
+            return [];
+        }
+        $in = implode(',', array_fill(0, count($ids), '?'));
+        $rows = Db::rows("SELECT i.public_id, af.kind, f.bucket, f.path FROM asset_items i JOIN asset_files af ON af.item_id = i.id AND af.kind IN ('thumb','original')
+                           JOIN core_files f ON f.id = af.file_id WHERE i.public_id IN ({$in})", $ids);
+        $root = rtrim((string) Config::get('storage.dir'), '/\\');
+        $by = [];
+        foreach ($rows as $r) {
+            $f = $root . '/' . $r['bucket'] . '/' . $r['path'];
+            if (is_file($f) && ($r['kind'] === 'thumb' || !isset($by[$r['public_id']]))) {   // 썸네일이 없으면 원본
+                $by[(string) $r['public_id']] = $f;
+            }
+        }
+        $out = [];
+        foreach ($ids as $id) {
+            if (isset($by[$id])) {
+                $out[$id] = $by[$id];
+            }
+        }
+        return $out;
+    }
+
+    /**
      * 문맥에 맞는 에셋 고르기 — powerDeck 초안 다듬기(asset_find.py pick)·powerMCP 가 쓴다.
      * 검색어가 없으면 문맥 글에서 실제 태그에 있는 낱말을 뽑아 찾고, 후보(최대 20)를 Jev 에 물어 하나를 고른다.
      * Jev 가 꺼졌거나 실패하면 규칙(검색어 일치 순 첫 후보) — by 로 알 수 있다.
@@ -559,7 +590,12 @@ final class Service
         $pick = null;
         $by = null;
         $conf = null;
-        if ($text !== '' && ($j = Triage::assetPick($text, $cands)) !== null && $j['confidence'] >= 0.3) {
+        // 그림을 보고 고르기 먼저(Jev 1.14, 2026-10-19 시험 후보 6장 중 10/10) — 이름 글자만 보면 '보안'에 자물쇠·방패·지문이 같은 점수였다.
+        // 그림을 못 읽거나 실패하면 예전처럼 이름·키워드 글로 고른다
+        $img = ($text !== '' && count($cands) >= 2) ? \Pp\Core\Pick::rank('deck_icon_img', '슬라이드 문맥: ' . $text, self::thumbPaths(array_keys($cands)), '이 문맥의 그림 자리에 넣었을 때 뜻이 가장 정확히 맞는 ' . (self::CATEGORY_KO[$cat] ?? '그림'), $cands) : null;
+        if ($img !== null && $img['confidence'] >= 0.3) {
+            [$pick, $by, $conf] = [$img['top'], 'ai_image', round($img['confidence'], 2)];
+        } elseif ($text !== '' && ($j = Triage::assetPick($text, $cands)) !== null && $j['confidence'] >= 0.3) {
             [$pick, $by, $conf] = [$j['id'], 'ai', round($j['confidence'], 2)];
         } elseif ($rows) {
             // 규칙 확신 = 결과가 나온 검색어 비율(예전엔 null 이라 고객 AI 가 믿을지 판단하지 못했다)

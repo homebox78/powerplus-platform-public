@@ -28,7 +28,13 @@ git -C "$ROOT" fetch -q origin && git -C "$ROOT" status -sb | head -1
 
 echo "== 1. 웹 빌드 =="
 rm -rf "$ROOT/apps/web/build"
-(cd "$ROOT/apps/web" && pnpm exec react-router build >/dev/null)
+# 프리렌더(/ 와 SPA 대체 페이지)는 요청마다 10초·재시도 0회로 고정(@react-router/dev — 설정으로 못 바꾼다). PC 가 바쁘면 첫 요청이 10초를 넘어
+# 빌드가 멈췄다(2026-10-19 하루 5번, 다시 돌리면 통과, R88). 그 오류일 때만 3번까지 다시 빌드한다 — 다른 빌드 오류는 바로 멈춘다
+for try in 1 2 3; do
+  if (cd "$ROOT/apps/web" && pnpm exec react-router build > "$WORK/web-build.log" 2>&1); then break; fi
+  grep -q "Prerender: Request failed.*timeout" "$WORK/web-build.log" && [ "$try" -lt 3 ] || { tail -20 "$WORK/web-build.log"; echo "❌ 웹 빌드 실패 — 중단"; exit 1; }
+  echo "  프리렌더 시간 초과 — 다시 빌드($try/3)"; rm -rf "$ROOT/apps/web/build"
+done
 [ -f "$ROOT/apps/web/build/client/index.html" ] || { echo "❌ build/client/index.html 없음 — 중단"; exit 1; }
 grep -q 'href="/_app/' "$ROOT/apps/web/build/client/index.html" || { echo "❌ index.html asset 경로가 / 로 시작하지 않음 — 중단"; exit 1; }
 # powerGuide 정본(REST·MCP guide_*): 부품 문서는 웹 루트 kit-files 를 그대로 읽고, KRDS 지침·체크리스트는 api/data/guide 로 만든다

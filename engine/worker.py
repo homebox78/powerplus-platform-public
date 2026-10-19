@@ -1197,6 +1197,16 @@ def process(j):
                                              "detail": f"'{vague[0][:40]}' — 산출물·기한·수치로 바꾸면 설득력이 커집니다(예: 착수 2주 내 ○○ 보고서)"})
                 except Exception as e:
                     log("메타 문구 점검 실패(무시):", e)
+                try:   # 글 검사 — 오타·기획과 다른 숫자·개인 정보(서버 Deck\TextCheck, Jev 1.14). 실패하면 건너뛴다
+                    pj = os.path.join(job.dir, "_mockup", "plan.json")
+                    plan = json.load(open(pj, encoding="utf-8")) if os.path.isfile(pj) else {}
+                    slides = [{"n": int(sl.get("n") or 0), "text": sl.get("text") or ""} for sl in json.load(open(deck_txt, encoding="utf-8"))]
+                    tc = req("POST", f"/deck/worker/jobs/{job.id}/text-check", {"plan": {k: plan.get(k) for k in ("title", "core", "slides")}, "slides": slides}, timeout=240)
+                    found = (tc or {}).get("findings") or []
+                    fin_warn += [f for f in found if isinstance(f, dict) and f.get("title")]
+                    job.event(f"글 검사 — 오타·기획과 다른 숫자·개인 정보 {len(found)}건" if found else "글 검사 — 오타·기획과 다른 숫자·개인 정보 없음")
+                except Exception as e:
+                    log("글 검사 실패(무시):", e)
             if design_job:
                 vc = out[:-5] + "_vc.pptx"
                 with RENDER_LOCK:

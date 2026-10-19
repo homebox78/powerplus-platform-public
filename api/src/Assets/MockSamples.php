@@ -230,6 +230,43 @@ final class MockSamples
         return $out;
     }
 
+    /**
+     * 사업 설명에 맞는 순서로 샘플 다시 세우기(사용자 2026-10-19 "MCP 목업 제작 시 프로젝트에 가장 어울리는 이미지를 파워에셋에서 빠르게 판단해 적용").
+     * 레퍼런스 엔진(Samples::find)이 자리마다 고른 후보 id(목업 샘플·Pro 사진)를 받아 Jev 1.14 가 썸네일을 보고 순서를 매긴다.
+     * 샘플 묶음·Pro 후보가 아닌 id 는 무시(다른 자산 그림이 새지 않게). 못 고르면 null — 엔진은 원래 순서로.
+     * @param list<string> $ids
+     * @return array{order:list<string>, top:string, confidence:float}|null
+     */
+    public static function rank(string $project, string $slot, array $ids): ?array
+    {
+        $ids = array_values(array_unique(array_filter($ids, static fn ($x) => is_string($x) && preg_match('/^[a-z0-9]{8,32}$/', $x))));
+        $ids = array_slice($ids, 0, \Pp\Core\Pick::MAX);
+        if (count($ids) < 2 || trim($project) === '') {
+            return null;
+        }
+        $in = implode(',', array_fill(0, count($ids), '?'));
+        $rows = Db::rows(
+            "SELECT i.public_id, i.alt, f.bucket, f.path FROM asset_items i LEFT JOIN asset_sets s ON s.id = i.set_id
+               JOIN asset_files af ON af.item_id = i.id AND af.kind = 'thumb' JOIN core_files f ON f.id = af.file_id
+              WHERE i.deleted_at IS NULL AND i.public_id IN ({$in}) AND (" . self::poolWhere() . ' OR (' . self::proWhere() . '))',
+            $ids,
+        );
+        $root = rtrim((string) Config::get('storage.dir'), '/\\');
+        $byId = [];
+        foreach ($rows as $r) {
+            $byId[(string) $r['public_id']] = $root . '/' . $r['bucket'] . '/' . $r['path'];
+        }
+        $cands = [];
+        foreach ($ids as $id) {   // 엔진이 준 순서를 지킨다(같은 확률이면 원래 앞쪽)
+            if (isset($byId[$id])) {
+                $cands[$id] = $byId[$id];
+            }
+        }
+        $slotKo = self::KIND_LABEL[$slot] ?? $slot;
+        return \Pp\Core\Pick::rank('mock_image', "만들 홈페이지의 사업·기관 설명: {$project}\n이미지 자리: {$slotKo}", $cands,
+            '이 사업의 홈페이지 그 자리에 넣었을 때 내용·분위기가 가장 잘 어울리는 이미지');
+    }
+
     /** 샘플 파일 공개 제공 — 샘플 라이브러리('kind' 축 태그가 있는 행)만, 워터마크 없이(목업 <img src> 용, 예전 /mockref/api/samples/file 과 같은 공개 범위). */
     public static function sendFile(string $publicId, string $kind, string $sig = ''): never
     {

@@ -34,6 +34,8 @@ const GROUPS = {
   "T5_둥근사각앱타일": { key: "apptile", set: "icon-pict-app-tile", style: "pict-app-tile", ko: ["앱아이콘", "둥근사각", "타일", "컬러", "다색", "흰아이콘"], en: ["app icon", "rounded square", "tile", "color", "multicolor"] },
   "T6_가는선그라데이션": { key: "thingrad", set: "icon-pict-thin-gradient", style: "pict-thin-gradient", ko: ["가는선", "라인", "외곽선", "그라데이션", "파랑", "청록"], en: ["thin line", "outline", "gradient", "blue", "teal"] },
   "T7_반투명겹침면": { key: "overlap", set: "icon-pict-overlap", style: "pict-overlap-blue", ko: ["반투명", "겹침", "면", "플랫", "파랑", "하늘색"], en: ["translucent", "overlap", "flat", "blue", "sky blue"] },
+  // 2026-10-19 13차 — 흰색 아이콘(투명 바탕 흰 선, 짙은 면·사진 위에 얹는 용도) 120개. S1~S6 145~300·T3~T7 101~300 은 같은 세트에 이어 붙는다
+  "T8_흰색아이콘": { key: "white", set: "icon-pict-white", style: "pict-white-line", ko: ["흰색", "화이트", "흰아이콘", "라인", "어두운배경용", "투명"], en: ["white", "white icon", "line", "for dark background", "transparent"] },
   "컬러플랫아이콘": { key: "color", set: "icon-color-gradient-flat", style: "color-gradient-flat", ko: ["컬러", "플랫", "그라데이션", "알록달록"], en: ["color", "flat", "gradient"] },
 };
 const norm = (t) => String(t).normalize("NFC").trim().toLowerCase().slice(0, 64);

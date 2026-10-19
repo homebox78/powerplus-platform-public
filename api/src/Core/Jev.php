@@ -6,13 +6,15 @@ namespace Pp\Core;
 use Pp\Deck\AiKeys;
 
 /**
- * 빠른 판단 — OpenRouter 의 판단 전용 모델 TypeSafe Jev(글만 받고, 정해 둔 선택지 중 하나를 고른다).
+ * 빠른 판단 — OpenRouter 의 판단 전용 모델 TypeSafe Jev(글·그림을 받고, 정해 둔 선택지 중 하나를 고른다).
  *  - 주소: POST https://openrouter.ai/api/alpha/decisions (chat/completions 는 거절된다)
  *  - 요청: { model, state: 글|객체|배열, questions: { 이름: 질문 } }
  *      질문 종류 choice  = { type, instructions, criteria: { 선택지: 설명 } } → choice · probabilities · confidence
  *                score   = { type, instructions, criteria: [기준…] }       → score(0~1) · probabilities · confidence
  *                noul    = { type, instructions }                          → noul(예일 확률 0~1)
- *  - 가격(2026-10 실측): 입력 100만 토큰당 $0.042, 출력 무료. 한 번에 약 $0.00002.
+ *  - 가격(2026-10 실측): 입력 100만 토큰당 $0.042, 출력 무료. 한 번에 약 $0.00002(그림 1장 약 $0.00006).
+ *  - 1.14 부터 그림 입력(state 배열의 image_url, PNG·JPEG, 한 변 256~1568px·전체 78,400px 이상 — 280×280 미만은 400)과 box(그림 속 위치) 질문.
+ *    시험(10-19): 그림 속 글자 유무·후보 그림 고르기·로고 이름 대조는 잘 맞고, 그림 속 오타 찾기는 못 한다(8/16) — 오타는 글로 묻는다.
  *
  * 원칙: 판단은 "보조"다. 키가 없거나·하루 상한을 넘었거나·실패하면 null 을 돌려주고, 부른 쪽은 원래 규칙으로 계속한다.
  * 같은 질문(task + 입력)은 core_decisions 에서 꺼내 다시 묻지 않는다. 비용은 deck_ai_usage(kind='jev')에도 남겨 이력·과금 화면 하나로 본다.
@@ -20,7 +22,7 @@ use Pp\Deck\AiKeys;
  */
 final class Jev
 {
-    public const MODEL = 'typesafe/jev-1.13';
+    public const MODEL = 'typesafe/jev-1.14';   // 2026-10-19 1.13 → 1.14(글 판정 30/30·같은 값·이미지·Box) — api/bin/jev-compare.php 로 비교
     private const URL = 'https://openrouter.ai/api/alpha/decisions';
     /** 하루 상한(달러) — 관리자 AI 설정(core_settings ai.jev.daily_usd) > config openrouter.jev_daily_usd > 0.5 (약 2만 5천 번) */
     private const DEFAULT_DAILY = 0.5;
@@ -43,6 +45,38 @@ final class Jev
         'deck_icon'      => ['장표 아이콘 고르기', '초안 다듬기에서 슬라이드 문맥에 맞는 powerAssets 아이콘·그림을 고른다'],
         'addin_slide'    => ['애드인 슬라이드 추천', '선택한 슬라이드 글로 어울리는 자료 종류와 검색 낱말을 고른다'],
     ];
+
+    /** 시험용 — 배열이면 ask() 가 묻지 않고 [task, state, questions] 를 여기에 모은다 */
+    public static ?array $capture = null;
+
+    /**
+     * 모델을 골라 그대로 한 번 묻는다(캐시·하루 상한·기록 없음) — 시험·이미지 판정용.
+     * 이미지는 state 배열에 ['type' => 'image_url', 'image_url' => ['url' => 'data:image/png;base64,…']] (PNG·JPEG, 한 변 256~1568px).
+     * @return array{status:int, answers:?array, cost:float, ms:int, model:string, error:?string}
+     */
+    public static function raw(string $model, string|array $state, array $questions, int $timeout = 30): array
+    {
+        $key = AiKeys::serverKey();
+        if ($key === null) {
+            return ['status' => 0, 'answers' => null, 'cost' => 0.0, 'ms' => 0, 'model' => $model, 'error' => 'no key'];
+        }
+        $t = microtime(true);
+        $ch = curl_init(self::URL);
+        curl_setopt_array($ch, [
+            CURLOPT_POST => true, CURLOPT_RETURNTRANSFER => true, CURLOPT_CONNECTTIMEOUT => 5, CURLOPT_TIMEOUT => $timeout,
+            CURLOPT_HTTPHEADER => ['Authorization: Bearer ' . $key, 'Content-Type: application/json', 'X-Title: powerPlus'],
+            CURLOPT_POSTFIELDS => json_encode(['model' => $model, 'state' => $state, 'questions' => $questions], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
+        ]);
+        $raw = curl_exec($ch);
+        $status = (int) curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
+        unset($ch);
+        $d = is_string($raw) ? json_decode($raw, true) : null;
+        return [
+            'status' => $status, 'answers' => is_array($d['answers'] ?? null) ? $d['answers'] : null, 'cost' => (float) ($d['usage']['cost'] ?? 0),
+            'ms' => (int) round((microtime(true) - $t) * 1000), 'model' => (string) ($d['model'] ?? $model),
+            'error' => $status === 200 ? null : mb_substr((string) $raw, 0, 300),
+        ];
+    }
 
     /** 같은 요청 안에서 한 번만 읽는 설정 */
     private static ?array $cfg = null;
@@ -90,6 +124,10 @@ final class Jev
         $cfg = self::config();
         if (!$cfg['enabled'] || ($cfg['uses'][$task] ?? true) === false) {
             return null;   // 관리자가 껐다 — 부른 쪽은 원래 규칙으로
+        }
+        if (self::$capture !== null) {
+            self::$capture[] = [$task, $state, $questions];   // 시험 도구(api/bin/jev-compare.php)가 같은 질문을 모델별로 다시 묻는다
+            return null;
         }
         $stateText = is_string($state) ? $state : json_encode($state, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
         $stateText = mb_substr((string) $stateText, 0, 20000);   // 32k 토큰 한도 안쪽으로

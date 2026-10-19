@@ -65,7 +65,7 @@ const SET_WORD_KO: Record<string, string> = {
   standard: "기본", cheer: "응원", fullbody: "전신", control: "관제", building: "건물", faceless: "얼굴 없는", half: "반신",
   char: "캐릭터", front: "정면", cute: "귀여운", kr: "한국", biz: "비즈니스", western: "서양", banner: "배너", objects: "사물", semi: "세미",
   si: "SI", deck: "장표", handdrawn: "손그림", gradient: "그라데이션", vp: "세로 제안서", bg: "배경",
-  pict: "픽토그램", solid: "솔리드", point: "포인트", circle: "원형", fill: "채움", isometric: "아이소메트릭", bold: "굵은 선",
+  pict: "픽토그램", white: "흰색", solid: "솔리드", point: "포인트", circle: "원형", fill: "채움", isometric: "아이소메트릭", bold: "굵은 선",
   offset: "어긋난 채움", app: "앱", tile: "타일", thin: "가는 선", overlap: "반투명 겹침", office: "오피스", portrait: "인물",
   industry: "산업", field: "현장", finance: "금융", law: "법률", digital: "디지털", city: "도시", infra: "인프라",
   life: "생활", welfare: "복지", education: "교육", health: "보건", safety: "안전", character: "캐릭터",

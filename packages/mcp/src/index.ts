@@ -304,6 +304,7 @@ const INSTRUCTIONS = [
   "powerMock 레퍼런스 — 국내 관공서(정부·지자체·공공기관) 웹사이트 실제 화면에서 자동 추출한 디자인 데이터를 가중 합성해 준다.",
   "",
   "★ 시안·목업·홈페이지를 만들어 달라는 요청은 mock_get_replica_kit 이 기본이다(가장 품질이 높다).",
+  "★ 시안 HTML 은 아티팩트(채팅 미리보기)로 띄우지 않는다 — claude.ai 아티팩트는 다른 사이트 그림을 막아 파워에셋 사진·아이콘이 전부 엑스박스로 보인다(2026-10-19 사용자 확인). HTML 은 mock_check_mockup 에만 보내고, 통과하면 mock_publish_mockup 으로 받은 미리보기 url 과 download_url(HTML 파일 받기)을 답의 마지막에 준다. 사용자가 코드를 따로 달라고 할 때만 파일·코드로 준다.",
   "  - 메인: mock_get_replica_kit(org_type, org_name, primary?) → 참고 이미지와 같은 배치로 직접 HTML 한 파일을 만든다. 글·사진·로고·색은 persona·samples·theme 로 전부 바꾸고, </body> 앞에 <script data-hb-behavior></script> 한 줄을 넣어(스크립트는 mock_check_mockup 이 채운다) 캐러셀·탭·메뉴·레이어·검색이 실제로 동작하게 한다.",
   "  - 서브: 같은 org_type·org_name·primary·rank 에 page=board_list|board_view|greeting|content… 를 붙여 한 장씩 받는다. 가상 기관·색이 메인과 같게 나온다. 머리·바닥·공통 스타일은 다시 쓰지 않는다 — mock_check_mockup 에 base_token(메인 시안 token)을 주고 <!--hb:use style--> · <!--hb:use header--> · <!--hb:use footer--> 를 적으면 홈박스가 메인 것을 넣는다.",
   "  - ★ 와이어가 있으면 와이어대로 — 사용자가 powerMock 기획 화면에서 만든 와이어(id·링크) 또는 mock_get_wireframe 의 wire 가 있으면 mock_get_replica_kit(wire_id=… 또는 wire=…) 로 받는다. 배치의 기준이 와이어(줄 순서·칸 수·12칸 폭·칸 종류)가 되고, 레퍼런스는 칸마다 그리는 법의 재료다. 본문 줄·칸에 data-wire-row·data-wire-cell 을 달고(reference.wire.markup), 칸마다 content(예시 글·그림 종류)를 채운다. 와이어를 두고 레퍼런스 배치로 만들지 않는다. 판정(mock_check_mockup)도 레퍼런스가 아니라 와이어와 대조한다(wire_match).",
@@ -756,7 +757,7 @@ function buildServer(key: string | null): McpServer {
   };
 
   server.registerTool("mock_publish_mockup", {
-    title: "시안 게시(미리보기 주소)",
+    title: "시안 게시(미리보기·다운로드 주소)",
     description: "mock_check_mockup 을 통과한 시안을 게시해, 사진이 그대로 뜨는 미리보기 주소(30일)를 받는다. mock_check_mockup 이 돌려준 token 만 보낸다 — HTML 을 다시 보내지 않는다(홈박스가 보관하고 있다). 마지막 판정이 통과가 아니면 게시되지 않는다. claude.ai 아티팩트·채팅 미리보기처럼 외부 이미지를 막는 곳에서는 홈박스 샘플 사진이 안 보이므로, 받은 url 을 사용자에게 준다. 게시한 뒤 고치려면 mock_check_mockup(token, edits) 로 다시 판정하고 같은 token 으로 다시 게시한다(주소 그대로). 검색엔진에 노출되지 않는다. Pro 이상.",
     inputSchema: {
       token: z.string().max(40).describe("mock_check_mockup 이 돌려준 token"),
@@ -767,7 +768,8 @@ function buildServer(key: string | null): McpServer {
     if (!pro) return err("시안 미리보기 주소는 Pro 이상 키에서 쓸 수 있습니다. 무료 키는 HTML 파일로 저장해 브라우저로 여세요.", "UPGRADE_REQUIRED");
     const r = await internal("mockup-pages", { mode: "publish", token: a.token, title: a.title });
     if (!r.ok || !r.json?.token) return err(r.json?.error?.message ?? `게시하지 못했습니다(HTTP ${r.status}).`, r.json?.error?.code ?? "ERROR");
-    return text({ url: `${PP_PUBLIC}${String(r.json.path ?? `/api/v1/p/${String(r.json.token)}`)}`, token: r.json.token, expires_at: r.json.expires_at, bytes: r.json.bytes, note: "이 주소를 사용자에게 그대로 준다. 고칠 때는 mock_check_mockup(token, edits) 로 다시 판정한 뒤 같은 token 으로 게시하면 주소가 그대로다." });
+    const url = `${PP_PUBLIC}${String(r.json.path ?? `/api/v1/p/${String(r.json.token)}`)}`;
+    return text({ url, download_url: `${url}?download=1`, token: r.json.token, expires_at: r.json.expires_at, bytes: r.json.bytes, note: "답의 마지막에 두 주소를 그대로 준다 — url = 사진까지 보이는 미리보기, download_url = HTML 파일 받기(내 PC 에서 열어도 사진이 뜬다). 아티팩트로 다시 띄우지 않는다(사진이 엑스박스). 고칠 때는 mock_check_mockup(token, edits) 로 다시 판정한 뒤 같은 token 으로 게시하면 주소가 그대로다." });
   });
 
   /** 섞기 판정용 레퍼런스 한 장 — 조각마다 출처 캡처를 잘라 시안 좌표(y)에 붙인다. 폭 960 으로 축소. */
@@ -878,7 +880,7 @@ function buildServer(key: string | null): McpServer {
       const next = result.pass && !recorded
         ? `판정은 통과(${result.score}점)했지만 결과가 서버에 기록되지 않아 아직 게시할 수 없다(시안 탓 아님 — 판정기·서버 문제). 시안을 고치지 말고 mock_check_mockup(token="${token}") 을 한 번만 다시 부른다. 또 record_saved=false 면 멈추고 사용자에게 "판정 기록 실패 — 관리자 확인 필요"라고 알린다.`
         : result.pass
-        ? `통과 — mock_publish_mockup(token="${token}") 으로 게시한다. HTML 을 다시 보내지 않는다.`
+        ? `통과 — mock_publish_mockup(token="${token}") 으로 게시하고, 받은 url(미리보기)·download_url(HTML 파일)을 답 마지막에 준다. HTML 을 다시 보내지 않고 아티팩트로도 띄우지 않는다(파워에셋 사진이 엑스박스로 보인다).`
         : `미통과(${result.score}점) — fixes 를 위에서부터 고친다. HTML 전체를 다시 보내지 말고 mock_check_mockup(token="${token}", edits=[{find, replace}]) 로 고친 부분만 보낸다(ref_id 는 다시 안 줘도 된다). 85점 이상·치명 0 이 통과. 통과할 때까지 반복한다 — 미통과 시안은 사용자 목록·갤러리에 남지 않고 하루 뒤 지워지므로, 미통과인 채로 작업을 끝내거나 결과로 내놓지 않는다.`;
       // 디자이너 선호 조언(2026-10-03) — 시안에 든 요소에 맞는 designus 투표 규칙. 점수에는 넣지 않는다(조언)
       const preference_tips = Array.isArray(d.json.pref_tips) && d.json.pref_tips.length ? { how: "디자이너 A/B 투표에서 뚜렷하게 갈린 결과다. 시안의 같은 요소가 instead_of 쪽이면 rule 쪽으로 바꾸는 것을 권한다(감점 없음).", tips: d.json.pref_tips } : undefined;

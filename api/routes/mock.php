@@ -503,6 +503,16 @@ return static function (Router $r): void {
         if ($map) {
             $html = (string) preg_replace_callback('/\bhref="(?:\.\/)?([a-z_]+)\.html(#[^"]*)?"/', static fn (array $mm) => isset($map[$mm[1]]) ? 'href="' . $map[$mm[1]] . ($mm[2] ?? '') . '"' : $mm[0], $html);
         }
+        // ?download=1 — HTML 파일로 받기(사용자 2026-10-19 "클로드에서 아티팩트 안 뜨게 하고 마지막에 다운로드 url"). 내 PC 에서 열어도
+        // 사진·페이지 링크가 살게 /api/v1/… 를 절대 주소로 바꾼다. 미리보기용 높이 맞춤 스크립트는 넣지 않는다
+        if (($_GET['download'] ?? '') === '1') {
+            $origin = rtrim((string) \Pp\Core\Config::get('app.url', 'https://powerplus.hom2box.com'), '/');
+            $html = (string) preg_replace('#(["\'(])/api/v1/#', '$1' . $origin . '/api/v1/', $html);
+            header_remove('Content-Security-Policy');
+            header('Content-Disposition: attachment; filename="mockup-' . $row['token'] . '.html"');
+            echo $html;
+            exit;
+        }
         echo \Pp\Mock\FrameHeight::inject($html);
         exit;
     });

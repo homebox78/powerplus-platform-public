@@ -221,7 +221,8 @@ function AssetsBrowse() {
   const tab = cat === "logo" ? "logo" : "assets";
   const goTab = (t: string) => { const n = new URLSearchParams(); if (t === "logo") n.set("category", "logo"); setSp(n, { replace: true }); };
   const assetCats = catOptions.filter((o) => o.id !== "logo");
-  const shownSets = (sets.data ?? []).filter((s) => (tab === "logo" ? s.category === "logo" : s.category !== "logo"));
+  // 로고에는 '같은 스타일 세트'가 필요 없다(사용자 2026-10-19 — 등록 묶음 'semologo · 한국' 하나만 떠 있었다)
+  const shownSets = tab === "logo" ? [] : (sets.data ?? []).filter((s) => s.category !== "logo");
   const except = tab === "assets" && !cat ? "logo" : undefined;
   const curSet = sets.data?.find((s) => s.id === set);
   // 세트 아래에 최신 에셋 전체 목록을 항상 보여 준다(사용자 2026-10-12 — 예전엔 "전체 보기"를 눌러야 나왔다)

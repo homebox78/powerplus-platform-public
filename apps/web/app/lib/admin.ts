@@ -196,6 +196,7 @@ export const fetchSearchQuality = (days: number) => apiFetch<SearchQuality>(`/ad
 
 // 방문자 통계 — api/routes/stats.php GET /admin/visit-stats 와 1:1(2026-10-20)
 export interface StatGroup { key: string; pv: number; uv: number; visits: number }
+export const MOD_KO: Record<string, string> = { home: "홈", assets: "powerAssets", deck: "powerDeck", mock: "powerMock", guide: "powerGuide", community: "커뮤니티", mcp: "powerMCP 안내", account: "계정", help: "안내·도움말", admin: "관리자", etc: "기타" };
 export interface VisitStats {
   from: string; to: string; days: number; first_at: string;
   total: { pv: number; uv: number; visits: number; members: number; bounce: number; new_visitors: number; pages_per_visit: number };

@@ -9,14 +9,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { ChartContainer, ChartLegend, ChartLegendContent, ChartTooltip, ChartTooltipContent, type ChartConfig } from "@/components/ui/chart";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { fetchVisitStats, fmtAt, type StatGroup, type VisitStats } from "@/lib/admin";
+import { fetchVisitStats, fmtAt, MOD_KO, type StatGroup, type VisitStats } from "@/lib/admin";
 import { cn } from "@/lib/utils";
 import type { Route } from "./+types/admin-stats";
 
 export const meta: Route.MetaFunction = () => [{ title: "방문자 통계 — powerPlus 관리자" }];
 
 const DAYS = [{ id: "7", label: "7일" }, { id: "30", label: "30일" }, { id: "90", label: "90일" }, { id: "180", label: "180일" }, { id: "365", label: "1년" }];
-export const MOD_KO: Record<string, string> = { home: "홈", assets: "powerAssets", deck: "powerDeck", mock: "powerMock", guide: "powerGuide", community: "커뮤니티", mcp: "powerMCP 안내", account: "계정", help: "안내·도움말", admin: "관리자", etc: "기타" };
 const CH_KO: Record<string, string> = { web: "웹", addin: "PPT 애드인", mcp: "powerMCP", api: "REST 키" };
 const DEV_KO: Record<string, string> = { desktop: "PC", mobile: "모바일", tablet: "태블릿" };
 const WD = ["월", "화", "수", "목", "금", "토", "일"];

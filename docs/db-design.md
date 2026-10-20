@@ -179,6 +179,7 @@ comm_posts ─< comm_comments · comm_likes
 이관 스크립트 공통: 옛 DB `SELECT` 만, 새 표 upsert(자연키), 3회 실행 수치 동일, 끝에 건수 대조표 출력(옛 N → 새 N, 합침 M, 제외 K 와 사유).
 
 ## 8. DBA 운영 설정 (서버 적용값)
+- 2026-10-20 회사 서버: `innodb_buffer_pool_size=4G`(60-powerplus.cnf), 느린 쿼리 기록 1초(61-slowlog.cnf → /var/log/mysql/mariadb-slow.log). 검색은 `asset_tags` 를 LIKE 로 훑지 않고 PHP 쪽 태그 목록(캐시)에서 후보를 골라 `tag IN (…)` 색인으로 — 속도 점검 기록은 mydev 작업 로그.
 ```
 innodb_buffer_pool_size = 2G (RAM 8G 기준 25%)  innodb_log_file_size = 512M  innodb_flush_log_at_trx_commit = 1
 slow_query_log = ON  long_query_time = 1  log_queries_not_using_indexes = ON (주간 pt-query-digest 요약)

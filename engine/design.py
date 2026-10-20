@@ -698,8 +698,7 @@ def doc_text(path):
         if ext in (".md", ".txt", ".markdown", ".csv"):
             return open(path, encoding="utf-8", errors="replace").read()
         if ext == ".pdf":   # 글은 pypdf, 표는 pdfplumber 가 있으면 칸 그대로 덧붙인다(없으면 글만 — 표 칸이 한 줄로 풀린다)
-            from pypdf import PdfReader
-            body = "\n".join((p.extract_text() or "") for p in PdfReader(path).pages)
+            body = datafacts.pdf_text(path)   # 쪽을 나눠 여러 프로세스로 + 같은 파일은 저장해 둔 것(R95)
             tabs = datafacts.pdf_tables(path)
             return body + "".join(f"\n\n### 표 ({t['where']})\n" + datafacts.md_table(t["rows"]) for t in tabs)
         if ext == ".docx":   # 본문 순서 그대로 — 표는 제자리에 칸 그대로(마크다운 표)

@@ -139,6 +139,8 @@ _FL = json.load(open(os.path.join(HERE, "fonts", "fonts.json"), encoding="utf-8"
 VBODY = {x["id"]: (x["name"], tuple(x["faces"]), tuple(x["files"])) for x in _FL["body"]}
 VBODY_DEFAULT = _FL["body"][0]["id"]
 TITLE0 = ("G마켓 산스", "G마켓 산스 TTF Bold", "GmarketSansTTFBold.ttf")
+# refont 가 그대로 두는 서체 — 글머리표(Arial·Wingdings)·기호, 다른 언어 대신 그리기(fontbundle.fallback_pptx 가 저장 뒤에 넣는다)
+KEEP_FACES = {"Arial", "Wingdings", "Wingdings 2", "Wingdings 3", "Symbol", "Noto Sans JP", "Noto Sans SC", "Noto Sans TC"}
 
 # 작업마다 따로인 값(서체·크기 보정·줄 높이) — 엔진 한 프로세스가 세로 제안서 여러 건을 스레드로 함께 돌리면
 # 모듈 변수 하나를 같이 써서 한 작업의 서체가 다른 작업에 섞였다(2026-10-15 동시 작업 점검). run() 이 새 상태로 시작하고,
@@ -237,6 +239,7 @@ def refont(prs):
     """저장 직전 — 장표·레이아웃·마스터·테마의 서체 이름을 고른 서체로"""
     # 코드·양식은 a시월구일1~4 이름으로 짜여 있어 늘 고른 서체로 바꾼다(a시월구일은 목록에서 빠졌다)
     sub = lambda m: f'typeface="{fface(m.group(1))}"'
+    keep = set(FONT["body"][1]) | {FONT["title"][1]} | KEEP_FACES
     for part in prs.part.package.iter_parts():
         el = getattr(part, "_element", None)
         if el is not None:
@@ -245,6 +248,8 @@ def refont(prs):
                 tf = e.get("typeface") if isinstance(e.tag, str) else None
                 if tf and fface(tf) != tf:
                     e.set("typeface", fface(tf))
+                elif tf and tf not in keep and not tf.startswith("+"):   # 옛 제안서에서 가져온 도식 상자의 숨은 기본 서체(lstStyle 의 산돌고딕B·윤고딕 등) — 고른 본문 서체로(R96)
+                    e.set("typeface", FONT["body"][1][2 if re.search(r"(B|EB|Bold|굵|Heavy|Black)$", tf) else 1])
                 if lt != "ko-KR" and isinstance(e.tag, str) and e.tag.endswith(("}rPr", "}endParaRPr", "}defRPr")):   # 장표 언어(ja-JP·zh-CN …) — 맞춤법·한자 자형
                     e.set("lang", lt)
         elif "theme" in str(part.partname) and str(part.partname).endswith(".xml"):

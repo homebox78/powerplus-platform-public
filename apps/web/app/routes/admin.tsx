@@ -932,6 +932,9 @@ function fmtMb(mb: number | null | undefined) {
   if (mb === null || mb === undefined) return "—";
   return mb >= 1024 ? `${(mb / 1024).toFixed(1)} GB` : `${Math.round(mb).toLocaleString()} MB`;
 }
+function fmtGb(gb: number) {
+  return gb >= 1024 ? `${(gb / 1024).toFixed(2)} TB` : `${gb.toFixed(1)} GB`;
+}
 function fmtUptime(s: number | null) {
   if (s === null) return "—";
   const d = Math.floor(s / 86400);
@@ -976,6 +979,9 @@ function ServerResources() {
   const swapPct = mem ? (mem.swap_total_mb > 0 ? (mem.swap_used_mb / mem.swap_total_mb) * 100 : 0) : null;
   const disk = nw?.disk ?? null;
   const diskPct = disk && disk.total_gb > 0 ? (disk.used_gb / disk.total_gb) * 100 : null;
+  // 저장 폴더가 다른 디스크면(회사 서버 /data 2.7TB) 게이지를 하나 더 — 예전엔 아래 작은 글 한 줄이라 안 보였다
+  const dataDisk = nw?.data_disk && disk && Math.abs(nw.data_disk.total_gb - disk.total_gb) > 0.5 ? nw.data_disk : null;
+  const dataPct = dataDisk && dataDisk.total_gb > 0 ? (dataDisk.used_gb / dataDisk.total_gb) * 100 : null;
   const series = d?.series ?? [];
 
   return (
@@ -995,17 +1001,17 @@ function ServerResources() {
           <div className="rounded-lg border border-line px-4 py-6 text-center text-ink-4">이 서버에서는 측정할 수 없음</div>
         ) : (
           <>
-            <div className="grid min-w-0 grid-cols-2 gap-2 xl:grid-cols-4">
+            <div className={cn("grid min-w-0 grid-cols-2 gap-2", dataDisk ? "md:grid-cols-3 xl:grid-cols-5" : "xl:grid-cols-4")}>
               <Gauge label="CPU" pct={nw.cpu_pct} warn={(nw.cpu_pct ?? 0) >= 85}
                 value={nw.cores ? `${nw.cores}코어` : "—"} sub={nw.load ? `부하 ${nw.load.map((x) => x.toFixed(2)).join(" / ")}` : ""} />
               <Gauge label="메모리" pct={memPct} warn={(memPct ?? 0) >= 85} value={`${fmtMb(mem?.used_mb)} / ${fmtMb(mem?.total_mb)}`} sub={`가용 ${fmtMb(mem?.avail_mb)}`} />
               <Gauge label="스왑" pct={swapPct} warn={(swapPct ?? 0) >= 50} value={mem && mem.swap_total_mb > 0 ? `${fmtMb(mem.swap_used_mb)} / ${fmtMb(mem.swap_total_mb)}` : "스왑 없음"} sub="" />
               <Gauge label="디스크(/)" pct={diskPct} warn={(diskPct ?? 0) >= 85} value={disk ? `${disk.used_gb.toFixed(1)} / ${disk.total_gb.toFixed(1)} GB` : "—"} sub={disk ? `남음 ${disk.free_gb.toFixed(1)} GB` : ""} />
+              {dataDisk && <Gauge label="데이터 디스크(자료)" pct={dataPct} warn={(dataPct ?? 0) >= 85} value={`${fmtGb(dataDisk.used_gb)} / ${fmtGb(dataDisk.total_gb)}`} sub={`남음 ${fmtGb(dataDisk.free_gb)}`} />}
             </div>
             <div className="flex flex-wrap gap-x-6 gap-y-1 text-sm text-ink-4">
               <span>가동 <b className="tabular-nums text-ink">{fmtUptime(nw.uptime_s)}</b></span>
               <span>DB <b className="tabular-nums text-ink">{fmtMb(d.db.total_mb)}</b></span>
-              {nw.data_disk && <span>저장 폴더 디스크 <b className="tabular-nums text-ink">{nw.data_disk.used_gb.toFixed(1)} / {nw.data_disk.total_gb.toFixed(1)} GB</b></span>}
               <span>{d.last_sample_at ? `마지막 표본 ${fmtAt(d.last_sample_at)} · 5분마다` : "아직 표본 없음"}</span>
             </div>
           </>

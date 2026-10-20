@@ -250,22 +250,106 @@ def pptx_blocks(path):
     return out
 
 
+PDF_TABLE_PAGES = 80   # 표는 앞 80쪽만(RFP 뒤쪽은 서식·별지)
+
+
+def _pdf_cache(path, kind):
+    """같은 파일(크기·수정 시각)을 다시 읽지 않게 — 자료 옆 .<kind>.json. 다시 돌리기·자료 수집이 같은 pdf 를 또 읽었다(R95)"""
+    try:
+        st = os.stat(path)
+        return f"{path}.{kind}.json", f"{st.st_size}:{int(st.st_mtime)}"
+    except OSError:
+        return None, None
+
+
+def _cache_get(path, kind):
+    cp, sig = _pdf_cache(path, kind)
+    try:
+        with open(cp, encoding="utf-8") as f:
+            d = json.load(f)
+        return d["data"] if d.get("sig") == sig else None
+    except Exception:
+        return None
+
+
+def _cache_put(path, kind, data):
+    cp, sig = _pdf_cache(path, kind)
+    if cp:
+        try:
+            with open(cp, "w", encoding="utf-8") as f:
+                json.dump({"sig": sig, "data": data}, f, ensure_ascii=False)
+        except Exception:
+            pass
+
+
+def _pdf_procs(n_pages):
+    """쪽을 나눠 읽을 프로세스 수 — 코어 하나가 느린 서버(회사 서버 Xeon 2.0GHz)에서 129쪽 RFP 가 글 49초·표 127초 걸렸다(R95)"""
+    return max(1, min(8, (os.cpu_count() or 2) // 3, n_pages // 8))
+
+
+def _pdf_tables_part(path, start, end):
+    import pdfplumber
+    out = []
+    with pdfplumber.open(path) as pdf:
+        for pi in range(start, end):
+            for t in pdf.pages[pi].extract_tables() or []:
+                rows = _pad([[c or "" for c in r] for r in t if r])
+                if len(rows) >= 2 and any(any(r) for r in rows):
+                    out.append({"file": os.path.basename(path), "where": f"{pi + 1}쪽", "title": "", "rows": rows})
+    return out
+
+
+def _pdf_text_part(path, start, end):
+    from pypdf import PdfReader
+    pages = PdfReader(path).pages
+    return [(pages[i].extract_text() or "") for i in range(start, end)]
+
+
+def _split_run(fn, path, n, procs):
+    """0..n 쪽을 procs 개 묶음으로 나눠 프로세스로 돌리고 순서대로 합친다. 실패하면 한 프로세스로"""
+    if procs <= 1:
+        return [fn(path, 0, n)]
+    step = -(-n // procs)
+    spans = [(s, min(n, s + step)) for s in range(0, n, step)]
+    try:
+        from concurrent.futures import ProcessPoolExecutor
+        with ProcessPoolExecutor(max_workers=len(spans)) as ex:
+            return list(ex.map(fn, [path] * len(spans), [a for a, _ in spans], [b for _, b in spans]))
+    except Exception:
+        return [fn(path, 0, n)]
+
+
+def pdf_page_count(path):
+    from pypdf import PdfReader
+    return len(PdfReader(path).pages)
+
+
+def pdf_text(path):
+    """pdf 글(쪽 순서대로) — 쪽을 나눠 여러 프로세스로, 같은 파일이면 저장해 둔 것"""
+    got = _cache_get(path, "text")
+    if got is not None:
+        return got
+    n = pdf_page_count(path)
+    text = "\n".join(t for part in _split_run(_pdf_text_part, path, n, _pdf_procs(n)) for t in part)
+    _cache_put(path, "text", text)
+    return text
+
+
 def pdf_tables(path):
     """pdf 표 — pdfplumber 가 있을 때만(엔진 서버: pip install pdfplumber). 없으면 [] (글은 pypdf 로 따로 읽는다)"""
     try:
-        import pdfplumber
+        import pdfplumber  # noqa: F401
     except ImportError:
         return []
-    out = []
+    got = _cache_get(path, "tables")
+    if got is not None:
+        return got
     try:
-        with pdfplumber.open(path) as pdf:
-            for pi, page in enumerate(pdf.pages[:80], 1):
-                for t in page.extract_tables() or []:
-                    rows = _pad([[c or "" for c in r] for r in t if r])
-                    if len(rows) >= 2 and any(any(r) for r in rows):
-                        out.append({"file": os.path.basename(path), "where": f"{pi}쪽", "title": "", "rows": rows})
+        n = min(PDF_TABLE_PAGES, pdf_page_count(path))
+        out = [t for part in _split_run(_pdf_tables_part, path, n, _pdf_procs(n)) for t in part]
     except Exception:
         return []
+    _cache_put(path, "tables", out)
     return out
 
 

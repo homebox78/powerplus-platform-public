@@ -189,6 +189,7 @@ function OpsBoard() {
       { label: "이번 달 AI 비용", value: `$${o.modules.ai_month_usd.toFixed(2)}`, sub: "powerDeck 전체", to: "/admin/deck-settings/bill" },
       { label: "결과 없던 검색(7일)", value: n(o.modules.zero_search_total), sub: o.modules.zero_searches.slice(0, 3).map((z) => z.q).join(" · ") || undefined, to: "/admin/search" },
       { label: "새 에셋(7일)", value: n(o.modules.assets_new7), to: "/admin/assets" },
+      { label: "받은편지함 검토 필요", value: n(o.modules.inbox_review ?? 0), sub: "자동 등록 못 한 그림", to: "/admin/assets/inbox?status=review", warn: (o.modules.inbox_review ?? 0) > 0 },
       { label: "새 시안(7일)", value: n(o.modules.mock_new7), to: "/admin/mockups" },
     ] },
     { title: "품질 검수", foot: "열린 결함 수", rows: [

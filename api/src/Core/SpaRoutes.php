@@ -24,7 +24,7 @@ final class SpaRoutes
         'community/:id?', 'search', 'login', 'signup',
         'account', 'account/keys', 'account/posts', 'account/saved/:id?', 'account/plan', 'account/settings/:section?/:sub?',
         'admin/login', 'admin', 'admin/ai', 'admin/users', 'admin/point-rules', 'admin/billing', 'admin/mail', 'admin/contacts',
-        'admin/removals', 'admin/assets', 'admin/requests', 'admin/search', 'admin/stats', 'admin/guide', 'admin/deck', 'admin/deck-settings/:sub?',
+        'admin/removals', 'admin/assets', 'admin/assets/inbox', 'admin/requests', 'admin/search', 'admin/stats', 'admin/guide', 'admin/deck', 'admin/deck-settings/:sub?',
         'admin/mockups', 'admin/mock/checklist', 'admin/deck/checklist', 'admin/site/checklist', 'admin/qa', 'admin/qa/:module',
         'admin/community', 'admin/help', 'admin/changelog', 'admin/policies',
         'legal/:doc', 'about', 'notice', 'changelog', 'help', 'help/:cat', 'help/:cat/:article', 'contact', 'removal',

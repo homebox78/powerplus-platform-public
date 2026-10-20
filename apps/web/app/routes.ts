@@ -31,6 +31,7 @@ export default [
     route("admin/contacts", "./routes/admin-contacts.tsx"),
     route("admin/removals", "./routes/admin-removals.tsx"),
     route("admin/assets", "./routes/admin-assets.tsx"),
+    route("admin/assets/inbox", "./routes/admin-asset-inbox.tsx"),
     route("admin/requests", "./routes/admin-requests.tsx"),
     route("admin/search", "./routes/admin-search.tsx"),
     route("admin/stats", "./routes/admin-stats.tsx"),

@@ -129,6 +129,8 @@ return static function (Router $r): void {
                     }
                 })(),
                 'assets_new7' => $v('SELECT COUNT(*) FROM asset_items WHERE deleted_at IS NULL AND created_at >= NOW() - INTERVAL 7 DAY'),
+                // 자산 받은편지함 — 자동 등록하지 못하고 사람 손을 기다리는 그림(글자·결함·비슷한 그림·AI 실패)
+                'inbox_review' => $v("SELECT COUNT(*) FROM asset_inbox WHERE status = 'review'"),
                 // 찾았는데 하나도 없던 말(7일) — 자료 요청·등록 후보
                 'zero_searches' => array_map(static fn (array $r): array => ['q' => (string) $r['q'], 'n' => (int) $r['n']],
                     $rows("SELECT q, COUNT(*) AS n FROM asset_search_logs WHERE results = 0 AND day >= CURDATE() - INTERVAL 7 DAY GROUP BY q ORDER BY n DESC LIMIT 5")),

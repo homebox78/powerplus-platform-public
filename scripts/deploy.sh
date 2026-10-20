@@ -134,6 +134,8 @@ if [ -n "$PHPB" ]; then
   addcron prewarm-wm.php '30 3 * * *' ">> $L/prewarm.log 2>&1"
   addcron deck-reaper.php '*/5 * * * *' ">> $L/deck-reaper.log 2>&1"
   addcron health-alert.php '*/10 * * * *' ">> $L/health-alert.log 2>&1"
+  # 2026-10-20 자산 받은편지함 — 관리자가 올린 그림을 확인해 powerAssets 로 등록(한 회차 최대 40장, 남으면 다음 회차)
+  addcron asset-inbox.php '*/10 * * * *' ">> $L/asset-inbox.log 2>&1"
   sudo -u www-data "$PHPB" /var/www/platform/api/bin/sample-metrics.php || echo "⚠ 서버 자원 표본 실패(error_log 확인)"
 fi
 echo "설치 완료"

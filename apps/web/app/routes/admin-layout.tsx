@@ -31,7 +31,8 @@ const GROUPS: Array<{ label: string; items: Item[] }> = [
   // 같은 서비스끼리 한 묶음 — 부모를 누르면 펼치고 접힌다. 기본은 펼침(사용자 지시 2026-10-07). 하위가 하나뿐이면 묶지 않는다.
   { label: "모듈 운영", items: [
     { to: "/admin/assets", label: "powerAssets", icon: Images, role: "curator", children: [
-      { to: "/admin/assets", label: "에셋" },
+      { to: "/admin/assets", label: "에셋", end: true },
+      { to: "/admin/assets/inbox", label: "자산 받은편지함" },
       { to: "/admin/search", label: "검색 통계" },
     ] },
     { to: "/admin/deck", label: "powerDeck", icon: Presentation, role: "admin", children: [

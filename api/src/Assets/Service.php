@@ -242,17 +242,40 @@ final class Service
             // 같은 글자의 다른 뜻 태그("환경" 의 환경설정·운영환경)로만 걸리지 않게
             $noise = Lexicon::SENSE_NOISE[$tok] ?? [];
             $noiseSql = $noise ? ' AND t.tag NOT IN (' . implode(',', array_fill(0, count($noise), '?')) . ')' : '';
+            // 태그 쪽은 `t.tag LIKE '%낱말%'`(태그 63만 줄을 에셋마다 훑어 운영에서 검색 2.5초, 2026-10-20) 대신
+            // PHP 에서 낱말이 든 태그를 먼저 고르고(Lexicon::tagsContaining, 캐시) `t.tag IN (…)` 으로 색인을 탄다. 결과는 LIKE 와 같다.
+            // 태그 목록을 못 읽었을 때(빈 목록)만 옛 LIKE 로.
+            $tagCond = static function (array $cands) use ($noise): array {
+                $cands = $noise ? array_values(array_diff($cands, $noise)) : $cands;
+                if ($cands === []) {
+                    return ['0', []];   // 든 태그가 하나도 없으면 태그로는 못 맞춘다
+                }
+                return ['i.id IN (SELECT t.item_id FROM asset_tags t WHERE t.tag IN (' . implode(',', array_fill(0, count($cands), '?')) . '))', $cands];
+            };
+            $haveTags = Lexicon::allTags() !== [];
             foreach (Lexicon::variants($tok) as $v) {
                 // 3자 이하 영문·숫자는 낱말 단위로 — "lh" 가 silhouette·health 에 걸려 18건이 나왔다(2026-10-12 MCP 시험 r1-a1)
                 if (preg_match('/^[a-z0-9]{1,3}$/', $v)) {
                     $re = '(^|[^a-z0-9])' . $v . '([^a-z0-9]|$)';
-                    $ors[] = "LOWER(COALESCE(i.name,'')) REGEXP ? OR LOWER(COALESCE(i.alt,'')) REGEXP ? OR EXISTS (SELECT 1 FROM asset_tags t WHERE t.item_id = i.id AND t.tag REGEXP ?)";
-                    array_push($ps, $re, $re, $re);
+                    if ($haveTags) {
+                        [$tc, $tp] = $tagCond(Lexicon::tagsContaining($v, $re));
+                        $ors[] = "LOWER(COALESCE(i.name,'')) REGEXP ? OR LOWER(COALESCE(i.alt,'')) REGEXP ? OR {$tc}";
+                        array_push($ps, $re, $re, ...$tp);
+                    } else {
+                        $ors[] = "LOWER(COALESCE(i.name,'')) REGEXP ? OR LOWER(COALESCE(i.alt,'')) REGEXP ? OR EXISTS (SELECT 1 FROM asset_tags t WHERE t.item_id = i.id AND t.tag REGEXP ?)";
+                        array_push($ps, $re, $re, $re);
+                    }
                     continue;
                 }
                 $like = '%' . self::escapeLike($v) . '%';
-                $ors[] = "LOWER(COALESCE(i.name,'')) LIKE ? OR LOWER(COALESCE(i.alt,'')) LIKE ? OR EXISTS (SELECT 1 FROM asset_tags t WHERE t.item_id = i.id AND t.tag LIKE ?{$noiseSql})";
-                array_push($ps, $like, $like, $like, ...$noise);
+                if ($haveTags) {
+                    [$tc, $tp] = $tagCond(Lexicon::tagsContaining($v));
+                    $ors[] = "LOWER(COALESCE(i.name,'')) LIKE ? OR LOWER(COALESCE(i.alt,'')) LIKE ? OR {$tc}";
+                    array_push($ps, $like, $like, ...$tp);
+                } else {
+                    $ors[] = "LOWER(COALESCE(i.name,'')) LIKE ? OR LOWER(COALESCE(i.alt,'')) LIKE ? OR EXISTS (SELECT 1 FROM asset_tags t WHERE t.item_id = i.id AND t.tag LIKE ?{$noiseSql})";
+                    array_push($ps, $like, $like, $like, ...$noise);
+                }
             }
             return ['(' . implode(' OR ', $ors) . ')', $ps];
         };
@@ -323,7 +346,8 @@ final class Service
                     : "낱말을 모두 가진 에셋이 없어 '" . implode("', '", $relaxed) . "' 없이 찾았습니다.";
             }
         }
-        $all = (int) Db::val("SELECT COUNT(*) {$base}", $qp);
+        // 권한 밖 수(hidden)는 임직원·관리자에게만 보이므로 그때만 센다 — 예전엔 누구에게나 같은 COUNT 를 두 번 돌렸다(2026-10-20 속도 점검)
+        $all = self::seesTotals($a) ? (int) Db::val("SELECT COUNT(*) {$base}", $qp) : $total;
         $order = match ($f['sort'] ?? 'newest') {
             'popular' => '(SELECT COUNT(*) FROM asset_uses u WHERE u.item_id = i.id) DESC, i.created_at DESC',
             'name' => 'i.name IS NULL, i.name ASC, i.id ASC',

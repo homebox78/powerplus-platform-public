@@ -7,7 +7,7 @@ import { Files } from "./ResultFiles";
 import { Script } from "./ResultScript";
 import { Detail } from "./ResultDetail";
 import { CommentPanel, PinImage, useFeedback } from "../Feedback";
-import { OverviewCanvas } from "../OverviewCanvas";
+import { OverviewCanvas } from "../OverviewCanvasLazy";
 
 type Props = { job: Job; me: string; isAdmin?: boolean; onNew?: () => void; onRetry: () => void; onChange?: (j: Job) => void; onLogout?: () => void; onPlan?: () => void };
 type Pair = { b?: JobFile; a?: JobFile; label?: string };   // label = 표지·목차·간지(쪽번호 없는 앞장)

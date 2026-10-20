@@ -92,10 +92,10 @@ final class Lexicon
         $tags = null;
         // 캐시는 에셋 목록이 바뀌면(수·마지막 수정 시각) 저절로 새로 — 하루 캐시라 대량 등록 직후 새 브랜드 이름이 오타로 고쳐졌다
         // (2026-10-18 semologo 로고 뒤 '네이버'→네이비·'삼성'→남성·'토스'→소스)
+        // 캐시 파일은 PHP 배열(var_export) — JSON 은 요청마다 풀어야 해서 회사 서버에서 229ms 가 들었다(2026-10-20 속도 점검). opcache 가 통째로 들고 있어 0ms
         $ver = self::assetsVersion();
         if (is_readable($cache) && (time() - (int) @filemtime($cache) < 86400)) {
-            $raw = @file_get_contents($cache);
-            $got = $raw ? json_decode($raw, true) : null;
+            $got = self::readPhpCache($cache);
             if (is_array($got) && ($got['v'] ?? null) === $ver && is_array($got['tags'] ?? null)) {
                 $tags = $got['tags'];
                 self::$pairs = is_array($got['pairs'] ?? null) ? $got['pairs'] : null;
@@ -116,7 +116,7 @@ final class Lexicon
                     $tags[$w] = (int) $r['n'];
                 }
                 self::$pairs = self::buildPairs();
-                @file_put_contents($cache, json_encode(['v' => $ver, 'tags' => $tags, 'pairs' => self::$pairs], JSON_UNESCAPED_UNICODE));
+                self::writePhpCache($cache, ['v' => $ver, 'tags' => $tags, 'pairs' => self::$pairs]);
             } catch (\Throwable) {
                 $tags = [];   // DB 를 못 읽으면 교정 없이 원문 그대로 검색
             }
@@ -126,14 +126,119 @@ final class Lexicon
     }
 
     private static ?array $pairs = null;
+    private static ?array $allTags = null;
 
+    /**
+     * 태그 전체(모든 axis, 소문자, 중복 없음) — 검색이 `t.tag LIKE '%낱말%'` 로 태그 63만 줄을 훑던 것을
+     * PHP 에서 후보 태그를 고른 뒤 `t.tag IN (…)`(색인)으로 바꾸려고(2026-10-20 속도 점검: 운영 검색 2.5초 → 0.3초대).
+     * dict() 와 달리 2회 미만·10자 넘는 태그도 다 들어 있어 LIKE 와 같은 결과를 낸다. 캐시는 PHP 파일(opcache 에 올라가 요청마다 읽는 비용이 없다),
+     * 에셋·태그가 바뀌면(assetsVersion) 새로 만든다.
+     */
+    public static function allTags(): array
+    {
+        if (self::$allTags !== null) {
+            return self::$allTags;
+        }
+        $cache = rtrim(sys_get_temp_dir(), '/\\') . '/pp_assets_alltags.php';
+        $ver = self::assetsVersion();
+        $got = self::readPhpCache($cache);
+        if (is_array($got) && ($got['v'] ?? null) === $ver && is_array($got['tags'] ?? null)) {
+            return self::$allTags = $got['tags'];
+        }
+        $tags = [];
+        try {
+            foreach (Db::rows('SELECT DISTINCT tag FROM asset_tags') as $r) {
+                $w = mb_strtolower((string) $r['tag']);
+                if ($w !== '') {
+                    $tags[$w] = true;
+                }
+            }
+            $tags = array_map('strval', array_keys($tags));   // "2026" 같은 태그는 배열 키에서 정수가 된다 — 문자열로
+            self::writePhpCache($cache, ['v' => $ver, 'tags' => $tags]);
+        } catch (\Throwable) {
+            return self::$allTags = [];   // 못 읽으면 빈 목록 — 호출부가 옛 LIKE 로 되돌아간다
+        }
+        return self::$allTags = $tags;
+    }
+
+    /** 낱말이 들어 있는 태그들(LIKE '%낱말%' 과 같음). $regex 를 주면 정규식(짧은 영문·숫자 낱말 단위)으로. 빈 목록이면 호출부가 LIKE 로 */
+    public static function tagsContaining(string $needle, ?string $regex = null): array
+    {
+        $all = self::allTags();
+        if ($all === []) {
+            return [];
+        }
+        $needle = mb_strtolower($needle);
+        $out = [];
+        if ($regex !== null) {
+            $re = '/' . str_replace('/', '\/', $regex) . '/u';
+            foreach ($all as $t) {
+                if (@preg_match($re, $t)) {
+                    $out[] = $t;
+                }
+            }
+            return $out;
+        }
+        foreach ($all as $t) {
+            if (mb_strpos($t, $needle) !== false) {
+                $out[] = $t;
+            }
+        }
+        return $out;
+    }
+
+    /** PHP 배열 캐시 파일 읽기 — opcache 가 컴파일한 배열을 들고 있어 요청마다 비용이 없다(CLI 는 처음 한 번 파싱). 없거나 깨졌으면 null */
+    private static function readPhpCache(string $file): ?array
+    {
+        if (!is_readable($file)) {
+            return null;
+        }
+        try {
+            $got = include $file;
+            return is_array($got) ? $got : null;
+        } catch (\Throwable) {
+            return null;
+        }
+    }
+
+    /** PHP 배열 캐시 파일 쓰기 — 임시 파일에 쓴 뒤 바꿔 끼워 읽는 쪽이 반쪽 파일을 보지 않게. opcache 가 옛 판을 들고 있을 수 있어 무효화도 */
+    private static function writePhpCache(string $file, array $data): void
+    {
+        $tmp = $file . '.' . getmypid() . '.tmp';
+        if (@file_put_contents($tmp, '<?php return ' . var_export($data, true) . ';') !== false && @rename($tmp, $file)) {
+            if (function_exists('opcache_invalidate')) {
+                @opcache_invalidate($file, true);
+            }
+        } else {
+            @unlink($tmp);
+        }
+    }
+
+    private static ?string $ver = null;
+
+    /**
+     * 에셋·태그 판 번호(수·마지막 수정 시각·태그 수). 태그 63만 줄 COUNT 가 회사 서버에서 요청마다 178ms 라(2026-10-20)
+     * 60초 안에는 작은 파일에 적어 둔 값을 쓴다 — 자산 등록·태그 수정이 사전·태그 목록에 비치는 데 최대 1분.
+     */
     private static function assetsVersion(): string
     {
+        if (self::$ver !== null) {
+            return self::$ver;   // 한 요청 안에서 dict()·allTags() 가 같은 COUNT 를 두 번 돌리지 않게
+        }
+        $vf = rtrim(sys_get_temp_dir(), '/\\') . '/pp_assets_version.txt';
+        if (is_readable($vf) && time() - (int) @filemtime($vf) < 60) {
+            $v = trim((string) @file_get_contents($vf));
+            if ($v !== '') {
+                return self::$ver = $v;
+            }
+        }
         try {
             // 태그만 바뀌어도(낱말 더하기) 새로 — 태그 수를 함께 본다
-            return (string) Db::val("SELECT CONCAT(COUNT(*), ':', COALESCE(MAX(updated_at), ''), ':', (SELECT COUNT(*) FROM asset_tags)) FROM asset_items");
+            self::$ver = (string) Db::val("SELECT CONCAT(COUNT(*), ':', COALESCE(MAX(updated_at), ''), ':', (SELECT COUNT(*) FROM asset_tags)) FROM asset_items");
+            @file_put_contents($vf, self::$ver);
+            return self::$ver;
         } catch (\Throwable) {
-            return '';
+            return self::$ver = '';
         }
     }
 
@@ -214,7 +319,7 @@ final class Lexicon
 
     private static function cachePath(): string
     {
-        return rtrim(sys_get_temp_dir(), '/\\') . '/pp_assets_tagdict.json';
+        return rtrim(sys_get_temp_dir(), '/\\') . '/pp_assets_tagdict.php';   // 2026-10-20 JSON → PHP 배열(opcache)
     }
 
     /** 오타로 보이는 낱말을 실제 낱말로. 고칠 게 없거나 아는 말이면 null. */

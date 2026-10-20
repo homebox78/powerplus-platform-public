@@ -12,15 +12,45 @@ import { Button } from "@/components/ui/button";
 import { useMe } from "@/lib/auth";
 import { MODULES, menuHref, type ModuleMenu, type PlatformModule } from "@/lib/modules";
 import { cn } from "@/lib/utils";
-import { ASSET_SCREENS, AssetsLandingStats } from "@/modules/assets/screens";
-import { GUIDE_SCREENS, GuideLandingSteps } from "@/modules/guide/screens";
 import { useGuideOverrides, type GuideCopy } from "@/modules/guide/overrides";
-import { DECK_SCREENS, DeckLandingSteps } from "@/modules/deck/screens";
-import { MOCK_SCREENS, MockLandingSteps } from "@/modules/mock/screens";
+import { lazy, Suspense, type ComponentType } from "react";
 
-// 모듈별 실내용 — 작업 단위 slug → 화면. 없는 조합은 아래 자리 안내가 뜬다.
-const SCREENS: Record<string, Record<string, () => React.JSX.Element>> = { assets: ASSET_SCREENS, deck: DECK_SCREENS, guide: GUIDE_SCREENS, mock: MOCK_SCREENS };
-const LANDING_EXTRA: Record<string, () => React.JSX.Element | null> = { assets: AssetsLandingStats, deck: DeckLandingSteps, guide: GuideLandingSteps, mock: MockLandingSteps };
+// 모듈별 실내용 — 작업 단위 slug → 화면. 모듈 파일은 그 모듈에 들어갈 때만 받는다(2026-10-20 속도 점검: 네 모듈을 한 파일이 다 import 해
+// powerAssets 에 들어가도 powerDeck 장표 화면 470KB 가 같이 내려왔다). 없는 slug 는 아래 자리 안내가 뜬다.
+type ScreenMap = Record<string, () => React.JSX.Element>;
+type ModuleScreens = { screens: ScreenMap; landing: (() => React.JSX.Element | null) | null };
+const LOADERS: Record<string, () => Promise<ModuleScreens>> = {
+  assets: () => import("@/modules/assets/screens").then((m) => ({ screens: m.ASSET_SCREENS, landing: m.AssetsLandingStats })),
+  deck: () => import("@/modules/deck/screens").then((m) => ({ screens: m.DECK_SCREENS, landing: m.DeckLandingSteps })),
+  guide: () => import("@/modules/guide/screens").then((m) => ({ screens: m.GUIDE_SCREENS, landing: m.GuideLandingSteps })),
+  mock: () => import("@/modules/mock/screens").then((m) => ({ screens: m.MOCK_SCREENS, landing: m.MockLandingSteps })),
+};
+const loaded: Record<string, Promise<ModuleScreens>> = {};
+const load = (id: string) => (loaded[id] ??= LOADERS[id]!());
+// lazy 는 한 번 만든 것을 다시 써야 한다(렌더마다 새로 만들면 화면이 깜빡이며 다시 마운트된다)
+const lazyCache = new Map<string, ComponentType>();
+function lazyScreen(id: string, slug: string | null, fallback: ComponentType): ComponentType {
+  const key = `${id}|${slug ?? "*landing"}`;
+  let c = lazyCache.get(key);
+  if (!c) {
+    c = lazy(() => load(id).then((m) => ({ default: (slug === null ? m.landing : m.screens[slug]) ?? fallback })));
+    lazyCache.set(key, c);
+  }
+  return c;
+}
+const Nothing = () => null;
+const Pending = () => <div className="mt-5 h-40 animate-pulse rounded-panel bg-ink/5" aria-label="불러오는 중" />;
+// 모듈 파일에 그 slug 화면이 없으면(S2 에서 옮겨 올 자리) 자리 안내 — 열쇠(모듈|slug)마다 하나
+const placeholders = new Map<string, ComponentType>();
+function placeholderFor(id: string, slug: string, text: string): ComponentType {
+  const key = `${id}|${slug}`;
+  let c = placeholders.get(key);
+  if (!c) {
+    c = () => <section className="mt-5 rounded-panel border border-dashed border-line-3 p-10 text-center text-md text-ink-4"><Copy text={text} /></section>;
+    placeholders.set(key, c);
+  }
+  return c;
+}
 
 export default function ModulePage() {
   const { pathname } = useLocation();
@@ -66,7 +96,7 @@ export default function ModulePage() {
       {landing ? (
         <>
           <ModuleBanner m={m} />
-          {LANDING_EXTRA[m.id] && (() => { const X = LANDING_EXTRA[m.id]!; return <X />; })()}
+          {LOADERS[m.id] && (() => { const X = lazyScreen(m.id, null, Nothing); return <Suspense fallback={null}><X /></Suspense>; })()}
           <McpBand />
         </>
       ) : (
@@ -76,12 +106,8 @@ export default function ModulePage() {
           {viewOnly && <ViewOnlyNotice />}
           {gated ? (
             <MemberLock reason={me ? (me.access?.reason ?? "PLAN_REQUIRED") : "UNAUTHORIZED"} />
-          ) : loading && !landing && !openLink ? null : SCREENS[m.id]?.[item.slug] ? (
-            (() => { const S = SCREENS[m.id]![item.slug]!; return <S />; })()
-          ) : (
-            <section className="mt-5 rounded-panel border border-dashed border-line-3 p-10 text-center text-md text-ink-4">
-              <Copy text={`${m.name} · ${item.label} 화면은 S2 단계에서 옮겨 옵니다.`} />
-            </section>
+          ) : loading && !landing && !openLink ? null : (
+            (() => { const S = lazyScreen(m.id, item.slug, placeholderFor(m.id, item.slug, `${m.name} · ${item.label} 화면은 S2 단계에서 옮겨 옵니다.`)); return <Suspense fallback={<Pending />}><S /></Suspense>; })()
           )}
         </>
       )}

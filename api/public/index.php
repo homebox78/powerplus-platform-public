@@ -48,7 +48,8 @@ if (in_array($method, ['POST', 'PUT', 'PATCH', 'DELETE'], true) && !str_starts_w
 }
 
 $router = new Router();
-foreach (['core', 'assets', 'deck', 'deck_kit', 'mock', 'mock_wire', 'guide', 'comm', 'info', 'saved', 'search', 'assist', 'addin', 'billing', 'admin', 'admin2', 'admin3', 'admin_billing', 'admin_bulk', 'admin_bulk2', 'admin_ai', 'admin_guide', 'me_bulk', 'admin_system', 'deck_checklist', 'site_checklist', 'qa_checklist', 'policy', 'reports', 'chat', 'stats'] as $mod) {
+// 먼저 등록한 경로가 이긴다 — asset_inbox 는 admin 앞(admin.php 의 GET /admin/assets/{id} 가 /admin/assets/inbox 를 먹지 않게)
+foreach (['core', 'assets', 'deck', 'deck_kit', 'mock', 'mock_wire', 'guide', 'comm', 'info', 'saved', 'search', 'assist', 'addin', 'billing', 'asset_inbox', 'admin', 'admin2', 'admin3', 'admin_billing', 'admin_bulk', 'admin_bulk2', 'admin_ai', 'admin_guide', 'me_bulk', 'admin_system', 'deck_checklist', 'site_checklist', 'qa_checklist', 'policy', 'reports', 'chat', 'stats'] as $mod) {
     $file = __DIR__ . "/../routes/{$mod}.php";
     if (is_file($file)) {
         (require $file)($router);

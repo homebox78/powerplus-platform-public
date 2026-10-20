@@ -83,6 +83,7 @@ comm_posts ─< comm_comments · comm_likes
 | `asset_favorites` | user_id, item_id | `ux_user_item` |
 | `asset_requests` | user_id(NULL=MCP 자동), title, kind, detail, status, source ENUM(user,mcp_gap), handled_item_id | `ix_status_created` |
 | `asset_search_logs` | q, results, user_id, channel, day | `ix_day`, 파티션 월(무결과율) |
+| `asset_inbox` | 자산 받은편지함(2026-10-20 "이미지를 올려두면 알아서 일정시간 서버가 확인 후 자동 등록"). public_id, batch CHAR(16)(한 번 올린 묶음), set_name(관리자가 적은 묶음 이름 원문), kind_hint ENUM(auto,photo,illust,icon), orig_name, path(`<storage.dir>/inbox/` 아래 상대 경로, 웹 밖), sha256(올린 원본), bytes, w, h, status ENUM(pending,processing,done,review,dup,failed,rejected), reason, ai_name, ai_ko JSON, ai_en JSON, ai_category, ai_has_text, item_id(→ asset_items, 등록되면), uploaded_by, tries, created_at, updated_at. 처리 = `api/bin/asset-inbox.php`(크론 10분). 원본은 등록·중복·빼기 뒤 지우고 미리보기(`.thumb.webp`)만 남긴다 | `ix_status_id(status, id)`(대기열·목록), `ix_sha`(중복), `ix_batch` |
 
 검색: `asset_items` → Meilisearch 문서(`public_id, name, alt, tags_ko[], tags_en[], category, axis.*`), 동의어는 Meili synonyms 에 `asset_tag_dict` 를 밀어 넣는 잡. DB 는 폴백.
 이관: 파워플러스 `assets`(5,000+) + 홈박스 `sample-images.json`(2,204) → sha256 으로 합치기, `legacy_key` 두 벌 보존, `usage_log`/`user_favorites` → `asset_uses(channel=addin)`/`asset_favorites`, `search_logs` → `asset_search_logs`, `content_requests` → `asset_requests`.

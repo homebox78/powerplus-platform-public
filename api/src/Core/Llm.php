@@ -54,12 +54,14 @@ final class Llm
 
     /**
      * 메시지 묶음([{role, content}])을 보내고 답 글을 받는다. 실패하면 null.
+     * $model 을 주면 OpenRouter 로 갈 때 그 모델(그림을 읽어야 하는 곳 — 관리자가 고른 채팅 모델이 그림을 못 읽을 수 있다).
+     * $kind 는 비용 기록(deck_ai_usage.kind, 8자 이하) 구분 — 자산 받은편지함은 'inbox'.
      */
-    public static function chat(array $messages, int $maxTokens = 700, int $timeout = 40): ?string
+    public static function chat(array $messages, int $maxTokens = 700, int $timeout = 40, ?string $model = null, string $kind = 'chat'): ?string
     {
         // 켜기·하루 상한은 없앴다(2026-10-18 사용자 지시 "상한 이런거 없애고") — 예전에 꺼 둔 값이 남아 있어도 보지 않는다
         $cfg = self::config();
-        $body = ['model' => $cfg['model'], 'messages' => $messages, 'max_tokens' => $maxTokens, 'temperature' => 0.4, 'usage' => ['include' => true]];
+        $body = ['model' => $model ?? $cfg['model'], 'messages' => $messages, 'max_tokens' => $maxTokens, 'temperature' => 0.4, 'usage' => ['include' => true]];
         // Claude 키가 있으면 먼저 — 모델 고정 Claude::CHAT_MODEL(관리자 Claude API 칸 '지금 쓰는 모델'에 보인다).
         // 키를 풀 수 없음·크레딧 소진·키 거절이면 null → 아래 OpenRouter 로 이어서
         $r = AiKeys::textProvider() === 'claude' ? AiKeys::claudeCall(Claude::CHAT_MODEL, $body, $timeout, 'low') : null;
@@ -92,8 +94,8 @@ final class Llm
             return null;
         }
         try {
-            Db::exec("INSERT INTO deck_ai_usage (email, job_id, kind, model, cost_usd, tokens_in, tokens_out, created_at) VALUES ('system', NULL, 'chat', ?, ?, ?, ?, NOW())",
-                [mb_substr((string) ($d['model'] ?? $cfg['model']), 0, 64), (float) ($d['usage']['cost'] ?? 0),
+            Db::exec("INSERT INTO deck_ai_usage (email, job_id, kind, model, cost_usd, tokens_in, tokens_out, created_at) VALUES ('system', NULL, ?, ?, ?, ?, ?, NOW())",
+                [substr($kind, 0, 8), mb_substr((string) ($d['model'] ?? $body['model']), 0, 64), (float) ($d['usage']['cost'] ?? 0),
                     (int) ($d['usage']['prompt_tokens'] ?? 0), (int) ($d['usage']['completion_tokens'] ?? 0)]);
         } catch (\Throwable) {
         }

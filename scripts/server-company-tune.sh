@@ -37,6 +37,10 @@ sudo tee /etc/apache2/conf-available/powerplus-fpm.conf >/dev/null <<'EOF'
 SetEnvIf Authorization "(.+)" HTTP_AUTHORIZATION=$1
 # PHP 최대 실행 600초(99-powerplus.ini)보다 길게 — AI 호출 대기
 ProxyTimeout 620
+# 위 ProxyTimeout 은 SetHandler(php8.5-fpm.conf) 로 만든 PHP 연결에는 안 먹는다 — 그 연결에 직접 정한다(없으면 120초에서 504, R93)
+<Proxy "unix:/run/php/php8.5-fpm.sock|fcgi://localhost">
+    ProxySet timeout=620
+</Proxy>
 EOF
 echo "Protocols h2 http/1.1" | sudo tee /etc/apache2/conf-available/zz-http2.conf >/dev/null
 { sudo a2dismod -q php8.5 mpm_prefork >/dev/null && sudo a2enmod -q mpm_event proxy_fcgi setenvif http2 >/dev/null && sudo a2enconf -q php8.5-fpm powerplus-fpm zz-http2 >/dev/null; } || rollback "모듈 전환"
@@ -49,3 +53,4 @@ done
 curl -s --max-time 20 "$B/api/v1/health" | grep -q '"db":true' || rollback "health db"
 echo "완료: $(apache2ctl -M 2>/dev/null | grep -o -E 'mpm_[a-z]+|http2_module|proxy_fcgi_module' | tr '\n' ' ') · HTTP $(curl -s -o /dev/null -w '%{http_version}' --http2 $B/) · 버퍼풀 $(sudo mysql -N -e 'SELECT @@innodb_buffer_pool_size/1073741824')GB · FPM 일꾼 $(pgrep -fc 'php-fpm: pool www')"
 echo "토큰 전달은 따로 확인: 키로 /api/v1/me 와 가짜 토큰 /api/v1/me 응답이 달라야 한다."
+echo "긴 요청도 따로 확인: 루트에 sleep(130) 하는 임시 php 를 두고 불러 200 인지(504 면 R93), 확인 뒤 지운다."

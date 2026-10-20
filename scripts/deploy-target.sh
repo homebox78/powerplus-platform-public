@@ -1,21 +1,15 @@
 #!/usr/bin/env bash
 # 배포 대상 서버 고르기 — 배포 스크립트 4개(deploy·deploy-mockref·deploy-mcp·deploy-engine)가 맨 앞에서 source 한다.
 #   PP_TARGET=company (기본) powerplus.solideos.com:46443 — 회사 서버(2026-10-20 09:57 전환), solideos, SSH 4622(사무실 IP 만), 키 ~/.ssh/pp_company_ed25519
-#   PP_TARGET=gcp     powerplus.hom2box.com — 옛 GCP VM. 전환 뒤엔 회사 서버로 넘기는 중계뿐이라 배포하지 않는다(PP_ALLOW_GCP=1 일 때만)
+#   (2026-10-20 갈래: 개인 GCP 는 홈박스 저장소 D:\homebox-platform 이 맡는다 — 이 저장소에서는 배포 대상이 아니다)
 # 내보내는 값: HOST · SSH_PORT · KEY_SRC · PUBLIC(https 주소, 포트 포함) · SSH_OPTS(배열) · ENGINE_HOME(엔진 계정 홈)
 PP_TARGET="${PP_TARGET:-company}"
 case "$PP_TARGET" in
-  gcp)
-    [ "${PP_ALLOW_GCP:-0}" = 1 ] || { echo "❌ GCP 는 2026-10-20 전환 뒤 중계 서버다 — 배포는 회사 서버(PP_TARGET 생략). 정말 GCP 면 PP_ALLOW_GCP=1"; exit 1; }
-    HOST="${PP_HOST:?PP_HOST=user@host 필요}"; SSH_PORT=22; PUBLIC="https://powerplus.hom2box.com"; ENGINE_HOME=/home/deploy
-    KEY_SRC="${PP_SSH_KEY:-}"
-    for k in "$HOME/google_key.pem"; do [ -n "$KEY_SRC" ] && break; [ -f "$k" ] && KEY_SRC="$k"; done
-    ;;
   company)
     HOST="solideos@powerplus.solideos.com"; SSH_PORT=4622; PUBLIC="https://powerplus.solideos.com:46443"; ENGINE_HOME=/home/solideos
     KEY_SRC="${PP_SSH_KEY:-$HOME/.ssh/pp_company_ed25519}"
     ;;
-  *) echo "❌ PP_TARGET 은 gcp 또는 company"; exit 1;;
+  *) echo "❌ 파워플러스 배포 대상은 company 하나(개인 GCP 는 D:\homebox-platform)"; exit 1;;
 esac
 [ -f "$KEY_SRC" ] || { echo "❌ SSH 키를 찾지 못함($PP_TARGET) — PP_SSH_KEY=/path/key"; exit 1; }
 SSH_OPTS=(-p "$SSH_PORT" -o BatchMode=yes -o StrictHostKeyChecking=accept-new)

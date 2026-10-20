@@ -4,6 +4,8 @@
 import { useMutation } from "@tanstack/react-query";
 import { loadTossPayments } from "@tosspayments/tosspayments-sdk";
 import { apiBase, postJson } from "@/lib/api";
+// 가격·플랜·구독 화면 스위치(2026-10-20 사내 전용 운영 동안 가림) — 원천은 가벼운 lib/plans-ui.ts
+export { PLANS_UI } from "@/lib/plans-ui";
 
 export type Billing = "year" | "month";
 export const won = (n: number) => `₩${n.toLocaleString("ko-KR")}`;

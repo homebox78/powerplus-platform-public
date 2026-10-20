@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { PLAN_KO, useLogout, useMe } from "@/lib/auth";
 import { EXTRA_NAV, MODULES } from "@/lib/modules";
+import { PLANS_UI } from "@/lib/plans-ui";
 import { cn } from "@/lib/utils";
 
 const ITEM = "hb-dark-item h-10 rounded-xl px-3 text-md text-white";
@@ -80,7 +81,8 @@ export function AppHeader() {
           {u ? (
             <>
               <NotificationBell />
-              {me!.billing_visible && me!.plan === "free" && <Button asChild size="sm" className="hidden sm:inline-flex"><Link to="/account/plan">Pro 시작하기</Link></Button>}
+              {/* 가격·플랜 CTA·배지·요금제 링크는 PLANS_UI 뒤(2026-10-20 사내 전용 운영 동안 끔) */}
+              {PLANS_UI && me!.billing_visible && me!.plan === "free" && <Button asChild size="sm" className="hidden sm:inline-flex"><Link to="/account/plan">Pro 시작하기</Link></Button>}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <button type="button" className={`hb-avatar-btn ml-1 inline-flex size-9 items-center justify-center rounded-full text-sm font-bold text-white ${u.avatar_url ? "" : "overflow-hidden bg-[#C9C9C9]"}`} aria-label="내 계정 메뉴">
@@ -92,7 +94,7 @@ export function AppHeader() {
                   <div className="px-3 pb-3 pt-2.5">
                     <div className="text-md font-bold">{u.name ?? "이름 없음"}</div>
                     <div className="truncate text-sm text-white/55">{u.email}</div>
-                    <Button asChild size="sm" variant="ghost" className="mt-3 w-full rounded-full border-0 bg-[#3D3D40] text-white hover:bg-[#4A4A4D] hover:text-white"><Link to="/account">프로필 설정 · {PLAN_KO[me!.plan]}</Link></Button>
+                    <Button asChild size="sm" variant="ghost" className="mt-3 w-full rounded-full border-0 bg-[#3D3D40] text-white hover:bg-[#4A4A4D] hover:text-white"><Link to="/account">{PLANS_UI ? `프로필 설정 · ${PLAN_KO[me!.plan]}` : "프로필 설정"}</Link></Button>
                   </div>
                   <DropdownMenuSeparator className="bg-white/10" />
                   <DropdownMenuItem asChild className={ITEM}><Link to="/account/keys"><KeyRound aria-hidden />API · MCP 키</Link></DropdownMenuItem>
@@ -104,7 +106,7 @@ export function AppHeader() {
                   <DropdownMenuSeparator className="bg-white/10" />
                   <div className="flex items-center justify-between px-3 py-2"><span className="text-md">테마</span><ThemeSwitch /></div>
                   <DropdownMenuSeparator className="bg-white/10" />
-                  {me!.billing_visible && <DropdownMenuItem asChild className={ITEM}><Link to="/pricing">요금제</Link></DropdownMenuItem>}
+                  {PLANS_UI && me!.billing_visible && <DropdownMenuItem asChild className={ITEM}><Link to="/pricing">요금제</Link></DropdownMenuItem>}
                   <DropdownMenuItem asChild className={ITEM}><Link to="/docs">MCP 연결 가이드</Link></DropdownMenuItem>
                   <DropdownMenuItem asChild className={ITEM}><Link to="/community?c=notice">공지사항</Link></DropdownMenuItem>
                   <DropdownMenuItem asChild className={ITEM}><Link to="/help">도움말 센터</Link></DropdownMenuItem>

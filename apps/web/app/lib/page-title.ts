@@ -1,6 +1,7 @@
 // 탭 제목 규칙 — "화면 이름 · 모듈 — powerPlus" (사이트 종합 평가 리포트 2-1·2-2·4-6, 2026-10-09).
 // 자체 meta 가 없는 화면(모듈 탭·설정·404 등)은 root 의 meta 가 이 함수로 제목을 만든다. 화면이 자기 meta 를 내면 그쪽이 이긴다.
 import { MODULES } from "@/lib/modules";
+import { PLANS_UI } from "@/lib/plans-ui";
 
 export const SITE = "powerPlus";
 // 열린 서버 주소(회사 서버 이관 2026-10-19 — hom2box 로 박혀 있었다). 미리 렌더할 때만 기본값
@@ -52,7 +53,8 @@ export function descForPath(pathname: string): string | null {
     case "contact": return "서비스 이용·제휴·오류 문의를 남기면 운영팀이 메일로 답합니다.";
     case "removal": return "게시된 화면·자료의 삭제를 요청하고 접수번호로 처리 상태를 확인합니다.";
     case "legal": return "이용약관·개인정보처리방침 등 powerPlus 정책 문서와 버전별 이력입니다.";
-    case "pricing": return "회원 전용 서비스의 이용 범위와 Pro·Team 요금제 안내입니다.";
+    // 2026-10-20 사내 전용 운영 — PLANS_UI 가 꺼져 있으면 요금제 문구 없이(화면은 홈으로 보낸다)
+    case "pricing": return PLANS_UI ? "회원 전용 서비스의 이용 범위와 Pro·Team 요금제 안내입니다." : null;
     case "search": return "에셋·가이드 문서·커뮤니티 글·내 장표와 시안을 한 번에 찾습니다.";
     case "notice": case "changelog": return "powerPlus 공지사항과 서비스 변경 이력입니다.";
     case "login": case "signup": return "이메일 인증 또는 소셜 계정으로 powerPlus 에 로그인합니다.";
@@ -64,7 +66,7 @@ export function descForPath(pathname: string): string | null {
 export function ogTitleForPath(pathname: string): string {
   const seg = pathname.split("/").filter(Boolean);
   const fixed: Record<string, string> = {
-    community: "커뮤니티", help: "도움말 센터", about: "powerPlus 소개", contact: "문의", pricing: "요금제", search: "통합 검색", legal: "약관·정책", powermcp: "powerMCP", docs: "문서",
+    community: "커뮤니티", help: "도움말 센터", about: "powerPlus 소개", contact: "문의", ...(PLANS_UI ? { pricing: "요금제" } : {}), search: "통합 검색", legal: "약관·정책", powermcp: "powerMCP", docs: "문서",
   };
   const f = seg[0] ? fixed[seg[0]] : undefined;
   if (f) return pageTitle(f);

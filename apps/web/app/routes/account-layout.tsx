@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router";
 import { PageSkeleton } from "@/components/hb/page-skeleton";
 import { useMe } from "@/lib/auth";
+import { PLANS_UI } from "@/lib/plans-ui";
 import { cn } from "@/lib/utils";
 import { SETTINGS, visibleSubs } from "./account-settings";
 
@@ -25,7 +26,8 @@ export default function AccountLayout() {
   if (!me) return <PageSkeleton kind="form" />;
   const inSettings = pathname.startsWith("/account/settings");
   const [, , , curSection = SETTINGS[0]!.id, curSub] = pathname.split("/");
-  const menu = MENU.filter((m) => (!m.admin || isAdmin) && (!m.billing || me.billing_visible));
+  // 플랜·결제 메뉴 = PLANS_UI(2026-10-20 사내 전용 운영 동안 끔) && billing_visible
+  const menu = MENU.filter((m) => (!m.admin || isAdmin) && (!m.billing || (PLANS_UI && me.billing_visible)));
   const item = (m: (typeof MENU)[number], mobile = false) => (
     <NavLink key={m.to} to={m.to} end={m.end} className={({ isActive }) => cn("inline-flex shrink-0 items-center rounded-lg text-md transition-colors", mobile ? "h-9 gap-[5px] px-3" : "h-10 gap-2.5", isActive ? "font-semibold text-ink" : "text-ink-3 hover:text-ink")}>
       <m.icon className="size-[18px]" aria-hidden />{m.label}

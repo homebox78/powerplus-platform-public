@@ -17,6 +17,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { MCP_EXAMPLE_GROUPS } from "@/data/mcp-examples";
 import toolsData from "@/data/mcp-tools.json";
 import { useMe } from "@/lib/auth";
+import { PLANS_UI } from "@/lib/plans-ui";
 import { mcpServerUrl, mcpSnippets } from "@/lib/mcp-connect";
 import { MODULES } from "@/lib/modules";
 import { cn } from "@/lib/utils";
@@ -211,7 +212,8 @@ export default function PowerMcpPage() {
           </div>
           <div className="flex flex-wrap gap-2">
             <Button asChild size="lg" variant="white"><Link to={keysTo}>키 관리</Link></Button>
-            {me?.billing_visible && <Button asChild size="lg" variant="outline" className="border-white/30 bg-transparent text-white hover:bg-white/10 hover:text-white"><Link to="/pricing">요금제</Link></Button>}
+            {/* 요금제 버튼은 PLANS_UI 뒤(2026-10-20 사내 전용 운영 동안 끔) */}
+            {PLANS_UI && me?.billing_visible && <Button asChild size="lg" variant="outline" className="border-white/30 bg-transparent text-white hover:bg-white/10 hover:text-white"><Link to="/pricing">요금제</Link></Button>}
             <Button asChild size="lg" variant="outline" className="border-white/30 bg-transparent text-white hover:bg-white/10 hover:text-white"><Link to="/docs">자세한 문서</Link></Button>
           </div>
         </div>

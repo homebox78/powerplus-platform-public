@@ -12,6 +12,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { apiFetch } from "@/lib/api";
 import { PLAN_KO, PROVIDER_KO, useAvatar, useMe, useUpdateMe } from "@/lib/auth";
+import { PLANS_UI } from "@/lib/plans-ui";
 import type { Route } from "./+types/account";
 
 export const meta: Route.MetaFunction = () => [{ title: "프로필 — powerPlus" }];
@@ -46,7 +47,8 @@ export default function AccountPage() {
       <div className="flex items-end gap-4">
         <span className={`flex size-32 items-center justify-center rounded-full text-5xl font-bold text-white ${u.avatar_url ? "" : "overflow-hidden bg-ink"}`}>{u.avatar_url ? <img src={u.avatar_url} alt="" className="size-full rounded-full object-cover" referrerPolicy="no-referrer" /> : initial}</span>
         <div className="flex flex-col gap-3 pb-2">
-          <div className="flex gap-1.5"><Tag tone="soft">{PLAN_KO[me.plan]}</Tag><Tag tone="line">{me.kind === "staff" ? "임직원" : "외부"}</Tag>{me.roles.map((r) => <Tag key={r} tone="line">{r}</Tag>)}</div>
+          {/* 플랜 배지는 PLANS_UI 뒤(2026-10-20 사내 전용 운영 동안 끔) — 임직원·외부 구분은 남긴다 */}
+          <div className="flex gap-1.5">{PLANS_UI && <Tag tone="soft">{PLAN_KO[me.plan]}</Tag>}<Tag tone="line">{me.kind === "staff" ? "임직원" : "외부"}</Tag>{me.roles.map((r) => <Tag key={r} tone="line">{r}</Tag>)}</div>
           <div className="flex gap-2">
             <input ref={fileRef} type="file" aria-label="프로필 사진 올리기" accept="image/jpeg,image/png,image/webp,image/gif" className="hidden" onChange={pickFile} />
             <Button size="sm" variant="outline" onClick={() => fileRef.current?.click()} disabled={avatar.upload.isPending}>{avatar.upload.isPending ? "올리는 중…" : "사진 바꾸기"}</Button>
@@ -101,9 +103,9 @@ export default function AccountPage() {
             <AlertDialogDescription asChild>
               <ul className="mt-1 flex list-disc flex-col gap-1 pl-5 text-md leading-[1.6] text-ink-3">
                 <li>이메일·이름·사진·로그인 연결이 바로 지워집니다.</li>
-                <li>API·MCP 키가 전부 폐기되고, 포인트·크레딧은 사라집니다.</li>
+                <li>{PLANS_UI ? "API·MCP 키가 전부 폐기되고, 포인트·크레딧은 사라집니다." : "API·MCP 키가 전부 폐기되고, 포인트는 사라집니다."}</li>
                 <li>올린 글·댓글·시안은 지워지지 않고 ‘탈퇴한 사용자’로 보입니다.</li>
-                <li>결제 기록은 전자상거래법에 따라 5년 보관합니다.</li>
+                {PLANS_UI && <li>결제 기록은 전자상거래법에 따라 5년 보관합니다.</li>}
                 <li>되돌릴 수 없습니다.</li>
               </ul>
             </AlertDialogDescription>

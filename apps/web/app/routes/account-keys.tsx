@@ -17,6 +17,7 @@ import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { apiFetch, postJson, type ApiError } from "@/lib/api";
 import { PLAN_KO, useMe } from "@/lib/auth";
+import { PLANS_UI } from "@/lib/plans-ui";
 import { mcpServerUrl, mcpSnippets, restBaseUrl } from "@/lib/mcp-connect";
 import { cn } from "@/lib/utils";
 import type { Route } from "./+types/account-keys";
@@ -69,7 +70,8 @@ export default function AccountKeysPage() {
       <nav className="text-sm text-ink-4" aria-label="경로"><Link to="/account" className="hover:text-ink">계정</Link> <span aria-hidden>›</span> API · MCP 키</nav>
       <div className="mt-3 flex flex-wrap items-end gap-4">
         <h1 className="text-4xl font-extrabold tracking-[-0.03em]">API · MCP 키</h1>
-        <div className="flex gap-1.5 pb-1.5"><Tag tone="soft">{PLAN_KO[me.plan]}</Tag><Tag tone="line">활성 {active.length}</Tag>{me.limits && <Tag tone="line">일 {me.limits.api_daily < 0 ? "무제한" : `${me.limits.api_daily.toLocaleString()}회`}</Tag>}</div>
+        {/* 플랜 배지는 PLANS_UI 뒤(2026-10-20) — 활성 수·하루 한도는 운영 정보라 남긴다 */}
+        <div className="flex gap-1.5 pb-1.5">{PLANS_UI && <Tag tone="soft">{PLAN_KO[me.plan]}</Tag>}<Tag tone="line">활성 {active.length}</Tag>{me.limits && <Tag tone="line">일 {me.limits.api_daily < 0 ? "무제한" : `${me.limits.api_daily.toLocaleString()}회`}</Tag>}</div>
         <span className="flex-1" />
         <Button size="md" onClick={() => { setPlain(null); setOpen(true); }}><Plus aria-hidden />새 키 만들기</Button>
       </div>

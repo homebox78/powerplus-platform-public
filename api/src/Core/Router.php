@@ -48,6 +48,8 @@ final class Router
         '/assets/samples/',
         // powerDeck 완성 산출물 받기 링크 — 토큰(32바이트, 해시 대조)이 곧 권한. 핸들러(Deck\Links::download)가 만료·끊김·작업 삭제를 같은 404 로 거른다(2026-10-18)
         '/d/',
+        // 방문자 통계 알림 — 로그인 전 화면(랜딩·로그인)도 센다. 핸들러(Core\Stats::hitWeb)가 봇·연타·분당 120줄을 거른다(2026-10-20)
+        '/stats/hit',
     ];
 
     public static function isOpen(string $method, string $path): bool

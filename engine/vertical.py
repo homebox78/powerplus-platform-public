@@ -3093,6 +3093,9 @@ def run(job, j, opts, brief, note):
     try:   # 쓴 서체 파일 — 산출물 묶음(zip)의 '5_서체'(가로 장표와 같은 규칙). 사용자 2026-10-14 "산출물에 폰트가 없는데?"
         # 결과 pptx 에 실제로 적힌 서체를 모은다(fontbundle — 섞인 언어 글은 그 언어 서체로 바꾼 뒤, 라이선스·설치 안내 포함, 2026-10-18)
         import fontbundle
+        _sz = fontbundle.sanitize_pptx(out)   # refont 가 못 잡은 남의 서체까지 — 마지막 한 번 더(R97)
+        if _sz:
+            job.event(fontbundle.sanitize_note(_sz), "warn")
         fbk = fontbundle.fallback_pptx(out)
         if fbk:
             job.event(f"다른 언어 글 {len(fbk)}곳을 그 글자가 있는 서체로 바꿨습니다(" + " · ".join(dict.fromkeys(f"{a} → {b}" for a, b, _ in fbk)) + ")", "warn")

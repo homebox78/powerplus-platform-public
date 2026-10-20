@@ -33,6 +33,7 @@ export default [
     route("admin/assets", "./routes/admin-assets.tsx"),
     route("admin/requests", "./routes/admin-requests.tsx"),
     route("admin/search", "./routes/admin-search.tsx"),
+    route("admin/stats", "./routes/admin-stats.tsx"),
     route("admin/guide", "./routes/admin-guide.tsx"),
     route("admin/deck", "./routes/admin-deck.tsx"),
     route("admin/deck-settings/:sub?", "./routes/admin-deck-settings.tsx"),

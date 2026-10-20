@@ -25,7 +25,7 @@ import { AUDIT_KO, auditTargetKo, type AdminAnalytics, type AnalyticsPeriod, CHA
 import { useMe } from "@/lib/auth";
 import { LiveStatus } from "@/components/hb/live-status";
 import type { AdminSystem, MetricsRange, ServerMetrics } from "@/lib/admin";
-import { fetchServerMetrics } from "@/lib/admin";
+import { fetchServerMetrics, fetchVisitStats, MOD_KO } from "@/lib/admin";
 import { cn } from "@/lib/utils";
 import { MobileCarousel } from "@/components/hb/mobile-carousel";
 import type { Route } from "./+types/admin";
@@ -52,6 +52,8 @@ export default function AdminDashboard() {
       <OpsBoard />
 
       <SystemStrip />
+
+      {isAdmin && <VisitCard />}
 
       <ModuleCards a={a} loading={an.isLoading} />
 
@@ -109,6 +111,61 @@ function Donut({ pct }: { pct: number }) {
  *  주황(point)은 늦었거나 멈춘 것만(기한 지남·멈춘 작업·실패·다시 생긴 결함·휴면 해제 요청). 데이터 = GET /admin/ops, 1분마다 */
 type OpsRow = { label: string; value: string; sub?: string; to: string; warn?: boolean };
 const ago = (at: string | null) => { if (!at) return ""; const d = Math.floor((Date.now() - new Date(at.replace(" ", "T")).getTime()) / 86_400_000); return d <= 0 ? "오늘 들어옴" : `가장 오래된 것 ${d}일 전`; };
+
+// 방문자 최근 7일 요약 — 자세한 건 관리자 › 통계 › 방문자 통계(admin-stats.tsx). 같은 API(/admin/visit-stats)를 7일로(사용자 2026-10-20 "메인 대시보드에도 간략하게")
+const visitConfig = { uv: { label: "방문자", color: "var(--color-chart)" } } satisfies ChartConfig;
+function VisitCard() {
+  const to = new Date();
+  const ymd = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  const q = useQuery({ queryKey: ["admin", "visit-7"], queryFn: () => fetchVisitStats({ from: ymd(new Date(to.getTime() - 6 * 86400_000)), to: ymd(to) }) });
+  const s = q.data;
+  const diff = (a: number, b: number) => (b > 0 ? `${a >= b ? "+" : ""}${Math.round(((a - b) / b) * 1000) / 10}%` : "");
+  const items = s ? [
+    { label: "방문자", v: s.total.uv, d: diff(s.total.uv, s.prev.uv) },
+    { label: "방문", v: s.total.visits, d: diff(s.total.visits, s.prev.visits) },
+    { label: "페이지뷰", v: s.total.pv, d: diff(s.total.pv, s.prev.pv) },
+    { label: "회원 방문자", v: s.total.members, d: diff(s.total.members, s.prev.members) },
+  ] : [];
+  const topMods = s ? s.modules.slice(0, 4) : [];
+  const chan = s ? s.channels : [];
+  return (
+    <Card className="min-w-0 gap-4 py-4">
+      <CardHeader className="px-4">
+        <CardTitle className="text-md">방문자 · 최근 7일</CardTitle>
+        <CardDescription>{s?.first_at ? `지난 7일과 비교합니다. 기록은 ${fmtAt(s.first_at).slice(0, 10)}부터입니다.` : "기록이 쌓이는 중입니다."}</CardDescription>
+        <CardAction><Button size="sm" variant="outline" asChild><Link to="/admin/stats">자세히</Link></Button></CardAction>
+      </CardHeader>
+      <CardContent className="grid min-w-0 gap-4 px-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-2 xl:grid-cols-4">
+          {s ? items.map((x) => (
+            <div key={x.label} className="rounded-lg border border-line px-3 py-2.5">
+              <div className="text-sm text-ink-4">{x.label}</div>
+              <div className="text-xl font-bold tabular-nums">{x.v.toLocaleString()}</div>
+              <div className="text-xs tabular-nums text-ink-4">{x.d ? `지난 7일보다 ${x.d}` : " "}</div>
+            </div>
+          )) : Array.from({ length: 4 }, (_, i) => <Skeleton key={i} className="h-[76px]" />)}
+          <div className="col-span-full flex flex-wrap gap-x-4 gap-y-1 text-sm text-ink-4">
+            {topMods.map((m) => <span key={m.key}>{MOD_KO[m.key] ?? m.key} <b className="tabular-nums text-ink">{m.uv.toLocaleString()}</b></span>)}
+            {chan.length > 0 && <span className="ml-auto">{chan.map((c) => `${({ web: "웹", addin: "애드인", mcp: "MCP", api: "REST" } as Record<string, string>)[c.key] ?? c.key} ${c.pv.toLocaleString()}`).join(" · ")}</span>}
+          </div>
+        </div>
+        <div className="min-w-0">
+          {!s ? <Skeleton className="h-[140px] w-full" /> : s.daily.length === 0 ? <div className="grid h-[140px] place-items-center text-sm text-ink-4">아직 기록이 없습니다</div> : (
+            <ChartContainer config={visitConfig} className="aspect-auto h-[140px] w-full">
+              <AreaChart data={s.daily.map((d) => ({ ...d, day: d.day.slice(5) }))} margin={{ left: 0, right: 8, top: 4 }}>
+                <CartesianGrid vertical={false} />
+                <XAxis dataKey="day" tickLine={false} axisLine={false} tickMargin={6} />
+                <YAxis tickLine={false} axisLine={false} width={36} allowDecimals={false} />
+                <ChartTooltip cursor={false} content={<ChartTooltipContent indicator="line" labelFormatter={(v) => `${v}일`} />} />
+                <Area dataKey="uv" type="monotone" fill="var(--color-uv)" fillOpacity={0.2} stroke="var(--color-uv)" strokeWidth={2} dot={false} />
+              </AreaChart>
+            </ChartContainer>
+          )}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
 
 function OpsBoard() {
   const { isAdmin } = useMe();

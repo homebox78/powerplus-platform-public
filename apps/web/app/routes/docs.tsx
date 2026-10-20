@@ -18,6 +18,7 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import { Button } from "@/components/ui/button";
 import toolsData from "@/data/mcp-tools.json";
 import { PLAN_KO, useMe } from "@/lib/auth";
+import { PLANS_UI } from "@/lib/plans-ui";
 import { mcpServerUrl, mcpSnippets, restBaseUrl } from "@/lib/mcp-connect";
 import { MODULES } from "@/lib/modules";
 import { cn } from "@/lib/utils";
@@ -86,7 +87,8 @@ const EXAMPLES = [
 ];
 const FAQ: Array<[string, string]> = [
   ["키 하나로 무엇을 쓰나요?", "키 하나로 powerMCP 와 REST API 를 함께 씁니다. 키를 만들 때 고른 모듈의 도구만 부를 수 있습니다."],
-  ["하루에 몇 번 부를 수 있나요?", "플랜마다 하루 한도가 있습니다. 넘으면 다음 날 자정(한국 시간)에 풀립니다. 자세한 숫자는 호출 한도 문서에 있습니다."],
+  // 2026-10-20 사내 전용 운영 — PLANS_UI 가 꺼져 있으면 "플랜" 대신 "계정"
+  ["하루에 몇 번 부를 수 있나요?", (PLANS_UI ? "플랜마다" : "계정마다") + " 하루 한도가 있습니다. 넘으면 다음 날 자정(한국 시간)에 풀립니다. 자세한 숫자는 호출 한도 문서에 있습니다."],
   ["코드도 받을 수 있나요?", "네. 시안 조립 도구는 React·Vue 페이지 코드와 테마 CSS 를 줍니다. 부품 도구는 소스 파일과 설치 명령을 줍니다. 글·연락처는 가상 값이니 실제 내용으로 바꿔 쓰세요."],
   ["AI 학습에 써도 되나요?", "안 됩니다. 응답은 참고용이며 학습 데이터셋 구축·미러링에 쓸 수 없습니다. 출처 표기와 AI 생성 표시는 지우지 마세요."],
   ["어떤 클라이언트를 지원하나요?", "MCP Streamable HTTP 를 지원하는 클라이언트면 됩니다. Claude Code, Claude 웹·데스크톱, Cursor, Codex, ChatGPT, Gemini CLI 설정은 클라이언트별 설정 문서에 있습니다."],
@@ -150,7 +152,7 @@ function GuidePage() {
         <dl className="mt-4 grid grid-cols-1 gap-x-6 gap-y-2 text-sm sm:grid-cols-[88px_minmax(0,1fr)]">
           <dt className="font-semibold text-ink-4">인증</dt><dd className="[overflow-wrap:anywhere]">Authorization: Bearer &lt;발급받은 키&gt;</dd>
           <dt className="font-semibold text-ink-4">전송</dt><dd>Streamable HTTP(세션 없음)</dd>
-          <dt className="font-semibold text-ink-4">한도</dt><dd>플랜별 하루 한도, 넘으면 429</dd>
+          <dt className="font-semibold text-ink-4">한도</dt><dd>{PLANS_UI ? "플랜별" : "계정별"} 하루 한도, 넘으면 429</dd>
         </dl>
       </section>
 
@@ -256,7 +258,7 @@ const API_BLOCKS: DocBlock[] = [
     "실패하면 error(설명), code(오류 코드), hint(고칠 곳) 세 칸으로 옵니다. 날짜는 ISO 8601 형식이고, 항목 id 는 16자 공개 id 입니다.",
   ] },
   { id: "account", title: "계정·키", table: { head: ["요청", "설명"], rows: [
-    ["GET /me", "로그인한 사용자·플랜·역할·하루 한도"],
+    ["GET /me", PLANS_UI ? "로그인한 사용자·플랜·역할·하루 한도" : "로그인한 사용자·역할·하루 한도"],
     ["GET /keys", "내 키 목록(가린 값)"],
     ["GET /keys/{id}/usage", "키별 날짜별 사용량"],
   ] } },
@@ -354,17 +356,19 @@ const LIMIT_BLOCKS: DocBlock[] = [
 
 function LimitsPage() {
   const { me } = useMe();
-  const rows = PLAN_LIMITS.filter((r) => !r.paid || me?.billing_visible);
+  // 2026-10-20 사내 전용 운영 — PLANS_UI 가 꺼져 있으면 플랜 표 대신 임직원 줄과 내 계정 한도만(숫자는 운영 정보라 남긴다)
+  const rows = PLANS_UI ? PLAN_LIMITS.filter((r) => !r.paid || me?.billing_visible) : PLAN_LIMITS.filter((r) => r.plan === "staff");
+  const head = PLANS_UI ? "플랜별 한도" : "계정별 한도";
   return (
-    <DocsFrame toc={[{ id: "plans", title: "플랜별 한도" }, ...LIMIT_BLOCKS.map((b) => ({ id: b.id, title: b.title }))]}>
+    <DocsFrame toc={[{ id: "plans", title: head }, ...LIMIT_BLOCKS.map((b) => ({ id: b.id, title: b.title }))]}>
       <h1 className={H1}>호출 한도</h1>
-      <Copy className="mt-4 text-lg leading-[1.7] text-ink-3" text="키마다 하루에 부를 수 있는 횟수가 정해져 있습니다. 한도는 키 주인의 플랜을 따릅니다." />
+      <Copy className="mt-4 text-lg leading-[1.7] text-ink-3" text={PLANS_UI ? "키마다 하루에 부를 수 있는 횟수가 정해져 있습니다. 한도는 키 주인의 플랜을 따릅니다." : "키마다 하루에 부를 수 있는 횟수가 정해져 있습니다. 한도는 키 주인의 계정을 따릅니다."} />
       <section id="plans" className="mt-8 scroll-mt-27">
-        <h2 className="text-2xl font-bold tracking-[-0.02em]">플랜별 한도</h2>
-        {me?.limits && <p className="mt-3 text-md text-ink-3">내 플랜 <b className="text-ink">{PLAN_KO[me.plan]}</b> · 하루 <b className="text-ink">{me.limits.api_daily < 0 ? "무제한" : `${me.limits.api_daily.toLocaleString()}회`}</b></p>}
+        <h2 className="text-2xl font-bold tracking-[-0.02em]">{head}</h2>
+        {me?.limits && <p className="mt-3 text-md text-ink-3">{PLANS_UI ? <>내 플랜 <b className="text-ink">{PLAN_KO[me.plan]}</b></> : "내 계정"} · 하루 <b className="text-ink">{me.limits.api_daily < 0 ? "무제한" : `${me.limits.api_daily.toLocaleString()}회`}</b></p>}
         <div className="mt-5 overflow-hidden rounded-2xl border border-line">
           <table className="w-full text-sm">
-            <thead className="bg-ground-3"><tr><th className="px-4 py-3 text-center font-semibold">플랜</th><th className="px-4 py-3 text-center font-semibold">하루 호출</th><th className="px-4 py-3 text-center font-semibold">키 개수</th></tr></thead>
+            <thead className="bg-ground-3"><tr><th className="px-4 py-3 text-center font-semibold">{PLANS_UI ? "플랜" : "계정"}</th><th className="px-4 py-3 text-center font-semibold">하루 호출</th><th className="px-4 py-3 text-center font-semibold">키 개수</th></tr></thead>
             <tbody>
               {rows.map((r) => (
                 <tr key={r.plan} className={cn("border-t border-line", me?.plan === r.plan && "bg-ground-2")}>
@@ -376,7 +380,8 @@ function LimitsPage() {
             </tbody>
           </table>
         </div>
-        {!me?.billing_visible && <Copy className="mt-3 text-sm text-ink-4" text="유료 요금제는 공개할 때 한도를 함께 알립니다." />}
+        {PLANS_UI ? (!me?.billing_visible && <Copy className="mt-3 text-sm text-ink-4" text="유료 요금제는 공개할 때 한도를 함께 알립니다." />)
+          : <Copy className="mt-3 text-sm text-ink-4" text="협력사 계정의 한도는 관리자에게 문의해 주세요." />}
       </section>
       <div className="mt-12"><DocBlocks blocks={LIMIT_BLOCKS} /></div>
     </DocsFrame>
@@ -401,7 +406,7 @@ const ERROR_BLOCKS: DocBlock[] = [
     ["CONSENT_REQUIRED", "428", "필수 약관 동의 전입니다. 웹에 로그인해 동의 화면에서 동의하세요."],
     ["CSRF_BLOCKED", "403", "상태를 바꾸는 요청에 X-Requested-With·JSON 본문·키가 없습니다."],
     ["BLOCKED", "403", "이용이 정지된 계정입니다."],
-    ["UPGRADE_REQUIRED", "402", "지금 플랜에서 볼 수 없는 자료입니다."],
+    ["UPGRADE_REQUIRED", "402", PLANS_UI ? "지금 플랜에서 볼 수 없는 자료입니다." : "지금 계정 권한으로 볼 수 없는 자료입니다."],
     ["NOT_ENOUGH_POINTS", "402", "포인트가 모자랍니다."],
   ] } },
   { id: "input-errors", title: "요청·입력", table: { head: ["코드", "상태", "뜻"], rows: [

@@ -15,6 +15,7 @@ import { LogoSearch } from "../LogoSearch";
 const DECK_LANGS = [["ko", "한국어"], ["en", "영어 English"], ["ja", "일본어 日本語"], ["zh", "중국어 简体中文"], ["fr", "프랑스어 Français"], ["es", "스페인어 Español"], ["de", "독일어 Deutsch"], ["vi", "베트남어 Tiếng Việt"]] as const;
 type DeckLang = (typeof DECK_LANGS)[number][0];
 import { UploadModal, type UpStep } from "./UploadModal";
+import { PLANS_UI } from "@/lib/plans-ui";
 
 const MAX = 1024 * 1024 * 1024;
 const FILE_RE = /\.(pdf|docx|hwpx|hwp|xlsx|pptx|md|txt|markdown|csv)$/i;
@@ -726,7 +727,7 @@ export function Upload({ engine, isAdmin = false, onUploaded, onCancel, onSettin
                     <div className="sec-desc">모든 장에 같은 위치·크기로 들어갑니다 (시안과 실제 장표 모두). 기본 로고는 필수입니다. 표지·간지처럼 어두운 바탕에 쓸 흰색 로고는 선택이며, 없으면 기본 로고를 흰색으로 바꿔 씁니다. 로고는 PNG·JPG, 5MB 까지. 주관기관이 둘 이상이거나 컨소시엄이면 3개까지 더할 수 있습니다 — 올린 순서대로 나란히 놓입니다.</div>}
                   </div>
                 </Row>
-                {!company && <Row id="extras" style={hl("extras")} icon="auto_stories" title="표지 · 목차 · 간지" sub="자동 생성 · 무료">
+                {!company && <Row id="extras" style={hl("extras")} icon="auto_stories" title="표지 · 목차 · 간지" sub={PLANS_UI ? "자동 생성 · 무료" : "자동 생성"}>
                   <div className="flex flex-col gap-2">
                     <div className="flex gap-2 flex-wrap">
                       {([["cover", "표지", "사업명 · 제목 · 날짜 · 로고"], ["toc", "목차", "장 이름과 쪽 범위"], ["divider", "간지", "장이 바뀔 때마다 — 장이 둘 이상일 때만"]] as const).map(([k, t, d]) => (

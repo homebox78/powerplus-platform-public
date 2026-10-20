@@ -30,6 +30,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { apiFetch, postJson } from "@/lib/api";
 import { CATEGORY_KO, REQUEST_STATUS_KO, SORT_KO, setLabel, assetCategoriesQuery, assetDetailQuery, assetListQuery, assetRequestsQuery, assetSetsQuery, frequentLogosQuery, logoTopicsQuery, type AssetCategory, type AssetItem, type AssetListParams, type AssetRequest } from "@/lib/assets";
 import { useMe } from "@/lib/auth";
+import { PLANS_UI } from "@/lib/plans-ui";
 import { useIsSaved } from "@/lib/saved";
 import { cn } from "@/lib/utils";
 
@@ -74,8 +75,18 @@ function HiddenNote({ hidden, plan }: { hidden: number; plan?: string }) {
   return (
     <div className="mb-6 flex items-center gap-3 rounded-card border border-line bg-ground-2 px-5 py-4 text-md">
       <Lock className="size-4 shrink-0 text-ink-4" aria-hidden />
-      <Copy as="span" text={plan === "free" || !plan ? `${hidden.toLocaleString()}개가 더 있습니다. 로그인하거나 플랜을 올리면 열립니다.` : `${hidden.toLocaleString()}개는 현재 플랜 밖입니다.`} />
-      <Button asChild size="sm" variant="outline" className="ml-auto"><Link to="/account/plan">플랜 보기</Link></Button>
+      {PLANS_UI ? (
+        <>
+          <Copy as="span" text={plan === "free" || !plan ? `${hidden.toLocaleString()}개가 더 있습니다. 로그인하거나 플랜을 올리면 열립니다.` : `${hidden.toLocaleString()}개는 현재 플랜 밖입니다.`} />
+          <Button asChild size="sm" variant="outline" className="ml-auto"><Link to="/account/plan">플랜 보기</Link></Button>
+        </>
+      ) : (
+        // 2026-10-20 사내 전용 운영 — 플랜 문구 대신 로그인·관리자 문의로
+        <>
+          <Copy as="span" text={!plan ? `${hidden.toLocaleString()}개가 더 있습니다. 로그인하면 볼 수 있습니다.` : `${hidden.toLocaleString()}개는 지금 계정 권한 밖입니다. 이용 권한은 관리자에게 문의해 주세요.`} />
+          <Button asChild size="sm" variant="outline" className="ml-auto">{!plan ? <Link to="/login">로그인</Link> : <Link to="/contact">관리자에게 문의</Link>}</Button>
+        </>
+      )}
     </div>
   );
 }

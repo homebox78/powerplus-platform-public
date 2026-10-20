@@ -4,7 +4,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { AlertCircle, CreditCard, ReceiptText, ShieldCheck } from "lucide-react";
 import { useEffect, useState } from "react";
-import { Link, useSearchParams } from "react-router";
+import { Link, Navigate, useSearchParams } from "react-router";
 import { toast } from "sonner";
 import { BrandName } from "@/components/hb/brand-name";
 import { confirmToast, toastError } from "@/components/hb/confirm";
@@ -18,17 +18,23 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { apiFetch, apiList, ApiError, postJson } from "@/lib/api";
 import { Pager } from "@/components/admin/admin-ui";
 import { PLAN_KO, useMe } from "@/lib/auth";
-import { fmtDate, useBuyCredits, useSubscribe, won, type BillingState, type Invoice, type Billing } from "@/lib/billing";
+import { fmtDate, PLANS_UI, useBuyCredits, useSubscribe, won, type BillingState, type Invoice, type Billing } from "@/lib/billing";
 import type { Route } from "./+types/account-plan";
 
-export const meta: Route.MetaFunction = () => [{ title: "플랜·결제 — powerPlus" }];
+// 2026-10-20 사내 전용 운영 — PLANS_UI 가 꺼져 있으면 탭 제목에도 플랜·결제를 쓰지 않는다(곧 프로필로 보낸다)
+export const meta: Route.MetaFunction = () => [{ title: PLANS_UI ? "플랜·결제 — powerPlus" : "프로필 — powerPlus" }];
+
+/** 경로는 남기고, 가격·플랜 화면이 꺼져 있으면 마이페이지로(PLANS_UI, 2026-10-20) */
+export default function AccountPlanRoute() {
+  return PLANS_UI ? <AccountPlanPage /> : <Navigate to="/account" replace />;
+}
 
 const STATUS_KO: Record<string, string> = { active: "이용 중", canceled: "해지 예약", past_due: "결제 실패", trial: "체험", expired: "만료" };
 const INV_KO: Record<string, string> = { paid: "결제 완료", failed: "실패", refunded: "환불" };
 const CREDIT_KO: Record<string, string> = { grant_month: "월 포함분", purchase: "구매", use: "사용", refund: "환불", expire: "만료", point_convert: "포인트 전환", admin_adjust: "관리자 조정" };
 const errMsg = (e: unknown) => (e instanceof ApiError ? (e.hint ? `${e.message} ${e.hint}` : e.message) : (e as Error).message);
 
-export default function AccountPlanPage() {
+function AccountPlanPage() {
   const { me } = useMe();
   const [sp, setSp] = useSearchParams();
   const qc = useQueryClient();

@@ -14,6 +14,7 @@ import { Copy, MBr } from "@/components/hb/copy";
 import { confirmToast, toastError } from "@/components/hb/confirm";
 import { ApiError, apiFetch, postJson } from "@/lib/api";
 import { useMe } from "@/lib/auth";
+import { PLANS_UI } from "@/lib/plans-ui";
 import { cn } from "@/lib/utils";
 
 interface Btn { act: string; label: string; primary?: boolean; feedback?: string; href?: string }
@@ -156,7 +157,7 @@ export function MainChat({ variant = "full", onClose }: { variant?: "full" | "do
 
   async function act(b: Btn, feedback?: string, extra?: Record<string, unknown>) {
     if (!pid || busy) return;
-    if (b.act === "upgrade") { nav("/pricing"); return; }
+    if (b.act === "upgrade") { nav(PLANS_UI ? "/pricing" : "/contact"); return; }   // 2026-10-20 사내 전용 운영 — 요금제 대신 문의
     if (b.href) { nav(b.href); return; }   // 단계 화면 열기(목차·기획 고치기, A·B 고르기)
     setBusy(true); setNotice(null);
     try { put(await postJson<Project>(`/chat/projects/${pid}/action`, { act: b.act, feedback: feedback ?? b.feedback, ...extra })); }
@@ -226,7 +227,8 @@ export function MainChat({ variant = "full", onClose }: { variant?: "full" | "do
           </div>
         </div>
         <div className={cn("flex shrink-0 items-center", dock ? "gap-1" : "flex-wrap gap-2")}>
-          {quota && !dock && <QuotaBadge q={quota} />}
+          {/* 플랜 배지(pro · 제한 없음 / 이번 달 무료 …)는 PLANS_UI 뒤(2026-10-20 사내 전용 운영 동안 끔) */}
+          {PLANS_UI && quota && !dock && <QuotaBadge q={quota} />}
           {(p || anon.length > 0) && <Button variant={dock ? "ghost" : "outline"} size={dock ? "icon-sm" : "sm"} onClick={reset} aria-label="새 대화" title="새 대화"><Plus className="size-4" aria-hidden />{!dock && "새 대화"}</Button>}
           {p && <Button variant={dock ? "ghost" : "outline"} size={dock ? "icon-sm" : "sm"} onClick={remove} aria-label="대화 지우기" title="대화 지우기"><Trash2 className="size-4" aria-hidden /></Button>}
           {dock && onClose && <button type="button" onClick={onClose} aria-label="닫기" className="inline-flex size-9 items-center justify-center rounded-card hover:bg-ground-3"><X className="size-4" aria-hidden /></button>}
@@ -274,7 +276,7 @@ export function MainChat({ variant = "full", onClose }: { variant?: "full" | "do
           <div className="flex flex-wrap items-center justify-between gap-3 rounded-card bg-ground-2 px-4 py-3 text-sm">
             <Copy as="span" text={notice.text} />
             <span className="flex gap-2">
-              {notice.upgrade && <Button asChild size="sm"><Link to="/pricing">요금제 보기</Link></Button>}
+              {notice.upgrade && (PLANS_UI ? <Button asChild size="sm"><Link to="/pricing">요금제 보기</Link></Button> : <Button asChild size="sm"><Link to="/contact">관리자에게 문의</Link></Button>)}
               {notice.link && <Button asChild size="sm" variant="outline"><Link to={notice.link}>도움말</Link></Button>}
               <Button size="sm" variant="ghost" onClick={() => setNotice(null)} aria-label="닫기"><X className="size-4" aria-hidden /></Button>
             </span>
@@ -474,7 +476,8 @@ function Bubble({ m, dock = false, live, onAct, onFile, canUpload, busy, docs, j
     return <div className="ml-auto max-w-[80%] whitespace-pre-wrap rounded-bubble bg-ground-3 px-4 py-2.5 text-md leading-[1.6] text-ink">{m.body}</div>;
   }
   const text = m.body ? <p className="max-w-full text-md leading-[1.7] text-ink-2"><Copy as="span" text={m.body} /></p> : null;
-  const buttons: Btn[] = (c.buttons as Btn[] | undefined) ?? [];
+  // 서버가 주는 업그레이드 버튼(act=upgrade, "pro 로 …")은 PLANS_UI 가 꺼져 있으면 그리지 않는다(2026-10-20)
+  const buttons: Btn[] = ((c.buttons as Btn[] | undefined) ?? []).filter((b) => PLANS_UI || b.act !== "upgrade");
   const bar = buttons.length > 0 && live && (
     <div className="flex flex-col gap-2">
       <div className="flex flex-wrap gap-2">

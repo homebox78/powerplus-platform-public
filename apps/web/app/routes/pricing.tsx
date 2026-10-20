@@ -2,7 +2,7 @@
 import { ArrowRight } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
-import { Link, useNavigate } from "react-router";
+import { Link, Navigate, useNavigate } from "react-router";
 import { BrandName } from "@/components/hb/brand-name";
 import { Copy, MBr, glueDots } from "@/components/hb/copy";
 import { Tag } from "@/components/hb/tag";
@@ -12,13 +12,20 @@ import type { Billing, PlanRow } from "@/lib/billing";
 import { apiFetch } from "@/lib/api";
 import { useMe } from "@/lib/auth";
 import { MODULES } from "@/lib/modules";
+import { PLANS_UI } from "@/lib/plans-ui";
 import type { Route } from "./+types/pricing";
 
-export const meta: Route.MetaFunction = () => [{ title: "요금제 — powerPlus" }];
+// 2026-10-20 사내 전용 운영 — PLANS_UI 가 꺼져 있으면 탭 제목에도 요금제를 쓰지 않는다(곧 홈으로 보낸다)
+export const meta: Route.MetaFunction = () => [{ title: PLANS_UI ? "요금제 — powerPlus" : "powerPlus" }];
 
 interface ServerPlan { code: string; name: string; price_month_krw: number; price_year_krw: number; limits: Record<string, number | boolean> | null }
 
-export default function PricingPage() {
+/** 경로는 남기고, 가격·플랜 화면이 꺼져 있으면 홈으로(PLANS_UI, 2026-10-20) */
+export default function PricingRoute() {
+  return PLANS_UI ? <PricingPage /> : <Navigate to="/" replace />;
+}
+
+function PricingPage() {
   const { me } = useMe();
   return me?.billing_visible ? <PlansView /> : <Soon />;
 }

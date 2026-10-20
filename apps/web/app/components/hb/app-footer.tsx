@@ -7,9 +7,12 @@ import { Link } from "react-router";
 import { BrandName } from "@/components/hb/brand-name";
 import { MBr } from "@/components/hb/copy";
 import { OPERATOR } from "@/lib/docs-content";
+import { PLANS_UI } from "@/lib/plans-ui";
 
 // 요금제(/pricing)는 서비스 안내 묶음(소개·도움말·문서) 끝에 — 2026-10-17 점검 "바닥글에 요금제 링크 없음"
-const LINKS: Array<[string, string]> = [["소개", "/about"], ["도움말", "/help"], ["문서", "/docs"], ["요금제", "/pricing"], ["이용약관", "/legal/terms"], ["개인정보처리방침", "/legal/privacy"]];
+// 2026-10-20 사내 전용 운영 — PLANS_UI 가 꺼져 있으면 요금제 링크를 뺀다
+const LINKS: Array<[string, string]> = [["소개", "/about"], ["도움말", "/help"], ["문서", "/docs"], ["요금제", "/pricing"], ["이용약관", "/legal/terms"], ["개인정보처리방침", "/legal/privacy"]]
+  .filter(([, to]) => PLANS_UI || to !== "/pricing") as Array<[string, string]>;
 
 function FooterLinks({ mobile }: { mobile?: boolean }) {
   return (

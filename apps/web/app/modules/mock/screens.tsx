@@ -30,6 +30,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { apiFetch, postJson } from "@/lib/api";
 import { useMe } from "@/lib/auth";
+import { PLANS_UI } from "@/lib/plans-ui";
 import { useIsSaved } from "@/lib/saved";
 import { fmtDate, galleryQuery, leadersQuery, myMockupsQuery, pointsQuery, useGalleryDetail, useMockMutations, type GalleryItem, type MockupCheck, type MockupItem } from "@/lib/mock";
 import { cn } from "@/lib/utils";
@@ -460,8 +461,11 @@ export function MockLandingSteps() {
       {/* 비회원 안내 — 기획·시안·컴포넌트와 MCP 는 Pro·Team·임직원 전용(2026-10-16 회원 전용 전환) */}
       {!loading && !member && (
         <section className="mt-8 flex flex-wrap items-center justify-between gap-4 rounded-panel border border-line bg-ground-2 px-6 py-5" aria-label="로그인 안내" data-testid="mock-login-cta">
-          <Copy className="text-md text-ink-2" text={me ? "지금 계정은 보기만 됩니다. 기획·시안·컴포넌트 사용은 Pro 이상 회원만 됩니다." : "기획·시안·컴포넌트는 Pro 이상 회원이 씁니다. 로그인하면 볼 수 있습니다."} />
-          <Button size="md" asChild>{me ? <Link to="/contact">전환 요청</Link> : <Link to="/login?next=/mock">로그인</Link>}</Button>
+          {/* 2026-10-20 사내 전용 운영 — PLANS_UI 가 꺼져 있으면 플랜(Pro 이상)·전환 문구 대신 사내 이용 안내 */}
+          <Copy className="text-md text-ink-2" text={PLANS_UI
+            ? (me ? "지금 계정은 보기만 됩니다. 기획·시안·컴포넌트 사용은 Pro 이상 회원만 됩니다." : "기획·시안·컴포넌트는 Pro 이상 회원이 씁니다. 로그인하면 볼 수 있습니다.")
+            : (me ? "지금 계정은 보기만 됩니다. 이용 권한은 관리자에게 문의해 주세요." : "기획·시안·컴포넌트는 사내 임직원·승인된 협력사 계정으로 씁니다. 로그인하면 볼 수 있습니다.")} />
+          <Button size="md" asChild>{me ? <Link to="/contact">{PLANS_UI ? "전환 요청" : "관리자에게 문의"}</Link> : <Link to="/login?next=/mock">로그인</Link>}</Button>
         </section>
       )}
       <section className="mt-8" aria-label="할 수 있는 일">

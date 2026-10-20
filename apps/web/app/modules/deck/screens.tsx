@@ -15,6 +15,7 @@ import { StepCards } from "@/components/hb/step-cards";
 import { SectionHeading } from "@/components/hb/section-heading";
 import { Copy, MBr } from "@/components/hb/copy";
 import { useLogout, useMe } from "@/lib/auth";
+import { PLANS_UI } from "@/lib/plans-ui";
 import { api, ApiError, isEditing, type Engine, type Job } from "./legacy/api";
 import { ask, Asker, GlobalContextMenu, Toaster, useToastOn } from "./legacy/ui";
 import { getAi } from "./legacy/openrouter";
@@ -258,7 +259,7 @@ function DeckTogether() {
     { icon: Link2, title: "링크 하나로 공유", desc: "권한은 의견·편집·보기 중에 고릅니다. 보기 링크는 로그인 없이 열립니다." },
     { icon: MessagesSquare, title: "장마다 의견 달기", desc: "팀원이 시안과 장표에 의견을 남깁니다. 주인은 그 의견으로 다시 만들어 반영합니다." },
     { icon: Users, title: "같이 고치기", desc: "편집 권한을 받은 사람도 기획 글·와이어를 고치고 A·B 를 확정합니다." },
-    { icon: BadgeCheck, title: "확정한 장만 보여 주기", desc: "고르지 않은 장은 공유되지 않습니다. 크레딧이 드는 일은 주인만 합니다." },
+    { icon: BadgeCheck, title: "확정한 장만 보여 주기", desc: PLANS_UI ? "고르지 않은 장은 공유되지 않습니다. 크레딧이 드는 일은 주인만 합니다." : "고르지 않은 장은 공유되지 않습니다. 장표 만들기는 주인만 합니다." },   // 크레딧 문구는 PLANS_UI 뒤(2026-10-20)
   ];
   return (
     <div className="mt-11">

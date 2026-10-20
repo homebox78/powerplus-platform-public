@@ -13,6 +13,7 @@ import { ScrollTop } from "@/components/hb/scroll-top";
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { descForPath, ogTitleForPath, SITE, SITE_DESC, SITE_OG_IMAGE, SITE_URL, titleForPath } from "@/lib/page-title";
+import { usePageTrack } from "@/lib/track";
 import "./styles/app.css";
 
 export const links: Route.LinksFunction = () => [{ rel: "icon", type: "image/svg+xml", href: "/favicon.svg" }];
@@ -70,6 +71,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
 export default function App() {
   // /admin 은 공개 사이트와 분리된 별도 사이트처럼(사용자 지시 2026-10-06) — 공개 헤더·푸터·문의 버튼·탭바 없이 관리자 셸만
   const admin = useLocation().pathname.startsWith("/admin");
+  usePageTrack();   // 방문자 통계(관리자 › 방문자 통계)
   const [queryClient] = useState(() => new QueryClient({ defaultOptions: { queries: { staleTime: 60_000, retry: false } } }));
   return (
     <ThemeProvider attribute="class" defaultTheme="light" enableSystem disableTransitionOnChange>

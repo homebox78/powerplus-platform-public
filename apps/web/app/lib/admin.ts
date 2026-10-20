@@ -194,6 +194,22 @@ export const fetchAdminSets = (o: { category?: string; q?: string }) => apiFetch
 export const fetchAdminRequests = (o: { status?: string; q?: string; page?: number }) => apiList<AdminAssetRequest>(`/admin/requests${qs(o)}`);
 export const fetchSearchQuality = (days: number) => apiFetch<SearchQuality>(`/admin/search-quality${qs({ days })}`);
 
+// 방문자 통계 — api/routes/stats.php GET /admin/visit-stats 와 1:1(2026-10-20)
+export interface StatGroup { key: string; pv: number; uv: number; visits: number }
+export interface VisitStats {
+  from: string; to: string; days: number; first_at: string;
+  total: { pv: number; uv: number; visits: number; members: number; bounce: number; new_visitors: number; pages_per_visit: number };
+  prev: { from: string; to: string; pv: number; uv: number; visits: number; members: number };
+  daily: Array<{ day: string; pv: number; uv: number; visits: number }>;
+  daily_modules: Array<{ day: string; module: string; uv: number }>;
+  modules: StatGroup[]; channels: StatGroup[]; browsers: StatGroup[]; os: StatGroup[]; devices: StatGroup[]; widths: StatGroup[]; langs: StatGroup[]; refs: StatGroup[];
+  direct_visits: number;
+  pages: Array<{ path: string; module: string; pv: number; uv: number }>;
+  heat: Array<{ wd: number; h: number; pv: number }>;
+  members: Array<{ name: string; pv: number; days: number; last: string }>;
+}
+export const fetchVisitStats = (o: { from?: string; to?: string; module?: string; channel?: string; admin?: string }) => apiFetch<VisitStats>(`/admin/visit-stats${qs(o)}`);
+
 // powerGuide 현황 — api/routes/admin_guide.php 와 1:1. 내용 편집은 없다(코드가 정본)
 interface GuideAdmin {
   days: number;

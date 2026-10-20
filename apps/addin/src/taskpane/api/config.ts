@@ -37,6 +37,27 @@ export async function api<T = unknown>(
   return body;
 }
 
+/** 방문자 통계(관리자 › 방문자 통계, 2026-10-20) — 작업창이 열릴 때·탭을 바꿀 때 한 줄(channel addin). 결과는 기다리지 않는다.
+ *  애드인 API 호출은 키 호출로 세지 않으므로(Keys::actorFor) 이 알림이 애드인 이용의 기준이다. */
+export function trackAddin(path: string): void {
+  try {
+    const rand = () => Array.from(crypto.getRandomValues(new Uint8Array(12)), (b) => "abcdefghijkmnpqrstuvwxyz23456789"[b % 32]).join("").slice(0, 16);
+    let vid = "", sid = "";
+    try {
+      vid = localStorage.getItem("pp_vid") || ""; if (!vid) { vid = rand(); localStorage.setItem("pp_vid", vid); }
+      const at = Number(sessionStorage.getItem("pp_sid_at") || 0);
+      sid = sessionStorage.getItem("pp_sid") || "";
+      if (!sid || Date.now() - at > 30 * 60_000) { sid = rand(); sessionStorage.setItem("pp_sid", sid); }
+      sessionStorage.setItem("pp_sid_at", String(Date.now()));
+    } catch { vid = vid || rand(); sid = sid || rand(); }
+    const headers: Record<string, string> = { "Content-Type": "application/json", "X-Requested-With": "powerAssets" };
+    const token = getToken();
+    if (token) headers.Authorization = `Bearer ${token}`;
+    void fetch(API_BASE + "/stats/hit", { method: "POST", headers, keepalive: true, cache: "no-store",
+      body: JSON.stringify({ path, vid, sid, channel: "addin", w: window.innerWidth, lang: navigator.language }) }).catch(() => {});
+  } catch { /* 통계는 실패해도 작업창에 영향 없음 */ }
+}
+
 /** 서버가 준 /api/v1/... 경로를 절대 주소로. */
 export function abs(u?: string | null): string | undefined {
   if (!u) return undefined;

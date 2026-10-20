@@ -136,6 +136,18 @@ comm_posts ─< comm_comments · comm_likes
 | `guide_downloads` | user_id/key_id, format, version, created_at(파티션) |
 | `comm_posts` / `comm_comments` / `comm_likes` | 홈박스 community_* 이관, content 6열(public) |
 
+## 6.2 stat_ (방문자 통계) — 2026-10-20
+사용자 지시: "관리자 모드에 방문자 통계 전체, 솔루션별, 브라우저·디바이스별 등 디테일한 통계 관리 페이지". 수집 방식은 사용자가 고름 — 화면이 서버에 알림(SPA 화면 이동도 잡힌다).
+
+| 표 | 한 줄 = | 열 |
+|---|---|---|
+| `stat_hits` | 페이지 보기 1번(웹·애드인) 또는 키 호출 1번(MCP) | at(DATETIME(3))·day · vid(방문자, 브라우저 저장 무작위 16자 — MCP 는 키 공개 id 해시) · sid(방문, 30분 쉬면 새로) · user_id(회원이면) · path(쿼리 뺀 주소, 255) · module(assets·deck·mock·guide·community·account·admin·home·etc) · channel(web·addin·mcp) · browser·os·device(desktop·mobile·tablet) · w(화면 폭) · ref_host(바깥 유입 호스트만) · lang · ip_hash(sha256(ip+서버 비밀) 앞 16자, IP 원문은 두지 않는다) |
+
+- 쓰기: `POST /api/v1/stats/hit`(로그인 없이, OPEN_PATHS) — 봇 UA 는 버리고, 같은 vid 의 같은 path 2초 안 반복은 하나로. MCP 는 키 인증 성공 때 서버가 직접 한 줄(path = API 주소).
+- 읽기: `GET /api/v1/admin/visit-stats?from&to`(admin — /admin/stats 는 대시보드가 이미 씀) — 날짜 범위 집계만(행을 화면에 내보내지 않는다).
+- 보관 400일 — retention.php 가 지운다. 개인정보: IP 원문·UA 원문을 두지 않는다(분류 결과만).
+- 색인: (day, module) · (day, channel) · (vid, day) · (user_id, day). 하루 수천 줄 규모라 요약 표(일별 집계)는 두지 않는다 — 1년에 수백만 줄을 넘기면 day 요약 표를 더한다.
+
 ## 6.1 개선 체크리스트 (솔루션마다 하나 + 통합 검수) — 2026-10-15
 사용자 지시: "각 솔루션마다 개선 체크리스트가 있고, 이것들이 취합 체크리스트로 전체가 하나의 검수 프로세스로 자가 개선".
 

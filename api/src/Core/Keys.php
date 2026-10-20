@@ -50,6 +50,11 @@ final class Keys
         }
         Users::touch($u); // 키 호출(powerMCP)도 활동으로 센다 — MCP 만 쓰는 회원이 휴면으로 떨어지지 않게
         Db::exec('UPDATE core_api_keys SET last_used_at = NOW(3) WHERE id = ?', [$k['id']]);
+        // 방문자 통계 — MCP·REST 키 호출(2026-10-20). PPT 애드인(X-Requested-With: powerAssets, 같은 키 방식)은 API 호출마다 세지 않고
+        // 작업창이 화면을 바꿀 때 보내는 /stats/hit(channel addin)로만 센다
+        if (($_SERVER['HTTP_X_REQUESTED_WITH'] ?? '') !== 'powerAssets') {
+            Stats::hitKey((int) $u['id'], (string) $k['public_id'], self::viaMcp());
+        }
         $k['scopes'] = json_decode((string) $k['scopes'], true) ?: ['all'];
         return Auth::fromUser($u, 'key', $k);
     }

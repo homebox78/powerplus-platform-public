@@ -1642,6 +1642,9 @@ def run(job, j, opts, brief, note):
     job.event(f"회사소개서 {n}장을 만들었습니다(글·카드는 편집 가능, 빛·그라데이션은 배경 그림).", "done")
     try:   # 결과 pptx 에 실제로 쓰인 서체(Pretendard, 일본어·중국어면 그 언어 서체) — 산출물 '5_서체'. 받는 PC 에 없으면 줄바꿈이 달라진다(세로 제안서와 같은 규칙)
         import fontbundle   # pptx 의 a:latin·a:ea 를 모아 판단(2026-10-18) — 섞인 언어 글은 그 글자가 있는 서체로 바꾼 뒤 모은다
+        _sz = fontbundle.sanitize_pptx(out)   # 남의 서체(유료·엔진에 없음) → 이 장표 본문 서체(R97)
+        if _sz:
+            job.event(fontbundle.sanitize_note(_sz), "warn")
         fbk = fontbundle.fallback_pptx(out)
         if fbk:
             job.event(f"다른 언어 글 {len(fbk)}곳을 그 글자가 있는 서체로 바꿨습니다", "warn")

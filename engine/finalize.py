@@ -733,6 +733,12 @@ elif not FONTS_ONLY:
 
 # ── 섞인 언어 — 글 런마다 서체에 없는 글자가 있으면 그 글자를 다 가진 같은 굵기 서체로(fontbundle.fallback, 2026-10-18)
 import fontbundle
+try:   # 옛 장표·템플릿에서 따라온 남의 서체(유료·엔진에 없음)를 이 장표의 본문 서체로 — 산출물에 그 이름이 남지 않게(R97)
+    _sz = fontbundle.sanitize_pptx(src)
+    if _sz:
+        print(fontbundle.sanitize_note(_sz))
+except Exception as e:
+    warn(0, "남의 서체 정리 실패", str(e)[:160])
 try:
     _fb = fontbundle.fallback_pptx(src)
     if _fb:

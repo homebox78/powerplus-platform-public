@@ -19,6 +19,7 @@ import {
 } from "./api/assets";
 import { getToken, getEmail, clearSession, logout } from "./api/auth";
 import { recordUsage } from "./api/usage";
+import { trackAddin } from "./api/config";
 import { fetchCategories } from "./api/categories";
 import { useInsert } from "./hooks/useInsert";
 import { useFavorites } from "./hooks/useFavorites";
@@ -185,6 +186,8 @@ export default function App() {
 
   const [view, setView] = React.useState<string>("all"); // 추천/즐겨찾기/최근
   const [cat, setCat] = React.useState("all"); // 컴포저 카테고리 pill
+  // 방문자 통계 — 작업창 열림·탭(추천/즐겨찾기/최근)·종류 바꿀 때 한 줄(관리자 › 방문자 통계, 채널 'PPT 애드인')
+  React.useEffect(() => { trackAddin(email ? `/addin/${view}/${cat}` : "/addin/login"); }, [email, view, cat]);
   const [pptFilter, setPptFilter] = React.useState("all"); // 장표 서브필터(전체/패키지/표지/간지/콘텐츠…)
   const [topic, setTopic] = React.useState(""); // 주제 세분화(카테고리 안에서 한 번 더 좁히기)
   const [topics, setTopics] = React.useState<Topic[]>([]);

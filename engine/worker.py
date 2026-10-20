@@ -1239,6 +1239,9 @@ def process(j):
                 rep["checklist"] = [{"slide": 0, "title": "표지·목차·간지를 넣지 못함", "detail": str(e)[:200], "level": "warn"}] + list(rep.get("checklist") or [])
         try:   # 표지·목차·간지까지 붙은 최종 장표에 실제로 적힌 서체로 다시 모은다(앞장에 섞인 언어 서체도 — R82)
             import fontbundle
+            _sz = fontbundle.sanitize_pptx(out)   # 앞장(표지·목차·간지)에 따라온 남의 서체까지(R97)
+            if _sz:
+                job.event(fontbundle.sanitize_note(_sz), "warn")
             _fp, _miss, _ = fontbundle.bundle(out, os.path.join(job.dir, "_fonts"))
             _nf = sum(1 for x in _fp if re.search(r"\.(ttf|otf|ttc)$", x, re.I))
             if _nf:

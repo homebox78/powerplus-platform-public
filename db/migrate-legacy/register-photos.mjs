@@ -28,6 +28,15 @@ const SETS = {
   // 회사소개서 범용 배경(소프트3D·기하도형·라인아트·큰원곡선 — 파스텔 여러 색이라 톤 회전 세트 cp-bg-theme 와 나눈다)
   cbbg: { cat: "illust", prefix: "cbbg-", set: "cp-bg-general", style: "cp-bg-general-pastel", ko: ["회사소개서", "배경", "장표배경", "범용", "파스텔", "AI이미지"], en: ["company profile", "background", "slide background", "pastel"] },
   glasskv: { cat: "illust", prefix: "glasskv-", set: "illust-keyvisual-glass", style: "keyvisual-3d-glass", ko: ["키비주얼", "히어로", "메인비주얼", "배경", "3D", "글래스", "유리질감", "아이소메트릭", "AI이미지"], en: ["key visual", "hero", "background", "3d render", "glass", "isometric"] },
+  // 2026-10-20 14차 — 다크 3D 아이소메트릭 키비주얼(짙은 남색 바탕·파랑 빛선·왼쪽 글자 자리, 발표장표 다크용) — set:"darkkv"
+  darkkv: { cat: "illust", prefix: "darkkv-", set: "illust-keyvisual-dark", style: "keyvisual-3d-dark", ko: ["키비주얼", "히어로", "메인비주얼", "배경", "3D", "다크", "어두운배경", "네이비", "남색", "아이소메트릭", "AI이미지"], en: ["key visual", "hero", "background", "3d render", "dark", "navy", "isometric"] },
+  // 2026-10-20 14차 — 의약품 AI 심사 같은 22장면(업무 장면 12 + 아이콘 10)을 세 화풍으로(일러스트 PA1 · 실사 PA2 · 3D PA3). 흰·옅은 파랑 바탕 JPG
+  "pa-flat": { cat: "illust", prefix: "pharma-", set: "illust-pharma-review-flat", style: "pharma-review-flat", ko: ["일러스트", "평면일러스트", "플랫", "의약품", "의약품심사", "허가심사", "AI심사", "제약", "파랑", "AI이미지"], en: ["illustration", "flat illustration", "pharmaceutical", "drug review", "approval review", "ai review", "blue"] },
+  "pa-photo": { cat: "photo", prefix: "pharma-", set: "photo-pharma-review", style: "pharma-review-photo", ko: ["사진", "실사", "의약품", "의약품심사", "허가심사", "AI심사", "제약", "파랑", "AI이미지"], en: ["photo", "pharmaceutical", "drug review", "approval review", "ai review", "blue"] },
+  "pa-3d": { cat: "illust", prefix: "pharma-", set: "illust-pharma-review-3d", style: "pharma-review-3d", ko: ["3D", "렌더", "의약품", "의약품심사", "허가심사", "AI심사", "제약", "파랑", "AI이미지"], en: ["3d render", "pharmaceutical", "drug review", "approval review", "ai review", "blue"] },
+  "pa-icon-flat": { cat: "icon", prefix: "pharma-", set: "icon-pharma-review-flat", style: "pharma-icon-flat", ko: ["아이콘", "플랫", "평면", "파랑", "흰배경", "의약품", "AI이미지"], en: ["icon", "flat", "blue", "white background", "pharmaceutical"] },
+  "pa-icon-real": { cat: "icon", prefix: "pharma-", set: "icon-pharma-review-real", style: "pharma-icon-real", ko: ["아이콘", "실사풍", "사실적", "파랑", "흰배경", "의약품", "AI이미지"], en: ["icon", "realistic", "blue", "white background", "pharmaceutical"] },
+  "pa-icon-3d": { cat: "icon", prefix: "pharma-", set: "icon-pharma-review-3d", style: "pharma-icon-3d", ko: ["아이콘", "3D", "클레이", "파랑", "흰배경", "의약품", "AI이미지"], en: ["icon", "3d", "clay", "blue", "white background", "pharmaceutical"] },
   // 공공사업 플랫 키비주얼(밝은 파랑 그라데이션·왼쪽 글자 자리·평면 인물 일러스트) — set:"flatkv"
   flatkv: { cat: "illust", prefix: "flatkv-", set: "illust-keyvisual-flat", style: "keyvisual-flat", ko: ["키비주얼", "히어로", "메인비주얼", "배경", "플랫", "평면일러스트", "인물", "공공사업", "제안서", "AI이미지"], en: ["key visual", "hero", "background", "flat illustration", "people", "public project"] },
   // 기후위기 키비주얼(실사풍 시네마틱, 따뜻함↔차가움 대비 — 가뭄·폭우·폭염·한파) — set:"climate"

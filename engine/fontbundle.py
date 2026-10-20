@@ -140,6 +140,87 @@ def fallback_pptx(pptx):
     return out
 
 
+# ───────────────────────── 남의 서체 정리(R96·R97)
+# 사용자 2026-10-20 "유료폰트 포함 다운로드 되는게 없게, 이상하게 남아있는 폰트 정보 없게" — 옛 제안서·템플릿에서 가져온 도형·테마에
+# 숨은 서체(산돌고딕B·윤고딕·Samsung InterFace…)가 남아, 받는 사람이 새 줄을 치면 그 서체로 쳐지고 서체 안내에 '넣지 않음'으로 떴다.
+SYMBOLS = re.compile(r"^(wingdings|webdings|symbol|marlett)", re.I)
+_TAGS = ("latin", "ea", "cs", "sym", "buFont")   # 테마의 <a:font script="Arab" …> 문자권별 목록은 오피스 기본(윈도우 서체) — 건드리지 않는다
+_BOLDISH = re.compile(r"(B|EB|XB|Bold|Black|Heavy|ExtraBold|SemiBold|굵|볼드|진하게)$", re.I)
+
+
+def _ok_face(face, reg, memo):
+    """그대로 둬도 되는 서체인가 — 테마 참조 · 윈도우/맥 기본(SKIP) · 기호 · 엔진에 있고 재배포 되는 서체"""
+    if not face or face.startswith("+") or SKIP.match(face) or SYMBOLS.match(face):
+        return True
+    if face not in memo:
+        ps = path_of(face, reg)
+        memo[face] = bool(ps) and all(fontlicense.shippable(p)[0] for p in ps)
+    return memo[face]
+
+
+def sanitize_pptx(pptx):
+    """장·레이아웃·마스터·테마의 서체 이름 중 그대로 둘 수 없는 것을 이 장표가 실제로 쓰는 본문 서체로(굵은 이름이면 굵은 단계).
+    바꾼 것이 있으면 다시 저장. 돌려주는 값: {옛 서체: (새 서체, 곳 수)}"""
+    import collections
+    reg, memo = osdep.installed_fonts(), {}
+    with zipfile.ZipFile(pptx) as z:
+        names = [n for n in z.namelist() if re.match(r"ppt/(slides|slideMasters|slideLayouts|theme)/[^/]+\.xml$", n)]
+        blobs = {n: z.read(n).decode("utf-8", "ignore") for n in names}
+    used = collections.Counter()   # 글 런에 실제로 쓰인, 둬도 되는 본문 서체
+    for n, x in blobs.items():
+        if "/slides/" in n:
+            for f in re.findall(r'<a:rPr[^>]*>(?:(?!</a:rPr>).)*?<a:(?:ea|latin) typeface="([^"]+)"', x, re.S):
+                if f not in fontset.TITLE_FACES and not f.startswith("+") and _ok_face(f, reg, memo) and not SKIP.match(f):
+                    used[f] += 1
+    base = used.most_common(1)[0][0] if used else None
+    if not base:
+        d = (fontset.LANG_DEFAULT.get(fontset.LANG) or {}).get("body") or next(iter(fontset.BODIES))
+        base = fontset.BODIES[d][1][1]
+    fam = next((b[1] for b in fontset.BODIES.values() if base in b[1]), None)   # 고른 본문 서체의 4단계
+    bold = fam[2] if fam and len(fam) > 2 else base
+    out = {}
+    pat = re.compile(r'(<a:(?:' + "|".join(_TAGS) + r')\b[^>]*?\btypeface=")([^"]+)(")')
+    changed = {}
+    for n, x in blobs.items():
+        def rep(m):
+            f = m.group(2)
+            if _ok_face(f, reg, memo):
+                return m.group(0)
+            nf = bold if _BOLDISH.search(f) else base
+            o = out.get(f, (nf, 0))
+            out[f] = (nf, o[1] + 1)
+            return m.group(1) + nf + m.group(3)
+        y = pat.sub(rep, x)
+        if y != x:
+            changed[n] = y
+    # 품은 서체 파일(ppt/fonts/*.fntdata — '글꼴 포함 저장'한 원본을 변환하면 따라 나온다) — 유료 서체가 실제로 같이 내려받아지지 않게 뗀다
+    drop = set()
+    with zipfile.ZipFile(pptx) as z:
+        drop = {n for n in z.namelist() if n.startswith("ppt/fonts/")}
+        if drop:
+            pres = z.read("ppt/presentation.xml").decode("utf-8")
+            rels = z.read("ppt/_rels/presentation.xml.rels").decode("utf-8")
+            faces = re.findall(r'<p:embeddedFont>\s*<p:font typeface="([^"]+)"', pres)
+            changed["ppt/presentation.xml"] = re.sub(r'\s(embedTrueTypeFonts|saveSubsetFonts)="[^"]*"', "", re.sub(r"<p:embeddedFontLst>.*?</p:embeddedFontLst>", "", pres, flags=re.S))
+            changed["ppt/_rels/presentation.xml.rels"] = re.sub(r'<Relationship [^>]*Target="fonts/[^"]+"[^>]*/>', "", rels)
+            out["(품은 서체 파일)"] = (", ".join(faces) or "?", len(drop))
+    if changed:
+        tmp = pptx + ".tmp"
+        with zipfile.ZipFile(pptx) as zi, zipfile.ZipFile(tmp, "w", zipfile.ZIP_DEFLATED) as zo:
+            for it in zi.infolist():
+                if it.filename in drop:
+                    continue
+                zo.writestr(it, changed[it.filename].encode("utf-8") if it.filename in changed else zi.read(it.filename))
+        os.replace(tmp, pptx)
+    return out
+
+
+def sanitize_note(out):
+    if not out:
+        return ""
+    return "남의 서체 정리 — " + " · ".join((f"품은 서체 파일 {n}개 뗌({b})" if a == "(품은 서체 파일)" else f"{a} → {b} {n}곳") for a, (b, n) in out.items())
+
+
 # ───────────────────────── 묶기
 def bundle(pptx, out_dir):
     """쓰인 서체 파일을 out_dir 에 복사하고 라이선스·설치 안내를 쓴다. (넣은 파일 경로들[서체+문서], 엔진에 없는 서체, 재배포 안 되는 서체)"""

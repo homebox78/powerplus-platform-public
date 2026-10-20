@@ -2,7 +2,7 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { api, fileUrl, unwrapList, usd, type Job, type PinComment, type PlanFront, type PlanSlide, type WireBlock } from "../api";
 import { autoWire, WireCanvas, WireTools } from "../Wireframe";
-import { OverviewCanvas } from "../OverviewCanvas";
+import { OverviewCanvas } from "../OverviewCanvasLazy";
 import { FrontWire, frontWord, type FrontEditEv } from "../FrontWire";
 import { JobSettingsEdit } from "../JobSettingsEdit";
 import { ShareLevel } from "../Feedback";

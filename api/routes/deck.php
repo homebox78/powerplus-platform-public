@@ -305,7 +305,7 @@ return static function (Router $r): void {
         if ($list === [] && !isset($_SERVER['HTTP_X_WORKER'])) {
             // 빈 목록이면 어디서 시작하는지 알려 준다(MCP·외부 호출이 빈 배열만 받고 멈추지 않게).
             // hint 는 봉투 바깥에 둔다 — 안에 두면 data.data 로 두 번 감싸진다(2026-10-12 MCP 시험).
-            Response::json([], 200, ['hint' => '아직 장표 작업이 없습니다. https://powerplus.hom2box.com/deck 에서 시작하세요.', 'start' => 'https://powerplus.hom2box.com/deck']);
+            Response::json([], 200, ['hint' => '아직 장표 작업이 없습니다. ' . rtrim((string) \Pp\Core\Config::get('app.url', 'https://powerplus.hom2box.com'), '/') . '/deck 에서 시작하세요.', 'start' => rtrim((string) \Pp\Core\Config::get('app.url', 'https://powerplus.hom2box.com'), '/') . '/deck']);
         }
         Legacy::jsonOut(['data' => $list]);
     });

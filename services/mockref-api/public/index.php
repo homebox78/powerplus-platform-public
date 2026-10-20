@@ -69,7 +69,7 @@ if (!$open && $method !== 'OPTIONS') {
         if (isset($_SERVER['HTTP_X_ADMIN_TOKEN'])) {
             \Homebox\Http\Auth::requireAdmin();   // 워커·스크립트 토큰 — 틀리면 401 로 끝난다
         } else {
-            Response::error(401, 'KEY_REQUIRED', '레퍼런스 데이터는 powerMCP 키로만 볼 수 있습니다. powerplus.hom2box.com/powermcp 에서 키를 받으세요.');
+            Response::error(401, 'KEY_REQUIRED', '레퍼런스 데이터는 powerMCP 키로만 볼 수 있습니다. ' . preg_replace('#^https?://|/mockref/?$#', '', (string) \Config::get('app.public_base', 'https://powerplus.hom2box.com/mockref')) . '/powermcp 에서 키를 받으세요.');   // 주소는 배포 서버를 따른다(2026-10-19 회사 서버 이관)
         }
     }
 }

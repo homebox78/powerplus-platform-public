@@ -27,6 +27,12 @@ final class Triage
         'none'         => '위 어디에도 맞지 않는다(예: 일반 코딩·번역·법률 상담·영상 제작·서버 운영)',
     ];
 
+    /** 사이트 주소(설정 app.url) — 안내 링크가 배포 서버를 따른다(2026-10-19 회사 서버 이관: hom2box 로 박혀 있었다) */
+    private static function site(): string
+    {
+        return rtrim((string) \Pp\Core\Config::get('app.url', 'https://powerplus.hom2box.com'), '/');
+    }
+
     /** 이메일·전화번호를 지운다 — Jev 에 개인 정보를 넘기지 않는다 */
     public static function scrub(string $s, int $max = 4000): string
     {
@@ -381,32 +387,32 @@ final class Triage
         $out = [];
         $has = static fn (string $re): bool => preg_match($re, $r) === 1;
         if ($has('/부품|컴포넌트|component/u')) {
-            $out[] = ['what' => '비슷한 부품 조합과 KRDS 지침', 'how' => '키트 77종에서 가까운 부품을 찾아(MCP: guide_list_components) 조합하고, KRDS 지침(MCP: guide_search_rules)을 근거로 직접 만든 뒤 코드 판정(MCP: guide_check_code)으로 확인합니다.', 'start' => 'https://powerplus.hom2box.com/guide/components'];
+            $out[] = ['what' => '비슷한 부품 조합과 KRDS 지침', 'how' => '키트 77종에서 가까운 부품을 찾아(MCP: guide_list_components) 조합하고, KRDS 지침(MCP: guide_search_rules)을 근거로 직접 만든 뒤 코드 판정(MCP: guide_check_code)으로 확인합니다.', 'start' => self::site() . '/guide/components'];
         }
         if ($has('/영상|동영상|비디오|video|유튜브|애니메이션|mp4/u')) {
-            $out[] = ['what' => '영상 대신 장표와 장별 이미지', 'how' => 'powerDeck 으로 장표를 만든 뒤 산출물 묶음(zip: 완성 PPTX·장별 렌더 PNG)을 받아 영상 편집 도구에 넣습니다. PDF 는 PowerPoint 에서 내보냅니다.', 'start' => 'https://powerplus.hom2box.com/deck'];
-            $out[] = ['what' => '발표 대본', 'how' => 'powerDeck 대본 단계에서 장마다 읽을 원고를 받아 내레이션 원고로 씁니다(MCP: deck_get_script_kit).', 'start' => 'https://powerplus.hom2box.com/deck'];
+            $out[] = ['what' => '영상 대신 장표와 장별 이미지', 'how' => 'powerDeck 으로 장표를 만든 뒤 산출물 묶음(zip: 완성 PPTX·장별 렌더 PNG)을 받아 영상 편집 도구에 넣습니다. PDF 는 PowerPoint 에서 내보냅니다.', 'start' => self::site() . '/deck'];
+            $out[] = ['what' => '발표 대본', 'how' => 'powerDeck 대본 단계에서 장마다 읽을 원고를 받아 내레이션 원고로 씁니다(MCP: deck_get_script_kit).', 'start' => self::site() . '/deck'];
         }
         if ($has('/번역|translate|영문|영어로/u')) {
-            $out[] = ['what' => '번역 결과로 장표 만들기', 'how' => '번역은 사용 중인 AI 로 하고, 번역문을 자료로 올려 powerDeck 으로 장표를 만듭니다.', 'start' => 'https://powerplus.hom2box.com/deck'];
+            $out[] = ['what' => '번역 결과로 장표 만들기', 'how' => '번역은 사용 중인 AI 로 하고, 번역문을 자료로 올려 powerDeck 으로 장표를 만듭니다.', 'start' => self::site() . '/deck'];
         }
         if ($has('/코드|코딩|개발|프로그램|api|서버|배포|db|데이터베이스/u')) {
-            $out[] = ['what' => '화면 부품 코드', 'how' => 'powerGuide 의 KRDS 기반 React·Vue 부품 77종 코드를 가져다 씁니다(MCP: guide_get_component).', 'start' => 'https://powerplus.hom2box.com/guide/components'];
-            $out[] = ['what' => '홈페이지 시안 HTML', 'how' => 'powerMock 으로 화면 시안을 받아 개발 기준 화면으로 씁니다(MCP: mock_get_replica_kit).', 'start' => 'https://powerplus.hom2box.com/mock'];
+            $out[] = ['what' => '화면 부품 코드', 'how' => 'powerGuide 의 KRDS 기반 React·Vue 부품 77종 코드를 가져다 씁니다(MCP: guide_get_component).', 'start' => self::site() . '/guide/components'];
+            $out[] = ['what' => '홈페이지 시안 HTML', 'how' => 'powerMock 으로 화면 시안을 받아 개발 기준 화면으로 씁니다(MCP: mock_get_replica_kit).', 'start' => self::site() . '/mock'];
         }
         if ($has('/로고/u')) {
-            $out[] = ['what' => '기관 로고 찾기', 'how' => '로고를 새로 그리지는 않습니다. powerAssets 에 등록된 기관 로고 545종에서 찾아 씁니다(MCP: assets_search, category=logo).', 'start' => 'https://powerplus.hom2box.com/assets/browse?category=logo'];
+            $out[] = ['what' => '기관 로고 찾기', 'how' => '로고를 새로 그리지는 않습니다. powerAssets 에 등록된 기관 로고 545종에서 찾아 씁니다(MCP: assets_search, category=logo).', 'start' => self::site() . '/assets/browse?category=logo'];
         }
         if ($has('/엑셀|스프레드시트|excel|xlsx/u')) {
-            $out[] = ['what' => '엑셀 자료로 장표 만들기', 'how' => '엑셀 표 편집은 하지 않습니다. 엑셀 파일을 자료로 올리면 powerDeck 이 표·수치를 읽어 장표로 만듭니다.', 'start' => 'https://powerplus.hom2box.com/deck'];
+            $out[] = ['what' => '엑셀 자료로 장표 만들기', 'how' => '엑셀 표 편집은 하지 않습니다. 엑셀 파일을 자료로 올리면 powerDeck 이 표·수치를 읽어 장표로 만듭니다.', 'start' => self::site() . '/deck'];
         }
         if ($has('/디자인|그림|이미지|아이콘|포스터|배너|사진/u')) {
-            $out[] = ['what' => '디자인 자산 찾기', 'how' => 'powerAssets 에서 아이콘·사진·일러스트를 찾아 씁니다(MCP: assets_search).', 'start' => 'https://powerplus.hom2box.com/assets'];
+            $out[] = ['what' => '디자인 자산 찾기', 'how' => 'powerAssets 에서 아이콘·사진·일러스트를 찾아 씁니다(MCP: assets_search).', 'start' => self::site() . '/assets'];
         }
         if ($out === []) {
-            $out[] = ['what' => '제안서·발표 장표', 'how' => '자료를 올리면 기획·시안·대본까지 만듭니다.', 'start' => 'https://powerplus.hom2box.com/deck'];
-            $out[] = ['what' => '홈페이지 화면 시안', 'how' => '기관 종류만 알려 주면 메인·서브 시안을 만듭니다.', 'start' => 'https://powerplus.hom2box.com/mock'];
-            $out[] = ['what' => '디자인 자산', 'how' => '아이콘·사진·일러스트를 찾아 PowerPoint 에 넣습니다.', 'start' => 'https://powerplus.hom2box.com/assets'];
+            $out[] = ['what' => '제안서·발표 장표', 'how' => '자료를 올리면 기획·시안·대본까지 만듭니다.', 'start' => self::site() . '/deck'];
+            $out[] = ['what' => '홈페이지 화면 시안', 'how' => '기관 종류만 알려 주면 메인·서브 시안을 만듭니다.', 'start' => self::site() . '/mock'];
+            $out[] = ['what' => '디자인 자산', 'how' => '아이콘·사진·일러스트를 찾아 PowerPoint 에 넣습니다.', 'start' => self::site() . '/assets'];
         }
         return array_slice($out, 0, 3);
     }

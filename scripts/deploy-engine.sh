@@ -56,4 +56,10 @@ tar -cf - $FILES | "${SSH[@]}" "set -e; rm -rf /tmp/pd-eng && mkdir -p /tmp/pd-e
 # 빠졌으면 이 PC 의 D:\powerDeck\reference 에서 올리고 scripts/reference-push.sh 로 묶음을 다시 만든다(그림 데이터라 저장소에 두지 않는다)
 miss=$("${SSH[@]}" 'r=~/powerDeck/reference; for f in styles/styles.json front/templates.json guide/학습-표지목차간지.md mockups/표지템플릿; do [ -e "$r/$f" ] || echo "$f"; done')
 if [ -n "$miss" ]; then echo "⚠️ 서버 엔진 참조 폴더에 없음: $miss — 디자인 타입·표지 규칙이 빠진 채로 돈다"; exit 4; fi
+# 시스템 준비물(R94, 2026-10-20) — 회사 서버 이관 때 .venv 만 복사되고 engine/setup_linux.sh 의 apt 단계가 빠져 LibreOffice·poppler·한글 대체 글꼴·회사 서체 설치가 없었다(장표 렌더 불가)
+sysmiss=$("${SSH[@]}" 'command -v soffice >/dev/null || echo "LibreOffice(soffice)"; command -v pdftoppm >/dev/null || echo "poppler(pdftoppm)"
+  fc-match sans:lang=ko | grep -qiE "Noto Sans CJK|Nanum" || echo "한글 대체 글꼴(fonts-noto-cjk)"; fc-match Calibri | grep -qi Carlito || echo "Calibri 대체(fonts-crosextra-carlito)"
+  locale -a | grep -qi ko_kr || echo "ko_KR 로캘"
+  ls ~/powerDeck/worker/fonts/private/*.[tT][tT][fF] >/dev/null 2>&1 && { fc-list | grep -q "a시월구일" || echo "회사 서체 a시월구일(fonts/private 은 있는데 설치 안 됨 — setup_linux.sh 3단계)"; }; true')
+if [ -n "$sysmiss" ]; then echo "⚠️ 서버에 엔진 준비물이 없음:"; echo "$sysmiss" | sed 's/^/   - /'; echo "   → 서버에서 engine/setup_linux.sh 의 1)·3) 단계를 돌린다(R94)"; exit 7; fi
 echo "엔진 배포 완료 (백업 worker-bak-$TS.tgz)"

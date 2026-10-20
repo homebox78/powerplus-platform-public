@@ -46,11 +46,8 @@ echo "== 2. 번들 =="
 B="$WORK/deploy/platform"; mkdir -p "$B/api"
 cp -r "$ROOT/apps/web/build/client/." "$B/"
 mkdir -p "$B/addin" && cp -r "$ROOT/apps/addin/dist/." "$B/addin/"
-# 매니페스트 주소는 배포 대상 서버로(manifest.prod.xml 은 hom2box 기준). 옛 도메인도 AppDomain 에 남겨 이미 설치한 애드인이 넘어올 수 있게
-if [ "$PUBLIC" != "https://powerplus.hom2box.com" ]; then
-  sed -i "s#https://powerplus.hom2box.com#$PUBLIC#g" "$B/addin/manifest.xml"
-  grep -q "<AppDomain>https://powerplus.hom2box.com</AppDomain>" "$B/addin/manifest.xml" || sed -i '0,/<AppDomain>/s#\(\s*\)<AppDomain>#\1<AppDomain>https://powerplus.hom2box.com</AppDomain>\n\1<AppDomain>#' "$B/addin/manifest.xml"
-fi
+# 매니페스트 원본(manifest.prod.xml)은 운영 주소(회사 서버) 기준(2026-10-20 전환). 다른 서버로 배포하면 그 주소로 바꾼다
+[ "$PUBLIC" != "https://powerplus.solideos.com:46443" ] && sed -i "s#https://powerplus.solideos.com:46443#$PUBLIC#g" "$B/addin/manifest.xml"
 # 설치 마법사(exe) — scripts/build-installer.mjs 결과를 그대로 싣는다
 [ -f "$ROOT/apps/addin/release/powerAssets_Setup.exe" ] && cp "$ROOT/apps/addin/release/powerAssets_Setup.exe" "$ROOT/apps/addin/release/setup.json" "$B/addin/"
 for d in public routes src data bin; do [ -d "$ROOT/api/$d" ] && cp -r "$ROOT/api/$d" "$B/api/"; done

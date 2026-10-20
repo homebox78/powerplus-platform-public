@@ -1,7 +1,11 @@
-# powerPlus 통합 플랫폼 — 개발 지침
+# powerPlus 통합 플랫폼(회사) — 개발 지침
 
+> 운영 = 회사 서버 https://powerplus.solideos.com:46443 (2026-10-20 전환). 배포 대상은 회사 서버 하나.
+> 개인 갈래 HOMEBOX 는 D:\homebox-platform(homebox78/homebox-platform, 개인 GCP) — 이 저장소와 섞지 않는다.
 
-- 기획 단일 원본: (비공개 작업 기록) (docs/PLAN.md 는 사본 — 바꾸면 양쪽).
+> 개인 작업 기록(myDev)은 이 회사 저장소에 두지 않는다(2026-10-20 서브모듈 제거) — 개인 갈래에만.
+
+- 기획 사본: `docs/PLAN.md`.
 - 결정 표기 규칙·스택·디자인 규칙은 `D:\homebox-handoff\CLAUDE.md` 를 따른다(홈박스가 디자인 베이스). 다른 점만 여기에 적는다.
 - 기존 네 저장소는 읽기만. 가져온 코드는 출처를 파일 머리 주석에 남긴다.
 - DB 는 `docs/db-design.md` 를 먼저 쓰고 검토받은 뒤 `db/schema.sql` 로. 옛 DB 는 `db/migrate-legacy/` 의 원천일 뿐.

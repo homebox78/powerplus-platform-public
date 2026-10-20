@@ -15,7 +15,7 @@
     <AssemblyTitle>powerAssets 설치 마법사</AssemblyTitle>
     <Company>㈜솔리데오</Company>
     <Copyright>© 2026 ㈜솔리데오</Copyright>
-    <Version>1.1.0</Version>
+    <Version>1.1.1</Version>
     <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
   </PropertyGroup>
   <ItemGroup>

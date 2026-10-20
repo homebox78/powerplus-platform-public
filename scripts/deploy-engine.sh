@@ -6,12 +6,9 @@
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 bash "$ROOT/scripts/preflight.sh" engine || exit 1   # 배포 전 자가 검사
-KEY_SRC="${PP_SSH_KEY:-}"
-for k in "$HOME/google_key.pem"; do [ -n "$KEY_SRC" ] && break; [ -f "$k" ] && KEY_SRC="$k"; done
-[ -f "$KEY_SRC" ] || { echo "SSH 키 없음 — PP_SSH_KEY=/path/google_key.pem"; exit 1; }
+source "$(dirname "$0")/deploy-target.sh"
 KEY=$(mktemp); cp "$KEY_SRC" "$KEY"; chmod 600 "$KEY"; trap 'rm -f "$KEY"' EXIT
-HOST="${PP_HOST:?PP_HOST=user@host 필요}"
-SSH=(ssh -i "$KEY" -o StrictHostKeyChecking=accept-new "$HOST")
+SSH=(ssh -i "$KEY" "${SSH_OPTS[@]}" "$HOST")
 
 cd "$ROOT/engine"
 # 한 번 나온 오류의 회귀 시험(known_errors.json) — 하나라도 실패하면 올리지 않는다
@@ -35,7 +32,7 @@ TS=$(date +%Y%m%d-%H%M%S)
 # 서체 파일은 서버에 없는 것만 올린다(서버에 손으로 맞춘 파일은 덮지 않는다). 목록에 적힌 파일이 이 PC 에 없으면 배포하지 않는다 — 서버에도 없으면 그 서체를 고른 작업이 깨진다.
 NEED=$("$PY" -c 'import json;d=json.load(open("fonts/fonts.json",encoding="utf-8"));print(" ".join(sorted({t["file"] for t in d["title"]}|{f for b in d["body"] for f in b.get("files") or []})))')
 for f in $NEED; do [ -f "fonts/$f" ] || { echo "fonts.json 의 서체 파일 engine/fonts/$f 가 이 PC 에 없음 — 받아 두고 다시(R82)"; exit 5; }; done
-SRVF=$("${SSH[@]}" 'ls -1 ~/powerDeck/worker/fonts ~/powerDeck/worker/fonts/licenses 2>/dev/null')
+SRVF=$("${SSH[@]}" 'ls -1 ~/powerDeck/worker/fonts ~/powerDeck/worker/fonts/licenses 2>/dev/null; true')   # 새 서버는 fonts 폴더가 없다 — ls 2 로 set -e 에 죽지 않게(2026-10-19 회사 서버)
 NEWF=""
 for f in $(cd fonts && ls *.ttf *.otf 2>/dev/null) $(cd fonts && ls licenses/*.txt licenses/*.pdf 2>/dev/null); do echo "$SRVF" | grep -qxF "$(basename "$f")" || NEWF="$NEWF $f"; done
 [ -n "$NEWF" ] && echo "서버에 없는 서체·라이선스 올림:$NEWF"

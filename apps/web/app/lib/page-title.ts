@@ -3,7 +3,8 @@
 import { MODULES } from "@/lib/modules";
 
 export const SITE = "powerPlus";
-export const SITE_URL = "https://powerplus.hom2box.com";
+// 열린 서버 주소(회사 서버 이관 2026-10-19 — hom2box 로 박혀 있었다). 미리 렌더할 때만 기본값
+export const SITE_URL = typeof window !== "undefined" ? window.location.origin : "https://powerplus.hom2box.com";
 export const SITE_DESC = "SI 실무자의 올인원 — 제안서 에셋(powerAssets)·장표 변환(powerDeck)·홈페이지 목업(powerMock)·디자인 규칙 안내서(powerGuide)를 한 곳에서.";
 export const SITE_OG_IMAGE = `${SITE_URL}/img/home/hero-v2.webp`;
 

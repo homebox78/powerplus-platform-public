@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# 플랫폼 배포 한 방 (Git Bash) — https://powerplus.hom2box.com  (최종 powerplus.solideos.com, 기획 §0)
+# 플랫폼 배포 한 방 (Git Bash) — $PUBLIC  (최종 powerplus.solideos.com, 기획 §0)
 #   scripts/deploy.sh           웹 빌드 + api 업로드 + DB 마이그레이션(schema_migrations 이력, 증분)
 #   scripts/deploy.sh --seed    + 기준 데이터(자산·파일 기록·플랜·포인트 규칙)를 로컬에서 한 번 넣는다 — 첫 설치용.
 #                                운영 데이터(사용자·키·글·시안·작업·감사·문의)는 절대 올리지 않는다.
@@ -12,10 +12,7 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 bash "$ROOT/scripts/preflight.sh" web || exit 1   # 배포 전 자가 검사(docs/오류-재발방지-체크리스트.md)
 php "$ROOT/engine/tests/test_plan_keep.php" 2>/dev/null || { echo "기획 먼저 저장(Jobs::savePlan·finish) 시험 실패 — 배포 중단(R81)"; exit 3; }
 php "$ROOT/engine/tests/test_deck_links.php" >/dev/null 2>&1 || { echo "받기 링크(Deck/Links.php·/d/ 관문) 시험 실패 — 배포 중단. php engine/tests/test_deck_links.php 로 확인"; exit 3; }
-HOST="${PP_HOST:?PP_HOST=user@host 필요}"
-KEY_SRC="${PP_SSH_KEY:-}"
-for k in "$HOME/google_key.pem"; do [ -n "$KEY_SRC" ] && break; [ -f "$k" ] && KEY_SRC="$k"; done
-[ -f "$KEY_SRC" ] || { echo "❌ SSH 키를 찾지 못함 — PP_SSH_KEY=/path/google_key.pem"; exit 1; }
+source "$(dirname "$0")/deploy-target.sh"
 SEED=0; DRY=0
 for a in "$@"; do case "$a" in --seed) SEED=1;; --dry) DRY=1;; esac; done
 TOOLS="${PP_TOOLS:-}"; [ -z "$TOOLS" ] && { [ -d /g/tools ] && TOOLS=/g/tools || TOOLS=/d/tools; }
@@ -49,6 +46,11 @@ echo "== 2. 번들 =="
 B="$WORK/deploy/platform"; mkdir -p "$B/api"
 cp -r "$ROOT/apps/web/build/client/." "$B/"
 mkdir -p "$B/addin" && cp -r "$ROOT/apps/addin/dist/." "$B/addin/"
+# 매니페스트 주소는 배포 대상 서버로(manifest.prod.xml 은 hom2box 기준). 옛 도메인도 AppDomain 에 남겨 이미 설치한 애드인이 넘어올 수 있게
+if [ "$PUBLIC" != "https://powerplus.hom2box.com" ]; then
+  sed -i "s#https://powerplus.hom2box.com#$PUBLIC#g" "$B/addin/manifest.xml"
+  grep -q "<AppDomain>https://powerplus.hom2box.com</AppDomain>" "$B/addin/manifest.xml" || sed -i '0,/<AppDomain>/s#\(\s*\)<AppDomain>#\1<AppDomain>https://powerplus.hom2box.com</AppDomain>\n\1<AppDomain>#' "$B/addin/manifest.xml"
+fi
 # 설치 마법사(exe) — scripts/build-installer.mjs 결과를 그대로 싣는다
 [ -f "$ROOT/apps/addin/release/powerAssets_Setup.exe" ] && cp "$ROOT/apps/addin/release/powerAssets_Setup.exe" "$ROOT/apps/addin/release/setup.json" "$B/addin/"
 for d in public routes src data bin; do [ -d "$ROOT/api/$d" ] && cp -r "$ROOT/api/$d" "$B/api/"; done
@@ -73,8 +75,8 @@ echo "bundle $(du -h "$WORK/deploy/bundle.tgz" | cut -f1)"
 [ "$DRY" = 1 ] && { echo "dry-run 종료"; exit 0; }
 
 echo "== 3. 업로드·설치 =="
-scp -q -i "$KEY" -o BatchMode=yes "$WORK/deploy/bundle.tgz" "$HOST:/tmp/pp-bundle.tgz"
-ssh -i "$KEY" -o BatchMode=yes "$HOST" "SEED=$SEED bash -s" <<'EOF'
+scp -q -i "$KEY" "${SCP_OPTS[@]}" "$WORK/deploy/bundle.tgz" "$HOST:/tmp/pp-bundle.tgz"
+ssh -i "$KEY" "${SSH_OPTS[@]}" "$HOST" "SEED=$SEED bash -s" <<'EOF'
 set -e
 sudo test -f /var/www/platform_conf/config.php || { echo "❌ 서버 설정 없음 — scripts/server-setup.sh 먼저"; exit 1; }
 T=$(mktemp -d); tar -xzf /tmp/pp-bundle.tgz -C "$T"; rm -f /tmp/pp-bundle.tgz
@@ -143,35 +145,35 @@ EOF
 echo "== 4. 검증 =="
 ok=1
 chk() { local c; c=$(curl -s -o /dev/null -w "%{http_code}" "$1"); [ "$c" = "$2" ] && echo "✓ $1 $c" || { echo "✗ $1 $c (기대 $2)"; ok=0; }; }
-chk https://powerplus.hom2box.com/ 200
-chk https://powerplus.hom2box.com/assets 200
-chk https://powerplus.hom2box.com/assets/start 200
-chk https://powerplus.hom2box.com/deck 200
-chk https://powerplus.hom2box.com/addin/taskpane.html 200
-chk https://powerplus.hom2box.com/addin/manifest.xml 200
-chk https://powerplus.hom2box.com/addin/powerAssets_Setup.exe 200
-chk https://powerplus.hom2box.com/mock 200
-chk https://powerplus.hom2box.com/guide 200
-chk https://powerplus.hom2box.com/api/v1/health 200
-chk https://powerplus.hom2box.com/api/config.php 403
-chk https://powerplus.hom2box.com/api/src/Core/Config.php 403
-H=$(curl -s https://powerplus.hom2box.com/api/v1/health); echo "health: $H"
+chk $PUBLIC/ 200
+chk $PUBLIC/assets 200
+chk $PUBLIC/assets/start 200
+chk $PUBLIC/deck 200
+chk $PUBLIC/addin/taskpane.html 200
+chk $PUBLIC/addin/manifest.xml 200
+chk $PUBLIC/addin/powerAssets_Setup.exe 200
+chk $PUBLIC/mock 200
+chk $PUBLIC/guide 200
+chk $PUBLIC/api/v1/health 200
+chk $PUBLIC/api/config.php 403
+chk $PUBLIC/api/src/Core/Config.php 403
+H=$(curl -s $PUBLIC/api/v1/health); echo "health: $H"
 echo "$H" | grep -q '"db":true' || { echo "✗ DB 연결 실패"; ok=0; }
-chk https://powerplus.hom2box.com/mockref/api/health 200
+chk $PUBLIC/mockref/api/health 200
 # SPA 주소 판정(api/public/spa.php): 모르는 주소는 404, 공개 화면은 화면별 제목, robots·sitemap 은 PHP 가 만든다
-chk https://powerplus.hom2box.com/no-such-page-zz9 404
-chk https://powerplus.hom2box.com/robots.txt 200
-chk https://powerplus.hom2box.com/sitemap.xml 200
-curl -s https://powerplus.hom2box.com/pricing | grep -q '<title>요금제 — powerPlus</title>' && echo "✓ /pricing 제목 주입" || { echo "✗ /pricing 제목 주입 안 됨"; ok=0; }
+chk $PUBLIC/no-such-page-zz9 404
+chk $PUBLIC/robots.txt 200
+chk $PUBLIC/sitemap.xml 200
+curl -s $PUBLIC/pricing | grep -q '<title>요금제 — powerPlus</title>' && echo "✓ /pricing 제목 주입" || { echo "✗ /pricing 제목 주입 안 됨"; ok=0; }
 # 보안 헤더: 일반 화면은 같은 사이트에서만 iframe, 애드인(/addin/)은 Office 가 iframe 으로 띄우므로 X-Frame-Options 가 없어야 한다
-curl -sI https://powerplus.hom2box.com/about | grep -qi '^x-frame-options: SAMEORIGIN' && echo "✓ X-Frame-Options" || { echo "✗ X-Frame-Options 없음"; ok=0; }
-curl -sI https://powerplus.hom2box.com/addin/taskpane.html | grep -qi '^x-frame-options' && { echo "✗ 애드인에 X-Frame-Options — Office 에서 안 열린다"; ok=0; } || echo "✓ 애드인 iframe 허용"
+curl -sI $PUBLIC/about | grep -qi '^x-frame-options: SAMEORIGIN' && echo "✓ X-Frame-Options" || { echo "✗ X-Frame-Options 없음"; ok=0; }
+curl -sI $PUBLIC/addin/taskpane.html | grep -qi '^x-frame-options' && { echo "✗ 애드인에 X-Frame-Options — Office 에서 안 열린다"; ok=0; } || echo "✓ 애드인 iframe 허용"
 # PERF-003: 배포 직후 첫 요청이 느리지 않게 웹이 실제로 부르는 주소를 한 번씩 불러 예열(DB 버퍼·opcache).
 #   주소는 프론트 호출부와 같게(apps/web/app/lib/assets.ts·home.tsx·search.ts) — 다르면 예열 효과가 없다.
 #   2026-10-16 회원 전용 전환 뒤 assets/* 는 비로그인 401 이라 예열이 안 된다 → 열린 경로(Router OPEN_PATHS)만 부른다.
 #   plans 는 결제 숨김(billing_visible) 동안 일부러 404 라 뺀다.
 for p in "home/stats" "changelog" "help/docs" "removal/stats"; do
-  t=$(curl -s -o /dev/null -w "%{http_code} %{time_total}" "https://powerplus.hom2box.com/api/v1/$p")
+  t=$(curl -s -o /dev/null -w "%{http_code} %{time_total}" "$PUBLIC/api/v1/$p")
   echo "예열 /api/v1/$p → $t"
 done
 for u in https://hom2box.com/; do echo "포트폴리오 $u $(curl -s -o /dev/null -w "%{http_code}" "$u")"; done

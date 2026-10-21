@@ -4,6 +4,9 @@
 #   설정: /var/www/platform_conf/offsite.env (600) —
 #     GCS_BUCKET=gs://버킷이름          백업 버킷(보존 30일은 버킷 수명 주기 규칙으로)
 #     GCS_KEY=/var/www/platform_conf/gcs-backup.json   버킷 쓰기 권한만 가진 서비스 계정 키(VM 기본 계정은 저장소 읽기 전용이라 따로 둔다)
+#   또는(2026-10-21 회사 서버) 다른 디스크로 복사 —
+#     MIRROR_DIR=/var/backups/pp-mirror   데이터 폴더와 다른 디스크여야 한다(같으면 fail). 회사 서버: 데이터 폴더·덤프 = 둘째 디스크(/data),
+#                                          운영 DB·이 사본 = 첫 디스크. 바뀌거나 지운 파일은 deleted/날짜 에 30일, 덤프 사본은 7일 둔다.
 #   설정 파일이 없으면 아무것도 하지 않고 끝난다(설치만 먼저 해 둘 수 있게).
 # 결과 한 줄("유닉스시각 ok|fail 메모")을 STATUS 에 쓴다 — db-backup.status 와 같은 꼴.
 set -euo pipefail
@@ -12,7 +15,28 @@ STATUS=${STATUS-/var/www/platform_data/offsite-backup.status}
 status() { [ -n "$STATUS" ] && echo "$(date +%s) $*" | sudo tee "$STATUS" >/dev/null || true; }
 [ -r "$CONF" ] || sudo test -r "$CONF" || { echo "설정 없음($CONF) — 건너뜀"; exit 0; }
 # shellcheck disable=SC1090
-eval "$(sudo cat "$CONF" | grep -E '^(GCS_BUCKET|GCS_KEY)=')"
+eval "$(sudo cat "$CONF" | grep -E '^(GCS_BUCKET|GCS_KEY|MIRROR_DIR)=')"
+if [ -n "${MIRROR_DIR:-}" ]; then
+  trap 'status "fail line $LINENO"' ERR
+  SRC=$(readlink -f /var/www/platform_data)
+  sudo mkdir -p "$MIRROR_DIR/data" "$MIRROR_DIR/db" "$MIRROR_DIR/deleted"
+  [ "$(stat -c %d "$SRC")" != "$(stat -c %d "$MIRROR_DIR")" ] || { status "fail 사본이 데이터 폴더와 같은 디스크($MIRROR_DIR)"; exit 1; }
+  DAY=$(date +%Y%m%d); shopt -s nullglob
+  dumps=("$HOME"/db-backup/nightly/*-"$DAY"-*.sql.gz)
+  fails=()
+  [ ${#dumps[@]} -gt 0 ] && sudo cp -p "${dumps[@]}" "$MIRROR_DIR/db/" || fails+=("db")
+  # rsync 24 = 복사 중 사라진 파일 — 실패로 치지 않는다
+  sudo rsync -a --delete --backup --backup-dir="$MIRROR_DIR/deleted/$DAY" --exclude=tmp/ --exclude=cache/ --exclude=.cache/ --exclude=sessions/ \
+    "$SRC/" "$MIRROR_DIR/data/" || [ $? -eq 24 ] || fails+=("data")
+  sudo find "$MIRROR_DIR/db" -name '*.sql.gz' -mtime +7 -delete
+  sudo find "$MIRROR_DIR/deleted" -mindepth 1 -maxdepth 1 -type d -mtime +30 -exec rm -rf {} +
+  if [ ${#fails[@]} -gt 0 ]; then
+    echo "$(date '+%F %T') 다른 디스크 사본 일부 실패: ${fails[*]}" >&2; status "fail mirror ${fails[*]} db=${#dumps[@]}"; exit 1
+  fi
+  echo "$(date '+%F %T') DB ${#dumps[@]}개 · 데이터 동기화 → $MIRROR_DIR"
+  status "ok mirror db=${#dumps[@]}"
+  exit 0
+fi
 [ -n "${GCS_BUCKET:-}" ] && [ -n "${GCS_KEY:-}" ] || { status "fail 설정 비어 있음"; exit 1; }
 trap 'status "fail line $LINENO"' ERR
 KEY=$(mktemp); sudo cat "$GCS_KEY" > "$KEY"; chmod 600 "$KEY"; trap 'rm -f "$KEY"; status "fail line $LINENO"' ERR; trap 'rm -f "$KEY"' EXIT

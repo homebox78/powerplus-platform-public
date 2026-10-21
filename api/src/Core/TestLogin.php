@@ -103,7 +103,10 @@ final class TestLogin
         if (!self::isActor($a)) {
             return;
         }
-        if (in_array($method, ['POST', 'PUT', 'PATCH', 'DELETE'], true)
+        // 촬영·시연 때는 쓰기를 열 수 있다(사용자 2026-10-21 "테스트 계정 쓰기 실행 권한까지") — core_settings auth.test.writable=1·기한(auth.test.writable_until) 안에서만
+        $s = self::settings();
+        $writable = (string) ($s['auth.test.writable'] ?? '') === '1' && strtotime((string) ($s['auth.test.writable_until'] ?? '2000-01-01')) > time();
+        if (!$writable && in_array($method, ['POST', 'PUT', 'PATCH', 'DELETE'], true)
             && !in_array($path, ['/auth/logout', '/auth/logout-all', '/auth/test-login', '/me/consents'], true)) {
             throw new HttpError('TEST_READ_ONLY', '테스트 계정은 읽기 전용입니다.', 403, '보기만 할 수 있습니다. 바꾸려면 본인 계정으로 로그인하세요.');
         }

@@ -17,6 +17,7 @@ import { Separator } from "@/components/ui/separator";
 import { Sidebar, SidebarContent, SidebarGroup, SidebarGroupLabel, SidebarHeader, SidebarInset, SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarMenuSub, SidebarMenuSubButton, SidebarMenuSubItem, SidebarProvider, SidebarRail, SidebarTrigger } from "@/components/ui/sidebar";
 import { ROLE_KO } from "@/lib/admin";
 import { useLogout, useMe } from "@/lib/auth";
+import { PLANS_UI } from "@/lib/plans-ui";
 
 interface Item { to: string; label: string; icon: typeof Users; end?: boolean; role: "admin" | "curator" | "support"; children?: Array<{ to: string; label: string; role?: Item["role"]; end?: boolean }> }
 // 메뉴 정리(사용자 2026-10-16 "중구난방, 성격에 맞게, 순서도 중요도에 맞게") — 묶음 = 성격, 순서 = 중요도:
@@ -71,7 +72,8 @@ const GROUPS: Array<{ label: string; items: Item[] }> = [
   { label: "회원·설정", items: [
     { to: "/admin/users", label: "사용자·역할", icon: Users, role: "admin" },
     { to: "/admin/point-rules", label: "포인트 규칙", icon: Coins, role: "admin" },
-    { to: "/admin/billing", label: "구독·결제", icon: CreditCard, role: "admin" },
+    // 가격·플랜·구독 화면 스위치(PLANS_UI) 가 꺼져 있으면 관리자 메뉴에서도 뺀다 — 사용자 2026-10-21 "이 메뉴 가려놔, 캡처에 딸려 안 들어가게". 따로 요청할 때만 켠다.
+    ...(PLANS_UI ? [{ to: "/admin/billing", label: "구독·결제", icon: CreditCard, role: "admin" as const }] : []),
     { to: "/admin/ai", label: "AI 설정", icon: Sparkles, role: "admin" },
   ] },
 ];

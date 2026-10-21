@@ -30,12 +30,6 @@ final class MaterialIcon
         return '<svg class="mi' . ($cls !== '' ? ' ' . $cls : '') . '" viewBox="0 -960 960 960" width="' . $size . '" height="' . $size . '" fill="currentColor" style="flex:none;vertical-align:middle" aria-hidden="true" focusable="false"><path d="' . $d . '"/></svg>';
     }
 
-    /** CSS mask 로 쓰는 data URI (::before·::after 장식용 — content 에 글자를 넣지 않기 위해). */
-    public static function maskUri(string $n): string
-    {
-        $d = self::all()[$n]['d'] ?? '';
-        return "url(\"data:image/svg+xml," . rawurlencode('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 -960 960 960"><path d="' . $d . '"/></svg>') . "\")";
-    }
 
     /** 글 옆 아이콘 공통 CSS — 세로 중심 맞춤. */
     public static function css(): string

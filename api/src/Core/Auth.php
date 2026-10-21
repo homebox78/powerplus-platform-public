@@ -100,11 +100,4 @@ final class Auth
         }
         return $a->user;
     }
-
-    public static function requireRole(Actor $a, string $role): void
-    {
-        if (!$a->hasRole($role)) {
-            throw HttpError::forbidden();
-        }
-    }
 }

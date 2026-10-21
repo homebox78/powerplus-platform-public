@@ -5,7 +5,7 @@ import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 
 /** 그림·사진 자리 — 대각선 두 줄 */
-export function XFill({ className }: { className?: string }) {
+function XFill({ className }: { className?: string }) {
   return (
     <svg className={cn("pointer-events-none text-line-3", className)} width="100%" height="100%" preserveAspectRatio="none" viewBox="0 0 100 100" aria-hidden>
       <path d="M0 0L100 100M100 0L0 100" stroke="currentColor" strokeWidth="1" vectorEffect="non-scaling-stroke" fill="none" />
@@ -24,7 +24,7 @@ export const Lines = ({ n, last = "60%" }: { n: number; last?: string }) => (
   <span className="flex flex-col gap-[5px]">{Array.from({ length: n }).map((_, i) => <Bar key={i} w={i === n - 1 ? last : "100%"} />)}</span>
 );
 const Title = ({ w = "34%" }: { w?: string }) => <Bar w={w} dark h={7} />;
-export const Btn = ({ w = 44, dark }: { w?: number; dark?: boolean }) => <span className={cn("block h-[14px] shrink-0 rounded-[2px] border", dark ? "border-ink-4 bg-ink-4" : "border-ink-4 bg-white")} style={{ width: w }} />;
+const Btn = ({ w = 44, dark }: { w?: number; dark?: boolean }) => <span className={cn("block h-[14px] shrink-0 rounded-[2px] border", dark ? "border-ink-4 bg-ink-4" : "border-ink-4 bg-white")} style={{ width: w }} />;
 export const Dot = ({ on }: { on?: boolean }) => <span className={cn("block size-[5px] rounded-full", on ? "bg-ink-4" : "bg-line-3")} />;
 const Tabs = ({ n = 4 }: { n?: number }) => (
   <span className="flex border-b border-line-3">

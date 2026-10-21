@@ -5,10 +5,9 @@ import type { WireKind } from "./api";
 
 export type KindInfo = { k: WireKind; label: string; hint: string; icon: string; size: { w: number; h: number }; cls: "visual" | "text" | "band"; pic?: boolean; form?: boolean; data?: boolean; fmt: string };
 type Reg = { meta: Record<string, string[]>; chart_types: { id: string; label: string; aliases: string[] }[]; kinds: KindInfo[] };
-export const REG = reg as unknown as Reg;
+const REG = reg as unknown as Reg;
 export const KIND_LIST = REG.kinds;
 export const KIND_INFO = Object.fromEntries(KIND_LIST.map((x) => [x.k, x])) as Record<WireKind, KindInfo>;
-export const CHART_LABEL = Object.fromEntries(REG.chart_types.map((t) => [t.id, t.label])) as Record<string, string>;
 
 const esc = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 const META_KEY: Record<string, string> = Object.fromEntries(Object.entries(REG.meta).flatMap(([k, names]) => names.map((n) => [n.toLowerCase(), k])));
@@ -28,7 +27,7 @@ export function meta(d?: string): [Meta, string[]] {
 }
 export const isData = (k: string) => !!KIND_INFO[k as WireKind]?.data;
 
-export const cellsOf = (l: string) => l.trim().replace(/^\|+/, "").replace(/\|+$/, "").split("|").map((c) => c.trim());
+const cellsOf = (l: string) => l.trim().replace(/^\|+/, "").replace(/\|+$/, "").split("|").map((c) => c.trim());
 const SOURCE = /^\s*[-•]?\s*(출처|자료)\s*[:：]/;
 const PIC = /^\s*(그림|장면|삽화|말풍선|figure|scene|picture|image|illustration|photo|drawing|bubble|speech bubble)\s*[:：]\s*/i;
 
@@ -150,13 +149,6 @@ export const converge = (d?: string) => {
   }
   if (!pr.length && !so.length && plain.length) { const h = Math.ceil(plain.length / 2); return { pr: plain.slice(0, h).slice(0, 4), so: plain.slice(h).slice(0, 4) }; }
   return { pr: pr.slice(0, 4), so: so.slice(0, 4) };
-};
-/** 표 — 칸 목록, ★ 열 */
-export const table = (d?: string) => {
-  const cells = meta(d)[1].filter((l) => l.includes("|") && !/^[\s|:-]+$/.test(l)).map(cellsOf);
-  let star = -1;
-  if (cells.length) cells[0] = cells[0]!.map((c, i) => { if (star < 0 && c.startsWith("★")) { star = i; return c.replace(/^★\s*/, ""); } return c; });
-  return { cells, star };
 };
 
 const NG = /^(NG|DON'?T|기존|현행|현재|AS-?IS|전|이전|도입 전|before|✕|×|X)(?![\p{L}\p{N}_])/iu, OK = /^(OK|DO|개선|제안|TO-?BE|후|이후|도입 후|after|○|✓|O)(?![\p{L}\p{N}_])/iu;

@@ -36,19 +36,6 @@ final class Claude
     /** effort 를 받는 모델(앞부분) — Haiku 4.5 등 옛 모델에 보내면 400 */
     private const EFFORT_OK = ['claude-fable-', 'claude-opus-5', 'claude-opus-4-6', 'claude-opus-4-7', 'claude-opus-4-8', 'claude-sonnet-5', 'claude-sonnet-4-6', 'claude-haiku-5'];
 
-    /** OpenRouter 모델 id → Claude 모델 id. anthropic/claude-opus-5.5 → claude-opus-5-5. Claude 가 아니면 $fallback */
-    public static function modelFor(string $orModel, string $fallback): string
-    {
-        $m = strtolower(trim($orModel));
-        if (str_starts_with($m, 'anthropic/')) {
-            $m = substr($m, 10);
-        }
-        $m = (string) preg_replace('/[:@].*$/', '', $m);
-        if (!str_starts_with($m, 'claude-')) {
-            return $fallback;
-        }
-        return (string) preg_replace('/(\d+)\.(\d+)/', '$1-$2', $m);
-    }
 
     /** 키 확인 — 모델 목록(무료 호출)이 열리면 맞는 키. 틀리면 예외 */
     public static function verify(string $key): void

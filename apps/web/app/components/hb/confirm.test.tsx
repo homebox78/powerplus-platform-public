@@ -37,7 +37,7 @@ describe("toastError", () => {
   });
 
   it("음성 대조: 고치기 전 판은 hint 를 쓰지 않았다", () => {
-    let old = "";
+    let old: string;
     try { old = execFileSync("git", ["-C", path.resolve(import.meta.dirname, "../../../../.."), "show", "a80572c:apps/web/app/components/hb/confirm.tsx"], { encoding: "utf8" }); }
     catch { return; }   // 이력 없음(공개본)
     const body = old.split("export function toastError")[1] ?? "";

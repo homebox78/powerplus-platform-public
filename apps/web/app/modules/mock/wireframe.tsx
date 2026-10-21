@@ -646,6 +646,8 @@ export function WireframeScreen() {
   }, [params, me]);
   // 화면·기관을 바꾸면 추천 3안은 그 화면 것이 아니다 — 메인 추천(포털형 등 원형)을 서브 화면에서 눌러 원형이 섞이던 것(1단계 시험 결함)
   useEffect(() => {
+    // 화면이 바뀐 직후 한 번 되돌리는 것이라 연쇄 렌더가 없다(screen 에만 반응)
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (screen !== "main" && opt.data?.styles?.some((x) => x.id === style && x.main_only)) setStyle("auto");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [screen]);

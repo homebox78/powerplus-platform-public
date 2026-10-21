@@ -193,21 +193,6 @@ final class Plan
         return self::$kogl[$siteId];
     }
 
-    /** @param int[] $siteIds 여러 기관을 한 번에 캐시에 채운다(목록·탐색) */
-    public static function koglMany(array $siteIds): void
-    {
-        $need = array_values(array_unique(array_filter(array_map('intval', $siteIds), static fn (int $id): bool => $id > 0 && !array_key_exists($id, self::$kogl))));
-        if ($need === []) {
-            return;
-        }
-        $in = implode(',', array_fill(0, count($need), '?'));
-        foreach ($need as $id) {
-            self::$kogl[$id] = null;
-        }
-        foreach (Db::rows("SELECT id, kogl_type FROM sites WHERE id IN ($in)", $need) as $r) {
-            self::$kogl[(int) $r['id']] = $r['kogl_type'] === null ? null : (int) $r['kogl_type'];
-        }
-    }
 
     /** 이 요청이 그 기관의 원본(캡처·크롭 원본)을 받아도 되는가. staff·admin 은 항상, 그 외는 공공누리 미표시·1유형만. */
     public static function koglOpen(int $siteId, ?array $plan = null): bool

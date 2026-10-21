@@ -172,37 +172,6 @@ def _veil_dir(im, dark, side, ratio, strength):
     return _veil(im, dark, ratio, strength)
 
 
-def _calm_corners(im, logo_pos, kind, calm_box, solid=False):
-    """로고 자리(tl·tr·bl·br)가 그림으로 붐비면 그 쪽(위·아래)에 페이지 폭 차분한 띠를 깐다.
-    띠 색은 글 자리(차분한 곳)의 바탕색, 띠 위쪽(또는 아래쪽) 가장자리는 부드럽게 사라진다"""
-    im = im.convert("RGB")
-    bh = int(H * (0.16 if kind == "cover" else 0.14))
-    col = tuple(int(v) for v in ImageStat.Stat(im.crop(calm_box)).median)
-    for side in ("t", "b"):
-        ps = [p for p in (logo_pos or []) if p and p.startswith(side)]
-        if not ps:
-            continue
-        busy = False
-        for pos in ps:
-            x0 = W - X0 - int(W * 0.30) if pos.endswith("r") else X0   # 로고가 실제로 붙는 자리(logo_boxes 와 같다) — 넓게 재면 비켜 놓은 그림 끝에 걸려 띠가 그림을 덮었다
-            y0 = 0 if side == "t" else H - bh
-            if ImageStat.Stat(im.crop((x0, y0, x0 + int(W * 0.30), y0 + bh)).convert("L")).stddev[0] > 14:
-                busy = True
-        if not busy:
-            continue
-        fade = 0 if solid else int(H * 0.09)
-        ya = H - bh - fade - 24 if side == 'b' else bh + fade + 4   # 띠 색 = 띠 바로 바깥(차분한 쪽)의 바탕색 — 경계가 보이지 않게
-        col = tuple(int(v) for v in ImageStat.Stat(im.crop((calm_box[0], ya, calm_box[2], ya + 20))).median)
-        g = Image.new("L", (1, bh + fade))
-        for y in range(bh + fade):
-            t = 1.0 if not fade else (y / fade if side == "b" else (bh + fade - 1 - y) / fade)
-            g.putpixel((0, y), int(255 * min(1.0, max(0.0, t))))
-        g = g.resize((W, bh + fade))
-        y0 = H - bh - fade if side == "b" else 0
-        im.paste(Image.new("RGB", (W, bh + fade), col), (0, y0), g)
-    return im
-
-
 def _busy(im, side="left"):
     """그림이 있는 곳(1/8 축소 격자) — 윤곽이 서거나 바탕색과 색이 크게 다른 칸. 밝은 회백색 바닥·옅은 홈 선은 비어 있는 것으로 본다.
     바탕색 = 글 쪽 가장자리 띠의 중앙값(채도로 재면 짙은 코발트 단색 바탕 전체가 그림으로 잡혔다 — 10-15 F 표지).
@@ -309,20 +278,6 @@ def _sink(bg, lay, low=0.84, to=0.92):
     out = Image.new("RGB", (W, H))
     out.paste(bg.convert("RGB").crop((0, 0, W, 1)).resize((W, dy)), (0, 0))
     out.paste(bg.convert("RGB").crop((0, 0, W, H - dy)), (0, dy))
-    return out
-
-
-def logo_boxes(logo_pos, kind):
-    """앞장 로고가 놓이는 대략의 자리(2400×1600 기준) — design.make_front_mockup 이 로고를 붙이는 자리와 같은 모서리.
-    그림을 밀어낼 때 글과 함께 비워 둘 곳"""
-    out = []
-    bw, bh = int(W * 0.30), int(H * (0.16 if kind == "cover" else 0.14))   # _calm_corners 가 띠를 깔지 재는 자리와 같은 크기
-    for pos in (logo_pos or []):
-        if not pos or len(pos) < 2:
-            continue
-        x0 = W - X0 - bw if pos.endswith("r") else (X0 if pos.endswith("l") else (W - bw) // 2)
-        y0 = 0 if pos.startswith("t") else H - bh
-        out.append((x0, y0, x0 + bw, y0 + bh))
     return out
 
 

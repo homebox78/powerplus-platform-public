@@ -19,7 +19,7 @@ const LANG_DEFAULT = (list as unknown as { lang_default?: Record<string, { title
 const LANG_SHORT: Record<string, string> = { ko: "한국어", en: "영어", ja: "일본어", zh: "중국어", fr: "프랑스어", es: "스페인어", de: "독일어", vi: "베트남어" };
 
 /** 그 언어에 쓸 수 없는 이유(쓸 수 있으면 null) — 예: "일본어 글자 없음" */
-export function fontBlock(kind: Kind, id: string, lang = "ko"): string | null {
+function fontBlock(kind: Kind, id: string, lang = "ko"): string | null {
   const f = (kind === "title" ? TITLE_FONTS : BODY_FONTS).find((x) => x.id === id);
   if (!f) return null;
   const ln = LANG_SHORT[lang] ?? lang;

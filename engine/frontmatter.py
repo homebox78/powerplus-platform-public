@@ -145,12 +145,6 @@ def fit_items(items, width_in, base, lo, sep=" · "):
     return sep.join(items), lo
 
 
-def emph(t, color, accent):
-    """**강조** → 강조색 런"""
-    parts = re.split(r"\*\*(.+?)\*\*", t)
-    return [(p, accent if i % 2 else color) for i, p in enumerate(parts) if p]
-
-
 def clean(t):
     return re.sub(r"\s+", " ", str(t or "").replace("**", "")).strip()
 

@@ -8,7 +8,7 @@ import { cn } from "@/lib/utils";
  */
 const cache = new Map<string, boolean>();
 
-export function isLightOnTransparent(img: HTMLImageElement): boolean {
+function isLightOnTransparent(img: HTMLImageElement): boolean {
   const key = img.currentSrc || img.src;
   const hit = cache.get(key);
   if (hit !== undefined) return hit;

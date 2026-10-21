@@ -30,6 +30,10 @@ const SETS = {
   glasskv: { cat: "illust", prefix: "glasskv-", set: "illust-keyvisual-glass", style: "keyvisual-3d-glass", ko: ["키비주얼", "히어로", "메인비주얼", "배경", "3D", "글래스", "유리질감", "아이소메트릭", "AI이미지"], en: ["key visual", "hero", "background", "3d render", "glass", "isometric"] },
   // 2026-10-20 14차 — 다크 3D 아이소메트릭 키비주얼(짙은 남색 바탕·파랑 빛선·왼쪽 글자 자리, 발표장표 다크용) — set:"darkkv"
   darkkv: { cat: "illust", prefix: "darkkv-", set: "illust-keyvisual-dark", style: "keyvisual-3d-dark", ko: ["키비주얼", "히어로", "메인비주얼", "배경", "3D", "다크", "어두운배경", "네이비", "남색", "아이소메트릭", "AI이미지"], en: ["key visual", "hero", "background", "3d render", "dark", "navy", "isometric"] },
+  // 2026-10-21 15차 — 공공SI 가상 프로젝트 6개(정부24·세움터·보조금24·전자문서지갑·마이데이터·행정정보공동이용) 장표 쪽별 다크 3D 키비주얼(코발트 남색·왼쪽 글자 자리) — set:"darkproj"
+  darkproj: { cat: "illust", prefix: "darkproj-", set: "illust-keyvisual-dark-project", style: "keyvisual-3d-dark-cobalt", ko: ["키비주얼", "히어로", "배경", "장표배경", "3D", "다크", "어두운배경", "남색", "코발트", "아이소메트릭", "공공SI", "제안서", "AI이미지"], en: ["key visual", "hero", "background", "slide background", "3d render", "dark", "navy", "isometric", "public si", "proposal"] },
+  // 2026-10-21 15차 — 장표 주제별 실사 인물(밝은 흰·옅은 파랑 공간, 의약품·식품·병원·민원·전자지갑·소상공인) — set:"rpphoto"
+  rpphoto: { cat: "photo", prefix: "rpphoto-", set: "photo-slide-topic-people", style: "photo-slide-topic-bright", ko: ["사진", "실사", "인물", "장표", "장표사진", "공공", "밝은", "AI이미지"], en: ["photo", "people", "slide photo", "public service", "bright"] },
   // 2026-10-20 14차 — 의약품 AI 심사 같은 22장면(업무 장면 12 + 아이콘 10)을 세 화풍으로(일러스트 PA1 · 실사 PA2 · 3D PA3). 흰·옅은 파랑 바탕 JPG
   "pa-flat": { cat: "illust", prefix: "pharma-", set: "illust-pharma-review-flat", style: "pharma-review-flat", ko: ["일러스트", "평면일러스트", "플랫", "의약품", "의약품심사", "허가심사", "AI심사", "제약", "파랑", "AI이미지"], en: ["illustration", "flat illustration", "pharmaceutical", "drug review", "approval review", "ai review", "blue"] },
   "pa-photo": { cat: "photo", prefix: "pharma-", set: "photo-pharma-review", style: "pharma-review-photo", ko: ["사진", "실사", "의약품", "의약품심사", "허가심사", "AI심사", "제약", "파랑", "AI이미지"], en: ["photo", "pharmaceutical", "drug review", "approval review", "ai review", "blue"] },

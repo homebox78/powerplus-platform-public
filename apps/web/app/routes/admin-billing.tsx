@@ -24,6 +24,7 @@ import {
 } from "@/lib/admin-billing";
 import { useMe } from "@/lib/auth";
 import { cn } from "@/lib/utils";
+import { PLANS_UI } from "@/lib/plans-ui";
 import type { Route } from "./+types/admin-billing";
 
 export const meta: Route.MetaFunction = () => [{ title: "구독·결제 — powerPlus 관리자" }];
@@ -34,6 +35,8 @@ type Tab = (typeof TABS)[number]["id"];
 export default function AdminBilling() {
   const { get, set } = useQueryState();
   const tab = (TABS.some((t) => t.id === get("tab")) ? get("tab") : "subs") as Tab;
+  // 메뉴만 가리면 주소로는 열리므로 화면도 같이 막는다(PLANS_UI 꺼짐 = 사내 운영)
+  if (!PLANS_UI) return <AdminTitle title="구독·결제" desc="사내 운영 동안 가려 둔 화면입니다. 필요하면 PLANS_UI 를 켭니다." />;
   return (
     <div>
       <AdminTitle title="구독·결제" desc="구독과 결제 내역, 토스 웹훅 기록을 봅니다. 환불은 최고 관리자만 할 수 있습니다." />

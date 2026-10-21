@@ -755,6 +755,7 @@ final class Service
         'industry' => '산업', 'field' => '현장', 'finance' => '금융', 'law' => '법률', 'digital' => '디지털', 'city' => '도시', 'infra' => '인프라',
         'life' => '생활', 'welfare' => '복지', 'education' => '교육', 'health' => '보건', 'safety' => '안전', 'character' => '캐릭터',
         'nature' => '자연', 'landscape' => '풍경', 'leisure' => '여가', 'culture' => '문화',
+        'dark' => '다크', 'project' => '프로젝트', 'slide' => '장표', 'topic' => '주제',
     ];
 
     public static function setLabel(string $code): string

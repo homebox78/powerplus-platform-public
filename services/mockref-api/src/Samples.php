@@ -446,10 +446,4 @@ final class Samples
         }
         return array_map(static fn ($r) => $r['it'], array_slice($rows, 0, max(1, $limit)));
     }
-
-    /** 섹션 유형에 맞는 이미지 n장 (섹션 코드의 사진 자리용) */
-    public static function forSection(string $type, array $tags, int $n, int $seed): array
-    {
-        return self::find(self::FOR_SECTION[$type] ?? ['citizen', 'place'], $tags, $n, $seed);
-    }
 }

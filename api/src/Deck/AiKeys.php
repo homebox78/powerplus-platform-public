@@ -501,32 +501,6 @@ final class AiKeys
 
     /* ───────── 키 · 모델 저장 ───────── */
 
-    /** 개인 키 저장 — OpenRouter 로 확인하고 맞을 때만 */
-    public static function savePersonal(string $email, string $key): array
-    {
-        $key = self::cleanKey($key);
-        $info = self::keyInfo($key);
-        Db::pdo()->prepare('REPLACE INTO deck_ai_user_keys (email, key_enc, key_hint, updated_at) VALUES (?, ?, ?, NOW())')
-            ->execute([strtolower($email), self::enc($key), self::hint($key)]);
-        return ['ok' => true, 'info' => $info];
-    }
-
-    public static function deletePersonal(string $email): array
-    {
-        Db::pdo()->prepare('DELETE FROM deck_ai_user_keys WHERE email = ?')->execute([strtolower($email)]);
-        return ['ok' => true];
-    }
-
-    /** 개인 모델 선택 (회사 키 방식이면 관리자 설정이 우선) */
-    public static function saveModels(string $email, array $b): array
-    {
-        [$plan, $image] = self::cleanModels($b);
-        Db::pdo()->prepare('INSERT INTO deck_ai_user_keys (email, key_enc, key_hint, plan_model, image_model, updated_at) VALUES (?, "", NULL, ?, ?, NOW())
-            ON DUPLICATE KEY UPDATE plan_model = VALUES(plan_model), image_model = VALUES(image_model)')
-            ->execute([strtolower($email), $plan, $image]);
-        return ['ok' => true, 'models' => self::models($email)];
-    }
-
     /** 관리자 — 키 방식·회사 키·회사 기본 모델 */
     public static function saveAdmin(array $b): array
     {
@@ -610,24 +584,6 @@ final class AiKeys
         return self::setting(self::uk('hfp', $email)) === 'higgsfield' ? 'higgsfield' : 'openrouter';
     }
 
-    /** 내 계정 — Higgsfield 키(두 칸)·그림 만드는 곳(개인 키 방식에서) */
-    public static function savePersonalHf(string $email, array $b): array
-    {
-        if (self::mode() === 'company') Legacy::fail('공용 키 방식에서는 관리자가 정합니다.', 409);
-        if (!empty($b['remove'])) { self::setSetting(self::uk('hfk', $email), null); self::setSetting(self::uk('hfh', $email), null); }
-        $id = (string) preg_replace('/\s+/', '', (string) ($b['id'] ?? ''));
-        $sec = (string) preg_replace('/\s+/', '', (string) ($b['secret'] ?? ''));
-        if ($id !== '' && $sec !== '') {
-            $k = self::hfCheck($id . ':' . $sec);
-            self::setSetting(self::uk('hfk', $email), self::enc($k));
-            self::setSetting(self::uk('hfh', $email), substr($k, 0, 6) . '…' . substr($k, -4));
-        }
-        if (isset($b['provider'])) {
-            if ($b['provider'] === 'higgsfield' && !self::setting(self::uk('hfk', $email))) Legacy::fail('Higgsfield 키를 먼저 넣어 주세요.');
-            self::setSetting(self::uk('hfp', $email), $b['provider'] === 'higgsfield' ? 'higgsfield' : null);
-        }
-        return ['ok' => true];
-    }
 
     /** Higgsfield 키 확인 — 겹친 ID 정리, 형식, 무료 견적 호출. 정리한 'id:secret' 을 돌려준다 */
     private static function hfCheck(string $k): string

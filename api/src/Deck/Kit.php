@@ -362,11 +362,6 @@ final class Kit
         return null;
     }
 
-    /** 발표 자료 분량 상한(장). 없으면 null — 자세한 근거는 slideCapInfo */
-    public static function slideCap(string $src): ?int
-    {
-        return self::slideCapInfo($src)['cap'] ?? null;
-    }
 
     /** 분량 단위 — 시간(분)·기간(일)은 넣지 않는다("발표 20분 이내"·"20일 이내"는 분량이 아니다) */
     private const CAP_UNIT = '(?:장|쪽|매|페이지|슬라이드|pages?(?![A-Za-z])|p(?![A-Za-z]))';

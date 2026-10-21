@@ -31,7 +31,7 @@ export function Ms({ name, size = 19, fill, className, style }: { name: string; 
 export const Arrow = ({ size = 15 }: { size?: number }) => <Ms name="arrow_forward" size={size} className="align-[-3px] mx-0.5" />;
 
 /** 로고 — 장표 두 장이 겹친 모양(뒷장 연주황 · 앞장 주황) + 반짝임. 주황 바탕 칸은 쓰지 않는다. size 24(사이드바) / 36(로그인) */
-export function Logo({ size = 24 }: { size?: number }) {
+function Logo({ size = 24 }: { size?: number }) {
   const k = size / 24, bw = size >= 32 ? 2.5 : 2;
   return (
     <span className="relative inline-block flex-none" style={{ width: size, height: size }} aria-hidden>

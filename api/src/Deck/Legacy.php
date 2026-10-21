@@ -64,12 +64,6 @@ final class Legacy
         return $v === true || $v === 1 || $v === '1' || $v === 'true';
     }
 
-    public static function cfgList(string $key): array
-    {
-        $v = self::cfg($key, []);
-        if (!is_array($v)) $v = explode(',', (string) $v);
-        return array_values(array_filter(array_map(static fn($x) => strtolower(trim((string) $x)), $v)));
-    }
 
     /** 업로드·결과 파일 폴더(웹루트 밖): storage.dir/deck */
     public static function dataDir(): string

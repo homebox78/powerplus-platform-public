@@ -1367,12 +1367,6 @@ def run_pt_face(sh, default_pt=18):
     return pt, (fe.get("typeface") if fe is not None else "a시월구일3")
 
 
-def run_spc_cm(sh):
-    """자간(spc, 1/100pt) → 글자 사이마다 더해지는 cm"""
-    r0 = sh._element.find(".//a:r/a:rPr", NS)
-    return int(r0.get("spc") or 0) / 100 * 0.03528 if r0 is not None else 0.0
-
-
 _INK = {}
 try:   # 서체별 '글 상자 가운데 → 기준선' 실측(engine/tools_baseline_calib.py 가 PowerPoint 렌더로 만든다)
     BASELINE = json.load(open(os.path.join(HERE, "templates", "vertical", "baseline.json"), encoding="utf-8"))
@@ -2205,13 +2199,6 @@ def _one_line(p):
     ln.append(ln.makeelement(f"{{{A}}}spcPct", {"val": "100000"}))
     pPr.insert(0, ln)
 
-
-
-def _blank(tmpl):
-    e = copy.deepcopy(tmpl)
-    for r in e.findall("a:r", NS):
-        e.remove(r)
-    return e
 
 
 def page_path(c, title):

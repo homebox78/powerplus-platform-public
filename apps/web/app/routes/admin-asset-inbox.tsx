@@ -63,7 +63,7 @@ function sendChunk(files: File[], set: string, kind: InboxKind, batch: string, o
     x.setRequestHeader("Accept", "application/json");
     x.upload.onprogress = (e) => onPct(e.loaded);
     x.onload = () => {
-      let body: { data?: { batch: string; items: InboxItem[]; errors: Array<{ name: string; message: string }> }; error?: string; code?: string; hint?: string } | null = null;
+      let body: { data?: { batch: string; items: InboxItem[]; errors: Array<{ name: string; message: string }> }; error?: string; code?: string; hint?: string } | null;
       try { body = JSON.parse(x.responseText); } catch { body = null; }
       // 400 이어도 data.errors 가 있으면 파일별 사유를 보인다(전부 틀린 조각)
       if (body?.data) resolve(body.data);

@@ -37,11 +37,6 @@ interface AdminAi {
   usage: Array<{ solution: "deck" | "jev" | "chat"; kind: string; label: string; calls: number; cost: number; billed: boolean }>;
 }
 
-export const saveAdminChat = (b: { enabled?: boolean; model?: string; daily_usd?: number }) =>
-  apiFetch<{ enabled: boolean; model: string; daily_usd: number }>("/admin/ai/chat", {
-    method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(b),
-  });
-
 export const fetchAdminAi = () => apiFetch<AdminAi>("/admin/ai");
 
 /** Claude 키 더하기·하나 빼기 — 하나라도 있으면 그림 외 글 작업이 Claude(모델 고정), 없으면 OpenRouter. 키는 서버가 확인한 뒤 암호화해 둔다 */

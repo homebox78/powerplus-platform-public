@@ -25,7 +25,7 @@ function ids(): [string, string] {
   }
 }
 
-export function trackHit(path: string, channel: "web" | "addin" = "web") {
+function trackHit(path: string, channel: "web" | "addin" = "web") {
   if (typeof window === "undefined") return;
   const [vid, sid] = ids();
   const body = JSON.stringify({ path, vid, sid, channel, w: window.innerWidth, lang: navigator.language, ref: document.referrer || "" });

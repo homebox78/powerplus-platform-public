@@ -3,10 +3,6 @@
 """그룹 변환(off/ext/chOff/chExt)을 풀어 도형의 슬라이드 절대 좌표(in)를 구한다."""
 NS="{http://schemas.openxmlformats.org/drawingml/2006/main}"
 PNS="{http://schemas.openxmlformats.org/presentationml/2006/main}"
-def _xf(el):
-    for tag in (NS+"xfrm",):
-        x=el.find(".//"+tag)
-    return x
 def abs_box(sh):
     el=sh._element
     x,y,w,h=sh.left,sh.top,sh.width,sh.height

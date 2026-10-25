@@ -1065,7 +1065,7 @@ final class Service
         $q = mb_strtolower(trim($q));
         if ($q === '') {
             $rows = Db::rows("SELECT q, COUNT(*) AS n FROM asset_search_logs WHERE day >= CURDATE() - INTERVAL 30 DAY AND results > 0 GROUP BY q ORDER BY n DESC LIMIT {$limit}");
-            return ['source' => 'popular', 'items' => array_map(static fn(array $r): array => ['keyword' => $r['q'], 'count' => (int) $r['n']], $rows)];
+            return ['source' => 'popular', 'items' => self::keywordThumbs($a, array_map(static fn(array $r): array => ['keyword' => $r['q'], 'count' => (int) $r['n']], $rows))];
         }
         [$visSql, $visParams] = Access::whereVisible($a, 'i');
         $like = self::escapeLike($q);
@@ -1090,7 +1090,35 @@ final class Service
             $out['related'] = array_slice($out['related'], 0, $limit);
             $out['hint'] = 'items 는 글자가 겹치는 키워드, related 는 같은 에셋에 함께 붙은 관련어입니다.';
         }
+        $out['items'] = self::keywordThumbs($a, $out['items']);
+        if (isset($out['related'])) {
+            $out['related'] = self::keywordThumbs($a, $out['related']);
+        }
         return $out;
+    }
+
+    /**
+     * 추천 낱말마다 대표 에셋 썸네일 1장(thumb_url)과 powerAssets 검색 주소(url) — 낱말만 주면 그림이 하나도 안 보였다(2026-10-25 사용자 "이미지가 보여야").
+     * 볼 수 있는 등급에서 그 낱말이 붙은 가장 최근 에셋. 없으면 thumb_url 없이 url 만.
+     */
+    private static function keywordThumbs(Actor $a, array $items): array
+    {
+        [$visSql, $visParams] = Access::whereVisible($a, 'i');
+        $base = rtrim((string) Config::get('app.url', 'https://powerplus.hom2box.com'), '/');
+        foreach ($items as &$it) {
+            $kw = (string) ($it['keyword'] ?? '');
+            if ($kw === '') {
+                continue;
+            }
+            $pid = Db::val("SELECT i.public_id FROM asset_tags t JOIN asset_items i ON i.id = t.item_id AND i.deleted_at IS NULL
+                            WHERE t.axis = 'kw' AND t.tag = ? AND i.category <> 'mockup_sample' AND {$visSql} ORDER BY i.id DESC LIMIT 1", array_merge([$kw], $visParams));
+            if ($pid) {
+                $it['thumb_url'] = $base . '/api/v1/assets/items/' . $pid . '/file/thumb';
+            }
+            $it['url'] = $base . '/assets/browse?q=' . rawurlencode($kw);
+        }
+        unset($it);
+        return $items;
     }
 
     /**

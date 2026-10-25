@@ -112,7 +112,7 @@ export default function ReportPage() {
           {r.question && (
             <div>
               <p className="text-xs font-semibold tracking-wide text-ink-4">받은 질문</p>
-              <p className="mt-2 whitespace-pre-line break-keep text-md font-semibold leading-[1.6]">{r.question}</p>
+              <p className="mt-2 whitespace-pre-line break-keep text-md font-semibold leading-[1.6] [overflow-wrap:anywhere]">{r.question}</p>
             </div>
           )}
           {r.summary && (
@@ -164,7 +164,7 @@ export default function ReportPage() {
             {b.type === "list" && (
               <ul className="mt-5 flex max-w-[860px] flex-col gap-2.5">
                 {b.items.map((t, k) => (
-                  <li key={k} className="flex gap-3 text-md leading-[1.7] text-ink-2"><span className="mt-[11px] size-1.5 shrink-0 rounded-full bg-ink-3" aria-hidden /><span className="break-keep">{t}</span></li>
+                  <li key={k} className="flex gap-3 text-md leading-[1.7] text-ink-2"><span className="mt-[11px] size-1.5 shrink-0 rounded-full bg-ink-3" aria-hidden /><span className="min-w-0 break-keep [overflow-wrap:anywhere]">{t}</span></li>
                 ))}
               </ul>
             )}
@@ -175,7 +175,7 @@ export default function ReportPage() {
                   <tbody>
                     {b.rows.map((row, k) => (
                       <tr key={k} className="border-t border-line">
-                        {row.map((c, m) => <td key={m} className={`break-keep px-[15px] py-3 align-top text-ink-2 ${c.length <= 6 ? "text-center" : "text-left"}`}>{c}</td>)}
+                        {row.map((c, m) => <td key={m} className={`break-keep [overflow-wrap:anywhere] px-[15px] py-3 align-top text-ink-2 ${c.length <= 6 ? "text-center" : "text-left"}`}>{c}</td>)}
                       </tr>
                     ))}
                   </tbody>

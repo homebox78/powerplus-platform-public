@@ -51,7 +51,7 @@ export function buildCallBlocks(args: Record<string, unknown>, data: unknown): C
   };
   walk(data, "", 0);
   const blocks: CallBlock[] = [];
-  const argLines = Object.entries(args).filter(([, x]) => x !== undefined && x !== null && x !== "").map(([k, x]) => `${k}: ${(typeof x === "string" ? x : JSON.stringify(x)).slice(0, 280)}`);
+  const argLines = Object.entries(args).filter(([, x]) => x !== undefined && x !== null && x !== "").map(([k, x]) => `${k}: ${(typeof x === "string" ? x : Array.isArray(x) && x.every((y) => typeof y !== "object") ? x.join(", ") : JSON.stringify(x)).slice(0, 280)}`);
   if (argLines.length) blocks.push({ type: "list", heading: "보낸 인자", items: argLines.slice(0, 30) });
   if (images.length) blocks.push({ type: "images", heading: "그림", items: images });
   if (links.length) blocks.push({ type: "links", heading: "주소", items: links });

@@ -37,3 +37,6 @@ engine/fonts/*
 *.p12
 *_SHA256WITHRSA.key
 pfx.txt
+
+# 해커톤 영상 작업 폴더 — 내 컴퓨터에만 둔다(사용자 2026-10-22)
+/design/hackathon-cf/

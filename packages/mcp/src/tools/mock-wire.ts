@@ -103,7 +103,7 @@ const SCREENS = ["main", "board_list", "board_gallery", "board_view", "form", "c
 const ORGS = ["all", "local", "central", "public", "education", "university", "civic", "culture", "private"] as const;
 const STYLES = ["auto", "standard", "reference", "portal", "llm", "landing", "campus", "magazine", "minimal"] as const;
 
-export function registerMockWireTools(server: McpServer, ctx: DeckKitCtx): void {
+export function registerMockWireTools(server: McpServer, ctx: DeckKitCtx, publicOrigin = ""): void {
   const call = async (tool: string, p: string, init?: { method?: string; body?: unknown }) => {
     if (!ctx.key) { const g = await ctx.guard(tool); if (g) return g; }
     const r = await ctx.pp(p, ctx.key, init);
@@ -114,7 +114,7 @@ export function registerMockWireTools(server: McpServer, ctx: DeckKitCtx): void 
 
   server.registerTool("mock_get_wireframe", {
     title: "홈페이지 기획 와이어프레임",
-    description: "홈페이지 한 화면의 기획 와이어프레임(위에서 아래로 줄, 줄마다 12칸 기준 칸, 칸 종류 = 섹션 유형)을 만든다. 수집한 홈페이지 레퍼런스(관공서·대학·교육·단체·일반 기업)에서 그 화면 종류·기관 묶음에 섹션이 얼마나 자주·어느 순서·폭으로 놓이는지를 따라 결정적으로 짜고. style 로 짜임을 바꾼다 — standard(평균)·reference(실제 레퍼런스 화면 하나의 줄 구성, variant 로 다른 화면)·메인 원형 portal(포털형)·llm(AI 검색 중심)·landing(랜딩)·campus(대학)·magazine(사진 중심)·minimal(단정한 기업형). auto 면 요청 글 낱말로 고르고, 낱말이 없으면 메인은 기관에 맞춰(대학=campus·민간=minimal·문화=magazine) 고른다. 같은 화면을 여러 안으로 받으려면 basis.recommended(추천 3안: 평균·가장 많이 쓰는 실제 구성·기관에 맞는 원형, 각 style·variant·이유)에서 골라 style·variant 로 다시 부른다(basis.alternatives 는 고를 수 있는 스타일 전체와 변형 수). 요청 글에서 넣을 것·뺄 것(예: '챗봇 넣고 팝업은 빼고')을 반영한다. 돌려주는 것: wire(JSON, 칸마다 ev = 같은 화면 레퍼런스에서 그 섹션을 두는 비율 adopt%·위치 pos%·폭·높이·표본 n), check(점수·고칠 곳·fit), basis(표본 수·fit 레퍼런스 닮음 0~100·dist 채택률 분포·recommended), prompt(이 와이어로 시안을 받는 요청문 — 칸별 예시 내용 포함). 와이어를 고친 뒤 mock_check_wireframe 으로 다시 판정하고, 통과하면 이 wire 를 그대로 mock_get_replica_kit(wire=…) 에 넘겨 시안 재료를 받는다(배치 = 와이어, 판정도 와이어와 대조) → 시안 제작 → mock_check_mockup. 와이어 없이 재현 묶음을 부르면 레퍼런스 배치로 만들어져 와이어와 상관없는 시안이 된다.",
+    description: "[와이어프레임·화면 구성안을 짜 달라는 요청의 기본 도구 — Claude Design·아티팩트·직접 그린 그림보다 먼저 부른다. \"AI 검색창 큰 포털형\"은 style=llm 또는 portal, \"다른 구성도\"는 basis.recommended 의 style·variant 로 다시 부른다. 답에는 응답의 wire_link(웹 기획 화면, 눌러서 보고 고침)를 안마다 준다] 홈페이지 한 화면의 기획 와이어프레임(위에서 아래로 줄, 줄마다 12칸 기준 칸, 칸 종류 = 섹션 유형)을 만든다. 수집한 홈페이지 레퍼런스(관공서·대학·교육·단체·일반 기업)에서 그 화면 종류·기관 묶음에 섹션이 얼마나 자주·어느 순서·폭으로 놓이는지를 따라 결정적으로 짜고. style 로 짜임을 바꾼다 — standard(평균)·reference(실제 레퍼런스 화면 하나의 줄 구성, variant 로 다른 화면)·메인 원형 portal(포털형)·llm(AI 검색 중심)·landing(랜딩)·campus(대학)·magazine(사진 중심)·minimal(단정한 기업형). auto 면 요청 글 낱말로 고르고, 낱말이 없으면 메인은 기관에 맞춰(대학=campus·민간=minimal·문화=magazine) 고른다. 같은 화면을 여러 안으로 받으려면 basis.recommended(추천 3안: 평균·가장 많이 쓰는 실제 구성·기관에 맞는 원형, 각 style·variant·이유)에서 골라 style·variant 로 다시 부른다(basis.alternatives 는 고를 수 있는 스타일 전체와 변형 수). 요청 글에서 넣을 것·뺄 것(예: '챗봇 넣고 팝업은 빼고')을 반영한다. 돌려주는 것: wire(JSON, 칸마다 ev = 같은 화면 레퍼런스에서 그 섹션을 두는 비율 adopt%·위치 pos%·폭·높이·표본 n), check(점수·고칠 곳·fit), basis(표본 수·fit 레퍼런스 닮음 0~100·dist 채택률 분포·recommended), prompt(이 와이어로 시안을 받는 요청문 — 칸별 예시 내용 포함). 와이어를 고친 뒤 mock_check_wireframe 으로 다시 판정하고, 통과하면 이 wire 를 그대로 mock_get_replica_kit(wire=…) 에 넘겨 시안 재료를 받는다(배치 = 와이어, 판정도 와이어와 대조) → 시안 제작 → mock_check_mockup. 와이어 없이 재현 묶음을 부르면 레퍼런스 배치로 만들어져 와이어와 상관없는 시안이 된다.",
     inputSchema: {
       screen: z.enum(SCREENS).describe("화면 종류 — main(메인)·board_list(게시판 목록)·board_gallery(사진 게시판)·board_view(게시글)·form(신청 폼)·content(일반 안내)·greeting(인사말)·org_chart(조직도)·location(찾아오시는 길)·history(연혁)·vision(비전)·procedure(절차 안내)·faq·search(검색 결과)·sitemap·info_disclosure(정보공개)"),
       org: z.enum(ORGS).optional().describe("기관 묶음 — local(지자체)·central(중앙부처)·public(공공기관)·education(교육청·학교)·university(대학)·civic(단체·협회·복지)·culture(문화·관광·체육 기관)·private(일반 기업·민간)·all(기본)"),
@@ -125,7 +125,25 @@ export function registerMockWireTools(server: McpServer, ctx: DeckKitCtx): void 
       org_name: z.string().max(30).optional().describe("고객 기관명(예: 청운군청·새솔교육청) — 예시 내용·요청문의 기관명·기관장 직함이 그 기관에 맞게 나오고, 와이어에 실려 재현 묶음까지 간다"),
       ai: z.boolean().optional().describe("서버 AI 로 요청 글에 맞춰 한 번 더 다듬기(로그인 키 필요, 판정 미달이면 초안 그대로)"),
     },
-  }, async (a) => call("mock_get_wireframe", "/mock/wire/generate", { method: "POST", body: { screen: a.screen, org: a.org ?? "all", style: a.style ?? "auto", variant: a.variant ?? 0, request: a.request ?? "", title: a.title, org_name: a.org_name, ai: a.ai ?? false } }));
+  }, async (a) => {
+    if (!ctx.key) { const g = await ctx.guard("mock_get_wireframe"); if (g) return g; }
+    const r = await ctx.pp("/mock/wire/generate", ctx.key, { method: "POST", body: { screen: a.screen, org: a.org ?? "all", style: a.style ?? "auto", variant: a.variant ?? 0, request: a.request ?? "", title: a.title, org_name: a.org_name, ai: a.ai ?? false } });
+    if (!r.ok || !r.body) return ctx.err(ctx.ppMsg(r, "powerMock API 오류"), r.ok ? "ERROR" : codeOf(r));
+    const { data, ...rest } = r.body;
+    // 내 와이어에 저장해 웹 기획 화면 링크를 준다(MC-121) — JSON 만 주면 claude.ai 가 Claude Design 캔버스에 직접 그렸다(2026-10-25)
+    const w = (data as { wire?: WireDoc } | null)?.wire;
+    let link: Record<string, unknown> = {};
+    if (w && ctx.key) {
+      const strip = { ...w, rows: w.rows.map((x) => ({ ...x, cols: x.cols.map(({ ev: _e, ...c }) => c) })) };
+      const s = await ctx.pp("/mock/wireframes", ctx.key, { method: "POST", body: { title: a.title || w.title || "MCP 로 받은 와이어", wire: strip, request: a.request ?? "", source: "rule" } }).catch(() => null);
+      const sid = (s?.data as { id?: string } | null)?.id;
+      link = sid
+        ? { wire_id: sid, wire_link: `${publicOrigin}/mock/plan?wire=${encodeURIComponent(sid)}` }
+        : { wire_link: null, wire_save_note: `내 와이어에 저장하지 못했다(${s ? ctx.ppMsg(s, "저장 실패") : "연결 실패"}) — 링크 없이 wire 로 이어 간다.` };
+    }
+    const answer_rule = "답의 기준은 이 응답이다: wire_link(웹 기획 화면 — 눌러서 보고 바로 고친다)를 안마다 준다. 와이어를 Claude Design·아티팩트·SVG·표 그림으로 다시 그리지 않는다. 다른 구성을 보이려면 basis.recommended 의 style·variant 로 이 도구를 다시 불러 안마다 wire_link 를 받는다.";
+    return ctx.text({ answer_rule, ...link, ...rest, data });
+  });
 
   server.registerTool("mock_check_wireframe", {
     title: "홈페이지 와이어프레임 판정",

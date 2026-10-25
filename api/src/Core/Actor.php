@@ -38,6 +38,11 @@ final class Actor
 
     public function hasRole(string $role): bool
     {
+        // 심사용 테스트 계정의 관리자·운영 역할은 보기(GET·HEAD)에만 — 쓰기 요청에서는 일반 회원처럼 자기 것만(사용자 2026-10-23 "관리자는 보기만, 사용자 모드에서만 다 써 볼 수 있게").
+        //  라우트마다 isAdmin() 으로 남의 글·시안·장표 고치기를 여는 곳이 있어 한 곳(여기)에서 끈다.
+        if (TestLogin::isActor($this) && !in_array((string) ($_SERVER['REQUEST_METHOD'] ?? 'GET'), ['GET', 'HEAD'], true)) {
+            return false;
+        }
         if (in_array('superadmin', $this->roles, true)) {
             return true;
         }

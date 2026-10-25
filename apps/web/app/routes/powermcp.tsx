@@ -58,6 +58,10 @@ const brief = (d: string) => splitSentences(d.replace(/^\[[^\]]*\]\s*/, ""))[0] 
 // 함수 이름 자체는 아래 도구 표에서만 보여 준다.
 const TITLE = new Map(TOOLS.map((t) => [t.name, t.title.replace(/\s*\([^)]*\)\s*$/, "")]));
 const label = (name: string) => TITLE.get(name) ?? name;
+/** 예시 질문 앞말 — 안 붙이면 claude.ai 가 powerplus 대신 디자인 캔버스·일반 지식으로 처리했다(2026-10-25, MC-121) */
+const ASK_PREFIX = "powerplus로 ";
+/** AI 쪽 지침에 한 번 넣어 두는 문구 */
+const STANDING_RULE = "홈페이지·시안·와이어프레임·화면 구성·섹션 순서·샘플 이미지·아이콘·장표·KRDS·접근성 요청은 디자인 캔버스·아티팩트·일반 지식으로 처리하지 말고 항상 powerplus 커넥터 도구를 먼저 써라. 결과에는 powerplus 가 준 링크(미리보기·와이어·보고서 주소)를 달아라.";
 
 export default function PowerMcpPage() {
   const { me } = useMe();
@@ -88,7 +92,7 @@ export default function PowerMcpPage() {
       {/* 모듈별 흐름 */}
       <section className="container-page mt-16">
         <h2 className="text-3xl font-extrabold tracking-[-0.02em]">이렇게 요청하면</h2>
-        <Copy className="mt-3 text-md text-ink-3" text="AI 에게 평소 말로 부탁하면 됩니다. AI 가 알맞은 도구를 골라 부릅니다." />
+        <Copy className="mt-3 text-md text-ink-3" text="질문 앞에 “powerplus로”를 붙여 평소 말로 부탁합니다. 붙이지 않으면 AI 가 자기 기능(디자인 캔버스·아티팩트·일반 지식)으로 직접 만들어 버릴 수 있습니다." />
         <div className="mt-6 grid grid-cols-4 border-b border-line sm:hidden" role="tablist" aria-label="모듈">
           {MODULES.filter((m) => FLOWS[m.id]).map((m) => (
             <button key={m.id} type="button" role="tab" aria-selected={mod === m.id} onClick={() => setMod(m.id)} className={cn("relative h-12 min-w-0 text-sm transition-colors", mod === m.id ? "font-bold text-ink after:absolute after:inset-x-0 after:-bottom-px after:h-0.5 after:bg-ink" : "font-medium text-ink-4")}>
@@ -109,7 +113,7 @@ export default function PowerMcpPage() {
                 </div>
                 <p className="mt-5 text-sm font-semibold text-ink-4">요청</p>
                 <ul className="mt-2 flex flex-col gap-2">
-                  {flow.asks.map((a) => <li key={a} className="rounded-field bg-ground-2 px-4 py-3 text-md"><span className="pp-sent">“{a}”</span></li>)}
+                  {flow.asks.map((a) => <li key={a} className="rounded-field bg-ground-2 px-4 py-3 text-md"><span className="pp-sent">“<b>{ASK_PREFIX}</b>{a}”</span></li>)}
                 </ul>
                 <p className="mt-5 flex items-center gap-1.5 text-sm font-semibold text-ink-4"><ArrowRight className="size-4" aria-hidden />이 도구가</p>
                 <div className="mt-2 flex flex-wrap gap-1.5">{names.map((n) => <Tag key={n} tone="line" className="[overflow-wrap:anywhere]">{label(n)}</Tag>)}</div>
@@ -124,7 +128,7 @@ export default function PowerMcpPage() {
       {/* 질문 예시 갤러리 — 원천은 data/mcp-examples.ts */}
       <section id="examples" className="container-page mt-16 scroll-mt-19">
         <h2 className="text-3xl font-extrabold tracking-[-0.02em]">이런 것까지 물어볼 수 있어요</h2>
-        <Copy className="mt-3 text-md text-ink-3" text={`실제로 쓸 수 있는 질문 ${exampleCount}가지입니다. 할 수 있는지 모를 때는 그냥 물어보세요.`} />
+        <Copy className="mt-3 text-md text-ink-3" text={`실제로 쓸 수 있는 질문 ${exampleCount}가지입니다. 앞에 “powerplus로”를 붙여 그대로 쓰면 됩니다. 할 수 있는지 모를 때도 “powerplus로 ○○ 할 수 있어?”라고 물어보세요.`} />
         {/* 모바일은 가로 100% 셀렉트 하나(사용자 2026-10-10), 640 이상은 밑줄 탭 */}
         <Select value={group} onValueChange={setGroup}>
           <SelectTrigger className="mt-6 w-full sm:hidden" aria-label="질문 분류"><SelectValue /></SelectTrigger>
@@ -143,7 +147,7 @@ export default function PowerMcpPage() {
         <ul className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2" role="tabpanel">
           {g.items.map((e) => (
             <li key={e.q} className="flex min-w-0 flex-col rounded-card border border-line p-5">
-              <Copy className="text-md font-semibold leading-[1.6]" text={`“${e.q}”`} />
+              <Copy className="text-md font-semibold leading-[1.6]" text={`“${ASK_PREFIX}${e.q}”`} />
               <div className="mt-3 flex flex-wrap gap-1.5">{e.tools.map((n) => <Tag key={n} tone="line" className="[overflow-wrap:anywhere]">{label(n)}</Tag>)}</div>
               <p className="mt-3 flex items-start gap-1.5 text-sm leading-[1.6] text-ink-3"><ArrowRight className="mt-[3px] size-4 shrink-0" aria-hidden /><Copy as="span" text={e.result} /></p>
             </li>
@@ -167,7 +171,13 @@ export default function PowerMcpPage() {
           <dt className="font-semibold text-ink-4">서버 주소</dt><dd className="[overflow-wrap:anywhere]">{server}</dd>
           <dt className="font-semibold text-ink-4">인증</dt><dd>Authorization: Bearer &lt;발급받은 키&gt;</dd>
           <dt className="font-semibold text-ink-4">확인</dt><dd>AI 도구의 MCP 목록에서 powerplus 가 연결됨인지 봅니다.</dd>
+          <dt className="font-semibold text-ink-4">쓰는 법</dt><dd>질문 앞에 “powerplus로”를 붙입니다(예: “powerplus로 대학교 메인 와이어프레임 짜 줘”). 연결을 바꾼 뒤에는 새 대화에서 씁니다.</dd>
+          <dt className="font-semibold text-ink-4">결과 보기</dt><dd>모든 도구 결과에 powerPlus 보기 주소가 붙습니다. 눌러서 그림·주소·원본 응답을 봅니다(만든 계정으로 로그인, 30일 보관).</dd>
         </dl>
+        {/* 2026-10-25 claude.ai 가 powerplus 대신 디자인 캔버스·일반 지식으로 처리(MC-121) — 매번 붙이기 싫으면 AI 쪽 지침에 한 번 넣는다 */}
+        <p className="mt-6 text-md font-semibold">매번 붙이기 번거롭다면</p>
+        <Copy className="mt-1 text-sm text-ink-3" text="Claude 는 설정 → 개인 맞춤 지침(또는 프로젝트 지침)에, 다른 AI 도구는 사용자 지침에 아래 문구를 넣어 두세요." />
+        <CodeBlock code={STANDING_RULE} className="mt-3" />
       </section>
 
       {/* 도구 표 */}

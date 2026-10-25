@@ -46,6 +46,10 @@
 | MC-10 | 외부 이미지가 막힌 곳(claude.ai 아티팩트)용으로 게시 주소를 같이 안내한다. SVG 로 그림을 대신 그리지 말라고 쓴다 | 아티팩트에서 AI 가 만화 같은 그림을 지어냄 | 지침 문구 확인 |
 | MC-11 | "통과할 때까지 고쳐 다시 판정, 미통과는 결과로 남지 않는다"를 지침에 둔다 (R20) | 미통과 시안이 그대로 남았다 | 지침 문구 |
 | MC-12 | kit 문구 강조는 큰따옴표나 「」. 작은따옴표 금지 | PHP 문자열이 끊겼다 | `php -l` |
+| MC-120 | 사용자가 **눌러서 볼 것**(샘플 이미지·와이어·시안)을 주는 도구는 응답에 항목마다 링크(`link`·`preview_url`·`wire_link`)와 "답에 링크를 단다"(`answer_rule`)를 싣는다. id 만 주면 AI 도 id 만 적는다 | 2026-10-25 claude.ai 가 샘플 사진·배너를 `pa-bv9b6…` id 만 나열 — 사용자가 열어 볼 수 없었다 | mock_get_sample_images 응답 items[].link 가 로그인 없이 200 |
+| MC-121 | claude.ai 가 powerplus 대신 **Claude Design·아티팩트·일반 지식**으로 처리하는 요청 유형을 instructions 맨 앞 "요청 → 도구" 한 줄과 해당 도구 description 첫머리에 같이 쓴다. JSON 만 돌려주는 도구는 볼 수 있는 웹 주소를 함께 준다(받은 쪽이 직접 그리지 않게) | 10-25 같은 날 4건: 복지관 메인 1200px·AI 검색 포털 와이어 4안·탭/캐러셀 동작을 Claude Design 캔버스로 직접, 대학 메인 섹션 순서를 일반 지식 표로(설명에 그 예문이 있는데도) | claude.ai 새 대화에서 네 문장 그대로 — 도구 호출 여부. 서버 지침만으론 못 막으면 사용자 쪽 프로젝트 지침 문구 안내 |
+| MC-122 | **모든 도구 응답에 view_url**(powerPlus /r/{id}, 호출 기록 kind=call — 그림·주소·원본 응답, 본인만·30일). 감싸기(buildServer)에서 한 번에 — 도구마다 따로 달지 않는다. 기록 실패·4초 초과면 view_url 없이 응답은 그대로 | 2026-10-25 사용자 "모든 mcp 로 호출한 건 url 을 제공해 파워플러스로 보게" | `test/call-record.test.ts`(음성 대조 포함) · 운영 호출 응답 view_url 이 열림 |
+| MC-123 | 응답 주소는 **전부 내 powerPlus 절대 주소**. 상대 주소(/mockref/api/files…·/api/v1…·/mock/plan…)는 감싸기에서 origin 을 붙이고, powerPlus 에 없는 옛 홈박스 화면(/sites/…·/screens/…)은 뺀다 | 2026-10-25 mock_search_sites 의 thumb_url·favicon_url·page_url 이 상대 주소 — claude.ai 에서 눌러도 안 열림, /sites/… 는 404 | `test/call-record.test.ts` MC-123 2건 · 운영 mock_search_sites 응답에 `"/` 로 시작하는 주소 칸 0 |
 | MC-13 | 사용자 화면에 함수 이름(mock_get_wireframe 등)을 그대로 쓰지 않는다 | 평가 리포트 권고 | /powermcp 문구 |
 
 ### 2.2 인자 · 응답 · 오류 형식

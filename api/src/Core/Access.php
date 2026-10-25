@@ -19,6 +19,12 @@ final class Access
      */
     public static function can(Actor $a, array $res, string $action = 'view'): bool
     {
+        // 심사용 테스트 계정(사용자 2026-10-23 "사용자 모드에서만 다 써 볼 수 있게 · 관리자는 보기만 · 삭제만 못하게"):
+        //  관리자 역할은 관리자 화면을 보려고 준 것 — 사용자 화면 쓰기는 일반 회원처럼 자기 것만, 지우기는 자기 것도 못 한다.
+        //  보기는 아래 관리자 판정 그대로(관리자 화면 열람). 관문(TestLogin::guard)이 놓친 본문 삭제까지 여기서 막는다.
+        if ($action !== 'view' && TestLogin::isActor($a)) {
+            return $action !== 'delete' && isset($res['owner_user_id']) && (int) $res['owner_user_id'] === $a->id();
+        }
         if ($a->kind === 'worker' || $a->isAdmin()) {
             return true;
         }

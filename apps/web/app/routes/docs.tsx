@@ -325,10 +325,10 @@ function ApiPage() {
 
 // 근거: db/schema.sql core_plans 시드 limits(api_daily·api_keys). 요금제가 공개되기 전(billing_visible 꺼짐)에는 유료 플랜 줄을 숨긴다.
 const PLAN_LIMITS: Array<{ plan: "free" | "pro" | "team" | "staff"; daily: number; keys: number; paid: boolean }> = [
-  { plan: "free", daily: 100, keys: 1, paid: false },
-  { plan: "pro", daily: 1000, keys: 3, paid: true },
-  { plan: "team", daily: 5000, keys: 5, paid: true },
-  { plan: "staff", daily: 5000, keys: 10, paid: false },
+  { plan: "free", daily: 1000, keys: 1, paid: false },
+  { plan: "pro", daily: 10000, keys: 3, paid: true },
+  { plan: "team", daily: 50000, keys: 5, paid: true },
+  { plan: "staff", daily: 50000, keys: 10, paid: false },
 ];
 const LIMIT_BLOCKS: DocBlock[] = [
   { id: "count", title: "무엇을 세나", items: [

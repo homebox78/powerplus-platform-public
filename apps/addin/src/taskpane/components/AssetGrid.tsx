@@ -2,6 +2,7 @@
 import * as React from "react";
 import type { Asset } from "../data/mockAssets";
 import AuthImg from "./AuthImg";
+import { isLightOnTransparent } from "./lightImage";
 
 interface Props {
   assets: Asset[];
@@ -57,6 +58,19 @@ function useGridCols(minCard: number) {
 
 // 카드 썸네일 배경: 약간의 미색 — 흰색 로고도 묻히지 않고 보이도록 (사용자 요청)
 const CARD_BG = "#F4F4F4";
+const CARD_BG_DARK = "#33353B"; // 흰 아이콘·흰 로고 칸(R83·R100, 2026-10-25)
+
+/** 썸네일 칸 — 그림이 뜨면 흰 바탕에서 안 보이는 그림인지 재서 칸 바탕을 짙게 */
+function Thumb({ src, alt, children }: { src: string; alt: string; children?: React.ReactNode }) {
+  const [dark, setDark] = React.useState(false);
+  return (
+    <div className="card__thumb" style={{ background: dark ? CARD_BG_DARK : CARD_BG }}>
+      <AuthImg src={src} alt={alt} decoding="async"
+        onLoad={(e) => { const el = e.currentTarget; if (!el.src.startsWith("data:image/gif")) setDark(isLightOnTransparent(el)); }} />
+      {children}
+    </div>
+  );
+}
 
 // 장표(ppt) 유형 배지 라벨
 const PPT_PAGE_LABEL: Record<string, string> = {
@@ -145,11 +159,18 @@ export default function AssetGrid({
               disabled={inserting}
               onClick={() => onInsert(a)}
             >
+              {a.image_url || a.thumb_url ? (
+                // 목록은 썸네일(빠른 로딩), 삽입은 원본(useInsert가 image_url 사용). 흰 아이콘이면 칸이 짙어진다(Thumb)
+                <Thumb src={(a.thumb_url || a.image_url) as string} alt={label}>
+                  {inserting && (
+                    <span className="card__inserting" aria-hidden>
+                      <span className="spinner" />
+                    </span>
+                  )}
+                </Thumb>
+              ) : (
               <div className="card__thumb" style={{ background: CARD_BG }}>
-                {a.image_url || a.thumb_url ? (
-                  // 목록은 썸네일(빠른 로딩), 삽입은 원본(useInsert가 image_url 사용)
-                  <AuthImg src={a.thumb_url || a.image_url} alt={label} decoding="async" />
-                ) : a.svg ? (
+                {a.svg ? (
                   // 구(mock) svg 자산은 <img data:URI>로 렌더 — raw HTML 주입(XSS) 없이 표시만 (img 내 SVG는 스크립트 실행 불가)
                   <img
                     className="card__svg"
@@ -164,6 +185,7 @@ export default function AssetGrid({
                   </span>
                 )}
               </div>
+              )}
             </button>
             {/* 우측 하단: 같은 스타일 세트 모아 보기(호버 시 노출) */}
             {onShowSet && (

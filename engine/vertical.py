@@ -117,7 +117,7 @@ CHAPTER_SYSTEM = """너는 공공 SI 기술제안서 작성자다. 주어진 장
 규칙
 - 항목(item) 하나에 pages 수만큼 쪽을 만든다(2쪽 이상이면 title 끝에 (1/2) 처럼 붙인다).
 - title 은 '1.1 항목 이름' 꼴로 26자 이내(한 줄에 들어가게). 번호는 쓸 항목의 번호 그대로.
-- lead 는 정확히 2문장. 문장마다 마침표로 끝나고 한 문장이 45자를 넘지 않는다(한 줄에 들어가게). strong 은 lead 첫 문장 안의 강조 어구(그대로 들어 있어야 한다).
+- lead 는 정확히 2문장. 문장마다 마침표로 끝나고 한 문장이 45자를 넘지 않는다(두 문장은 줄바꿈 없이 이어 붙여 두 줄 안에 든다). strong 은 lead 첫 문장 안의 강조 어구(그대로 들어 있어야 한다).
 - band 는 30자 안팎의 한 줄. bullets 는 문장마다 70자 이하, 개조식(~함, ~임), 앞에 기호를 붙이지 않는다.
 - table 은 kind 가 table 이거나 text 블록에 꼭 필요할 때만. 열 2~4개, 행 2~8개, 칸 글은 짧게.
 - '사용가능하다·할 수 있다·고려하고 있다' 같은 모호한 말을 쓰지 않는다. 셀 수 있는 것은 수치로 적는다.
@@ -1084,6 +1084,8 @@ for _t in TONES.values():
     _t["calm"] = _mix(_t["dark"], "3A3F47", 0.62)
     _t["calm2"] = _mix(_t["mid"], "8A909B", 0.62)
     _t["soft"] = _mix(_t["light"], "EEF0F3", 0.55)
+    _t["tbl"] = _mix(_t["calm"], "FFFFFF", 0.22)   # 표 머리·표 선 = 띠 문구(calm)보다 두 톤 밝게(사용자 2026-10-22)
+TBL_LINE_EMU = 6350   # 표 선 0.5pt — 옛 기본 선(약 1pt)의 절반(사용자 2026-10-22 "테이블 라인이 너무 두껍다")
 TEXT_POINT = {"0A41AE", "FF3370"}   # 기본 양식에서 강조로 쓰인 글자 색(표지 연도·문서 종류). 도입 문단 강조는 put_lead 가 따로 칠한다
 #   (09106D 는 소제목과 도입 강조가 같이 쓰던 색이라 포인트로 두면 소제목까지 파랗게 된다 — 사용자 2026-10-14 지적)
 SHAPE_POINT = {"3975ED"}                      # 작은 강조 도형(소제목 앞 육각형)
@@ -2268,12 +2270,9 @@ def put_lead(sh, sentences, strong, point=None):
         (end.addprevious(e) if end is not None else pe.append(e))
 
     for k, sent in enumerate(sentences):
-        if k:
-            br = etree.Element(f"{{{A}}}br")
-            rp = norm.find("a:rPr", NS)
-            if rp is not None:
-                br.append(copy.deepcopy(rp))
-            add(br)
+        sent = sent.strip()
+        if k:   # 문장 사이는 줄바꿈 없이 빈칸 하나로 이어 쓴다(사용자 2026-10-22 "마침표에서 줄 바꾸지 않기로")
+            sent = " " + sent
         parts = [(sent, False)]
         if k == 0 and strong and strong in sent:
             a, b = sent.split(strong, 1)
@@ -2545,7 +2544,14 @@ def add_table(s, tb, x, y, w, th=None):
             cell.vertical_anchor = 3
             fill = cell.fill
             fill.solid()
-            fill.fore_color.rgb = __import__("pptx").dml.color.RGBColor.from_string(th["calm"] if ri == 0 else ("FFFFFF" if ri % 2 else "F5F7FB"))
+            fill.fore_color.rgb = __import__("pptx").dml.color.RGBColor.from_string(th["tbl"] if ri == 0 else ("FFFFFF" if ri % 2 else "F5F7FB"))
+            tcPr = cell._tc.get_or_add_tcPr()   # 선을 직접 적는다 — 안 적으면 LibreOffice 가 검정 굵은 선을 그린다
+            for tag in ("lnB", "lnT", "lnR", "lnL"):   # 순서 lnL·lnR·lnT·lnB 가 채우기 앞에 와야 한다(맨 앞에 거꾸로 넣음)
+                old = tcPr.find(f"a:{tag}", NS)
+                if old is not None:
+                    tcPr.remove(old)
+                tcPr.insert(0, parse_xml(f'<a:{tag} xmlns:a="{A}" w="{TBL_LINE_EMU}" cap="flat" cmpd="sng" algn="ctr">'
+                                         f'<a:solidFill><a:srgbClr val="{th["tbl"]}"/></a:solidFill><a:prstDash val="solid"/></a:{tag}>'))
             for p_ in cell.text_frame.paragraphs:
                 p_.alignment = 2 if (ri == 0 or short[ci]) else 1   # 정렬은 열 단위(사용자 표 규칙 — 칸마다 섞지 않는다)
                 for r in p_.runs:
@@ -2884,9 +2890,9 @@ def draw_fig(tree, k, f, x, y, th, W=None, pic=None):
         rows = (f.get("rows") or [])[:10]
         lw_ = 3.8
         cw = (W - lw_) / len(cols)
-        _box(tree, "일정 머리", x, y, lw_, 0.6, calm, None, paras=[("구분", 8.5, "FFFFFF", B3)], algn="ctr", anchor="ctr")
+        _box(tree, "일정 머리", x, y, lw_, 0.6, th["tbl"], None, paras=[("구분", 8.5, "FFFFFF", B3)], algn="ctr", anchor="ctr")
         for j, c in enumerate(cols):
-            _box(tree, "기간", x + lw_ + j * cw, y, cw, 0.6, calm, "FFFFFF", paras=[(c, 8 if cw > 1 else 7, "FFFFFF", B3)], algn="ctr", anchor="ctr", ins=(0, 0, 0, 0), lw=6350)
+            _box(tree, "기간", x + lw_ + j * cw, y, cw, 0.6, th["tbl"], "FFFFFF", paras=[(c, 8 if cw > 1 else 7, "FFFFFF", B3)], algn="ctr", anchor="ctr", ins=(0, 0, 0, 0), lw=6350)
         for i, r in enumerate(rows):   # 바탕 → 세로 칸선 → 막대 순(선이 막대를 덮지 않게)
             ry = y + 0.6 + i * 0.5
             _box(tree, "활동", x, ry, lw_, 0.5, soft if i % 2 == 0 else "FFFFFF", None, paras=[(r.get("task") or "", 8.5, INK, B3)], anchor="ctr", ins=(0.15, 0, 0.05, 0))
@@ -3135,7 +3141,8 @@ def guide_pages(th):
         ["작은 제목", "a시월구일3", "10.5pt", f"#{INK}"],
         ["막대 제목", "a시월구일3", "11pt", f"#{INK} · 바탕 #D9D9D9 50%"],
         ["본문 글", "a시월구일2", "9pt", "#4D4D4D · 줄간격 1.0 · 앞 점 없음"],
-        ["표 머리 / 표 본문", "a시월구일3 / a시월구일2", "8.5pt", f"#{th['calm']} 바탕 흰 글씨 / #4D4D4D"]]}
+        ["표 머리 / 표 본문", "a시월구일3 / a시월구일2", "8.5pt", f"#{th['tbl']} 바탕 흰 글씨 / #4D4D4D"],
+        ["표 선", "—", "0.5pt", f"#{th['tbl']} · 띠 문구보다 두 톤 밝게"]]}
     for sp in (spec1, spec2):   # 글꼴 칸 = 고른 서체 이름(사용자 2026-10-14 "고르면 작성가이드에 폰트도 같이 변경")
         for r in sp["rows"]:
             r[1] = re.sub(r"a시월구일[1-4]|G마켓 산스 TTF Bold", lambda m: fface(m.group(0)), r[1])
@@ -3157,9 +3164,9 @@ def guide_pages(th):
                                                       "쪽 번호(Ⅱ - 3)는 글자 상자라 쪽을 넣거나 빼면 직접 고침",
                                                       "목차 쪽 번호도 함께 고침 — 평가위원이 참조표로 찾아감"])]},
         {"title": "1.2 글쓰기 규칙", "fixed_path": "1. 작성 가이드", "req": "",
-         "lead": ["모든 문장은 마침표에서 줄을 바꾸고 한 줄에 들어가게 씁니다.", "모호한 표현 대신 수치로 적어 바로 확인하게 합니다."],
-         "strong": "마침표에서 줄을 바꾸고", "band": "한 문장 한 줄, 수치로 말하기",
-         "blocks": [b("문장", "줄바꿈과 길이", ["도입 문단은 2문장, 한 문장 45자 이내(한 줄)",
+         "lead": ["문장은 마침표에서 줄을 바꾸지 않고 이어서 씁니다.", "모호한 표현 대신 수치로 적어 바로 확인하게 합니다."],
+         "strong": "줄을 바꾸지 않고 이어서", "band": "문장은 이어 쓰기, 수치로 말하기",
+         "blocks": [b("문장", "줄바꿈과 길이", ["도입 문단은 2문장을 줄바꿈 없이 이어 씀, 한 문장 45자 이내",
                                            "본문 글은 개조식(~함, ~임), 한 줄 70자 이내, 앞에 점(·)을 붙이지 않음",
                                            "'할 수 있다·고려하고 있다' 같은 모호한 말은 쓰지 않음"]),
                     b("글꼴", "설치해야 할 글꼴", [f"제목: {FONT['title'][1]} — 표지·목차·간지·쪽 제목의 큰 글자에만",
@@ -3168,7 +3175,7 @@ def guide_pages(th):
                                              "컨소시엄 업체는 같은 양식 파일로 작성해 합칠 때 어긋나지 않게 함"]),
                     b("색", "글자는 먹색, 톤은 머리·강조에만", [f"글자 #{INK} — 제목·소제목·막대 제목 / 보조 #{SUB} — 경로",
                                        f"강조 #{th['point']} — 쪽 제목 번호·강조 어구·태그만 칠함",
-                                       f"차분한 면 #{th['calm']} — 띠 문구·표 머리 / 연한 면 #{th['soft']}"])]},
+                                       f"차분한 면 #{th['calm']} — 띠 문구 / 표 머리·선 #{th['tbl']} / 연한 면 #{th['soft']}"])]},
         {"title": "1.3 서식 규칙표", "fixed_path": "1. 작성 가이드", "req": "",
          "lead": ["요소마다 글꼴·크기·색이 정해져 있습니다.", "새 쪽을 만들 때도 이 표의 값 그대로 씁니다."],
          "strong": "글꼴·크기·색", "band": "요소별 서식 — 이 값 그대로",

@@ -106,9 +106,19 @@ final class TestLogin
         // 촬영·시연 때는 쓰기를 열 수 있다(사용자 2026-10-21 "테스트 계정 쓰기 실행 권한까지") — core_settings auth.test.writable=1·기한(auth.test.writable_until) 안에서만
         $s = self::settings();
         $writable = (string) ($s['auth.test.writable'] ?? '') === '1' && strtotime((string) ($s['auth.test.writable_until'] ?? '2000-01-01')) > time();
-        if (!$writable && in_array($method, ['POST', 'PUT', 'PATCH', 'DELETE'], true)
-            && !in_array($path, ['/auth/logout', '/auth/logout-all', '/auth/test-login', '/me/consents'], true)) {
+        $isWrite = in_array($method, ['POST', 'PUT', 'PATCH', 'DELETE'], true)
+            && !in_array($path, ['/auth/logout', '/auth/logout-all', '/auth/test-login', '/me/consents'], true);
+        if (!$writable && $isWrite) {
             throw new HttpError('TEST_READ_ONLY', '테스트 계정은 읽기 전용입니다.', 403, '보기만 할 수 있습니다. 바꾸려면 본인 계정으로 로그인하세요.');
+        }
+        // 쓰기가 열려 있어도(사용자 2026-10-23 "사용자 모드에서만 다 써 볼 수 있게 · 관리자는 보기만 · 삭제만 못하게"):
+        //  - 관리자 화면의 쓰기 전부 막음(다른 회원의 권한·상태·플랜·결제·설정) — 관리자 화면은 보기만
+        //  - 지우기 막음: DELETE 메서드 전부, 경로에 지우기 낱말이 든 POST(일괄 삭제·폐기 등). 사용자 화면의 취소·다시 하기 같은 쓰기는 연다
+        //  - 남의 것 고치기·본문으로 지우기는 Access::can 이 한 번 더 막는다(자기 것만 고침)
+        if ($isWrite && ($method === 'DELETE'
+                || preg_match('#(delete|remove|revoke|purge|trash|destroy|wipe)#i', $path)
+                || preg_match('#(^|/)admin(/|$)#', $path))) {
+            throw new HttpError('TEST_NO_DELETE', '테스트 계정은 지우기와 관리자 변경을 할 수 없습니다.', 403, '만들기·고치기는 됩니다. 지우기는 본인 계정으로 하세요.');
         }
         if ($method === 'GET' && preg_match('#(^|/)admin(/|$)#', $path)) {
             Audit::log($a, 'admin.view', 'page:' . mb_substr($path, 0, 35), null, ['path' => $path, 'query' => mb_substr((string) ($_SERVER['QUERY_STRING'] ?? ''), 0, 300)]);

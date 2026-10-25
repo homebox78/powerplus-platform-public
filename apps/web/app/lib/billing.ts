@@ -26,9 +26,9 @@ export const yearlySave = (p: PlanRow | undefined) => (p && p.price_month ? Math
 /** 플랜 카드에 보일 기능(기획 §13.2 요금제 × 모듈 표). 가격·크레딧은 서버 core_plans 가 원천. */
 export const PLAN_FEATURES: Record<"pro" | "team", { desc: string; seatNote: string; lead?: string; features: string[] }> = {
   pro: { desc: "프리랜서·개인 디자이너", seatNote: "1인 전용",
-    features: ["powerAssets Pro 에셋 원본 삽입", "powerMock 전체 화면·디자인 데이터", "시안 판정·게시", "powerMCP 이미지·코드 · 일 1,000회", "장표 변환 월 50크레딧", "API·MCP 키 3개"] },
+    features: ["powerAssets Pro 에셋 원본 삽입", "powerMock 전체 화면·디자인 데이터", "시안 판정·게시", "powerMCP 이미지·코드 · 일 10,000회", "장표 변환 월 50크레딧", "API·MCP 키 3개"] },
   team: { desc: "SI·에이전시 팀", seatNote: "5석 포함 · 추가 좌석 별도", lead: "Pro 전체 기능 +",
-    features: ["팀 공유 세트·컬렉션", "장표 변환 월 200크레딧(팀 공유)", "powerMCP 일 5,000회", "API·MCP 키 5개", "통합 결제·세금계산서"] },
+    features: ["팀 공유 세트·컬렉션", "장표 변환 월 200크레딧(팀 공유)", "powerMCP 일 50,000회", "API·MCP 키 5개", "통합 결제·세금계산서"] },
 };
 
 const origin = () => window.location.origin;

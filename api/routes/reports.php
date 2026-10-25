@@ -204,6 +204,47 @@ return static function (Router $r): void {
             throw new HttpError('FORBIDDEN', '임직원만 볼 수 있는 보고서입니다.', 403, $a->id() === null ? '회사 메일 계정으로 로그인해 주세요.' : '이 보고서는 임직원 계정에만 열립니다.');
         }
         Db::exec('UPDATE core_reports SET views = views + 1 WHERE id = ?', [$row['id']]);
+        // 레퍼런스 엔진 그림(…/api/files/{id}?exp=&sig=)은 10~15분 서명이라 나중에 열면 엑스박스였다(2026-10-25 사용자) — 볼 때마다 다시 서명한다.
+        // 서명 비밀은 레퍼런스 엔진 설정(mockref.php, 플랫폼 config 옆)에서 읽는다 — 값을 복사해 두지 않는다. 못 읽으면 그대로.
+        $resign = static function (string $u): string {
+            static $sec = null;
+            if (!preg_match('#^(.*?/api/files/)(\d+)\?exp=\d+&sig=[0-9a-f]{32}$#', $u, $m)) {
+                return $u;
+            }
+            if ($sec === null) {
+                // 후보: 설정 mockref.config → 레퍼런스 엔진이 실제로 읽는 설정(운영 /var/www/platform-mockref/api/config.php → platform_conf/mockref.php)
+                $sec = '';
+                $cands = array_filter([(string) \Pp\Core\Config::get('mockref.config', ''), dirname(__DIR__, 3) . '/platform-mockref/api/config.php']);
+                foreach ($cands as $f) {
+                    $c = is_file($f) && is_readable($f) ? (include $f) : null;
+                    if (is_array($c) && (string) ($c['app']['secret'] ?? '') !== '') {
+                        $sec = (string) $c['app']['secret'];
+                        break;
+                    }
+                }
+                if ($sec === '') {
+                    error_log('[reports] 레퍼런스 그림 다시 서명 못 함 — mockref 설정을 못 읽음');
+                }
+            }
+            if ($sec === '') {
+                return $u;
+            }
+            $id = (int) $m[2];
+            $exp = time() + 3600;
+            return $m[1] . $id . '?exp=' . $exp . '&sig=' . substr(hash_hmac('sha256', "$id:$exp", $sec), 0, 32);
+        };
+        foreach ((array) ($pl['blocks'] ?? []) as $bi => $b) {
+            if (!is_array($b) || !in_array($b['type'] ?? '', ['images', 'links'], true)) {
+                continue;
+            }
+            foreach ((array) ($b['items'] ?? []) as $ii => $it) {
+                foreach (['url', 'link'] as $k) {
+                    if (is_string($it[$k] ?? null)) {
+                        $pl['blocks'][$bi]['items'][$ii][$k] = $resign($it[$k]);
+                    }
+                }
+            }
+        }
         Response::json([
             'id' => $row['public_id'], 'title' => $row['title'], 'module' => $row['module'],
             // 링크를 아는 누구나 보는 화면 — 만든 사람 이름은 본인에게만(공개 화면엔 개인 이름을 내지 않는다)

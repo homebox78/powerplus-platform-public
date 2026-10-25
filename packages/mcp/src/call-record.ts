@@ -20,6 +20,12 @@ const nameOf = (o: Record<string, unknown>) => {
   return "";
 };
 
+/** 응답 JSON 의 그림 칸(썸네일 주소·이름) — 미리보기 그림을 응답에 실을 때 쓴다(MC-124) */
+export function collectImages(data: unknown, max = 6): Array<{ url: string; caption: string }> {
+  const b = buildCallBlocks({}, data).find((x) => x.type === "images");
+  return b && b.type === "images" ? b.items.slice(0, max).map(({ url, caption }) => ({ url, caption })) : [];
+}
+
 /** 응답 JSON → 보고서 칸. 그림 60개·주소 30개까지 */
 export function buildCallBlocks(args: Record<string, unknown>, data: unknown): CallBlock[] {
   const images: Array<{ url: string; caption: string; link?: string }> = [];

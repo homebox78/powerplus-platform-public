@@ -16,7 +16,7 @@ const IMG_KEYS = ["thumb_url", "thumb", "preview_image", "image_url", "crop_url"
 const LINK_KEY = /(^url$|_url$|_link$|^link$|^href$)/;
 const isUrl = (v: unknown): v is string => typeof v === "string" && v.length < 600 && /^(https?:\/\/|\/(?!\/))\S+$/.test(v);
 const nameOf = (o: Record<string, unknown>) => {
-  for (const k of ["alt", "name", "title", "label", "caption", "id"]) { const v = o[k]; if (typeof v === "string" && v.trim()) return v.trim().slice(0, 120); }
+  for (const k of ["alt", "name", "title", "label", "caption", "keyword", "id"]) { const v = o[k]; if (typeof v === "string" && v.trim()) return v.trim().slice(0, 120); }
   return "";
 };
 

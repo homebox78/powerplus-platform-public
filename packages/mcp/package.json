@@ -11,11 +11,11 @@
     "test": "node --experimental-strip-types --no-warnings=ExperimentalWarning --test --test-timeout=600000 \"test/**/*.test.{mjs,ts}\""
   },
   "dependencies": {
-    "@pp/shared": "workspace:*",
     "@modelcontextprotocol/sdk": "^1.30.0",
+    "@pp/shared": "workspace:*",
     "playwright-core": "1.63.0",
     "sharp": "^0.35.5",
-    "zod": "^4.6.5"
+    "zod": "^4.6.7"
   },
   "devDependencies": {
     "@types/node": "^24.10.0",

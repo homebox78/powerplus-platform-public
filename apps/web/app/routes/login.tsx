@@ -31,8 +31,10 @@ export default function LoginPage() {
   const [codeStep, setCodeStep] = useState(false);
   const navigate = useNavigate();
   useEffect(() => { if (me) navigate(next, { replace: true }); }, [me, next, navigate]);
-  const providers = useQuery({ queryKey: ["auth-providers"], queryFn: () => apiFetch<Array<{ provider: "google" | "naver" | "kakao"; enabled: boolean }>>("/auth/providers"), staleTime: Infinity });
-  const on = (p: "google" | "naver" | "kakao") => !!providers.data?.find((x) => x.provider === p && x.enabled);
+  const providers = useQuery({ queryKey: ["auth-providers"], queryFn: () => apiFetch<Array<{ provider: "google" | "naver" | "kakao"; enabled: boolean }>>("/auth/providers"), staleTime: Infinity, retry: 2 });
+  // 서버가 "꺼짐"이라고 답한 제공자만 막는다. 목록을 아직 못 받았거나 받다 실패하면 막지 않고 그대로 보낸다
+  // (2026-10-25 노트북에서 목록 요청이 늦거나 실패해 켜진 구글·네이버까지 "곧 열립니다"로 막히던 것 — 키가 없으면 서버가 오류로 돌려보낸다).
+  const on = (p: "google" | "naver" | "kakao") => !providers.data || !!providers.data.find((x) => x.provider === p && x.enabled);
   // 버튼은 늘 보인다. 서버에 키가 아직 없는 제공자는 누르면 안내만(이메일 로그인으로).
   const guard = (e: MouseEvent, p: "google" | "naver" | "kakao") => { if (!on(p)) { e.preventDefault(); toast.info("이 로그인 방식은 곧 열립니다. 지금은 이메일로 로그인해 주세요."); } };
 

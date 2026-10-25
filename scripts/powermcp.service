@@ -32,6 +32,10 @@ Environment=MCP_BROWSER=chromium
 ExecStart=/usr/bin/node --experimental-strip-types --no-warnings=ExperimentalWarning src/index.ts
 Restart=always
 RestartSec=3
+# 종료 신호는 node 에만(크롬은 node 가 닫는다) — 기본(control-group)은 판정 중인 크롬까지 같이 죽였다(MC-125).
+#   node 는 진행 중 호출을 최대 60초 마무리하고 내려간다. 그 뒤에도 남으면 75초에 전부 강제 종료.
+KillMode=mixed
+TimeoutStopSec=75
 
 [Install]
 WantedBy=multi-user.target

@@ -13,3 +13,5 @@ export type CheckResult = {
 };
 export type CheckCompare = { slices: Array<{ from: number; to: number; jpeg: Buffer }>; scaleRef: number; totalH: number } | null;
 export function checkMockup(o: { html: string; ref: unknown; refImage: Buffer | null; launch: () => Promise<unknown>; sharp: unknown; width?: number; peers?: unknown[]; want?: string; textKeys?: string[]; iconKeys?: string[]; wire?: JudgeWire | null }): Promise<{ result: CheckResult; compare: CheckCompare; thumb: Buffer | null }>;
+/** 서버 종료 때 남은 판정을 끝내고 판정 브라우저를 닫는다(MC-125) */
+export function closeJudgeBrowser(): Promise<void>;

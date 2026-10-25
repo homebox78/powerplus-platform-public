@@ -23,6 +23,13 @@ cd $C && pnpm install --prod --filter "@pp/mcp..." --frozen-lockfile >/dev/null 
 sed -i "s/\r$//" $C/scripts/powermcp.service
 # 서비스 계정·공개 주소는 대상 서버 것으로(GCP deploy·hom2box.com / 회사 solideos·solideos.com:46443)
 sed -e "s#^User=.*#User=$(id -un)#" -e "s#https://powerplus.hom2box.com#$PUBLIC#g" $C/scripts/powermcp.service | sudo tee /etc/systemd/system/powermcp.service >/dev/null
+# 진행 중 호출(판정 등)이 끝날 때까지 최대 120초 기다렸다 재시작한다(MC-125) — 남은 건 node 가 종료 전에 마무리한다
+for i in $(seq 1 120); do
+  n=$(curl -fs -m 3 http://127.0.0.1:3110/mcp/health 2>/dev/null | grep -o '"inflight":[0-9]*' | cut -d: -f2)
+  [ -z "$n" ] || [ "$n" = 0 ] && break
+  [ $((i % 10)) = 1 ] && echo "진행 중 호출 ${n}건 — 끝나길 기다림"
+  sleep 1
+done
 sudo systemctl daemon-reload && sudo systemctl restart powermcp
 for i in $(seq 1 20); do curl -fs http://127.0.0.1:3110/mcp/health >/dev/null 2>&1 && break; sleep 1; done
 curl -s http://127.0.0.1:3110/mcp/health

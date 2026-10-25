@@ -929,7 +929,7 @@ function buildServer(key: string | null): McpServer {
       // 판정 브라우저는 사용자 HTML 을 그리므로 샌드박스를 켠다(O-34). Playwright 는 chromiumSandbox:true 를 줘야 --no-sandbox 를 안 붙인다(args 에서 빼는 것만으론 안 켜진다). 서버는 AppArmor 프로필(scripts/apparmor-pw-headless-shell)이 있어야 뜬다 —
       // 프로필이 없는 서버(이관 직후 등)에선 PP_JUDGE_NO_SANDBOX=1 로 예전처럼 끌 수 있다
       const judgeArgs = engine === "chromium" ? [...(process.env.PP_JUDGE_NO_SANDBOX === "1" ? ["--no-sandbox"] : []), "--disable-dev-shm-usage"] : [];
-      const { result, compare, thumb } = await checkMockup({ html, ref, refImage, sharp, want, textKeys: await textSampleKeys(key), iconKeys: textKeyCache.icons, peers: Array.isArray(d.json.peers) ? d.json.peers : [], width: a.device === "mobile" ? 390 : 1920, wire: judgeWire, launch: () => pw[engine].launch({ args: judgeArgs, chromiumSandbox: engine === "chromium" && process.env.PP_JUDGE_NO_SANDBOX !== "1" }) });
+      const { result, compare, thumb } = await checkMockup({ html, ref, refImage, sharp, want, textKeys: await textSampleKeys(key), iconKeys: textKeyCache.icons, peers: Array.isArray(d.json.peers) ? d.json.peers : [], width: a.device === "mobile" ? 390 : 1920, wire: judgeWire, launch: () => pw[engine].launch({ args: judgeArgs, chromiumSandbox: engine === "chromium" && process.env.PP_JUDGE_NO_SANDBOX !== "1", handleSIGTERM: false, handleSIGINT: false, handleSIGHUP: false }) });
       const rec = await internal(`mockup-pages/${token}/check`, { score: result.score, pass: result.pass, ref_id: refId, result: { ...result, rows: undefined }, thumb: thumb ? thumb.toString("base64") : undefined, device: a.device ?? "pc", page: refId.startsWith("mix1:") ? "main" : judgeWire?.screen ?? String((ref as { page_type?: string }).page_type ?? "") }).catch(() => null);
       // 기록이 안 되면 점수·통과가 DB 에 NULL 로 남아 게시가 막힌다 — 조용히 넘기지 않고 로그에 남긴다(PP_JUDGE_SECRET 누락이 흔한 원인)
       if (!rec?.ok) console.error(`[mcp] 판정 기록 실패 token=${token.slice(0, 8)} status=${rec?.status ?? "-"} ${rec?.json?.error?.message ?? ""}${JUDGE_SECRET ? "" : " (PP_JUDGE_SECRET 없음)"}`);
@@ -1237,11 +1237,20 @@ function aliasCalls(body: unknown): unknown {
   return Array.isArray(body) ? body.map(fix) : fix(body);
 }
 
+// 진행 중 호출 수 — 배포가 0 이 될 때까지 기다렸다 재시작하고(deploy-mcp.sh), 종료 신호를 받으면 남은 호출을 끝낸 뒤 내려간다(MC-125).
+//   10-25 14:44 재배포 때 판정 도중 서비스가 90초 버티다 강제 종료돼 claude.ai 판정이 끊겼다.
+let inflight = 0;
+let draining = false;
+
 // Streamable HTTP, 세션리스: 요청마다 서버·전송 생성 (SDK 권장 stateless 패턴)
-createServer(async (req, res) => {
+const httpServer = createServer(async (req, res) => {
   const url = new URL(req.url ?? "/", "http://localhost");
-  if (url.pathname === "/health" || url.pathname === "/mcp/health") { res.writeHead(200, { "Content-Type": "application/json" }).end(JSON.stringify({ ok: true, name: "powerMCP", api: PP_API, legacy_api: API, legacy_key: LEGACY_KEY !== "", tools: TOOL_COUNT, aliases: Object.keys(ALIASES).length, version: VERSION })); return; }
+  if (url.pathname === "/health" || url.pathname === "/mcp/health") { res.writeHead(200, { "Content-Type": "application/json" }).end(JSON.stringify({ ok: true, name: "powerMCP", api: PP_API, legacy_api: API, legacy_key: LEGACY_KEY !== "", tools: TOOL_COUNT, aliases: Object.keys(ALIASES).length, version: VERSION, inflight, draining })); return; }
   if (!/^\/(mcp)?\/?$/.test(url.pathname)) { res.writeHead(404).end(); return; }
+  inflight++;
+  let counted = true;
+  const done = () => { if (counted) { counted = false; inflight--; } };
+  res.on("close", done); res.on("finish", done);
   const auth = req.headers.authorization ?? "";
   // 키: Authorization 헤더 우선, 없으면 URL `?key=` — Claude 웹·데스크톱 "사용자 지정 커넥터"와 ChatGPT 커넥터는 헤더를 넣을 칸이 없어
   //   헤더 방식이면 도구 목록만 보이고 호출은 전부 UNAUTHORIZED 였다(사용자 테스트 2026-09-24). URL 에 실은 키도 같은 검증(verifyKey)을 탄다.
@@ -1274,4 +1283,26 @@ createServer(async (req, res) => {
   } catch (e) {
     if (!res.headersSent) res.writeHead(500, { "Content-Type": "application/json" }).end(JSON.stringify({ jsonrpc: "2.0", error: { code: -32603, message: (e as Error).message }, id: null }));
   }
-}).listen(PORT, () => console.log(`[mcp] powerMCP :${PORT} → API ${PP_API} · 레퍼런스 ${API}${LEGACY_KEY ? "" : "(서비스 키 없음)"} (taxonomy ${taxonomy.version}, tools ${TOOL_COUNT})`));
+// 받는 주소는 서버 안(127.0.0.1)만 — 바깥은 apache(/mcp 프록시)로만 들어온다. 방화벽 하나에 기대지 않게(2026-10-25 보안 점검: *:3110 로 열려 있었음)
+}).listen(PORT, process.env.MCP_HOST ?? "127.0.0.1", () => console.log(`[mcp] powerMCP ${process.env.MCP_HOST ?? "127.0.0.1"}:${PORT} → API ${PP_API} · 레퍼런스 ${API}${LEGACY_KEY ? "" : "(서비스 키 없음)"} (taxonomy ${taxonomy.version}, tools ${TOOL_COUNT})`));
+
+// 종료 신호: 새 연결을 받지 않고, 진행 중 호출이 끝나면(최대 60초) 판정 브라우저를 닫고 내려간다.
+//   systemd 는 KillMode=mixed 라 신호가 node 에만 온다 — 크롬이 먼저 죽어 판정이 깨지지 않게(scripts/powermcp.service).
+const shutdown = (sig: string) => {
+  if (draining) return;
+  draining = true;
+  console.log(`[mcp] ${sig} — 진행 중 ${inflight}건 마무리 후 종료`);
+  httpServer.close();
+  httpServer.closeIdleConnections?.();
+  const started = Date.now();
+  const tick = async () => {
+    if (inflight > 0 && Date.now() - started < 60_000) { setTimeout(tick, 250); return; }
+    if (inflight > 0) console.log(`[mcp] 60초 지나 ${inflight}건 남기고 종료`);
+    const { closeJudgeBrowser } = await import("./qa/check.mjs");
+    await Promise.race([closeJudgeBrowser(), new Promise((r) => setTimeout(r, 5_000))]);
+    process.exit(0);
+  };
+  void tick();
+};
+process.on("SIGTERM", () => shutdown("SIGTERM"));
+process.on("SIGINT", () => shutdown("SIGINT"));

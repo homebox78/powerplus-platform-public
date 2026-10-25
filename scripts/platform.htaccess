@@ -5,6 +5,8 @@ RewriteBase /
 # REST v1·시안 게시 주소 → PHP 프론트 컨트롤러 (api/src·routes 직접 접근은 api/.htaccess 가 막는다)
 RewriteRule ^api/v1(/.*)?$ api/public/index.php [L,QSA]
 RewriteRule ^p/([A-Za-z0-9_-]+)$ api/public/index.php [L,QSA]
+# 교육 자료 페이지(2026-10-25) — 구글 로그인 + 허용 계정만(api/public/edu.php). 내용은 서버 storage.dir/edu 에만 있다
+RewriteRule ^edu(/.*)?$ api/public/edu.php [L,QSA]
 # 민감 파일 이름은 어디서든 차단
 <FilesMatch "(\.(pem|key|env|bak|sql|log|sh|ps1|md)|^config\.php\..*)$">
   Require all denied

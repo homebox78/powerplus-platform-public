@@ -7,3 +7,6 @@ allowBuilds:
   esbuild: true
   keytar: false
   vue-demi: true
+overrides:
+  # 보안 패치(2026-10-25 Java·Node.js 취약점 점검) — express 5 가 잡은 body-parser 2.3.0 DoS(GHSA) → 2.4 이상
+  'body-parser@>=2.0.0 <2.4.0': ^2.4.0

@@ -243,6 +243,14 @@ export function checkMockup(o) {
   return run;
 }
 
+/** 서버가 내려갈 때 판정 브라우저를 닫는다(MC-125) — 남은 판정이 끝난 뒤에. */
+export async function closeJudgeBrowser() {
+  if (idleTimer) { clearTimeout(idleTimer); idleTimer = null; }
+  await queue.catch(() => {});
+  const b = await browserP?.catch(() => null); browserP = null;
+  await b?.close().catch(() => {});
+}
+
 async function doCheck({ html, ref, refImage, launch, sharp, width = 1920, peers = [], want = "", textKeys = [], iconKeys = [], wire = null }) {
   const browser = await getBrowser(launch);
   // serviceWorkers block: 서비스 워커 요청은 route 를 거치지 않아 막이를 우회한다

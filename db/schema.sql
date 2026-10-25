@@ -485,10 +485,10 @@ CREATE TABLE IF NOT EXISTS asset_search_logs (
 
 -- 플랜 시드(기획 §15.3·§13.2 표). 숫자는 추천값 — 사용자가 보고 조정.
 INSERT INTO core_plans (code, name, price_month_krw, price_year_krw, credits_month, limits, is_public, sort) VALUES
- ('free',  'Free',  0,     0,     0,   '{"api_daily":100,"api_keys":1,"mock_screens_per_site":5,"assets_pro":false,"credits_trial":3}', 1, 1),
- ('pro',   'Pro',   19000, 16000, 50,  '{"api_daily":1000,"api_keys":3,"mock_screens_per_site":-1,"assets_pro":true}', 1, 2),
- ('team',  'Team',  59000, 49000, 200, '{"api_daily":5000,"api_keys":5,"mock_screens_per_site":-1,"assets_pro":true,"seats":5}', 1, 3),
- ('staff', '임직원', 0,     0,     -1,  '{"api_daily":5000,"api_keys":10,"mock_screens_per_site":-1,"assets_pro":true,"internal":true}', 0, 9)
+ ('free',  'Free',  0,     0,     0,   '{"api_daily":1000,"api_keys":1,"mock_screens_per_site":5,"assets_pro":false,"credits_trial":3}', 1, 1),
+ ('pro',   'Pro',   19000, 16000, 50,  '{"api_daily":10000,"api_keys":3,"mock_screens_per_site":-1,"assets_pro":true}', 1, 2),
+ ('team',  'Team',  59000, 49000, 200, '{"api_daily":50000,"api_keys":5,"mock_screens_per_site":-1,"assets_pro":true,"seats":5}', 1, 3),
+ ('staff', '임직원', 0,     0,     -1,  '{"api_daily":50000,"api_keys":10,"mock_screens_per_site":-1,"assets_pro":true,"internal":true}', 0, 9)
 ON DUPLICATE KEY UPDATE name = VALUES(name);
 
 INSERT INTO core_point_rules (reason, delta, daily_cap, yearly_cap, note) VALUES

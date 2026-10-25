@@ -27,6 +27,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { apiFetch, postJson } from "@/lib/api";
 import { CATEGORY_KO, REQUEST_STATUS_KO, SORT_KO, setLabel, assetCategoriesQuery, assetDetailQuery, assetListQuery, assetRequestsQuery, assetSetsQuery, frequentLogosQuery, logoTopicsQuery, type AssetCategory, type AssetItem, type AssetListParams, type AssetRequest } from "@/lib/assets";
 import { useMe } from "@/lib/auth";
@@ -35,8 +36,9 @@ import { useIsSaved } from "@/lib/saved";
 import { cn } from "@/lib/utils";
 
 const fmtDate = (s: string) => s.slice(0, 10).replace(/-/g, ".");
-const GRID = "grid grid-cols-2 gap-x-4 gap-y-6 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8";
-const GRID_DENSE = "grid grid-cols-3 gap-x-4 gap-y-6 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8";
+// 한 줄 10개·한 쪽 60개(사용자 2026-10-25) — 넓은 화면만 10칸, 좁은 화면은 그대로 줄어든다
+const GRID = "grid grid-cols-2 gap-x-4 gap-y-6 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 2xl:grid-cols-10";
+const GRID_DENSE = "grid grid-cols-3 gap-x-4 gap-y-6 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 2xl:grid-cols-10";
 
 // 비회원은 내려받기 대신 로그인으로 — 돌아올 곳은 지금 화면(서버도 비회원에겐 워터마크 미리보기만 준다)
 function loginNext() {
@@ -110,14 +112,14 @@ function CorrectedNote({ corrected, total }: { corrected: unknown; total: number
 
 function AssetGrid({ params, emptyText, requestCta }: { params: AssetListParams; emptyText: string; /** 무결과 화면 "자료 요청하기" — 요청 제목에 채울 검색어 */ requestCta?: string }) {
   const [page, setPage] = useState(1);
-  const q = useQuery(assetListQuery({ ...params, page, limit: 40 }));
+  const q = useQuery(assetListQuery({ ...params, page, limit: 60 }));
   // 저장 목록 등에서 ?item=<public_id> 로 들어오면 그 에셋 상세를 바로 연다
   const [sp] = useSearchParams();
   const [open, setOpen] = useState<string | null>(() => sp.get("item"));
   const dense = params.category === "icon" || params.category === "illust" || params.category === "logo";
   if (q.isPending) return <div className={cn("mt-10", dense ? GRID_DENSE : GRID)}>{Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className={cn("rounded-panel", params.category === "logo" ? "aspect-[5/3]" : dense ? "aspect-square" : "aspect-[16/10]")} />)}</div>;
   if (q.isError) return <p className="py-16 text-center text-ink-4">목록을 불러오지 못했습니다.</p>;
-  const { data, total = 0, limit = 40, meta } = q.data;
+  const { data, total = 0, limit = 60, meta } = q.data;
   const pages = Math.max(1, Math.ceil(total / limit));
   return (
     <div className="mt-10">
@@ -266,12 +268,12 @@ function AssetsBrowse() {
               <div className="mb-4 flex items-center justify-between gap-3">
                 <span className="text-sm text-ink-4">같은 스타일 세트 {shownSets.length}개 · 세트를 누르면 그 세트만 보입니다</span>
               </div>
-              <div className="grid grid-cols-4 gap-x-3 gap-y-4 md:grid-cols-6 lg:grid-cols-12">
+              {/* 한 줄 14개 · 세트 이름·개수는 칸 아래 글 대신 마우스를 올리면 말풍선으로(사용자 2026-10-25) */}
+              <div className="grid grid-cols-5 gap-x-3 gap-y-3 md:grid-cols-8 lg:grid-cols-[repeat(14,minmax(0,1fr))]">
                 {shownSets.map((s) => (
-                  <button key={s.id} type="button" onClick={() => put("set", s.id)} className="group flex min-w-0 flex-col gap-2 text-center" aria-label={`${setLabel(s.name)} 세트`}>
+                  <Tooltip key={s.id}><TooltipTrigger asChild><button type="button" onClick={() => put("set", s.id)} className="group flex min-w-0 flex-col text-center" aria-label={`${setLabel(s.name)} 세트 · ${s.count.toLocaleString()}개`}>
                     <span className="relative block"><ThumbFrame radius="lg" ratio="auto" className="bg-ground-3 p-[4.5%]">{s.cover_url ? <ContrastImg boxClassName="flex aspect-square items-center justify-center overflow-hidden rounded-md shadow-[0_1px_3px_rgba(0,0,0,0.08)]" src={s.cover_url} loading="lazy" className="size-full object-contain p-[12%]" /> : <span className="flex aspect-square rounded-md bg-white shadow-[0_1px_3px_rgba(0,0,0,0.08)]" />}</ThumbFrame>{/* 24시간 안에 올린 자료가 있는 세트에만 'New'(사용자 2026-10-18 — 개수 대신 글자만) */}{(s.recent ?? 0) > 0 && <span className="absolute right-1 top-1 rounded-full bg-point px-1.5 py-0.5 text-xs font-bold leading-none text-white">New</span>}</span>
-                    <span className="flex min-w-0 flex-col items-center"><span className="w-full line-clamp-2 text-xs font-bold tracking-[-0.01em]" title={setLabel(s.name)}>{setLabel(s.name)}</span><span className="text-xs text-ink-4">{s.count.toLocaleString()}개</span></span>
-                  </button>
+                    </button></TooltipTrigger><TooltipContent><span className="font-bold">{setLabel(s.name)}</span> · {s.count.toLocaleString()}개</TooltipContent></Tooltip>
                 ))}
               </div>
             </section>

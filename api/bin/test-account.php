@@ -91,6 +91,26 @@ if ($cmd === 'extend') {
     exit(0);
 }
 
+// 쓰기 열기·닫기(사용자 2026-10-23 "심사용 계정 실제 동작, 삭제만 못하게"): 만들기·고치기는 되고 지우기·관리자 변경은 늘 막힌다(TestLogin::guard)
+//   php8.4 api/bin/test-account.php writable on [YYYY-MM-DD=계정 만료일]  |  writable off
+if ($cmd === 'writable') {
+    $on = ($argv[2] ?? '') === 'on';
+    $day = trim((string) ($argv[3] ?? ''));
+    $until = (string) Db::val("SELECT v FROM core_settings WHERE k = 'auth.test.until'");
+    if ($on && preg_match('/^\d{4}-\d{2}-\d{2}$/', $day)) {
+        $until = $day . ' 23:59:59';
+    }
+    if ($on && ($until === '' || strtotime($until) <= time())) {
+        fwrite(STDERR, "기한이 없거나 지났습니다 — create 또는 날짜(YYYY-MM-DD)를 주세요.\n");
+        exit(1);
+    }
+    $set('auth.test.writable', $on ? '1' : '0');
+    $set('auth.test.writable_until', $on ? $until : '2000-01-01 00:00:00');
+    Audit::log(null, 'auth.test_account.writable_' . ($on ? 'on' : 'off'), 'core_settings:auth.test.writable', null, ['until' => $on ? $until : null]);
+    echo $on ? "쓰기를 열었습니다(지우기·관리자 변경은 막힘) — {$until} 까지\n" : "쓰기를 닫았습니다(읽기 전용).\n";
+    exit(0);
+}
+
 // 로그인 화면의 테스트 로그인 칸 보이기·숨기기(보고할 때만 켠다)
 if ($cmd === 'show' || $cmd === 'hide') {
     $set('auth.test.show_login', $cmd === 'show' ? '1' : '0');
@@ -119,7 +139,7 @@ if ($cmd === 'remove') {
     exit(0);
 }
 
-$rows = Db::rows("SELECT k, v FROM core_settings WHERE k IN ('auth.test.user','auth.test.until','auth.test.user_id','auth.test.fail','auth.test.show_login')");
+$rows = Db::rows("SELECT k, v FROM core_settings WHERE k IN ('auth.test.user','auth.test.until','auth.test.user_id','auth.test.fail','auth.test.show_login','auth.test.writable','auth.test.writable_until')");
 foreach ($rows as $r) {
     echo $r['k'] . ' = ' . $r['v'] . "\n";
 }

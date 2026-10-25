@@ -32,7 +32,11 @@ type Block =
   | { type: "assets"; heading?: string; note?: string; items: AssetItem[] }
   | { type: "text"; heading?: string; body: string }
   | { type: "list"; heading?: string; items: string[] }
-  | { type: "table"; heading?: string; columns: string[]; rows: string[][] };
+  | { type: "table"; heading?: string; columns: string[]; rows: string[][] }
+  // 아래 셋은 powerMCP 호출 기록(kind=call, 2026-10-25) — 그림은 서버가 이 사이트 주소만 남긴다
+  | { type: "images"; heading?: string; note?: string; items: Array<{ url: string; caption?: string; link?: string | null }> }
+  | { type: "links"; heading?: string; items: Array<{ label: string; url: string }> }
+  | { type: "json"; heading?: string; body: string };
 type Report = {
   id: string;
   title: string;
@@ -44,6 +48,8 @@ type Report = {
   highlights?: string[];
   blocks: Block[];
   via?: string;
+  kind?: string;
+  tool?: string;
   mine: boolean;
 };
 
@@ -89,7 +95,7 @@ export default function ReportPage() {
     <article className="container-page pb-16 pt-10 print:pt-0">
       {/* 머리 */}
       <div className="flex flex-wrap items-center gap-2 text-sm text-ink-4">
-        <Tag tone="ink">분석 보고서</Tag>
+        <Tag tone="ink">{r.kind === "call" ? "MCP 호출 결과" : "분석 보고서"}</Tag>
         <span><BrandName name={MODULE_LABEL[r.module] ?? "powerPlus"} /> · {r.via === "mcp" ? "powerMCP 로 작성" : "웹에서 작성"} · {r.created_at.slice(0, 16).replace("T", " ").replaceAll("-", ".")}</span>
       </div>
       <div className="mt-3 flex flex-col gap-3 md:flex-row md:items-start">
@@ -133,10 +139,27 @@ export default function ReportPage() {
               <div className="flex items-baseline gap-3 border-b border-line pb-3">
                 <span className="text-sm font-bold text-point-ink">{String(i + 1).padStart(2, "0")}</span>
                 <h2 className="break-keep text-xl font-bold tracking-[-0.02em]">{b.heading}</h2>
-                {b.type === "assets" && <span className="text-sm text-ink-4">{b.items.length}개</span>}
+                {(b.type === "assets" || b.type === "images" || b.type === "links") && <span className="text-sm text-ink-4">{b.items.length}개</span>}
               </div>
             )}
             {b.type === "assets" && <AssetBlock b={b} />}
+            {b.type === "images" && <ImageBlock b={b} />}
+            {b.type === "links" && (
+              <ul className="mt-5 flex max-w-[860px] flex-col gap-2.5">
+                {b.items.map((l, k) => (
+                  <li key={k} className="min-w-0 text-md leading-[1.7]">
+                    <a href={l.url} target="_blank" rel="noopener noreferrer" className="font-semibold text-ink underline underline-offset-4 [overflow-wrap:anywhere]">{l.label}</a>
+                    {l.label !== l.url && <span className="ml-2 text-sm text-ink-4 [overflow-wrap:anywhere]">{l.url}</span>}
+                  </li>
+                ))}
+              </ul>
+            )}
+            {b.type === "json" && (
+              <details className="mt-5 rounded-card border border-line">
+                <summary className="cursor-pointer px-5 py-3 text-sm font-semibold text-ink-2">원본 응답 펼치기</summary>
+                <pre className="m-0 whitespace-pre-wrap break-words border-t border-line px-5 py-4 text-xs leading-[1.6] text-ink-3">{b.body}</pre>
+              </details>
+            )}
             {b.type === "text" && <Copy className="mt-5 max-w-[860px] text-md leading-[1.8] text-ink-2" text={b.body} />}
             {b.type === "list" && (
               <ul className="mt-5 flex max-w-[860px] flex-col gap-2.5">
@@ -164,10 +187,41 @@ export default function ReportPage() {
       </div>
 
       <footer className="mt-16 flex flex-wrap items-center justify-between gap-3 border-t border-line pt-6 text-sm text-ink-4">
-        <span>{r.author} 님이 만든 보고서 · 링크를 아는 사람만 볼 수 있습니다.</span>
+        <span>{r.kind === "call" ? `${r.author} 님의 powerMCP 호출 결과 · 30일 보관` : `${r.author} 님이 만든 보고서 · 링크를 아는 사람만 볼 수 있습니다.`}</span>
         <Link to="/powermcp" className="inline-block py-1.5 -my-1.5 font-semibold text-ink-2 underline underline-offset-4 print:hidden">powerMCP 로 나도 만들기</Link>
       </footer>
     </article>
+  );
+}
+
+/** 호출 결과의 그림(샘플 사진·배너·아이콘 썸네일) — 비율을 지키고(contain) 누르면 원본·상세로 */
+function ImageBlock({ b }: { b: Extract<Block, { type: "images" }> }) {
+  return (
+    <>
+      {b.note && <Copy className="mt-4 text-md text-ink-3" text={b.note} />}
+      <div className="mt-6 grid grid-cols-2 gap-x-5 gap-y-8 sm:grid-cols-3 md:grid-cols-4">
+        {b.items.map((it, k) => {
+          const card = (
+            <>
+              <ThumbFrame radius="lg" ratio="auto" className="bg-ground-3 p-[4.5%]">
+                <span className="flex aspect-[4/3] items-center justify-center overflow-hidden rounded-md bg-white shadow-[0_1px_3px_rgba(0,0,0,0.08)]">
+                  <img src={it.url} alt={it.caption ?? ""} loading="lazy" className="size-full object-contain" />
+                </span>
+              </ThumbFrame>
+              <div className="mt-3 flex items-start gap-1.5 px-0.5">
+                <span className="text-xs font-bold leading-[1.6] text-point-ink">{String(k + 1).padStart(2, "0")}</span>
+                <span className="min-w-0 break-keep text-sm font-semibold leading-[1.5]">{it.caption || "그림"}</span>
+              </div>
+            </>
+          );
+          return it.link ? (
+            <a key={k} href={it.link} target="_blank" rel="noopener noreferrer" className="group block min-w-0">{card}</a>
+          ) : (
+            <div key={k} className="min-w-0">{card}</div>
+          );
+        })}
+      </div>
+    </>
   );
 }
 

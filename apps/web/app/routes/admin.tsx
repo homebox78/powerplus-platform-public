@@ -21,6 +21,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AdminTitle, SortHead, useSort } from "@/components/admin/admin-ui";
 import { AtText } from "@/components/admin/at-text";
+import { DeckLivePanel } from "@/components/admin/deck-live";
 import { AUDIT_KO, auditTargetKo, type AdminAnalytics, type AnalyticsPeriod, CHANNEL_KO, DECK_STATUS_KO, fetchAnalytics, fetchOps, fetchStats, fetchSystem, fmtAt, type AdminOps } from "@/lib/admin";
 import { useMe } from "@/lib/auth";
 import { LiveStatus } from "@/components/hb/live-status";
@@ -47,7 +48,9 @@ export default function AdminDashboard() {
 
   return (
     <div className="flex min-w-0 flex-col gap-6">
-      <div><AdminTitle title="대시보드" desc="메뉴 묶음별 처리할 일 → 서버 상태 → 모듈 지표 → 추이 순으로 봅니다." /></div>
+      <div><AdminTitle title="대시보드" desc="지금 도는 작업 → 메뉴 묶음별 처리할 일 → 서버 상태 → 모듈 지표 → 추이 순으로 봅니다." /></div>
+
+      <DeckLivePanel />
 
       <OpsBoard />
 

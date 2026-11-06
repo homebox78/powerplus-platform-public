@@ -11,6 +11,7 @@ import base64, glob, io, json, os, re, time, traceback, urllib.error, urllib.par
 import styles
 
 W = {}  # worker.py 가 setup() 으로 넘겨주는 함수·설정
+LIST_RETRY_SEC = 3   # 자료 목록을 못 받았을 때 다시 묻기 전 기다림(load_context)
 
 
 # ── 제작 언어(opts.lang) — 장표에 들어가는 글(기획·와이어·시안·앞장)을 이 언어로. 자료 요약(digest)은 한국어 그대로(내부용)
@@ -243,8 +244,8 @@ def ai(job, kind, body, timeout=320):
         except Exception as e:
             job.event(f"Claude 구독 호출이 실패해 OpenRouter 로 넘어갑니다: {str(e)[:160]}", "warn")
     body = dict(body, kind=kind)
-    if timeout < 320:   # 서버가 OpenRouter 를 이만큼만 기다린다(기본 300초) — 선택 단계는 짧게 끊는다
-        body["_timeout"] = max(60, timeout - 20)
+    if timeout != 320:   # 서버가 AI 를 이만큼만 기다린다(기본 300초) — 선택 단계는 짧게, 긴 본문은 길게(최대 560초, R104)
+        body["_timeout"] = max(60, min(560, timeout - 20))
     try:
         r = W["req"]("POST", f"/worker/jobs/{job.id}/ai", body, timeout=timeout)
     except urllib.error.HTTPError as e:
@@ -541,7 +542,7 @@ PLAN_SYSTEM = """너는 공공 SI 제안서의 장표 기획자다. 사용자가
 - 한 장의 '※ 보강 필요'는 2개까지. 더 많으면 그 장의 구성(표·비교)을 아는 항목만으로 다시 짠다 — 칸 대부분이 빈 표는 만들지 않는다.
 
 그 외 규칙:
-- 장 수는 내용 분량에 맞춘다. 한 장에 글이 너무 많으면 (1/2)(2/2)로 나눈다. 표지·목차·간지는 사용자가 요청할 때만 넣는다.
+- 장 수는 내용 분량에 맞춘다. 한 장에 글이 너무 많으면 (1/2)(2/2)로 나눈다. 표지·목차·간지·질의응답·감사 장은 엔진이 따로 만든다 — 본문 장으로 넣지 않고, 장(chapter) 이름으로도 쓰지 않는다. 자료가 양식(템플릿)이어서 그런 장이 있어도 내용으로 읽지 않는다.
 - 문장은 짧게 줄여도 되지만 항목·수치·이름·단계를 빼면 안 된다.
 - 연번·단계 표기는 1·2·3 (01·02 같은 앞자리 0 금지) — 앞자리 0은 근거 점검에서 오탐이 난다.
 - type 은 카탈로그·D 덱 목록의 유형 이름에서, ref 는 D·B·C 덱에서 고른다(위 '장면·구성' 규칙대로 — 특정 장을 기본값으로 쓰지 않는다).
@@ -586,6 +587,174 @@ Text content to place (Korean, keep every item, keep it compact):
 """
 
 
+def keep_src_render(job, plan):
+    """기존 구성 그대로 — 원본 장 그림(_keep_src/sNN.jpg). 시안 모델이 칩·번호 원·화살표 방향 같은 세부 구조를 보고 그린다. 실패해도 와이어만으로 간다"""
+    d = os.path.join(job.dir, "_keep_src")
+    picks = sorted({int(s["src"]) for s in plan.get("slides") or [] if s.get("src")})
+    if not picks or all(os.path.isfile(os.path.join(d, f"s{n:02d}.jpg")) for n in picks) or not W.get("render"):
+        return
+    try:
+        job.event("원본 장 그림을 만드는 중 — 시안이 원본의 세부 구조(칩·번호·화살표)를 보고 그립니다")
+        W["render"](os.path.join(job.dir, "원본.pptx"), d, picks)
+    except Exception as e:
+        job.event(f"원본 장 그림을 만들지 못해 와이어프레임만으로 시안을 그립니다: {str(e)[:160]}", "warn")
+
+
+def keep_src_image(job, s):
+    p = os.path.join(job.dir, "_keep_src", f"s{int(s.get('src') or 0):02d}.jpg")
+    if not os.path.isfile(p):   # 다른 PC·다시 만들기 — 한 번 더 그려 본다
+        keep_src_render(job, {"slides": [s]})
+    return file_b64(p, 1600) if os.path.isfile(p) else None
+
+
+KEEP_SRC_NOTE = ("\nORIGINAL SLIDE — the reference image right after the wireframe is the user's original slide (with its old header band and headline at the top: ignore those, "
+                 "this image is only the body below them). Copy its STRUCTURE details exactly: which items are chips/pills and how many per row, highlighted chips, numbered "
+                 "circles and their numbers, big-number circles, which blocks carry an icon, arrows and their direction, bullets vs. plain lines, which line is bold. "
+                 "Copy its COLOR ROLES too (which header bands are darker or lighter, which element carries the accent hue, which chips are highlighted or outlined) — "
+                 "only its fonts, gradients, shadows and dated look are redrawn in the deck design system above. Nothing that is not in the original: "
+                 "no people, no characters, no extra numbers or step badges, no promoted headlines (large empty areas get one topic object illustration — see FILL EMPTY AREAS).\n")
+
+
+KEEP_TEMPLATE = """Body content area of a professional Korean public-sector SI proposal slide, 16:9. This is a REDESIGN of the user's own finished slide: the same blocks at the same positions with the same text — only a better design. Korean text exactly as given (do not translate, reword, shorten, merge or add).
+
+IMPORTANT — draw ONLY the body. No top title band, header bar, footer, logos, page number or border. Keep the TOP 11% of the image as EMPTY plain background (the headline is set later in the real font). The content starts right below that strip, on {style_bg} that reaches all four edges.
+
+DECK TONE: {deck_tone}.
+
+{spec}
+
+COLOR ROLES OF THE ORIGINAL (these OVERRIDE the palette above — keep them): the original separates emphasis and roles by color. Each element below keeps its color (the same hex or very close). Different shades stay visibly different (darkest vs medium vs bright), the ACCENT hue stays only on its listed elements and must not disappear, GRAY stays gray, highlighted and outlined chips stay different from normal chips. Never flatten the slide into one blue tone.
+{colors}
+
+KEEP FROM THE ORIGINAL (top priority):
+- Exactly the wireframe's blocks at their positions and sizes, nested the same way: an outer panel keeps its colored header band with its title (several header bands on one slide are fine here), its inner cards sit inside it.
+- Everything in BLOCK DETAILS: chips stay pill chips in the same number of columns, numbered circles keep their numbers, big-number circles stay circles, arrows keep their direction and place, highlighted chips and words keep their highlight.
+- Each line of text stays at its level: never promote a list line to a headline, never merge or split lines, never drop a footnote line.
+IMPROVE ONLY: typography hierarchy, consistent card and chip styling, spacing and alignment on a clean grid.
+ICONS: only where the original block has an icon, in the ORIGINAL icon style — a flat solid white glyph inside a filled circle, or a flat white glyph on the header band. Never a 3D, isometric or colored-object icon (those are illustrations, not icons).
+EVEN BOTTOMS: cards and panels side by side end on the same bottom line, and so does their CONTENT — the last chip row or last line of each card sits at the same height with the same bottom padding. A card with fewer items spreads its existing rows (larger row gap, taller chips) to reach that line instead of stopping early with an empty band below.
+FILL EMPTY AREAS: a small gap inside a row of items is solved by spreading the existing items. ONLY these blocks are empty enough for an illustration: {empty}. Each of them gets ONE clean illustration of an object that matches that block's topic (server, shield, document, chart, DNA, headset …), drawn in the deck's blue family with the accent sparingly, flat or soft 3D, no text or numbers in it, the same style for every illustration on the slide, placed beside or below the text, never over it. EVERY OTHER block gets NO illustration and no decorative 3D object (not beside its title, not in a corner), and an illustration NEVER replaces an original element (a big-number circle, a chip, a card or an icon stays exactly what it is) (user 2026-11-03: empty space is filled with illustrations — but only empty space).
+NEVER ADD: people, characters, step numbers or badges that the original does not have, captions, extra sentences or numbers.
+
+BLOCK DETAILS (read from the original slide's shapes):
+{details}
+
+Text content to place (Korean, keep every item exactly as written):
+{content}
+
+FINAL SELF-CHECK before you output the image — fix anything that fails: the wireframe's blocks, nesting, order and every text line are present and unchanged; no person, character or scene anywhere; no number or badge that is not in the text; chips are chips (never bullets) and no chip text appears twice; illustrations only in the listed empty blocks, icons are flat white glyphs; every element has its color from COLOR ROLES (accent elements in the accent, shades distinct, not one flat tone, highlighted words and numbers in their own listed text color — yellow stays yellow, navy numbers stay navy); all cards same border, radius and padding; side-by-side cards and their content end on the same bottom line; all icons one family and size; no text touches a card edge.
+"""
+
+
+# ICONS 는 뺀다 — 타입 E 의 '아이소메트릭 3D 아이콘' 규칙이 원본 평면 아이콘을 3D 물체로 바꾸고 카드마다 3D 그림을 붙였다(11-03 8차 시험). 아이콘은 KEEP_TEMPLATE ICONS 가 정한다
+KEEP_COMPONENTS = ("- CARD:", "- KEY NUMBER", "- TABLE:", "- FLOW / STEPS:", "- CONCLUSION BAND", "- CHARTS:")
+KEEP_DROP = ("- Panel header band", "- Generous white space", "- Big–Middle–Small", "LAYOUT LOGIC:", "PICTURE STYLE:")
+
+
+def keep_spec(st_id, accent):
+    """기존 구성 그대로 — 디자인 시스템의 색·서체·간격·부품 규칙만. 구성 규칙(머리 띠 패널 하나·글머리 상자 금지·흐름 번호 원·큰 것 하나)과
+    인물 화풍, 원본에 없는 부품(피시본·허브…)은 원본 구성과 부딪히거나 군더더기라 뺀다(11-03 2차 검수)"""
+    import design_spec
+    t = design_spec.spec_text(st_id, accent)
+    out, sec = [], ""
+    for ln in t.splitlines():
+        m = re.match(r"^([A-Z][A-Z &/,()-]+):", ln)
+        if m:
+            sec = m.group(1)
+        if sec == "LAYOUT LOGIC" or ln.startswith(KEEP_DROP):
+            continue
+        if sec == "COMPONENTS" and ln.startswith("- ") and not ln.startswith(KEEP_COMPONENTS):
+            continue
+        out.append(ln)
+    t = "\n".join(out)
+    t = re.sub(r"; the one key panel may get.*?instead\)", "", t)
+    t = re.sub(r",? ?numbered 1·2·3 in small circles", "", t)
+    t = t.replace(" — same style as the people", "")
+    # 강조색 '조금만·머리 띠 금지'는 원본이 강조색 머리 띠·화살표를 쓴 장과 부딪힌다 — 원본 색 역할을 따른다(11-03 사용자 '한 톤으로 밋밋')
+    t = re.sub(r"(- accent: \S+) — use SPARINGLY[^\n]*", r"\1 — use it exactly where COLOR ROLES below puts the ACCENT (and on the words and chips COLOR ROLES lists in the accent color — other highlighted words keep their own listed color)", t)
+    t = re.sub(r"^(DESIGN SYSTEM — [^(\n]*)\([^)\n]*\)", r"\1", t)
+    # 타입 이름('Isometric 3D')·'3D 그림 안에서만' 색 줄 — 기존 구성 시안이 카드·표 머리·띠마다 3D 물체를 붙였다(11차 시험). 그림은 빈 칸 목록에만
+    t = re.sub(r"^DESIGN SYSTEM — [^\n]*", "DESIGN SYSTEM", t, flags=re.M)
+    t = "\n".join(l for l in t.splitlines() if not re.search(r"(?i)inside 3D renders|3D render", l))
+    return t
+
+
+def keep_content(s):
+    """상자마다 원본 글 전부(wire_text 는 상자당 8줄에서 자른다 — 칩 15개 중 7개가 빠져 시안이 항목을 지어냈다, 11-03)"""
+    import fidelity
+    rows = []
+    for b in fidelity.reading_order(wire_boxes(s)):
+        lines = [re.sub(r"^\s*-\s*", "", l).strip() for l in str(b.get("d") or "").splitlines() if l.strip()]
+        ch = b.get("chips") if isinstance(b.get("chips"), dict) else None
+        if ch and lines:   # 칩 상자 — '- 글머리'로 넘기면 시안이 글머리 목록으로 그리고 테두리 칩을 한 번 더 그렸다(11-03 7차 시험)
+            sp = lambda x: re.sub(r"\s+", " ", x).strip()
+            hi, ol = {sp(x) for x in ch.get("hi") or []}, {sp(x) for x in ch.get("outline") or []}
+            items = " ".join(f"[{l} — outlined chip]" if sp(l) in ol else f"[{l} — highlighted chip]" if sp(l) in hi else f"[{l}]" for l in lines)
+            body = f' — {len(lines)} PILL CHIPS in {ch.get("cols") or 1} column(s), NOT a bullet list, each chip exactly once: {items}'
+        else:
+            body = f' — {len(lines)} items: ' + " / ".join(f'"{l}"' for l in lines) if lines else ""
+        rows.append(f'- {b.get("k", "card")} at x {b["x"]}%, y {b["y"]}%, size {b["w"]}% x {b["h"]}%: '
+                    + (f'title "{b.get("t")}"' if b.get("t") else "(no title)") + body)
+    return "\n".join(rows)
+
+
+def keep_empty(s):
+    """그림을 넣을 빈 카드(keeplayout.empty_blocks) — 없으면 그림 없음"""
+    e = [str(x) for x in s.get("keep_empty") or [] if str(x).strip()]
+    return ", ".join(f"'{x}'" for x in e) if e else "(none — this slide gets NO illustration)"
+
+
+def keep_prompt(job, s, accent):
+    st = getattr(job, "style", None) or {}
+    f = style_fields(job, accent)
+    content = keep_content(s) if s.get("wire") else str(s.get("content") or "")
+    return KEEP_TEMPLATE.format(style_bg=f["style_bg"], deck_tone=f["deck_tone"], accent=accent or "#FF2A6D", spec=keep_spec(st.get("id", "a"), accent or "#FF2A6D"),
+                                details=str(s.get("keep_detail") or "(none)"), content=content, colors=keep_colors(s), empty=keep_empty(s))
+
+
+def keep_colors(s):
+    """원본 색 역할(keeplayout.colors) — 옛 기획(색을 안 읽은 것)이면 원본 그림을 보라고만"""
+    return str(s.get("keep_colors") or "(not read — copy each element's color role from the original slide image)")
+
+
+KEEP_JUDGE = """
+
+This mockup is a REDESIGN of an existing slide, so ALSO check these (be strict):
+(5) every DETAIL below is visible in the mockup (chips drawn as chips with the same columns, numbered circles with their numbers, big-number circles, arrows and their direction, highlighted chips/words, icons);
+(6) every text line below appears with the same wording (spacing differences are fine; a changed, missing or misspelled word is not);
+(7) nothing was added that the original does not have: people, characters, step numbers, badges, extra sentences, a text line drawn twice, 3D/isometric icons instead of flat white glyph icons, an illustration or 3D object in a block NOT listed in EMPTY BLOCKS (put each such block into "extra" as "illustration: <block>") (one topic object illustration in a listed empty block is wanted, not an addition — and a listed empty block left mostly empty IS a fault: put it into "extra" as "empty: <block>");
+(8) COLOR ROLES below are kept: each ACCENT element is in the accent hue, different shades are visibly different, gray stays gray, highlighted/outlined chips differ from normal chips — the slide is NOT flattened into one tone, and highlighted words/numbers keep their own listed text color (a yellow word drawn red or a navy number drawn in the accent is a lost color role).
+Put each missing detail into "missing" as "detail: …", each missing or wrong text line as "text: …" (quote what the mockup shows instead), each lost color role as "color: …" (say what color it has instead), each addition into "extra".
+Extra deductions: -8 per missing detail, -5 per missing or wrong text line, -6 per lost color role (-15 if the whole slide is one flat tone), -15 for any added person or character, -6 per large card body left mostly empty ("empty: …"). A topic object illustration in an empty area costs nothing.
+DETAILS:
+{details}
+COLOR ROLES:
+{colors}
+EMPTY BLOCKS (the only blocks that may hold an illustration):
+{empty}
+TEXT LINES (per block):
+{content}"""
+
+
+def keep_mockup(job, s, feedback="", accent="#FF2A6D", fix=""):
+    """기존 구성 그대로의 본문 시안 — 와이어(원본 상자 자리) + 원본 장 그림(세부 구조) + 원본 도형에서 읽은 세부 모양. 클레이 인물 견본은 붙이지 않는다"""
+    import fidelity
+    prompt = keep_prompt(job, s, accent)
+    wp = wire_png(s)
+    if wp:
+        prompt = fidelity.layout_lock(wire_boxes(s)) + prompt + (
+            "\nWIREFRAME — the FIRST reference image is the original slide's block layout. Gray boxes and English kind labels are placeholders only — "
+            "never draw gray boxes or kind names (PANEL, CARD, BADGE …). A dark full-width bar is the conclusion band: keep it as a deep-navy bar with white text.\n")
+    org = keep_src_image(job, s)
+    if org:
+        prompt += KEEP_SRC_NOTE
+    if fix:
+        prompt += "\n" + fix
+    if feedback:
+        prompt += f"\nRevision request from the user (must apply): {feedback}\n"
+    return gen_image(job, prompt, [], "16:9", ([wp] if wp else []) + ([org] if org else []) or None, keep=True)
+
+
 # ── 틀(머리 띠·바닥) — 모든 장에서 같은 위치·크기. 이미지 모델이 아니라 코드로 그린다 ──
 # 캔버스 2400×1600 (3:2, 최종 장표 10.83×7.5in 에 맞춤). 장표 제작(prompt_design.md)의 치수와 같은 비율이다.
 FRAME = {"w": 2400, "h": 1600, "head": 150, "foot": 96, "pad": 56}
@@ -604,6 +773,18 @@ def _font(size, bold=True, body=None):
         except OSError:
             continue
     return ImageFont.load_default()
+
+
+def _gm_font(size, bold, job=None):
+    """시안 머리 띠 글 — G마켓 산스 한 가족, 굵기로 구분(11-05 사용자: 장 이름·꼬리표 Medium, 절 제목 Bold). 파일이 없으면 본문 서체"""
+    from PIL import ImageFont
+    if str(getattr(job, "lang", "ko") or "ko").lower()[:2] in ("ja", "zh"):   # G마켓 산스에 가나·한자가 없다 — 빈칸 대신 본문 서체
+        return _font(size, bold, getattr(job, "font_body", None))
+    f = os.path.join(os.path.dirname(os.path.abspath(__file__)), "fonts", "GmarketSansTTFBold.ttf" if bold else "GmarketSansTTFMedium.ttf")
+    try:
+        return ImageFont.truetype(f, size)
+    except OSError:
+        return _font(size, bold, getattr(job, "font_body", None))
 
 
 def brand_logo(job, which):
@@ -650,12 +831,18 @@ def compose_frame(job, body_png_path, s, project=""):
     else:
         parts = [p.strip() for p in re.split(r"\s+[·/|>]\s+", sec, 1)] if sec else [""]
         small, big = (parts[0], parts[1]) if len(parts) > 1 and parts[1] else ("", parts[0])
+    if s.get("head_big"):   # 기존 구성 그대로 — 원본 머리 띠 두 줄 그대로
+        small, big = str(s.get("head_small") or ""), str(s["head_big"])
     if small:
-        d.text((F["pad"], 26), small, font=_font(30, False, getattr(job, "font_body", None)), fill=hx(fr.get("small", "BFDBFE")))
-    d.text((F["pad"], 66 if small else 46), big, font=_font(46, True, getattr(job, "font_body", None)), fill=hx(fr.get("title", "FFFFFF")))
-    if project:
-        f = _font(28, False, getattr(job, "font_body", None))
-        d.text((F["w"] - F["pad"] - d.textlength(project, font=f), 60), project, font=f, fill=hx(fr.get("project", "DBEAFE")))
+        d.text((F["pad"], 26), small, font=_gm_font(30, False, job), fill=hx(fr.get("small", "BFDBFE")))
+    d.text((F["pad"], 66 if small else 46), big, font=_gm_font(46, True, job), fill=hx(fr.get("title", "FFFFFF")))
+    project = str(s.get("head_right") or "").strip() or project   # 기존 구성 그대로 — 원본 머리 띠 오른쪽 꼬리표(평가 항목·배점)
+    if project:   # 두 줄 꼬리표(추진전략 | 5점 / 적용기술 | 5점)는 줄마다 오른쪽 맞춤
+        f = _gm_font(28, False, job)
+        ls = [l.strip() for l in project.splitlines() if l.strip()][:3]
+        y0 = 60 if len(ls) == 1 else max(8, (F["head"] - 36 * len(ls)) // 2)
+        for k, l in enumerate(ls):
+            d.text((F["w"] - F["pad"] - d.textlength(l, font=f), y0 + 36 * k), l, font=f, fill=hx(fr.get("project", "DBEAFE")))
     # 본문 — 머리와 바닥 사이에 폭 맞춰 넣는다 (16:9 본문이 거의 딱 맞는다)
     body = Image.open(body_png_path).convert("RGB")
     bh = F["h"] - F["head"] - F["foot"]
@@ -666,22 +853,24 @@ def compose_frame(job, body_png_path, s, project=""):
     y0 = F["h"] - F["foot"]
     d.line([(F["pad"], y0), (F["w"] - F["pad"], y0)], fill=hx(fr.get("foot_line", "E5E7EB")), width=2)
     lh = 42   # 바닥 로고는 작게(10-16 사용자 "크기는 너무 크지 않게") — 52 에서 줄임
-    for which, right in (("client", False), ("vendor", True)):
+    import logosize
+    lgs = {}
+    for which in ("client", "vendor"):
         lg = brand_logo(job, which)
         if lg is None:
             continue
         bb = lg.getbbox()
         if bb:
             lg = lg.crop(bb)
-        lg = logo_horizontal(lg)   # 심볼 위·글자 아래 로고는 심볼 왼쪽·글자 오른쪽으로
-        # 면적으로 맞춘다(가로형 5:1 로고면 높이 lh) — 발주기관 로고는 제안사 로고보다 15% 크게
-        side = lh * 5 ** 0.5 * (1.15 if which == "client" else 1.0)
-        r = side / (lg.width * lg.height) ** 0.5
-        lg = lg.resize((max(1, int(lg.width * r)), max(1, int(lg.height * r))), Image.LANCZOS)
-        if lg.height > F["foot"] - 16:
-            lg = lg.resize((max(1, int(lg.width * (F["foot"] - 16) / lg.height)), F["foot"] - 16), Image.LANCZOS)
-        if lg.width > 560:
-            lg = lg.resize((560, max(1, int(lg.height * 560 / lg.width))), Image.LANCZOS)
+        lgs[which] = logo_horizontal(lg)   # 심볼 위·글자 아래 로고는 심볼 왼쪽·글자 오른쪽으로
+    # 발주기관 로고는 제안사 로고보다 15% 크게 — 면적(가로형 5:1 로고면 높이 lh)과 높이 둘 다, 틀에 막히면 제안사를 줄인다(R121, 장표 틀 frame.py 와 같은 함수)
+    sz = dict(zip(("client", "vendor"), logosize.fit_pair(*(lgs[w].size if w in lgs else None for w in ("client", "vendor")),
+                                                           lh * 5 ** 0.5, F["foot"] - 16, 560)))
+    sz = dict(zip(("client", "vendor"), logosize.ints_pair(sz["client"], sz["vendor"])))
+    for which, right in (("client", False), ("vendor", True)):
+        if which not in lgs:
+            continue
+        lg = lgs[which].resize(sz[which], Image.LANCZOS)
         x = F["w"] - F["pad"] - lg.width if right else F["pad"]
         cv.paste(lg, (x, y0 + (F["foot"] - lg.height) // 2 + 2), lg)
     f = _font(26, False, getattr(job, "font_body", None))
@@ -693,7 +882,7 @@ def compose_frame(job, body_png_path, s, project=""):
 def doc_text(path):
     """맥락 자료(pdf·docx·hwpx·xlsx·pptx·md·txt)에서 글만 뽑는다. 실패하면 빈 문자열"""
     import datafacts   # 표를 칸 그대로 읽는 곳 — 데이터 추출(extract_facts)과 같은 읽기를 쓴다
-    ext = os.path.splitext(path)[1].lower()
+    ext = datafacts.real_ext(path)
     try:
         if ext in (".md", ".txt", ".markdown", ".csv"):
             return open(path, encoding="utf-8", errors="replace").read()
@@ -753,11 +942,17 @@ def doc_text(path):
 def load_context(job, limit=160000):
     """작업에 붙은 맥락 자료를 받아 글로 합친다. 너무 길면 자료별로 고르게 잘라 limit 안으로"""
     req, download = W["req"], W["download"]
-    try:
-        docs = req("GET", f"/worker/jobs/{job.id}/docs").get("data") or []
-    except Exception as e:
-        W["log"]("자료 목록 실패:", e)
-        return ""
+    docs = None
+    for i in range(3):   # 목록을 못 받으면 '자료 없는 작업'으로 넘어가지 않는다 — 빈 내용으로 비용을 써 표지 '사업명'·빈칸뿐인 결과가 나왔다(R159)
+        try:
+            docs = req("GET", f"/worker/jobs/{job.id}/docs").get("data") or []
+            break
+        except Exception as e:
+            W["log"]("자료 목록 실패:", e)
+            if i < 2:
+                time.sleep(LIST_RETRY_SEC)
+    if docs is None:
+        raise RuntimeError("자료 목록을 서버에서 받지 못해 멈췄습니다(비용 없음). 잠시 뒤 다시 돌려 주세요.")
     if not docs:
         return ""
     job.doc_sig = ",".join(sorted(str(x["id"]) for x in docs))   # digest_context 가 이 PC 의 요약 사본이 지금 자료로 만든 것인지 본다
@@ -766,6 +961,8 @@ def load_context(job, limit=160000):
     parts = []
     job.doc_files = []   # (이름, 경로, 글) — extract_facts 가 파일을 다시 열어 표를 칸 그대로 읽는다
     for doc in docs:
+        if str(doc.get("name") or "").startswith("앞장템플릿"):   # 앞장 템플릿(디자인 파일)은 맥락 글이 아니다 — worker.keep_front_files 가 쓴다(R238)
+            continue
         p = os.path.join(d, doc["id"] + "_" + doc["name"])
         if not os.path.isfile(p):
             try:
@@ -785,6 +982,17 @@ def load_context(job, limit=160000):
         return ""
     per = max(8000, limit // len(parts))
     return "\n\n".join(f"## 자료: {n}\n{t[:per]}" + ("\n…(이하 생략)" if len(t) > per else "") for n, t in parts)
+
+
+def need_material(job, raw, brief, note=""):
+    """올린 자료를 하나도 못 읽었고 직접 쓴 글도 없으면 비용을 쓰기 전에 멈춘다 — 그대로 두면 표지 '사업명'·빈칸뿐인 제안서가 나온다(10-29 d4fda9·d44821 작업당 약 $2, R143).
+    자료를 안 올린 작업(job.doc_sig 없음)은 묻지 않는다 — 글만으로 만드는 흐름. note 는 자동 교훈(lessons)이 붙기 전 사용자 원문을 넘긴다(R165)"""
+    empty = not str(raw or "").strip() and not str(brief or "").strip() and len(str(note or "").strip()) < 200
+    # 올렸던 자료가 보관 기간이 지나 지워진 작업 — doc_sig 가 비어 '안 올린 작업'처럼 지나갔다(R159)
+    if empty and (getattr(job, "j", None) or {}).get("docs_purged_at"):
+        raise RuntimeError("올린 자료의 보관 기간이 지나 서버에서 지워져 만들지 않았습니다(비용 없음). 자료를 다시 올려 새 작업으로 시작해 주세요.")
+    if getattr(job, "doc_sig", "") and empty:
+        raise RuntimeError("올린 자료에서 글을 읽지 못해 만들지 않았습니다(비용 없음). 암호가 걸렸거나 스캔본·그림뿐인 파일일 수 있습니다. PDF·한글(hwp·hwpx)·워드로 다시 저장해 올리거나, 내용을 글로 적어 주세요.")
 
 
 DIGEST_SYSTEM = """너는 공공 SI 제안 준비를 돕는 분석가다. 아래 자료(제안요청서·과업지시서·공고문·평가기준·회사소개·이전 제안서 등)를 읽고,
@@ -987,9 +1195,12 @@ def _plan_call(job, system, user, tokens, what="기획", timeout=320, retry_time
     """기획 AI 한 번 — JSON 이 깨지거나 길이 초과면 지시를 덧붙이고 토큰을 늘려 한 번 더.
     OpenRouter 가 시간 안에 답을 못 하면(502·timed out) 한 번 더 — 대개 그 한 번이 걸린 것이다(retry_timeout)"""
     for attempt in range(2):
+        # 긴 답(9천 토큰 이상)은 생각 몫까지 더해 5분을 넘긴다 — 서버가 300초에 끊어 같은 요청을 더 길게 다시 보내던 악순환(R104).
+        # 서버 PHP 600초·프록시 620초 안에서 580초까지 기다린다. 부른 쪽이 따로 정한 짧은 대기(선택 단계)는 그대로
+        t = 580 if timeout == 320 and tokens >= 9000 else timeout
         try:
             r = ai(job, "plan", {"messages": [{"role": "system", "content": system}, {"role": "user", "content": user}],
-                                 "max_tokens": tokens, "temperature": 0.3}, timeout=timeout)
+                                 "max_tokens": tokens, "temperature": 0.3}, timeout=t)
         except (RuntimeError, OSError) as e:   # OSError = 엔진↔서버 연결 시간 초과
             if attempt or not retry_timeout or not re.search(r"\(50[234]\)|timed out|timeout", str(e), re.I):
                 raise
@@ -1214,7 +1425,9 @@ def make_plan(job, brief, note, context="", slide_count=0, purpose="present", ra
             "장치·참고 장은 학습한 실제 장표(D 덱·학습 가이드)에서 이 장의 내용에 맞게 고르고, 장마다 다르게.")
     system = PLAN_SYSTEM.replace("{purpose}", PURPOSE.get(purpose, PURPOSE["present"]))
     # 장표가 많으면(13장 이상, 또는 '알아서'인데 자료가 많으면) 개요 → 8장씩 상세 → 얇은 장 다시. 한 번에 40장을 쓰면 뒤로 갈수록 얇아지고 장 구성이 흐트러진다
-    big = slide_count >= 13 or (not slide_count and len(brief) + len(context or "") > 15000)
+    # 9장부터 나눠서 — 화면은 '8장까지 한 번, 더 많으면 8장씩 묶음' 이라 안내하는데 엔진은 12장까지 한 요청(16k)이었다. 장당 상세 분량(220~600자)이면
+    # 12장 한 번은 답 한도에 빠듯하다(세로 제안서 '최대 토큰' 잘림과 같은 꼴, 10-28 R107 공통 점검)
+    big = slide_count > 8 or (not slide_count and len(brief) + len(context or "") > 15000)
     if big:
         plan = plan_in_stages(job, system, user, slide_count, raw or context or "")
     else:
@@ -1239,6 +1452,14 @@ def make_plan(job, brief, note, context="", slide_count=0, purpose="present", ra
     if ids:
         used = sum(1 for s in slides if s.get("data"))
         job.event(f"기획이 자료 데이터를 쓴 장 {used}/{len(slides)}장" + ("" if used else " — 와이어 단계에서 장 글의 수치로 데이터를 짝지어 넣습니다"), "done" if used else "warn")
+    keep = [s for s in slides if not is_structure_slide(s)]
+    if keep and len(keep) < len(slides):   # 구조 장은 엔진이 앞장·엔딩으로 만든다 — 본문에 또 넣으면 같은 장이 두 번, 빈 카드 쪽이 된다(R147)
+        job.event("본문에서 뺀 구조 장(표지·목차·간지·질의응답 등 — 엔진이 따로 만듭니다): " + " / ".join(str(s.get("section") or s.get("title") or "")[:24] for s in slides if is_structure_slide(s)), "warn")
+        for i, s in enumerate(keep, 1):
+            s["n"] = i
+        slides = keep
+        if len(slides) < 3:
+            job.event(f"구조 장을 빼니 본문이 {len(slides)}장뿐입니다 — 올린 자료가 양식(템플릿)이면 실제 내용을 함께 올려 주세요.", "warn")
     seen_ch, prev_ch, split_ch = set(), None, set()
     for s in slides:   # 같은 장(章)이 떨어져 나오면 목차·간지가 둘로 갈린다
         ch = str(s.get("chapter") or str(s.get("section") or "").split(" · ")[0]).strip()
@@ -1929,8 +2150,9 @@ def wire_boxes(s):
     """시안에 넘길 상자 — '※ 보강 필요' 메모를 빼고 나서 글이 하나도 없는 상자(그림 상자 제외)는 버린다"""
     out = []
     for b in s.get("wire") or []:
-        t = "" if "보강 필요" in str(b.get("t") or "") else str(b.get("t") or "")
-        d = "\n".join(l for l in str(b.get("d") or "").splitlines() if l.strip() and "보강 필요" not in l)
+        memo = lambda s: "보강 필요" in s or re.match(r"^\s*※\s*확인\s*필요", s)   # 기획 메모 — 시안·장표에 찍지 않는다(7571 7쪽 '※ 확인 필요' 카드)
+        t = "" if memo(str(b.get("t") or "")) else str(b.get("t") or "")
+        d = "\n".join(l for l in str(b.get("d") or "").splitlines() if l.strip() and not memo(l))
         if b.get("k") not in WIRE_PIC + ("band",) and not t.strip() and not d.strip():
             continue
         out.append(dict(b, t=t, d=d))
@@ -3305,6 +3527,8 @@ def fact_check(plan, sources, extra=""):
 def make_mockup(job, s, feedback="", accent="#FF2A6D", anchor=None, fix=""):
     """본문 시안 한 장. fix = 와이어 일치 판정(check_mockup)이 낮을 때 다시 그리며 덧붙이는 '고칠 것'"""
     import fidelity
+    if s.get("keep"):   # 기존 구성 그대로 — 새 구성용 지시문(장면·인물·흐름 번호·머리 띠 하나)을 쓰지 않는 따로 된 지시문(11-03 2차 검수)
+        return keep_mockup(job, s, feedback, accent, fix)
     title = str(s.get("title", ""))
     kw = ", ".join(keywords_of(s)) or "(none)"
     content = "\n".join(l for l in str(s.get("content", "")).splitlines() if "보강 필요" not in l)   # '※ 보강 필요' 는 사용자 메모 — 시안에 찍지 않는다
@@ -3374,8 +3598,11 @@ def mockup_fit(job, s, png):
         im.save(buf, "JPEG", quality=82)
         return "data:image/jpeg;base64," + base64.b64encode(buf.getvalue()).decode()
     wp, mk = small(base64.b64decode(wp.split(",", 1)[1])), small(png)
+    ask = fidelity.prompt(wb, fidelity.wire_numbers(wb))
+    if s.get("keep"):   # 기존 구성 그대로 — 세부 모양·원본 글 줄까지 본다(같은 지시에도 번호 원·칩·각주가 그릴 때마다 빠졌다 붙었다, 11-03 4차 검수)
+        ask += KEEP_JUDGE.format(details=str(s.get("keep_detail") or "(none)"), content=keep_content(s), colors=keep_colors(s), empty=keep_empty(s))
     body = {"messages": [{"role": "system", "content": fidelity.SYSTEM},
-                         {"role": "user", "content": [{"type": "text", "text": fidelity.prompt(wb, fidelity.wire_numbers(wb))},
+                         {"role": "user", "content": [{"type": "text", "text": ask},
                                                       {"type": "image_url", "image_url": {"url": wp}},
                                                       {"type": "image_url", "image_url": {"url": mk}}]}],
             "max_tokens": 1500, "temperature": 0}
@@ -3428,10 +3655,28 @@ def check_mockup(job, s, png, make):
         job.event(f"{n}쪽 다시 그리기 실패 — 앞 시안을 씁니다: {str(e)[:120]}", "warn")
         return png, r
     r2 = mockup_fit(job, s, png2)
-    if fidelity.better(r, r2):
+    keep = bool(s.get("keep"))
+    # 기존 구성 그대로 — 원본 글·요소가 빠진 시안은 점수가 높아도 쓰지 않는다: 빠진 것이 적은 쪽 먼저, 같으면 점수(11-03 사용자 '원본에 있는 데이터가 사라지면 안 됨')
+    lost = lambda x: [m for m in (x or {}).get("missing") or [] if str(m).lower().startswith("text:")]   # 원본 글이 실제로 빠진 것만 — 색·모양 잔소리까지 세 번째로 그리면 장당 $0.38, 44장이면 한도를 넘었다(10차 시험)
+    win = (lambda a, b: bool(b) and (not a or (len(lost(b)), -b["score"]) < (len(lost(a)), -a["score"]))) if keep else fidelity.better
+    if win(r, r2):
         job.event(f"{n}쪽 다시 그린 시안 {r2['score']}점 — 새 시안을 씁니다(앞 {r['score']}점, 판정·다시 그리기 ${job.spent - t0:.3f})", "done")
-        return png2, r2
-    job.event(f"{n}쪽 다시 그린 시안이 낫지 않아({r2['score'] if r2 else '판정 없음'}점) 앞 시안({r['score']}점)을 씁니다", "warn")
+        png, r = png2, r2
+    else:
+        job.event(f"{n}쪽 다시 그린 시안이 낫지 않아({r2['score'] if r2 else '판정 없음'}점) 앞 시안({r['score']}점)을 씁니다", "warn")
+    if keep and lost(r) and not near():   # 아직 빠졌으면 한 번 더(8차 시험: 77만명 원이 3D 그림으로 바뀌고 다시 그린 것이 더 나빠 그대로 남았다)
+        job.event(f"{n}쪽 원본 글이 아직 빠짐 — {', '.join(lost(r)[:3])[:200]} — 한 번 더 그립니다", "warn")
+        try:
+            png3 = make(fidelity.fix_text(r))
+            r3 = mockup_fit(job, s, png3)
+            if win(r, r3):
+                png, r = png3, r3
+        except (Cancelled, Budget):
+            raise
+        except Exception as e:
+            job.event(f"{n}쪽 세 번째 그리기 실패 — 앞 시안을 씁니다: {str(e)[:120]}", "warn")
+    if keep and lost(r):
+        job.event(f"{n}쪽 — 원본 글이 빠진 채 남았습니다: {', '.join(lost(r)[:4])[:300]}. 시안 확인에서 이 장을 '다시 만들기'로 고쳐 주세요", "warn")
     return png, r
 
 
@@ -3580,7 +3825,7 @@ def is_nb2(model):
     return bool(model) and ("gemini" in str(model) or "nano" in str(model).lower())
 
 
-def gen_image(job, prompt, refs, aspect, extra_imgs=None, sref=None, front=False, model=None, plain=False):
+def gen_image(job, prompt, refs, aspect, extra_imgs=None, sref=None, front=False, model=None, plain=False, keep=False):
     """이미지 모델 호출. refs = 카탈로그 번호('B07'…), extra_imgs = 이미 만든 data URL(표지 참고 그림 등).
     화풍 기준(reference/style + B08)을 늘 붙인다. 참고 그림이 이 PC 에 없으면 한 번 알린다(그림 느낌이 크게 달라진다)."""
     if is_nb2(model) and "PHOTO QUALITY (this image" not in prompt:   # 나노바나나는 지시문 첫 줄·영문 지시를 글자로 찍고, 숫자를 지어낸다
@@ -3598,7 +3843,7 @@ def gen_image(job, prompt, refs, aspect, extra_imgs=None, sref=None, front=False
     imgs = list(extra_imgs or [])
     st = getattr(job, "style", None) or {}
     other = bool(st.get("body_refs")) or plain
-    if plain:   # 글 지시만으로 — 타입 참고 그림·화풍 견본을 붙이지 않는다(글 없는 배경 그림)
+    if plain or keep:   # 글 지시만으로 — 타입 참고 그림·화풍 견본을 붙이지 않는다(글 없는 배경 그림). keep = 기존 구성 그대로: 와이어 + 원본 장 그림만
         pass
     elif other and front:   # 표지·목차·간지 — 그 타입의 실제 표지·목차·간지 장만 넘긴다(본문 장을 넘기면 본문처럼 그린다)
         prompt += ("\n\nDESIGN TYPE '" + str(st.get("name", "")) + "': the reference page(s) are REAL cover / contents / divider pages from the company's proposal decks — "
@@ -3659,7 +3904,7 @@ def gen_image(job, prompt, refs, aspect, extra_imgs=None, sref=None, front=False
     if imgs and not other and not front and st.get("body_render") == "glass_light":   # 타입 E — 클레이 견본은 그대로, 유리 질감만 살짝
         prompt += ("\n\nRENDERING NOTE: keep the clay character style of the sample, but give devices, system objects and icons a light translucent blue-glass touch "
                    "(soft highlights) — subtle, so the slide stays easy to read.")
-    if imgs and not other and not front and not st.get("body_photo") and st.get("body_render") not in ("line_flat", "iso3d"):   # 타입 A 본문만 — 마지막 그림은 클레이 인물 화풍 견본
+    if imgs and not keep and not other and not front and not st.get("body_photo") and st.get("body_render") not in ("line_flat", "iso3d"):   # 타입 A 본문만 — 마지막 그림은 클레이 인물 화풍 견본
         prompt += ("\n\nReference images: the first one(s) show the layout to follow (an approved wireframe if given, otherwise layout grammar only — never copy a reference's scene). The last one is ONLY a "
                    "CHARACTER RENDERING STYLE sample (soft flat painted look, dot-eyed face, clothes, colors): do NOT copy its pose, gesture, expression or composition — "
                    "people act exactly as the Scene above says (no head-holding or thinking pose unless the Scene asks for it).")
@@ -3750,6 +3995,9 @@ Follow the composition grammar of the first reference image(s) — a real {what}
 RULES FOR THIS PAGE in this design type (Korean — follow every line; they decide where the text, the logos and the picture go and what the background is):
 {rules}
 
+Picture quality (every front page): every object and person is drawn crisp, whole and fully opaque — NO motion blur, speed lines, streaks, smears, ghost or half-transparent duplicates, no object dissolving or melting into the background, and no person or face cut by the image edge or by an empty band. Only the plain background around objects may get lighter.
+NO backdrop plate: the picture is NOT placed on a rectangular panel, card, tinted block or box with a straight top edge — it floats on the page background, and the page background around it fades softly with no visible horizontal or vertical line. No object (gear, cloud, building, icon) is cut off by any straight line inside the page.
+
 Typography: the big title, chapter titles, "PART"/chapter numbers and the word 목차 use a heavy Korean sans; small items use a clean regular sans. Two clearly different weights. The big type (project name, chapter titles, 목차) is set TIGHT and solid: letter-spacing slightly tight (about -2%) and line height about 1.18× the font size (lines close together, no airy gaps). The picture (if the rules allow one) expresses the theme: {theme}.
 """
 
@@ -3795,7 +4043,9 @@ FRONT_TREATMENTS = [
 # 사용자 기준: 표지·간지는 밝은 라이트톤, 그림은 오른쪽 아래에 옅게, 왼쪽·위는 흰색으로 날림, 정면 인물 X. 한 벌·참고 그림의 어두운 배경보다 이것이 먼저다.
 DIV_LIGHT = ("\nLIGHT TONE (this overrides any dark, cobalt or navy full-page background named in the rules, the template set or the reference images — take only their layout from them): "
              "the divider is a bright, light page like the cover — a white or very pale tint background, never a full-page dark or saturated fill and never a dark color veil over a photo. "
-             "The picture sits at the RIGHT / LOWER RIGHT and takes about 40-50% of the page, light but clearly visible (at most a soft 20-25% white veil), and fades to white toward the left and the top. "
+             "The picture sits at the RIGHT / LOWER RIGHT and takes about 40-50% of the page, light but clearly visible (at most a soft 20-25% white veil). "
+             "Every object in it stays crisp and whole — never faded, blurred, smeared, streaked or dissolved into the background; only the plain background around the objects gets lighter toward the left and the top "
+             "(the soft white transition on the text side is added afterwards). "   # 예전 'fades to white toward the left' 는 물체까지 번지게 그렸다(10-28 R109)
              "The chapter number and title are in the deck's dark color on the light background, the key words highlighted with the accent color. "
              "No large frontal faces — people only from the side, from behind or at a distance.\n")
 
@@ -3829,6 +4079,55 @@ def front_logo_zones(st, kind="cover"):
     return "tl", "bl"
 
 
+def looks_like_file(t):
+    """작업 이름이 파일 이름 꼴인가 — 표지 제목으로 그대로 쓰면 '결과 (1)'·'…_20230613_GD취합본' 이 찍힌다(10-30 77850·058d·69fd, R144)"""
+    return bool(re.search(r"_|\(\d+\)\s*$|\.(pptx?|hwpx?|pdf|docx?|xlsx?)\s*$|(?<!\d)\d{6,8}(?!\d)", str(t or "")))
+
+
+def clean_title(t):
+    """파일 이름 꼴 작업 이름을 읽을 수 있게 — 확장자·날짜·(1) 을 떼고 밑줄을 빈칸으로"""
+    t = re.sub(r"\.(pptx?|hwpx?|pdf|docx?|xlsx?)\s*$", "", str(t or ""), flags=re.I)
+    t = re.sub(r"(?<!\d)\d{6,8}(?!\d)", " ", t)
+    t = re.sub(r"\(\d+\)\s*$", "", t).replace("_", " ")
+    return re.sub(r"\s+", " ", t).strip()
+
+
+def cover_title(project, title, plan):
+    """표지 큰 글 — 입력한 사업명 → 작업 이름(파일 이름 꼴이면 기획 제목, 그것도 없으면 다듬은 이름)"""
+    if str(project or "").strip():
+        return str(project).strip()
+    if str(title or "").strip() and not looks_like_file(title):
+        return str(title).strip()
+    pt = str((plan or {}).get("title") or "").replace("**", "").strip()
+    # 숫자뿐인 이름은 다듬으면 빈 글이 된다 — 표지 제목이 빈칸이 되느니 받은 이름 그대로(R168)
+    return pt if pt and not looks_like_file(pt) else (clean_title(title or pt) or str(title or pt or "").strip())
+
+
+DOC_TAILS = (("착수보고", "착수보고"), ("중간보고", "중간보고"), ("완료보고", "완료보고"), ("최종보고", "최종보고"), ("결과보고", "결과보고"), ("현황보고", "현황보고"),
+             ("업무보고", "업무보고"), ("교육자료", "교육자료"), ("가이드", "가이드"), ("guide", "가이드"), ("매뉴얼", "매뉴얼"))
+
+
+def doc_tail(title, plan, lc, purpose):
+    """표지 꼬리표 기본값 — 제안 문서가 아니면 제목에 적힌 문서 종류로. 착수보고서·디자인 가이드에도 '제안설명회'가 찍혔다(10-30 058d·7b6e, R144)"""
+    hay = f"{title or ''} {(plan or {}).get('title') or ''}".lower()
+    if lc == "ko":
+        hit = next((w for k, w in DOC_TAILS if k in hay), "")
+        if hit:
+            return hit
+    return front_word(lc, "submit", "제안서") if str(purpose or "present") == "submit" else front_word(lc, "present", "제안설명회")
+
+
+STRUCT_CH = {"표지", "목차", "간지", "질의응답", "q&a", "qna", "엔딩"}
+STRUCT_TAIL = {"간지", "감사", "감사합니다", "질의응답", "q&a", "qna", "목차", "표지"}
+
+
+def is_structure_slide(s):
+    """양식의 구조 장(표지·목차·간지·질의응답·감사) — 엔진이 앞장·엔딩으로 따로 만드는 장을 본문으로 기획한 것(10-29 2a1c 'PART 1 표지', R147)"""
+    parts = [x.strip().lower() for x in str(s.get("section") or "").split(" · ")]
+    ch = str(s.get("chapter") or parts[0]).strip().lower()
+    return ch in STRUCT_CH or (len(parts) > 1 and parts[-1] in STRUCT_TAIL)
+
+
 def front_specs(plan, opts, title, project):
     """옵션(표지·목차·간지)과 기획의 장·절로 만들 앞장 목록. id = cover · toc · div1…"""
     from frontmatter import chapters
@@ -3837,10 +4136,13 @@ def front_specs(plan, opts, title, project):
     slides = plan.get("slides") or []
     chs = chapters(slides)
     multi = len([c for c in chs if c["name"]]) >= 2
+    if plan.get("keep"):   # 기존 구성 그대로 — 앞장도 원본에 있던 것만(간지는 장이 하나여도 원본에 있으면)
+        f = dict(plan.get("keep_front") or {})
+        multi = bool(f.get("divider"))
     out = []
     if f.get("cover"):
         out.append({"id": "cover", "kind": "cover", "label": "표지", "title": title, "project": project,
-                    "tail": str((opts or {}).get("event") or "").strip() or (front_word(lc, "submit", "제안서") if str((opts or {}).get("purpose") or "present") == "submit" else front_word(lc, "present", "제안설명회")),
+                    "tail": str((opts or {}).get("event") or "").strip() or doc_tail(title, plan, lc, (opts or {}).get("purpose")),
                     "date": str((opts or {}).get("date") or "").strip(), "slogan": str(plan.get("slogan") or "").strip()})
     if f.get("toc") and slides:
         out.append({"id": "toc", "kind": "toc", "label": "목차",
@@ -3849,9 +4151,28 @@ def front_specs(plan, opts, title, project):
         for i, c in enumerate(chs):
             pc = next((x for x in (plan.get("chapters") or []) if isinstance(x, dict) and str(x.get("name") or "").strip() == c["name"]), {})
             out.append({"id": f"div{i + 1}", "kind": "div", "label": f"간지 {i + 1}", "no": i + 1, "name": c["name"], "desc": divider_line(pc), "items": [t for _, t in c["items"]]})
+            if plan.get("keep"):   # 기존 구성 그대로 — 원본 간지의 설명 문장·목록·꼬리표 그대로, 원본에 없던 PART 번호는 빼고
+                out[-1].update({"no_part": True, "lead": str(pc.get("lead") or ""), "tag": str(pc.get("tag") or ""),
+                                "list": [str(t) for t in (pc.get("list") or []) if str(t).strip()]})
     if f.get("ending", True) and slides:   # 맨 뒤 세트 — 감사합니다(엔딩) · 질의응답 안내
         out.append({"id": "end", "kind": "end", "label": "엔딩", "title": front_word(lc, "end", "감사합니다"), "desc": ""})
         out.append({"id": "qna", "kind": "qna", "label": "질의응답", "title": front_word(lc, "qna", "질의응답"), "desc": "Q&A"})
+    # 기존 구성 그대로 — 원본 앞장의 글을 그대로(R206). 표지 사업명은 사람이 넣은 사업명이 없을 때만, 꼬리표는 행사 이름 옵션이 없을 때만
+    kt = plan.get("keep_text") if plan.get("keep") and isinstance(plan.get("keep_text"), dict) else {}
+    for x in out:
+        if x["kind"] == "cover" and kt.get("cover"):
+            kc = kt["cover"]
+            if kc.get("title") and not str(project or "").strip():
+                x["title"] = kc["title"]
+            if kc.get("tail") and not str((opts or {}).get("event") or "").strip():
+                x["tail"] = kc["tail"]
+            if kc.get("slogan"):
+                x["slogan"] = kc["slogan"]
+        elif x["kind"] == "toc" and (kt.get("toc") or {}).get("heading"):
+            x["heading"] = kt["toc"]["heading"]
+        elif x["kind"] == "end" and kt.get("end"):
+            x["title"] = kt["end"].get("title") or x["title"]
+            x["lead"] = kt["end"].get("lead") or ""
     # 시안 확인 화면에서 사람이 고친 글(plan.front_edit) — 사업명·행사 이름·날짜·장 이름. 장 이름은 목차에도
     fe = plan.get("front_edit") if isinstance(plan.get("front_edit"), dict) else {}
     for x in out:
@@ -3926,7 +4247,145 @@ def cover_slogan(job, plan, project=""):
     return s
 
 
+def plate_edge(png, side=0.45):
+    """앞장 시안의 '그림 받침 판' 윗변 — 그림 쪽(오른쪽 55%)에 가로로 길게(28% 이상) 곧은 밝기 경계가 있고, 그 위는 평평한 흰 바탕,
+    그 아래도 판처럼 평평하다(글자 윗선은 아래가 들쭉날쭉해 빠진다 — f07f 표지 제목을 판으로 잘못 잡았다).
+    그림 모델이 그림 뒤에 옅은 사각 판을 깔고 그 윗변에서 톱니·건물을 잘라 그렸다(10-29 사용자 '우측 이미지 윗부분 잘림', R131).
+    반환 (y 비율, 폭 비율, 시작 x 비율, 끝 x 비율) 또는 None"""
+    from PIL import Image, ImageFilter
+    g = Image.open(io.BytesIO(png)).convert("L").resize((480, 320)).filter(ImageFilter.GaussianBlur(0.6))
+    px = g.load()
+    W_, H_ = g.size
+    x0 = int(W_ * side)
+    best = None
+    for y in range(int(H_ * 0.08), int(H_ * 0.8)):
+        run = mx = 0
+        seg = (0, 0)
+        for x in range(x0, W_):
+            up, dn = px[x, max(0, y - 3)], px[x, min(H_ - 1, y + 3)]
+            if up - dn >= 5 and up >= 225:
+                run += 1
+                if run > mx:
+                    mx, seg = run, (x - run + 1, x + 1)
+            else:
+                run = 0
+        frac = mx / (W_ - x0)
+        if frac < 0.28 or (best is not None and frac <= best[1]):
+            continue
+        a, b = seg
+        above = sum(abs(px[x, max(0, y - 8)] - px[x, max(0, y - 4)]) for x in range(a, b)) / max(1, b - a)
+        below = sum(abs(px[x, min(H_ - 1, y + 5)] - px[x + 1, min(H_ - 1, y + 5)]) + abs(px[x, min(H_ - 1, y + 5)] - px[x, min(H_ - 1, y + 9)])
+                    for x in range(a, b - 1)) / max(1, b - a - 1)
+        if above < 2.0 and below < 6.0:
+            best = (round(y / H_, 3), round(frac, 2), round(a / W_, 3), round(b / W_, 3))
+    return best
+
+
+def melt_plate(png, pe, side=0.45, depth=0.12):
+    """받침 판 윗변(pe = plate_edge 결과)을 녹인다 — 윗변부터 아래로 depth(쪽 높이 비율)만큼 바탕색(윗변 바로 위 색)을 1→0 으로 덮는다.
+    그림 쪽(오른쪽)만, 왼쪽 끝은 5% 폭으로 서서히. 다시 그려도 판이 남는 디자인 유형(대각선 옅은 판 견본)에 쓴다(R131)"""
+    from PIL import Image
+    im = Image.open(io.BytesIO(png)).convert("RGB")
+    W_, H_ = im.size
+    ye = int(pe[0] * H_)
+    x0, x1 = int(W_ * side), W_   # 판 윗변은 대각선 판의 왼쪽 끝까지 이어진다 — 그림 쪽 전체를 녹이고, 어두운 화소(제목 글자)는 건드리지 않는다
+    ref = im.crop((x0, max(0, ye - int(H_ * 0.03)), x1, max(1, ye - int(H_ * 0.01)))).resize((1, 1)).getpixel((0, 0))
+    y0, y1 = max(0, ye - int(H_ * 0.01)), min(H_, ye + int(H_ * depth))
+    band = im.crop((x0, y0, x1, y1))
+    cover = Image.new("RGB", band.size, ref)
+    mask = Image.new("L", band.size)
+    fx = max(1, int(W_ * 0.05))
+    # 판 면만 녹인다 — 판 색(윗변 바로 아래 띠의 가운데값)과 비슷하고 잔결이 없는 픽셀만. 밝은 물체(톱니·건물)까지 흰색으로 덮으면
+    # 그림 위에 흰 막이 생긴 것처럼 보였다(R140 과 같은 모습, 10-29 사용자 "평평한 판 면만 녹이게"). 예전엔 어두운 픽셀(글자)만 남겼다
+    from PIL import ImageFilter, ImageStat
+    pb = im.crop((x0, min(H_ - 1, ye + int(H_ * 0.01)), x1, min(H_, ye + int(H_ * 0.03))))
+    plate = tuple(int(v) for v in ImageStat.Stat(pb).median[:3]) if pb.height > 0 else ref
+    soft = band.filter(ImageFilter.BoxBlur(3))
+    for j in range(band.height):
+        a = 1.0 if y0 + j <= ye else max(0.0, 1 - (y0 + j - ye) / max(1, y1 - ye)) ** 1.4
+        for i in range(0, band.width, 4):
+            k = min(1.0, i / fx)
+            v = int(255 * a * k)
+            for d in range(4):
+                if i + d < band.width:
+                    r_, g_, b_ = band.getpixel((i + d, j))
+                    s_ = soft.getpixel((i + d, j))
+                    lum = 0.299 * r_ + 0.587 * g_ + 0.114 * b_
+                    off_plate = max(abs(r_ - plate[0]), abs(g_ - plate[1]), abs(b_ - plate[2])) > 18 and max(abs(r_ - ref[0]), abs(g_ - ref[1]), abs(b_ - ref[2])) > 18
+                    detail = max(abs(r_ - s_[0]), abs(g_ - s_[1]), abs(b_ - s_[2])) > 6
+                    mask.putpixel((i + d, j), 0 if (lum < 170 or off_plate or detail) else v)
+    band.paste(cover, (0, 0), mask)
+    im.paste(band, (x0, y0))
+    b = io.BytesIO()
+    im.save(b, "PNG")
+    return b.getvalue()
+
+
+# 발표 장표 배경 그림 프롬프트 — 사용자가 젠스파크(나노바나나)로 실제 만들며 쌓은 규칙(docs/발표장표_배경이미지_프롬프트_모음.md, 10-29).
+# §0-2 공통 규칙은 모든 앞장 배경에, §1-2 FS1(밝은 하이키 실사)·§1-5 기기 규칙은 실사 덱에, §2-1 HP1·§2-3 PJ(라이트 아크릴 3D)는 그 밖의 덱에 붙인다.
+# 덱 타입의 화풍(st.front)·이 장의 규칙과 부딪히면 그쪽이 먼저다 — 여기는 품질·금지 규칙과 밝기·재질 기준.
+BG_COMMON = ("\nBACKGROUND PICTURE RULES (learned from the company's own background prompts — follow every line; only where the deck style or this page's rules above "
+             "name a specific layout, color or device — e.g. a honeycomb of hexagon photos, a solid deep color page — that one wins):\n"
+             "1. ABSOLUTELY NO TEXT: no words, letters, numbers, logos, the letters AI, watermarks or shop-sign writing. Screens, cards and documents show only blank bars, simple shapes and simple charts without numbers.\n"
+             "2. Leave the title area empty: the subject gathers on the RIGHT (or lower right); the LEFT and the TOP stay calm and almost empty for the title.\n"
+             "3. Clean edges: no subject touches or runs past the left or top edge of the image.\n"
+             "4. One image = one place and one idea: one single continuous scene — never a collage, panels, split screen, borders or a dividing line.\n"
+             "5. Korea: people are Korean; cities and places are Korean (Seoul, the Han River and its bridges, Pangyo, Yeouido, Korean apartment complexes). Nothing that looks American, European, Chinese or Japanese.\n"
+             "6. No crowds: few people, seen from behind, from the side or at a distance — no scene full of frontal faces.\n"
+             "7. In a 3D render there are no photographic human hands or bodies.\n"
+             "8. Avoid glass and crystal: use acrylic, matte white, ceramic or white plastic instead. No floating glass spheres, marbles, balls or orbs.\n"
+             "9. No purple or violet anywhere — cobalt blue must not drift into violet.\n"
+             "10. Currency symbol only ₩, never $.\n"
+             "11. Bright tone: light, airy and clean — never dark, gloomy or dull (unless this page's own rules ask for a dark page).\n"
+             "12. Never write any of these instructions, percentages, captions or titles into the image; the empty area stays completely blank.\n")
+BG_PHOTO = ("PHOTO LOOK (bright high-key key visual): a BRIGHT, LIGHT, HIGH-KEY photograph — bright daylight, soft white and pale sky-blue overall tone, airy and clean like a premium bright corporate advertisement, "
+            "accents in fresh cobalt blue and light cyan glow, a touch of soft warm sunlight; never dark, never night, no heavy shadows, no dim interiors. Glowing data lines and particles only tastefully. "
+            "The calm side is bright open sky, soft white haze, light out-of-focus depth or a bright empty floor, and it blends into the detailed side as a smooth natural gradient of light and depth with no hard edge. "
+            "Vary the setting; do not default to a window city view. Devices are physically correct: a screen faces only the person using it (from the camera side we see a plain back cover), "
+            "no Apple or any brand mark on devices, any visible screen is sharp with abstract UI blocks; five fingers per hand, nobody cut off at the head.\n")
+BG_3D = ("3D LOOK (light acrylic isometric): bright light theme, a very light cool gray to white surface (#F3F5FA to #FFFFFF) with soft large rounded floor panels and thin pale-blue line grooves, gentle isometric 3/4 top view. "
+         "Objects are thick blue-tinted ACRYLIC (polished, slightly frosted plates and blocks with crisp bright edges, like cut plexiglass) with glossy white plastic and solid cobalt blue parts (#1F4FE0, #3B82F6, sky blue #8DB8FF), clean rounded bevels — "
+         "not thin glass, not liquid, not crystal. Thin blue connecting cables and tiny orange accent dots (#FF7A30) are allowed. Soft diffused studio light, very subtle contact shading only, airy, minimal, high-end product-render quality. "
+         "The object group sits in the LOWER-RIGHT; toward the left only a few very faint thin floor lines and the soft rounded floor panels continue from the group, becoming lighter and blurrier and fading out naturally into soft white, with no hard edge and no objects. "
+         "Platforms have plain blank edges — no engraved STAGE, STEP or numbers. Prefer no people; if a small figure appears it is a tiny simple white figurine seen from behind. No small sparkles or scattered stars.\n")
+
+
+def bg_look(st):
+    """덱 화풍에 맞는 배경 그림 기준 — 실사 덱이면 밝은 하이키 실사, 아니면 라이트 아크릴 3D. 덱 화풍이 일러스트·다크면 재질 문구는 빼고 공통 규칙만"""
+    front = str((st or {}).get("front") or "").lower()
+    if any(w in front for w in ("acrylic", "isometric", " 3d ")):   # E 아이소메트릭 — 화풍 문구에 'illustration' 이 있어 3D 를 먼저 본다
+        return BG_COMMON + BG_3D
+    if (st or {}).get("body_photo"):   # B 데이터 실사 · C 헥사곤 포토 · D 스튜디오 포토
+        return BG_COMMON + BG_PHOTO
+    return BG_COMMON   # A 플랫 일러스트 · F 딥 컬러 선화 — 재질 문구는 화풍과 부딪힌다
+
+
+PLATE_FIX = ("The previous picture sat on a pale rectangular plate whose straight top edge cut objects off. Redraw WITHOUT any plate, panel or tinted box: "
+             "the scene floats on the page background, the background fades softly, and nothing is cut by a straight line.")
+
+
 def make_front_mockup(job, f, plan, accent, feedback=""):
+    png = _make_front_mockup(job, f, plan, accent, feedback)
+    try:
+        pe = plate_edge(png)
+    except Exception:
+        pe = None
+    if pe:   # 받침 판 윗변이 물체를 자른 그림 — 고칠 점을 붙여 한 번 더(나은 쪽)
+        job.event(f"{f.get('id')} 시안 그림 위쪽이 판 경계에서 잘림(높이 {round(pe[0] * 100)}%) — 판 없이 한 번 더 그립니다", "warn")
+        png2 = _make_front_mockup(job, f, plan, accent, (feedback + " " + PLATE_FIX).strip())
+        try:
+            pe2 = plate_edge(png2)
+        except Exception:
+            pe2 = None
+        if not pe2 or pe2[1] < pe[1]:
+            png, pe = png2, pe2
+        if pe:   # 다시 그려도 판이 남으면(견본에 대각선 판이 있는 유형) 윗변을 바탕색으로 녹인다
+            png = melt_plate(png, pe)
+            job.event(f"{f.get('id')} 그림 받침 판 윗변을 바탕색으로 녹였습니다", "done")
+    return png
+
+
+def _make_front_mockup(job, f, plan, accent, feedback=""):
     import datetime
     if f["kind"] in ("end", "qna"):   # 엔딩·질의응답 — 간지와 같은 한 벌의 모습(배경·그림·글 배치), PART 번호 없이 큰 글 + 한 줄
         f = dict(f, kind="div", no=None, name=f.get("title") or ("감사합니다" if f["kind"] == "end" else "질의응답"), items=[], closing=f["kind"])
@@ -3937,11 +4396,14 @@ def make_front_mockup(job, f, plan, accent, feedback=""):
                  + " / ".join(str(t).replace("**", "") for t in (f.get("items") or [])[:6]))
     draw = {}   # 엔진이 서체로 얹을 글(나노바나나 앞장)
     if k == "cover":
-        big = f.get("project") or f.get("title") or plan.get("title") or ""   # 표지 큰 글 = 사업명(작업 이름은 파일 이름인 경우가 많다). 사람이 넣은 줄바꿈은 그대로
+        big = cover_title(f.get("project"), f.get("title"), plan)   # 표지 큰 글 = 사업명(작업 이름은 파일 이름인 경우가 많다). 사람이 넣은 줄바꿈은 그대로
+        if not f.get("project"):
+            f["title"] = big   # 장표 AI 가 plan.front 에서 읽는 표지 제목도 같게
         slogan = f.get("slogan") or cover_slogan(job, plan, big)   # 사업명 바로 위 작은 키메시지 — A~F 모든 타입(2026-10-15 사용자)
         f["slogan"] = slogan   # 장표 AI 가 plan.front 에서 읽는 표지 키메시지
-        draw = {"title": big, "small": slogan,
-                "tail": f.get("tail") or "제안설명회", "date": f.get("date") or datetime.date.today().strftime("%Y. %m.")}
+        f["tail"] = f.get("tail") or "제안설명회"   # 시안에 그린 기본값을 장표에도 — 비워 두면 장표 AI 가 날짜·꼬리표를 빼서 시안과 달라졌다(69fd·291a 표지)
+        f["date"] = f.get("date") or datetime.date.today().strftime("%Y. %m.")
+        draw = {"title": big, "small": slogan, "tail": f["tail"], "date": f["date"]}
         detail = ((f'Small key message line right above the title (one line, about 40% of the title size, regular weight, dark color): "{slogan}"\n' if slogan else "")
                   + f'Proposal title (largest text, at most 2 lines, line break exactly where shown): "{big}"\n'
                   + 'No other slogan line and no stage mark such as "(1차)" unless it is given above — never invent one.\n'
@@ -3950,7 +4412,7 @@ def make_front_mockup(job, f, plan, accent, feedback=""):
                   "Do not draw any logo.")
     elif k == "toc":
         rows = "\n".join(f'{c["no"]}. {c["name"]}' for c in f["chapters"])
-        draw = {"label": front_word(getattr(job, "lang", "ko"), "toc", "목차"), "tag": plan.get("title") or "",
+        draw = {"label": f.get("heading") or front_word(getattr(job, "lang", "ko"), "toc", "목차"), "tag": "" if plan.get("keep") else (plan.get("title") or ""),
                 "rows": [(c["no"], re.sub(r"^[ⅠⅡⅢⅣⅤⅥⅦⅧⅨⅩIVX0-9]+[.．]\s*", "", str(c["name"])) or c["name"], [str(t) for t in (c.get("items") or [])][:6]) for c in f["chapters"]]}   # 절 이름도 — 장 이름 아래 작은 회색 줄
         if len(f["chapters"]) == 1:
             rows = "\n".join(f"{i + 1}. {t}" for i, t in enumerate(f["chapters"][0]["items"][:14]))
@@ -3968,13 +4430,18 @@ def make_front_mockup(job, f, plan, accent, feedback=""):
         if f.get("no") is not None and (not desc or len(line.replace("**", "")) > 22):   # 간지 한 줄은 8~20자 약속 한 줄 — 개요를 안 거친 짧은 기획은 장 첫 제목(긴 문장)이 들어갔다(10-15)
             line = divider_short(job, plan, f, line) or line
         name = re.sub(r"^[ⅠⅡⅢⅣⅤⅥⅦⅧⅨⅩIVX0-9]+[.．]\s*", "", f["name"]) or f["name"]
-        draw = {"no": f["no"], "name": name, "line": line, "tag": plan.get("title") or ""}
+        draw = {"no": f["no"], "name": name, "line": line, "tag": f.get("tag") or ("" if plan.get("keep") else plan.get("title")) or ""}
+        if f.get("no_part") or f.get("lead"):   # 기존 구성 그대로(keeplayout) — PART 번호 없이, 원본 설명 문장을 장 이름과 한 줄 사이에
+            draw.update({"no_part": bool(f.get("no_part")), "lead": str(f.get("lead") or "")})
+        if f.get("list"):   # 기존 구성 그대로 — 원본 간지의 목록(전략 1~8 등)을 한 줄 아래에 빠짐없이(R206)
+            draw["list"] = [str(t) for t in f["list"]]
         f["line"] = line   # 장표 AI(prompt_design_part)가 plan.front 에서 읽는 간지 한 줄 — **핵심어** 표시 그대로
         detail = ((f'Closing page of the deck ({"thank-you page" if f.get("closing") == "end" else "questions and answers page"}) — NO chapter number, NO "PART". Only the big title "{name}" in the largest bold type.\n') if f.get("no") is None else
                   f'Chapter divider page. Chapter number "PART {f["no"]}" (or "{f["no"]:02d}" / a Roman numeral, as the rules say) and the chapter title "{name}" in the largest bold type.\n'
                   + (f'Under the title, about half the title size, with its key words emphasised — write it COMPLETELY, exactly as given, with the line break where shown (never cut it, never add "..." or "…"):\n"{line}"\n' if line else "")
                   + f'Very small tag at the top-right: "{plan.get("title") or ""}"\n'
-                  "Nothing else — no list of sections, no bullets, no numbered items.")
+                  + ("The engine sets the original list of this chapter in small type under that line — keep the text column EMPTY down to 85% of the page height (no picture detail there). Draw no list yourself.\n" if f.get("list") else "")
+                  + ("" if f.get("list") else "Nothing else — no list of sections, no bullets, no numbered items."))
     if k == "toc":   # 참고 그림이 4단이면 없는 장(03·04)을 지어내거나 참고 그림의 글을 베낀다 — 개수를 못 박는다
         n_it = len(f["chapters"]) if len(f["chapters"]) > 1 else len(f["chapters"][0]["items"][:14])
         detail += (f"\nThere are EXACTLY {n_it} numbered entries — draw exactly {n_it}, numbered 01 to {n_it:02d}. Do NOT add a further number or entry to fill the layout "
@@ -4079,6 +4546,7 @@ def make_front_mockup(job, f, plan, accent, feedback=""):
                 bgp += front_treatment(job, k, accent) + "\n"
             if feedback:
                 bgp += f"\nRevision request from the user (apply what concerns the picture): {feedback}\n"
+            bgp += bg_look(st)   # 사용자 배경 프롬프트 모음에서 배운 규칙(10-29)
             bgp += "\nThe subject of the picture comes ONLY from the Subject above (this project's own field, place and equipment) - never an unrelated product or object."
             bp = os.path.join(job.dir, "_mockup", f"{f.get('id', k)}_bg.png")   # 배경 그림은 따로 남긴다(장표로 옮길 때 그대로 쓴다)
             os.makedirs(os.path.dirname(bp), exist_ok=True)
@@ -4170,20 +4638,25 @@ def save_front(job, fid, png, kind):
     if kind in ("cover", "toc", "div"):   # 로고 자리는 그 타입의 템플릿 한 벌에서(tl/tr/bl/br/bc). 바탕이 어두우면 흰 둥근 판을 깐다
         from PIL import ImageDraw, ImageStat
         lh = 72 if kind == "cover" else 50
-        for which, pos in zip(("client", "vendor"), front_logo_zones(getattr(job, "style", None) or styles.get("a"), kind)):
+        import logosize
+        zones = list(zip(("client", "vendor"), front_logo_zones(getattr(job, "style", None) or styles.get("a"), kind)))
+        lgs = {}
+        for which, pos in zones:
             lg = brand_logo(job, which) if pos else None
             if lg is None:
                 continue
             bb = lg.getbbox()   # 투명 여백을 걷어 내고 크기를 잰다
             if bb:
                 lg = lg.crop(bb)
-            lg = logo_horizontal(lg)   # 심볼 위·글자 아래(세로형) 로고는 심볼 왼쪽·글자 오른쪽으로
-            # 크기는 면적으로 맞춘다 — 가로형·세로형(엠블럼 위·글자 아래) 로고가 같은 무게로 보이게. 발주기관 로고는 제안사 로고보다 15% 크게
-            side = lh * 2.6 * (1.15 if which == "client" else 1.0)   # √(가로×세로) 목표(px). 가로형 로고(6:1)면 높이 약 lh
-            r = side / (lg.width * lg.height) ** 0.5
-            lg = lg.resize((max(1, int(lg.width * r)), max(1, int(lg.height * r))), Image.LANCZOS)
-            if lg.width > 640:
-                lg = lg.resize((640, max(1, int(lg.height * 640 / lg.width))), Image.LANCZOS)
+            lgs[which] = logo_horizontal(lg)   # 심볼 위·글자 아래(세로형) 로고는 심볼 왼쪽·글자 오른쪽으로
+        # 크기는 면적으로 맞춘다 — 가로형·세로형(엠블럼 위·글자 아래) 로고가 같은 무게로 보이게. √(가로×세로) 목표 lh×2.6px(가로형 6:1 이면 높이 약 lh).
+        # 발주기관 로고는 제안사 로고보다 15% 크게 — 면적과 높이 둘 다(R121, logosize.fit_pair). 폭 640px 에 막히면 제안사 로고를 줄인다
+        sz = dict(zip(("client", "vendor"), logosize.fit_pair(*(lgs[w].size if w in lgs else None for w in ("client", "vendor")), lh * 2.6, None, 640)))
+        sz = dict(zip(("client", "vendor"), logosize.ints_pair(sz["client"], sz["vendor"])))
+        for which, pos in zones:
+            if which not in lgs:
+                continue
+            lg = lgs[which].resize(sz[which], Image.LANCZOS)
             mx = F["pad"] * 3   # 로고도 앞장 좌우 가이드(본문 틀 여백의 3배, 168px)에 맞춘다 — 글 시작선과 같다
             x0 = F["w"] - mx - lg.width if pos.endswith("r") else mx
             y0 = 70 if pos.startswith("t") else F["h"] - lg.height - 70
@@ -4199,7 +4672,7 @@ def save_front(job, fid, png, kind):
             wl = brand_logo(job, which + "_white") if sum(ImageStat.Stat(im.crop(box).convert("RGB")).mean) / 3 < 150 else None
             if wl is not None and wl.getbbox():   # 어두운 바탕 — 함께 올린 흰색 로고(공식 흰색판)를 같은 크기로
                 wl = logo_horizontal(wl.crop(wl.getbbox()))
-                wl = wl.resize((lg.width, max(1, int(wl.height * lg.width / wl.width))), Image.LANCZOS)
+                wl = wl.resize((max(1, int(round(wl.width * lg.height / wl.height))), lg.height), Image.LANCZOS)   # 높이를 같게 — 15% 규칙(R121)은 높이로 잰다
                 y1 = y0 + (lg.height - wl.height) // 2
                 im.paste(wl, (x0, max(0, y1)), wl)
                 placed.append((which, wl, x0, max(0, y1)))
@@ -4233,6 +4706,38 @@ def save_front(job, fid, png, kind):
 HEAD_STRIP = 0.11   # 본문 그림 위쪽 비워 둔 띠(키메시지 자리)
 
 
+def clear_head_strip(im, sh, col, tol=28):
+    """키메시지 띠(위 sh px)를 덮기 전 — 그림 모델이 띠 안까지 그린 물체(사람 머리 등)가 띠 아래 경계를 가로지르면
+    덮개가 그 물체를 자른다(사용자 10-28 "사람 얼굴이 잘리는 현상 — 시안에서 잘리니 장표에도 그대로", R127).
+    경계에서 위로 이어진 물체의 맨 위(y0)를 찾아, y0 아래 그림 전체를 같은 비율로 줄여 띠 아래로 내린다(좌우 빈 곳은 바탕색).
+    띠 안에서 경계와 떨어진 것(모델이 멋대로 쓴 제목 글 등)은 그대로 덮는다."""
+    from PIL import Image
+    W_, H_ = im.size
+    g = im.convert("RGB").resize((max(1, W_ // 4), max(1, H_ // 4)))
+    px, w4 = g.load(), g.width
+    hit = lambda y: [x for x in range(w4) if max(abs(a - b) for a, b in zip(px[x, y], col)) > tol]
+    yb = min(g.height - 1, sh // 4)
+    cols = set(hit(yb)) | set(hit(max(0, yb - 1)))
+    if len(cols) < max(3, w4 * 0.004):
+        return im
+    y = yb
+    while y > 0:   # 경계의 물체 칸들에서 위로 — 그 칸 근처에 물체가 남아 있는 동안
+        row = set(hit(y - 1))
+        near = {x for x in row if any(abs(x - c) <= 2 for c in cols)}
+        if len(near) < 2:
+            break
+        cols, y = near, y - 1
+    y0 = max(0, y * 4 - 6)
+    pad = int(H_ * 0.012)
+    k = (H_ - sh - pad) / max(1, H_ - y0)
+    if k > 0.995:
+        return im
+    part = im.crop((0, y0, W_, H_)).resize((int(W_ * k), int((H_ - y0) * k)), Image.LANCZOS)
+    out = Image.new("RGB", (W_, H_), col)
+    out.paste(part, ((W_ - part.width) // 2, sh + pad))
+    return out
+
+
 def draw_headline(job, png, s):
     """본문 그림 위 띠를 바탕색으로 덮고 키메시지를 고정 크기 한 줄로 — 강조어는 강조색, 너무 길면 같은 크기로 두 줄"""
     from PIL import Image, ImageDraw, ImageFont, ImageStat
@@ -4240,11 +4745,12 @@ def draw_headline(job, png, s):
     im = Image.open(io.BytesIO(png)).convert("RGB")
     W_, H_ = im.size
     sh = int(H_ * HEAD_STRIP)
-    band = im.crop((0, 0, W_, sh))
     col = tuple(int(v) for v in ImageStat.Stat(im.crop((0, 0, W_, max(4, int(H_ * 0.015))))).median)   # 맨 위 가장자리 바탕색(불투명하게 덮는다)
+    im = clear_head_strip(im, sh, col)
     ImageDraw.Draw(im).rectangle([0, 0, W_, sh], fill=col)
     st = getattr(job, "style", None) or {}
     title = re.sub(r"\*\*", "", str(s.get("title") or "")).strip()
+    title = title.replace("⁽", "(").replace("⁾", ")")   # 각주 표시 '¹⁾' — 제목 서체에 위첨자 괄호가 없어 네모로 찍혔다(keeplayout 11-03)
     kws = [k for k in keywords_of(s) if k and k in title]
     tid = getattr(job, "font_title", None) or None
     path = fontset.title_file(tid if tid in fontset.TITLES else None)
@@ -4255,7 +4761,15 @@ def draw_headline(job, png, s):
         return sum(f.getlength(c) for c in t) + track * max(0, len(t) - 1)
     maxw = W_ * 0.90
     lines = [title]
-    if width(title) > maxw:   # 같은 크기로 두 줄 — 가운데에 가까운 띄어쓰기에서
+    # 먼저 한 줄로 줄여 본다(75%까지) — 원본은 한 줄 키메시지인데 같은 크기 두 줄이 띠 높이를 넘어 머리 띠를 덮었다(8쪽, 11-03 전체 시험)
+    while width(title) > maxw and size > int(H_ * 0.058 * 0.75):
+        size -= 2
+        f = ImageFont.truetype(path, size)
+        track = size * -0.017
+    if width(title) > maxw:   # 그래도 넘치면 두 줄 — 가운데에 가까운 띄어쓰기에서, 두 줄이 띠 안에 들게
+        size = min(size, int(sh * 0.92 / (2 * 1.18)))
+        f = ImageFont.truetype(path, size)
+        track = size * -0.017
         sp = [i for i, c in enumerate(title) if c == " "]
         if sp:
             k = min(sp, key=lambda i: abs(i - len(title) / 2))
@@ -4329,6 +4843,46 @@ def comments_by_slide(j):
             t += f" / 답글({str(r.get('email', '')).split('@')[0]}): {r['body']}"
         out.setdefault(int(c["slide"]), []).append(t)
     return out
+
+
+HEAD_PHOTO = ("A wide panoramic PHOTOREALISTIC banner photograph for the header strip of a Korean public-sector proposal deck. "
+              "Subject: the real working field of this project — {subject}. Show it as premium editorial technology photography: "
+              "the project's own equipment, data center racks, monitors with abstract charts, lab or control-room details, "
+              "softly blended with subtle glowing data lines, circuit traces and network nodes. "
+              "COMPOSITION: one continuous scene, no panels or borders. The LEFT 45% is calm, darker and low in detail "
+              "(soft out-of-focus depth) because a title will be laid over it; the visual interest and the brightest details sit in the RIGHT half. "
+              "Keep the important content in the MIDDLE HORIZONTAL STRIP of the frame — the picture will be cropped to a very thin wide band. "
+              "Cool, clean lighting; no people facing the camera; no text, letters, numbers, logos or watermarks anywhere.")
+
+
+def head_photo(job, subject):
+    """본문 머리 띠 배경 실사 한 장(11-05 사용자 '원본처럼 실사 이미지 띠 + 시안 톤 덮개') — 작업마다 한 번 만들고 다시 쓴다.
+    나노바나나(styles.nb2_model) 로 글 없는 그림. 띠 비율로 자르기·톤 덮개는 frame.py 가 한다. 실패하면 None(그라데이션 띠로)"""
+    p = os.path.join(job.dir, "_mockup", "head_photo.png")
+    if os.path.isfile(p) and os.path.getsize(p) > 10000:
+        return p
+    nb2 = str(W["CFG"].get("nb2_model") or styles.nb2_model())
+    prompt = HEAD_PHOTO.format(subject=(subject or "a national public digital service platform and its IT infrastructure")[:300])
+    png = None
+    for asp in ("21:9", "16:9"):   # 21:9 를 못 받는 모델이면 16:9
+        try:
+            png = gen_image(job, prompt, [], asp, None, model=nb2, plain=True)
+            if png:
+                break
+        except Exception as e:
+            last = str(e)[:200]
+            continue
+    if not png:
+        try:
+            job.event("머리 띠 사진을 만들지 못해 그라데이션 띠로 둡니다 — " + (locals().get("last") or "그림 없음"), "warn")
+        except Exception:
+            pass
+    if not png:
+        return None
+    os.makedirs(os.path.dirname(p), exist_ok=True)
+    with open(p, "wb") as fp:
+        fp.write(png)
+    return p
 
 
 def project_of(j):
@@ -4489,11 +5043,14 @@ def _plan_phase(job, j):
         except Exception:
             opts = None
     opts = opts or {"mockups": "all"}  # 옵션 없는 옛 작업은 전체
-    if str(opts.get("purpose") or "") == "submit" and j.get("source_kind") != "pptx":
+    # pptx 로 시작해도 제출용·회사소개용은 그 글을 내용으로 같은 길로 간다 — 화면은 '시안 없이 PPT 바로 만들기'라고 안내하는데 가로 시안 길로 갔다(R161)
+    if str(opts.get("purpose") or "") in ("submit", "company") and j.get("source_kind") == "pptx" and not str(brief).strip() and len(str(j.get("note") or "").strip()) < 200:
+        raise RuntimeError("올린 PowerPoint 에서 글을 읽지 못해 만들지 않았습니다(비용 없음). 그림뿐인 파일일 수 있습니다. 내용을 글로 적거나 자료를 함께 올려 주세요.")
+    if str(opts.get("purpose") or "") == "submit":
         import vertical   # 제출용 = A4 세로 제안서 — 기획부터 표지·목차·간지·본문 제작·결과 보고까지 한 번에(시안 확인 단계 없음)
         vertical.run(job, j, opts, brief, note)
         return
-    if str(opts.get("purpose") or "") == "company" and j.get("source_kind") != "pptx":
+    if str(opts.get("purpose") or "") == "company":
         import company   # 회사소개용 = 회사소개서(테마 A·B) — 레이아웃 카탈로그 → HTML 렌더 → 편집 가능한 PPT, 시안 확인 단계 없음(2026-10-16)
         company.run(job, j, opts, brief, note)
         return
@@ -4504,6 +5061,21 @@ def _plan_phase(job, j):
     # 2) 기획 (다시 만들기면 기존 기획을 쓴다)
     redo = {int(x["n"]): x.get("feedback", "") for x in (review or {}).get("redo", [])} if review else {}
     fredo = [str(x) for x in ((review or {}).get("front_redo") or [])]   # 표지·목차·간지 다시 만들기(id 또는 종류)
+    if (not plan or not plan.get("slides")) and opts.get("keep") and j.get("source_kind") == "pptx":
+        # 기존 구성 그대로(11-03) — 기획 AI 없이 원본 장표의 장 순서·머리 띠·키메시지·상자 자리·글을 그대로 기획으로. AI 는 도형을 상자로 묶기만
+        import keeplayout
+        job.push("기획", 4)
+        job.event("기존 구성 그대로 — 올린 장표의 장 순서·배치·글을 그대로 옮깁니다(새로 기획하지 않음)")
+        plan = keeplayout.plan_from(job, os.path.join(job.dir, "원본.pptx"),
+                                    lambda sy, us: _plan_call(job, sy, us, 12000, "상자 묶기"), str(j.get("title") or ""))
+        job.event(f"원본 옮기기 완료 — 본문 {len(plan['slides'])}장" + (f", 간지 {len(plan['chapters'])}장" if plan.get("chapters") else "") + f". 비용 ${job.spent:.3f}", "done")
+        if not (j.get("theme") or "").strip() and plan.get("keep_accent"):   # 화면은 강조색을 묻지 않는다 — 원본 강조색(11-03)
+            j["theme"] = job.accent = plan["keep_accent"]
+            job.event(f"강조색 — 원본 장표가 강조에 쓴 {plan['keep_accent']} 을 씁니다")
+        keep_src_render(job, plan)
+        job.push("기획", 12)
+        push_plan_preview(job, plan)
+        save_plan_early(job, plan)
     if (not plan or not plan.get("slides")) and brief:
         ready = parse_plan_md(brief)   # 이미 만든 기획 파일(.md)을 올렸으면 기획 호출 없이 그대로 쓴다
         if ready:
@@ -4518,6 +5090,7 @@ def _plan_phase(job, j):
         job.push("기획", 4)
         context = load_context(job, 1200000)  # 싼 모델이 읽으므로 넉넉히 (자료별 고르게)
         raw_ctx = context or ""
+        need_material(job, raw_ctx, brief, j.get("note") or "")   # note 변수에는 자동 교훈(lessons)이 붙어 200자를 넘기 쉽다 — 사용자 원문으로 잰다(R165)
         if context:
             context = digest_context(job, context)
         job.facts = extract_facts(job) if raw_ctx else {}   # 표·시계열·낱개 수치 — 기획(data id)·와이어(실제 값)·근거 확인이 쓴다(2026-10-18)
@@ -4527,6 +5100,7 @@ def _plan_phase(job, j):
         job.event(f"기획 완료 — {len(plan['slides'])}장. 비용 ${job.spent:.3f}", "done")
         job.push("기획", 12)
         push_plan_preview(job, plan)   # 진행 화면의 '기획 미리 보기' — 시안을 기다리는 동안 읽게
+        save_plan_early(job, plan)   # 와이어 전에 한 번 — 와이어 중 한도·오류로 멈춰도 다시 돌릴 때 기획 AI 를 다시 부르지 않게(10-28 점검 D10). 빈 와이어는 이어 갈 때 채운다
         make_wires(job, plan)
         push_plan_preview(job, plan)
         import datafacts
@@ -4537,8 +5111,11 @@ def _plan_phase(job, j):
         save_plan_early(job, plan)
     elif resumed:
         job.event(f"앞 실행에서 저장한 기획을 다시 씁니다 — {len(plan['slides'])}장 (기획 AI 호출 없음, 비용 0). 시안부터 이어 갑니다.", "done")
+        if any(not x.get("wire") for x in plan["slides"]):   # 와이어 전에 멈춘 기획 — 빈 장만 채운다
+            make_wires(job, plan, only_empty=True)
+            save_plan_early(job, plan)
         push_plan_preview(job, plan)
-    else:
+    elif not (plan.get("keep") and first_run):   # 기존 구성 그대로의 첫 실행은 위에서 방금 옮긴 기획
         job.event(f"기존 기획을 씁니다 — {len(plan['slides'])}장" + (f", {len(redo)}장 다시" if redo else ""))
     job.push("기획", 18)
 
@@ -4654,6 +5231,7 @@ def _plan_phase(job, j):
                 s["mockup_fit"] = fit["score"]
                 s["mockup_fit_note"] = "; ".join(([f"빠짐 {', '.join(fit['missing'][:4])}"] if fit["missing"] else [])
                                                  + ([f"자리 바뀜 {', '.join(fit['moved'][:4])}"] if fit["moved"] else [])
+                                                 + ([f"끝선 어긋남 {', '.join(fit['uneven'][:4])}"] if fit.get("uneven") else [])
                                                  + ([] if fit["numbers_ok"] else ["수치 다름"]))[:300]
             else:
                 s.pop("mockup_fit", None)
@@ -4839,7 +5417,9 @@ def prepare_build(job, j):
     on = (opts or {}).get("front") or {"cover": True, "toc": True, "divider": True}
     fronts = []
     for f in plan.get("front") or []:
-        if not isinstance(f, dict) or not on.get({"cover": "cover", "toc": "toc", "div": "divider"}.get(f.get("kind"), "x")):
+        # 엔딩·질의응답(end·qna)은 'ending' 옵션 — 예전엔 이 표에 없어 늘 빠져, 시안을 만들고도 장표엔 코드 기본 모양(파란 그라데이션)이 들어갔다(10-28, R110)
+        kmap = {"cover": "cover", "toc": "toc", "div": "divider", "end": "ending", "qna": "ending"}
+        if not isinstance(f, dict) or not on.get(kmap.get(f.get("kind"), "x"), True if f.get("kind") in ("end", "qna") else False):
             continue
         fid = f.get("id")
         for remote, local in ((f"{fid}.jpg", f"{fid}.jpg"), (f"{fid}_full.png", f"{fid}.png")):

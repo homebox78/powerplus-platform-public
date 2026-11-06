@@ -14,7 +14,8 @@ W_PX, H_PX = 1920, 1080
 EMU = 12192000 // W_PX   # 1px = 6350 EMU (13.333in 폭)
 PT = 0.5                 # 1px = 0.5pt
 # 굵기 → 서체 이름(굵기마다 서체가 따로다 — PowerPoint 는 bold 속성 하나뿐이라 이름으로 가른다). HTML 도 같은 파일을 쓴다
-FACES = {200: ("Pretendard ExtraLight", "Pretendard-ExtraLight.ttf"), 400: ("Pretendard", "Pretendard-Regular.ttf"),
+# 200 자리도 Light(300) — 2026-10-28 사용자 "너무 얇은 폰트 안 나오게 한 단계 위부터"
+FACES = {200: ("Pretendard Light", "Pretendard-Light.ttf"), 400: ("Pretendard", "Pretendard-Regular.ttf"),
          600: ("Pretendard SemiBold", "Pretendard-SemiBold.ttf"), 800: ("Pretendard ExtraBold", "Pretendard-ExtraBold.ttf"),
          900: ("Pretendard Black", "Pretendard-Black.ttf")}
 # 장표 언어가 일본어·중국어면 Pretendard 에 가나·한자가 없다 — 같은 굵기 자리에 그 언어 서체(fontset.for_lang 이 고른 본문 서체)를 끼운다(2026-10-18).
@@ -72,6 +73,11 @@ def tone_palette(tone):
     s_ = max(s_, 0.45)
     return [tone.upper(), _hsl(h, s_, min(0.78, l + 0.12)), _hsl(h, min(1, s_ + .1), 0.92), _hsl(h, 0.6, 0.07), _hsl(h, 0.6, 0.15), _hsl(h, 0.6, 0.13), _hsl(h, 0.6, 0.04),
             _hsl(h, s_, 0.75), _hsl(h, 0.85, 0.24), _hsl(h, s_, max(0.4, l)), _hsl(h, s_, max(0.3, l - 0.14)), _hsl(h, s_, 0.86), _hsl((h + 0.12) % 1, 0.9, 0.8)]
+
+
+def tone_tag(tone):
+    """톤을 파일 이름 꼬리로 — 직접 고른 색의 '#' 이 file:/// 주소에 들어가면 조각(fragment)으로 읽혀 그림이 빠진다(R163)"""
+    return str(tone or "blue").lstrip("#")
 
 
 def tone_label(tone):
@@ -1358,7 +1364,8 @@ def plan(job, brief, note, ctx, pages):
     import design
     user = (f"# 메모·요청\n{note or '(없음)'}\n\n# 회사 자료 요약\n{ctx or '(없음)'}\n\n# 직접 쓴 글\n{brief or '(없음)'}")
     sysmsg = PLAN_SYSTEM.replace("{layouts}", "\n".join(f"- {k}: {v}" for k, v in LAYOUTS.items())).replace("{pages}", str(pages))
-    d = design._plan_call(job, sysmsg, user, 12000, "회사소개서 구성")
+    # 답 한도를 쪽 수에 맞춰(쪽당 약 900토큰, 14쪽 15k · 최대 20k) — 12k 고정이면 20쪽 넘는 회사소개서는 잘려 1.5배로 다시 불렀다(10-28 R107 공통 점검)
+    d = design._plan_call(job, sysmsg, user, max(12000, min(20000, 3000 + 900 * int(pages or 14))), "회사소개서 구성")
     sl = [x for x in (d.get("slides") or []) if isinstance(x, dict) and x.get("kind") in LAYOUTS]
     if not sl or sl[0]["kind"] != "cover":
         sl.insert(0, {"kind": "cover", "title": (d.get("company") or {}).get("tagline") or "회사 소개"})
@@ -1580,14 +1587,14 @@ def attach_assets(job, deck, d, log=print, ctone="blue", ctheme="a", free=False)
         if s.get("_bg"):
             s["_bg_light"] = bg_is_light(s["_bg"])
             mode = s.pop("_bgmode", "hue")
-            s["_bg"] = "file:///" + tint_bg(s["_bg"], s["_bg"][:-4] + f"_{ctone}.png", ctone, mode).replace("\\", "/")
+            s["_bg"] = "file:///" + tint_bg(s["_bg"], s["_bg"][:-4] + f"_{tone_tag(ctone)}.png", ctone, mode).replace("\\", "/")
             if mode == "duo":   # 톤 한 색으로 바꾼 뒤 밝기가 달라진다 — 글자색 판정은 바꾼 그림으로
                 s["_bg_light"] = bg_is_light(s["_bg"][8:])
         if s.get("_img"):
-            s["_img"] = "file:///" + tint_icon(s["_img"], s["_img"][:-4] + f"_{ctone}.png", ctone).replace("\\", "/")
+            s["_img"] = "file:///" + tint_icon(s["_img"], s["_img"][:-4] + f"_{tone_tag(ctone)}.png", ctone).replace("\\", "/")
         for it in s.get("items") or []:
             if isinstance(it, dict) and it.get("_img"):
-                it["_img"] = "file:///" + tint_icon(it["_img"], it["_img"][:-4] + f"_{ctone}.png", ctone).replace("\\", "/")
+                it["_img"] = "file:///" + tint_icon(it["_img"], it["_img"][:-4] + f"_{tone_tag(ctone)}.png", ctone).replace("\\", "/")
 
 
 def lang_faces(job, deck):
@@ -1600,7 +1607,11 @@ def lang_faces(job, deck):
         _FACES.set(None)
         return
     nm, faces, files = fontset.BODIES[b]
-    _FACES.set({200: (faces[0], files[0]), 400: (faces[1], files[1]), 600: (faces[2], files[2]), 800: (faces[3], files[3]), 900: (faces[3], files[3])})
+    head = (faces[3], files[3])
+    if lang == "ko" and fontset.KO_UNIFIED and b == fontset.KO_UNIFIED[1]:   # 국문 통일 — 제목·큰 숫자(900)는 G마켓 산스(2026-10-28 사용자 "키메시지는 지마켓산스, 본문 a시월구일 4·3·2")
+        _, tf, tfile = fontset.TITLES[fontset.KO_UNIFIED[0]]
+        head = (tf, tfile)
+    _FACES.set({200: (faces[0], files[0]), 400: (faces[1], files[1]), 600: (faces[2], files[2]), 800: (faces[3], files[3]), 900: head})
     for m in notes:
         if m.startswith("본문 서체"):
             job.event("회사소개서 " + m[3:], "warn")
@@ -1613,6 +1624,7 @@ def run(job, j, opts, brief, note):
     job.push("기획", 4)
     job.event("회사소개서 — 자료를 읽고 레이아웃 카탈로그에 맞춰 쪽을 구성합니다.")
     raw = design.load_context(job, 400000) or ""
+    design.need_material(job, raw, brief, str(j.get("note") or ""))   # 못 읽었으면 비용 쓰기 전에 멈춘다(note 는 자동 교훈이 붙기 전 원문, R162)
     ctx = design.digest_context(job, raw) if raw else ""
     deck = plan(job, brief, note, ctx, pages)
     kinds = [s["kind"] for s in deck["slides"]]
@@ -1624,7 +1636,6 @@ def run(job, j, opts, brief, note):
     ctone = ctone if (ctone in TONES or re.fullmatch(r"#[0-9A-Fa-f]{6}", ctone)) else "blue"
     ctheme = str(opts.get("ctheme") or "a")
     ctheme = ctheme if ctheme in COMPANY_THEMES else "a"
-    ctone = ctone if ctone in TONES else "blue"
     free = bool(opts.get("cfree"))
     job.event(f"테마 {ctheme.upper()} {COMPANY_THEMES[ctheme]} · 톤 {tone_label(ctone)}" + (" · 자유도(파워에셋에서 배경을 AI 가 고름)" if free else ""))
     attach_assets(job, deck, d, log=job.event, ctone=ctone, ctheme=ctheme, free=free)

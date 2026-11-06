@@ -186,11 +186,17 @@ return static function (Router $r): void {
         Access::assert($a, $x, 'edit');
         $in = Response::input();
         $w = is_array($in['wire'] ?? null) ? Wire::normalize($in['wire']) : (json_decode((string) $x['json'], true) ?: []);
+        if (is_array($in['wire'] ?? null) && !$w['rows']) {
+            throw HttpError::invalid('줄이 하나도 없습니다.');   // 저장(POST)과 같은 규칙
+        }
         $title = trim(mb_substr((string) ($in['title'] ?? $x['title']), 0, 200)) ?: $x['title'];
         $w['title'] = $title;
         $check = Wire::check($w);
-        Db::exec('UPDATE mock_wireframes SET title = ?, screen = ?, org_kind = ?, json = ?, score = ?, pass = ?, check_result = ? WHERE id = ?', [
-            $title, $w['screen'] ?? $x['screen'], $w['org'] ?? $x['org_kind'], json_encode($w, JSON_UNESCAPED_UNICODE),
+        // 요청 글·출처도 받은 대로 — 빼먹어 다시 열면 옛 요청 글이 나왔다(R178). 안 보내면 그대로
+        $req = array_key_exists('request', $in) ? (trim(mb_substr((string) $in['request'], 0, 800)) ?: null) : $x['request'];
+        $source = in_array($in['source'] ?? null, ['ai', 'rule'], true) ? (string) $in['source'] : $x['source'];
+        Db::exec('UPDATE mock_wireframes SET title = ?, screen = ?, org_kind = ?, request = ?, source = ?, json = ?, score = ?, pass = ?, check_result = ? WHERE id = ?', [
+            $title, $w['screen'] ?? $x['screen'], $w['org'] ?? $x['org_kind'], $req, $source, json_encode($w, JSON_UNESCAPED_UNICODE),
             $check['score'], $check['pass'] ? 1 : 0, json_encode($check, JSON_UNESCAPED_UNICODE), $x['id'],
         ]);
         Response::json($pub($row($p['id']), true));

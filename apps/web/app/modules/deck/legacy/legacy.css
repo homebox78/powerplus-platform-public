@@ -190,3 +190,6 @@ html[data-hdr=hidden] .pd .head { top: var(--pd-jobhead, 0px); }
 
 /* 업로드 머리 줄 — 같은 줄 컨트롤(세그먼트·단계·취소·이전·다음)은 전부 36px 한 높이(2026-10-10, 테스트 보고서 중6) */
 .pd .pd-uhead .seg > button, .pd .pd-uhead .btn-ghost, .pd .pd-uhead .btn-back, .pd .pd-uhead .btn-next { height: 36px; }
+
+/* 세로 제안서 쓴 쪽 카드가 하나씩 나타날 때(R106) */
+@keyframes pdpop { from { opacity: 0; transform: translateY(4px) scale(.92); } to { opacity: 1; transform: none; } }

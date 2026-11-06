@@ -102,7 +102,7 @@ final class Concierge
             $links = [['/guide/components', '부품 전체 보기'], ['/guide/tokens', '디자인 토큰 받기']];
         } elseif ($module === 'mock') {
             $type = 'mock';
-            $rows = Db::rows("SELECT id, title, score, updated_at FROM mock_gallery WHERE status = 'shared' ORDER BY (likes * 3 + unlocks * 2 + views / 10) DESC, id DESC LIMIT 4");
+            $rows = Db::rows("SELECT g.id, g.title, g.score, g.updated_at FROM mock_gallery g JOIN mock_mockups m ON m.id = g.mockup_id WHERE g.status = 'shared' AND m.deleted_at IS NULL ORDER BY (g.likes * 3 + g.unlocks * 2 + g.views / 10) DESC, g.id DESC LIMIT 4");
             foreach ($rows as $g) {
                 $items[] = ['id' => (string) $g['id'], 'title' => (string) $g['title'] ?: '공유된 시안', 'sub' => (int) $g['score'] . '점',
                     'thumb_url' => '/api/v1/mock/gallery/' . $g['id'] . '/thumb?v=' . strtotime((string) $g['updated_at']), 'url' => '/mock/mockups?gallery=' . $g['id']];

@@ -1,11 +1,11 @@
 // powerMock 시안·갤러리·포인트 — api/routes/mock.php 와 짝. 출처: homebox-handoff apps/web/app/lib/gallery.ts 를 REST v1 봉투로.
-import { queryOptions, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { infiniteQueryOptions, queryOptions, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiFetch, apiList, postJson } from "@/lib/api";
 
 export interface MockupItem {
   id: string; token: string; title: string; ref_id: string | null; device: "pc" | "mobile"; bytes: number;
   score: number | null; passed: boolean | null; check_count: number; published: boolean; path: string | null; views: number;
-  thumb_url: string | null; discarded: boolean; expires_at: string; created_at: string; checked_at: string | null;
+  thumb_url: string | null; discarded: boolean; /** 게시했지만 기간이 끝남 — 주소가 닫혀 있고 다시 게시할 수 있다 */ expired?: boolean; expires_at: string; created_at: string; checked_at: string | null;
   gallery: { id: number; status: "study" | "shared" | "hidden"; likes: number; unlocks: number } | null;
 }
 export interface GalleryOwner { name: string; avatar: string | null; badge: { id: string; name: string } | null }
@@ -30,9 +30,13 @@ interface PointsInfo {
   rules: Array<{ reason: string; points: number; name: string; daily_cap: number | null }>; unlock_cost: number; cut: number;
 }
 
-export const myMockupsQuery = queryOptions({
+const MINE_PAGE = 100;
+/** 내 시안 — 한 번에 100개, 더 보기로 이어 받는다(서버 limit 상한 100). 예전엔 100개 넘으면 뒤가 안 보였다 */
+export const myMockupsQuery = infiniteQueryOptions({
   queryKey: ["mock", "mine"],
-  queryFn: async () => { const r = await apiList<MockupItem>("/mock/mockups?limit=100"); return { items: r.data, total: r.total ?? r.data.length, meta: (r.meta ?? {}) as { cut?: number; points?: number } }; },
+  initialPageParam: 1,
+  queryFn: async ({ pageParam }) => { const r = await apiList<MockupItem>(`/mock/mockups?limit=${MINE_PAGE}&page=${pageParam}`); return { items: r.data, total: r.total ?? r.data.length, meta: (r.meta ?? {}) as { cut?: number; points?: number } }; },
+  getNextPageParam: (last, _all, page) => (page * MINE_PAGE < last.total ? page + 1 : undefined),
   staleTime: 10_000,
 });
 
@@ -43,6 +47,20 @@ export const galleryQuery = (p: { view: "shared" | "mine"; sort: "popular" | "ne
       const r = await apiList<GalleryItem>(`/mock/gallery?view=${p.view}&sort=${p.sort}&limit=60${p.type && p.type !== "all" ? `&type=${p.type}` : ""}${p.set ? `&set=${encodeURIComponent(p.set)}` : ""}`);
       return { items: r.data, total: r.total ?? r.data.length, meta: (r.meta ?? {}) as { points?: number | null; unlock_cost?: number; cut?: number } };
     },
+    staleTime: 10_000,
+  });
+
+const GALLERY_PAGE = 60;
+/** 갤러리 화면 — 한 번에 60개, 더 보기로 이어 받는다(서버 limit 상한 60) */
+export const galleryPagesQuery = (p: { view: "shared" | "mine"; sort: "popular" | "new" | "score"; type?: "all" | "main" | "sub"; set?: string }) =>
+  infiniteQueryOptions({
+    queryKey: ["mock", "gallery", "pages", p],
+    initialPageParam: 1,
+    queryFn: async ({ pageParam }) => {
+      const r = await apiList<GalleryItem>(`/mock/gallery?view=${p.view}&sort=${p.sort}&limit=${GALLERY_PAGE}&page=${pageParam}${p.type && p.type !== "all" ? `&type=${p.type}` : ""}${p.set ? `&set=${encodeURIComponent(p.set)}` : ""}`);
+      return { items: r.data, total: r.total ?? r.data.length, meta: (r.meta ?? {}) as { points?: number | null; unlock_cost?: number; cut?: number } };
+    },
+    getNextPageParam: (last, _all, page) => (page * GALLERY_PAGE < last.total ? page + 1 : undefined),
     staleTime: 10_000,
   });
 

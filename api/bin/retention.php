@@ -19,6 +19,7 @@
  *   - AI 사용·비용 기록(deck_ai_usage)도 과금(크레딧·월 한도) 근거라 지우지 않는다(2026-10-17 점검 — 접속 기록이 아니다).
  *   - 횟수 제한 카운터(core_rate_limits, IP 해시): 2일 지나면 지운다.
  *   - 서버 자원 표본(core_server_metrics)은 sample-metrics.php 가 30일로 이미 지운다.
+ *   - 장표 분할 업로드: 올리다 만 것(status open…)은 3일 지나면 행·임시 파일(.part)을 지운다. 행 없는 임시 파일도 3일 지나면 지운다. 끝난 행은 그대로 둔다.
  * 웹에서는 실행되지 않는다(CLI 만 받는다).
  */
 declare(strict_types=1);
@@ -103,6 +104,90 @@ foreach ($jobs as [$name, $countSql, $runSql]) {
         // 표가 없는 환경(일부 마이그레이션 전)에서도 나머지는 계속 돈다.
         printf("  %-28s 건너뜀: %s\n", $name, mb_substr($e->getMessage(), 0, 120));
     }
+}
+// 장표 작업에 올린 자료 — 작업이 끝난(완료·실패·취소) 지 10일 지나면 서버에서 지운다(보안, 2026-10-28 사용자 지시).
+// 지우는 것: 맥락 자료(docs/·deck_job_docs), 원본 파일(source/), 붙여 넣은 글(brief), 자료에서 뽑은 요약·수치(mockup/context.md·facts.json).
+// 남기는 것: 결과 장표·시안·기획(결과 화면·내려받기용). 두 번 돌아도 같은 결과(이미 지운 작업은 건너뜀)
+try {
+    $root = rtrim((string) \Pp\Deck\Legacy::dataDir(), '/\\') . '/jobs/';
+    $old = Db::rows("SELECT id FROM deck_jobs WHERE status IN ('done','failed','canceled') AND finished_at IS NOT NULL
+                     AND finished_at < NOW() - INTERVAL 10 DAY AND deleted_at IS NULL");
+    $purged = 0;
+    $rmTree = static function (string $p) use (&$rmTree): void {
+        if (is_link($p) || is_file($p)) {
+            @unlink($p);
+            return;
+        }
+        if (!is_dir($p)) {
+            return;
+        }
+        foreach (array_diff((array) scandir($p), ['.', '..']) as $f) {
+            $rmTree($p . '/' . $f);
+        }
+        @rmdir($p);
+    };
+    foreach ($old as $r) {
+        $id = (string) $r['id'];
+        if (!preg_match('/^[0-9a-f]{16}$/', $id)) {
+            continue;
+        }
+        $d = $root . $id;
+        $targets = array_filter([$d . '/docs', $d . '/source', $d . '/mockup/context.md', $d . '/mockup/facts.json'], 'file_exists');
+        $hasRows = (int) Db::val('SELECT COUNT(*) FROM deck_job_docs WHERE job_id = ?', [$id]);
+        $hasBrief = (int) Db::val("SELECT COUNT(*) FROM deck_jobs WHERE id = ? AND brief IS NOT NULL AND brief <> ''", [$id]);
+        if (!$targets && !$hasRows && !$hasBrief) {
+            continue;
+        }
+        $purged++;
+        if ($dry) {
+            continue;
+        }
+        foreach ($targets as $t) {
+            $rmTree($t);
+        }
+        Db::exec('DELETE FROM deck_job_docs WHERE job_id = ?', [$id]);
+        // docs_purged_at — 엔진·다시 돌리기가 '자료가 지워졌다'를 알아 빈 내용으로 비용을 쓰지 않게(R159)
+        Db::exec("UPDATE deck_jobs SET brief = NULL, docs_purged_at = COALESCE(docs_purged_at, NOW()) WHERE id = ?", [$id]);
+    }
+    $total += $purged;
+    printf("  %-28s %s건%s\n", '장표 올린 자료 지우기(끝난 뒤 10일)', number_format($purged), $dry ? ' (예정)' : '');
+} catch (\Throwable $e) {
+    $failed++;
+    printf("  %-28s 건너뜀: %s\n", '장표 올린 자료 지우기', mb_substr($e->getMessage(), 0, 120));
+}
+// 장표 분할 업로드 — 올리다 만 파일이 저장소에 쌓였다(정리하는 곳이 없었다, R157). 이어 올리기는 3일 안에만 된다(지운 뒤에는 화면이 새로 시작한다)
+try {
+    $upDir = rtrim((string) \Pp\Deck\Legacy::dataDir(), '/\\') . '/uploads';
+    $stale = Db::rows("SELECT id FROM deck_uploads WHERE status LIKE 'open%' AND created_at < NOW() - INTERVAL 3 DAY");
+    $n = 0;
+    foreach ($stale as $u) {
+        $uid = (string) $u['id'];
+        if (!preg_match('/^[0-9a-f]{24}$/', $uid)) {
+            continue;
+        }
+        $n++;
+        if (!$dry) {
+            @unlink($upDir . '/' . $uid . '.part');
+            Db::exec('DELETE FROM deck_uploads WHERE id = ?', [$uid]);
+        }
+    }
+    // 행 없이 남은 임시 파일(행을 지운 뒤 만들어진 조각 등)
+    foreach (glob($upDir . '/*.part') ?: [] as $f) {
+        if (filemtime($f) >= time() - 3 * 86400) {
+            continue;
+        }
+        if ((int) Db::val('SELECT COUNT(*) FROM deck_uploads WHERE id = ?', [basename($f, '.part')]) === 0) {
+            $n++;
+            if (!$dry) {
+                @unlink($f);
+            }
+        }
+    }
+    $total += $n;
+    printf("  %-28s %s건%s\n", '장표 업로드 임시 파일 지우기(3일)', number_format($n), $dry ? ' (예정)' : '');
+} catch (\Throwable $e) {
+    $failed++;
+    printf("  %-28s 건너뜀: %s\n", '장표 업로드 임시 파일 지우기', mb_substr($e->getMessage(), 0, 120));
 }
 printf("합계 %s건%s\n", number_format($total), $failed ? " · 건너뜀 {$failed}개" : '');
 exit($failed > 0 ? 1 : 0);

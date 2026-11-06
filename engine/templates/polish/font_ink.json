@@ -1,0 +1,509 @@
+{
+ "_doc": "서체 굵기·폭 — polish_prep.py measure 가 40px 에서 '공공 마이데이터 유통 시스템 행정안전부 60개 보유기관' 를 그려 잰 값(ink=잉크 양/1000, w=글 폭 px). 손으로 고치지 말 것.",
+ "faces": {
+  "asta sans": {
+   "ink": 7.2,
+   "w": 857.0
+  },
+  "asta sans bold": {
+   "ink": 9.81,
+   "w": 857.0
+  },
+  "asta sans extrabold": {
+   "ink": 11.12,
+   "w": 857.0
+  },
+  "asta sans light": {
+   "ink": 5.2,
+   "w": 856.0
+  },
+  "asta sans medium": {
+   "ink": 8.25,
+   "w": 857.0
+  },
+  "asta sans semibold": {
+   "ink": 9.03,
+   "w": 857.0
+  },
+  "a시월구일1": {
+   "ink": 11.19,
+   "w": 982.0
+  },
+  "a시월구일2": {
+   "ink": 14.5,
+   "w": 984.0
+  },
+  "a시월구일3": {
+   "ink": 17.2,
+   "w": 985.0
+  },
+  "a시월구일4": {
+   "ink": 19.76,
+   "w": 993.0
+  },
+  "a타이틀고딕1": {
+   "ink": 7.69,
+   "w": 901.0
+  },
+  "a타이틀고딕2": {
+   "ink": 10.21,
+   "w": 901.0
+  },
+  "a타이틀고딕3": {
+   "ink": 12.62,
+   "w": 902.0
+  },
+  "a타이틀고딕4": {
+   "ink": 14.87,
+   "w": 902.0
+  },
+  "a타이틀고딕5": {
+   "ink": 16.9,
+   "w": 903.0
+  },
+  "elice dx neolli bold": {
+   "ink": 17.71,
+   "w": 953.0
+  },
+  "freesentation 1 thin": {
+   "ink": 2.96,
+   "w": 722.0
+  },
+  "freesentation 2 extralight": {
+   "ink": 4.26,
+   "w": 744.0
+  },
+  "freesentation 3 light": {
+   "ink": 5.31,
+   "w": 746.0
+  },
+  "freesentation 4 regular": {
+   "ink": 6.5,
+   "w": 746.0
+  },
+  "freesentation 5 medium": {
+   "ink": 7.63,
+   "w": 746.0
+  },
+  "freesentation 6 semibold": {
+   "ink": 8.83,
+   "w": 774.0
+  },
+  "freesentation 7 bold": {
+   "ink": 10.06,
+   "w": 776.0
+  },
+  "freesentation 8 extrabold": {
+   "ink": 11.25,
+   "w": 776.0
+  },
+  "freesentation 9 black": {
+   "ink": 12.36,
+   "w": 776.0
+  },
+  "freesentationvf": {
+   "ink": 2.79,
+   "w": 722.0
+  },
+  "g마켓 산스 bold": {
+   "ink": 16.77,
+   "w": 957.0
+  },
+  "g마켓 산스 light": {
+   "ink": 4.91,
+   "w": 955.0
+  },
+  "g마켓 산스 medium": {
+   "ink": 10.61,
+   "w": 956.0
+  },
+  "g마켓 산스 ttf bold": {
+   "ink": 15.96,
+   "w": 957.0
+  },
+  "g마켓 산스 ttf light": {
+   "ink": 5.58,
+   "w": 955.0
+  },
+  "g마켓 산스 ttf medium": {
+   "ink": 11.4,
+   "w": 956.0
+  },
+  "hada round": {
+   "ink": 7.47,
+   "w": 906.0
+  },
+  "hada round black": {
+   "ink": 14.37,
+   "w": 906.0
+  },
+  "hada round bold": {
+   "ink": 11.68,
+   "w": 906.0
+  },
+  "hada round medium": {
+   "ink": 8.91,
+   "w": 906.0
+  },
+  "hakgyoansim allimjang ttf b": {
+   "ink": 17.56,
+   "w": 879.0
+  },
+  "kopub돋움체 bold": {
+   "ink": 11.03,
+   "w": 888.0
+  },
+  "kopub돋움체 light": {
+   "ink": 6.48,
+   "w": 888.0
+  },
+  "kopub돋움체 medium": {
+   "ink": 7.91,
+   "w": 888.0
+  },
+  "malgun gothic": {
+   "ink": 8.24,
+   "w": 1008.0
+  },
+  "malgun gothic bold": {
+   "ink": 12.11,
+   "w": 1010.0
+  },
+  "malgun gothic semilight": {
+   "ink": 5.94,
+   "w": 990.0
+  },
+  "noto sans jp": {
+   "ink": 10.33,
+   "w": 978.0
+  },
+  "noto sans jp black": {
+   "ink": 10.67,
+   "w": 982.0
+  },
+  "noto sans jp light": {
+   "ink": 10.19,
+   "w": 976.0
+  },
+  "noto sans jp semibold": {
+   "ink": 10.54,
+   "w": 980.0
+  },
+  "noto sans korean bold bold": {
+   "ink": 15.04,
+   "w": 1102.0
+  },
+  "noto sans korean medium": {
+   "ink": 12.55,
+   "w": 1100.0
+  },
+  "noto sans korean regular": {
+   "ink": 10.68,
+   "w": 1098.0
+  },
+  "noto sans kr": {
+   "ink": 3.58,
+   "w": 910.0
+  },
+  "noto sans sc": {
+   "ink": 10.33,
+   "w": 978.0
+  },
+  "noto sans sc black": {
+   "ink": 10.67,
+   "w": 982.0
+  },
+  "noto sans sc light": {
+   "ink": 10.19,
+   "w": 976.0
+  },
+  "noto sans sc semibold": {
+   "ink": 10.54,
+   "w": 980.0
+  },
+  "paperlogy 1 thin": {
+   "ink": 3.48,
+   "w": 878.0
+  },
+  "paperlogy 2 extralight": {
+   "ink": 5.25,
+   "w": 878.0
+  },
+  "paperlogy 3 light": {
+   "ink": 6.67,
+   "w": 878.0
+  },
+  "paperlogy 4 regular": {
+   "ink": 8.75,
+   "w": 878.0
+  },
+  "paperlogy 5 medium": {
+   "ink": 10.69,
+   "w": 878.0
+  },
+  "paperlogy 6 semibold": {
+   "ink": 12.48,
+   "w": 878.0
+  },
+  "paperlogy 7 bold": {
+   "ink": 14.28,
+   "w": 878.0
+  },
+  "paperlogy 8 extrabold": {
+   "ink": 16.0,
+   "w": 878.0
+  },
+  "paperlogy 9 black": {
+   "ink": 17.67,
+   "w": 878.0
+  },
+  "pretendard": {
+   "ink": 7.33,
+   "w": 878.0
+  },
+  "pretendard black": {
+   "ink": 14.16,
+   "w": 878.0
+  },
+  "pretendard bold": {
+   "ink": 11.5,
+   "w": 877.0
+  },
+  "pretendard extrabold": {
+   "ink": 12.87,
+   "w": 879.0
+  },
+  "pretendard extralight": {
+   "ink": 4.63,
+   "w": 868.0
+  },
+  "pretendard light": {
+   "ink": 5.97,
+   "w": 876.0
+  },
+  "pretendard medium": {
+   "ink": 8.74,
+   "w": 880.0
+  },
+  "pretendard regular": {
+   "ink": 7.33,
+   "w": 878.0
+  },
+  "pretendard semibold": {
+   "ink": 10.15,
+   "w": 882.0
+  },
+  "pretendard thin": {
+   "ink": 3.15,
+   "w": 869.0
+  },
+  "pretendard variable": {
+   "ink": 7.34,
+   "w": 878.0
+  },
+  "wanted sans": {
+   "ink": 7.33,
+   "w": 879.0
+  },
+  "wanted sans extrabold": {
+   "ink": 12.96,
+   "w": 884.0
+  },
+  "wanted sans medium": {
+   "ink": 8.79,
+   "w": 881.0
+  },
+  "wanted sans semibold": {
+   "ink": 10.19,
+   "w": 881.0
+  },
+  "나눔고딕": {
+   "ink": 6.69,
+   "w": 950.0
+  },
+  "나눔고딕 bold": {
+   "ink": 10.36,
+   "w": 950.0
+  },
+  "나눔고딕 extrabold": {
+   "ink": 12.68,
+   "w": 950.0
+  },
+  "나눔고딕 light": {
+   "ink": 5.13,
+   "w": 950.0
+  },
+  "나눔고딕코딩": {
+   "ink": 6.65,
+   "w": 1040.0
+  },
+  "나눔고딕코딩-bold": {
+   "ink": 10.29,
+   "w": 1040.0
+  },
+  "나눔명조": {
+   "ink": 5.11,
+   "w": 950.0
+  },
+  "나눔명조 bold": {
+   "ink": 7.79,
+   "w": 950.0
+  },
+  "나눔명조 extrabold": {
+   "ink": 8.92,
+   "w": 950.0
+  },
+  "나눔명조 옛한글": {
+   "ink": 5.11,
+   "w": 950.0
+  },
+  "나눔바른고딕": {
+   "ink": 8.76,
+   "w": 892.0
+  },
+  "나눔바른고딕 bold": {
+   "ink": 11.36,
+   "w": 892.0
+  },
+  "나눔바른고딕 light": {
+   "ink": 5.92,
+   "w": 892.0
+  },
+  "나눔바른고딕 ultralight": {
+   "ink": 5.17,
+   "w": 892.0
+  },
+  "나눔바른고딕 옛한글": {
+   "ink": 8.75,
+   "w": 892.0
+  },
+  "나눔바른펜": {
+   "ink": 5.57,
+   "w": 779.0
+  },
+  "나눔바른펜 bold": {
+   "ink": 7.98,
+   "w": 787.0
+  },
+  "나눔손글씨 갈맷글": {
+   "ink": 4.33,
+   "w": 660.0
+  },
+  "나눔손글씨 강인한 위로": {
+   "ink": 2.06,
+   "w": 617.0
+  },
+  "나눔손글씨 나무정원": {
+   "ink": 2.17,
+   "w": 703.0
+  },
+  "나눔손글씨 마고체": {
+   "ink": 1.28,
+   "w": 556.0
+  },
+  "나눔손글씨 붓": {
+   "ink": 2.97,
+   "w": 608.0
+  },
+  "나눔손글씨 손편지체": {
+   "ink": 2.54,
+   "w": 632.0
+  },
+  "나눔손글씨 와일드": {
+   "ink": 2.17,
+   "w": 535.0
+  },
+  "나눔손글씨 펜": {
+   "ink": 3.5,
+   "w": 596.0
+  },
+  "나눔손글씨 할아버지의나눔": {
+   "ink": 4.35,
+   "w": 636.0
+  },
+  "나눔스퀘어 bold": {
+   "ink": 9.81,
+   "w": 900.0
+  },
+  "나눔스퀘어 extrabold": {
+   "ink": 12.25,
+   "w": 902.0
+  },
+  "나눔스퀘어 light": {
+   "ink": 4.67,
+   "w": 900.0
+  },
+  "나눔스퀘어 regular": {
+   "ink": 7.23,
+   "w": 900.0
+  },
+  "나눔스퀘어 네오 bold": {
+   "ink": 10.76,
+   "w": 954.0
+  },
+  "나눔스퀘어 네오 extrabold": {
+   "ink": 13.49,
+   "w": 955.0
+  },
+  "나눔스퀘어 네오 heavy": {
+   "ink": 16.13,
+   "w": 953.0
+  },
+  "나눔스퀘어 네오 light": {
+   "ink": 5.1,
+   "w": 951.0
+  },
+  "나눔스퀘어 네오 regular": {
+   "ink": 7.94,
+   "w": 952.0
+  },
+  "나눔스퀘어라운드 bold": {
+   "ink": 9.19,
+   "w": 900.0
+  },
+  "나눔스퀘어라운드 extrabold": {
+   "ink": 11.72,
+   "w": 902.0
+  },
+  "나눔스퀘어라운드 light": {
+   "ink": 5.21,
+   "w": 900.0
+  },
+  "나눔스퀘어라운드 regular": {
+   "ink": 6.63,
+   "w": 900.0
+  },
+  "나눔스퀘어라운드otf bold": {
+   "ink": 9.55,
+   "w": 900.0
+  },
+  "나눔스퀘어라운드otf extrabold": {
+   "ink": 12.22,
+   "w": 902.0
+  },
+  "나눔스퀘어라운드otf light": {
+   "ink": 4.75,
+   "w": 900.0
+  },
+  "나눔스퀘어라운드otf regular": {
+   "ink": 7.31,
+   "w": 900.0
+  },
+  "맑은 고딕": {
+   "ink": 8.24,
+   "w": 1008.0
+  },
+  "맑은 고딕 bold": {
+   "ink": 12.11,
+   "w": 1010.0
+  },
+  "맑은 고딕 semilight": {
+   "ink": 5.94,
+   "w": 990.0
+  },
+  "elice dx neolli": {
+   "ink": 17.71,
+   "w": 953.0
+  }
+ }
+}

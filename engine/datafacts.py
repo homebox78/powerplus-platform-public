@@ -159,6 +159,19 @@ def _hx_table(tbl):
     return _pad(grid)
 
 
+def real_ext(path):
+    """파일 앞 바이트로 본 실제 확장자 — 이름은 .hwpx 인데 내용은 옛 HWP 5.0(OLE)인 자료를 못 읽어 빈 제안서가 나왔다(10-29 d4fda9·d44821, R143). 한글 두 형식만 바로잡고 나머지는 이름 그대로"""
+    ext = os.path.splitext(path)[1].lower()
+    if ext not in (".hwp", ".hwpx"):
+        return ext
+    try:
+        with open(path, "rb") as f:
+            head = f.read(4)
+    except OSError:
+        return ext
+    return ".hwp" if head == bytes.fromhex("d0cf11e0") else ".hwpx" if head[:2] == b"PK" else ext
+
+
 def hwpx_blocks(path):
     """한글(hwpx) — section XML 을 순서대로. 문단 글은 ('p', 글), 표는 ('table', 줄들). 예전엔 글(hp:t)만 이어 붙여 표 칸이 한 줄씩 풀렸다"""
     from xml.etree import ElementTree as ET
@@ -368,7 +381,7 @@ def md_table(rows, max_rows=60):
 
 def tables_of(path):
     """파일 하나의 표 전부 — [{"file","where","title","rows"}]. 모르는 형식·실패면 []"""
-    ext = os.path.splitext(path)[1].lower()
+    ext = real_ext(path)
     name = os.path.basename(path)
     try:
         if ext == ".xlsx":

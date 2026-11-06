@@ -8,7 +8,7 @@ import type { Route } from "./+types/root";
 import { AppFooter } from "@/components/hb/app-footer";
 import { AppHeader } from "@/components/hb/app-header";
 import { BottomTabBar } from "@/components/hb/bottom-tab-bar";
-import { ConsentGate } from "@/components/hb/consent-gate";
+import { ProfileGate } from "@/components/hb/profile-gate";
 import { ScrollTop } from "@/components/hb/scroll-top";
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -88,7 +88,8 @@ export default function App() {
               <div className="wide-out contents"><BottomTabBar /></div>
             </>
           )}
-          <ConsentGate />
+          {/* 약관 동의 창(ConsentGate)은 띄우지 않는다 — 임직원 전용 서비스(팀장 2026-10-28). 그 자리에서 이름 등 첫 화면 정보를 받는다 */}
+          <ProfileGate />
           <Toaster position="bottom-center" richColors closeButton />
         </TooltipProvider>
       </QueryClientProvider>

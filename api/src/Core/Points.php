@@ -41,13 +41,17 @@ final class Points
         if (!$rule || !(int) $rule['enabled'] || (int) $rule['delta'] >= 0) {
             return false;
         }
-        if (Db::row('SELECT 1 AS x FROM core_point_ledger WHERE user_id = ? AND reason = ? AND ref_type = ? AND ref_id = ?', [$userId, $reason, $refType, $refId])) {
-            return true;
-        }
-        if (self::balance($userId) + (int) $rule['delta'] < 0) {
-            return false;
-        }
-        return Db::exec('INSERT IGNORE INTO core_point_ledger (user_id, delta, reason, ref_type, ref_id) VALUES (?, ?, ?, ?, ?)', [$userId, (int) $rule['delta'], $reason, $refType, $refId]) > 0;
+        // 사용자 행을 잠가 차감을 한 줄로 세운다 — 잔액 확인과 기록 사이에 다른 차감이 끼면 잔액이 음수가 됐다(R180)
+        return (bool) Db::tx(static function () use ($userId, $reason, $refType, $refId, $rule): bool {
+            Db::row('SELECT id FROM core_users WHERE id = ? FOR UPDATE', [$userId]);
+            if (Db::row('SELECT 1 AS x FROM core_point_ledger WHERE user_id = ? AND reason = ? AND ref_type = ? AND ref_id = ?', [$userId, $reason, $refType, $refId])) {
+                return true;
+            }
+            if (self::balance($userId) + (int) $rule['delta'] < 0) {
+                return false;
+            }
+            return Db::exec('INSERT IGNORE INTO core_point_ledger (user_id, delta, reason, ref_type, ref_id) VALUES (?, ?, ?, ?, ?)', [$userId, (int) $rule['delta'], $reason, $refType, $refId]) > 0;
+        });
     }
 
     /**

@@ -127,7 +127,8 @@ final class Jobs
         if (mb_strlen($brief) > 300000) Legacy::fail('내용이 너무 깁니다 (30만 자 까지).');
         $sk = ($b['source_kind'] ?? 'text') === 'md' ? 'md' : 'text';
         $fname = trim((string) ($b['filename'] ?? '')) ?: ($sk === 'md' ? '내용.md' : '내용 입력');
-        $title = trim((string) ($b['title'] ?? '')) ?: mb_substr(preg_replace('/^#+\s*/', '', strtok($brief, "\n")) ?: '새 장표', 0, 80);
+        // 내용 없이 자료만 올리면 brief 가 빈 글이라 strtok 이 false 를 돌려준다 — strict_types 에서 preg_replace 가 TypeError(500) 였다(R158)
+        $title = trim((string) ($b['title'] ?? '')) ?: mb_substr(preg_replace('/^#+\s*/', '', (string) strtok($brief, "\n")) ?: '새 장표', 0, 80);
         $id = bin2hex(random_bytes(8));
         Db::pdo()->prepare('INSERT INTO deck_jobs (id, email, title, filename, size, slides, note, brief, status, progress, phase, kind, source_kind, budget_usd, theme, opts, created_at)
                             VALUES (:i, :e, :t, :f, :s, NULL, :no, :br, :st, 0, \'plan\', \'design\', :sk, :b, :th, :op, NOW())')
@@ -200,11 +201,31 @@ final class Jobs
     /** 지금 결과 장표(pptx) 파일 하나 — [서버 경로, 사용자에게 보일 이름]. 없으면 null. 여럿이면 가장 최근에 올라온 것(다시 돌린 결과) */
     public static function resultFile(array $j): ?array
     {
-        $fs = array_values(array_filter(glob(self::dir((string) $j['id'], 'result') . '/*.pptx') ?: [], 'is_file'));
-        if (!$fs) return null;
-        usort($fs, static fn (string $a, string $b): int => filemtime($b) <=> filemtime($a));
+        $p = self::currentResult((string) $j['id'], (string) ($j['result_name'] ?? ''));
+        if ($p === null) return null;
         $name = (string) (($j['result_name'] ?? '') ?: self::downloadName($j, '.pptx'));
-        return [$fs[0], basename(str_replace('\\', '/', $name))];
+        return [$p, basename(str_replace('\\', '/', $name))];
+    }
+
+    /**
+     * 결과 pptx 여럿 중 지금 결과 하나 — 마지막으로 끝까지 보고한 이름(result_name)의 파일, 없으면 가장 최근에 올라온 것.
+     * 글 고치기·내려받기·묶음·받기 링크가 이 한 함수를 쓴다. 다시 돌릴 때 이름이 달라지면 옛 판이 폴더에 남는데,
+     * 글 고치기는 이름순 첫 파일을, 내려받기는 파일 목록 첫 줄을 집어 옛 판에 수정이 들어갔다(R154)
+     * @param string[] $paths
+     */
+    public static function pickResult(array $paths, string $resultName = ''): ?string
+    {
+        $fs = array_values(array_filter($paths, 'is_file'));
+        if (!$fs) return null;
+        $want = basename(str_replace('\\', '/', $resultName));
+        foreach ($fs as $f) if ($want !== '' && basename($f) === $want) return $f;
+        usort($fs, static fn (string $a, string $b): int => filemtime($b) <=> filemtime($a));
+        return $fs[0];
+    }
+
+    public static function currentResult(string $id, string $resultName = ''): ?string
+    {
+        return self::pickResult(glob(self::dir($id, 'result') . '/*.pptx') ?: [], $resultName);
     }
 
     /** 산출물 전체 zip 을 임시 파일로 만든다 — [임시 경로, 받을 이름]. 넣을 것이 없으면 null(다운로드 링크와 /export.zip 이 같이 쓴다) */
@@ -218,7 +239,8 @@ final class Jobs
         $n = 0;
         $add = static function (string $path, string $as) use ($z, &$n) { if (is_file($path)) { $z->addFile($path, $as); $n++; } };
         $base = preg_replace('/\.pptx$/i', '', (string) ($j['result_name'] ?: $j['title']));
-        foreach (glob(self::dir($id, 'result') . '/*') ?: [] as $f) $add($f, '1_결과 장표/' . (($j['result_name'] ?? '') ?: basename($f)));
+        // 지금 결과 하나만 — 여럿을 같은 이름으로 넣으면 서로 덮어써 옛 판이 묶일 수 있었다(R154)
+        if ($cur = self::resultFile($j)) $add($cur[0], '1_결과 장표/' . (($j['result_name'] ?? '') ?: basename($cur[0])));
         $md = self::planMd($j);
         if ($md !== '') { $z->addFromString('2_기획·문서/기획.md', $md); $n++; }
         $add(self::dir($id, 'mockup') . '/context.md', '2_기획·문서/사업 요약.md');
@@ -270,11 +292,27 @@ final class Jobs
      * 지우는 때: '장표 만들기'로 넘어가는 순간(dropDocs) · 기획 단계에 멈춰도 올린 지 7일 뒤(purgeDocs). 요약 context.md 는 남긴다(대본 등). */
     public const DOC_EXT = 'pdf|docx|hwpx|hwp|xlsx|pptx|md|txt|markdown|csv';
     public const DOC_KEEP_DAYS = 7;
+    /** 작업당 맥락 자료 합계 상한(MB) — 설정 deck.max_job_docs_mb 로 바꿀 수 있다 */
+    public const DOC_TOTAL_MB = 2048;
 
-    public static function addDoc(string $jobId, string $email, string $partPath, string $filename, int $size): array
+    /**
+     * 이 작업에 자료를 더해도 되나 — 올리기 시작할 때(Uploads::create)와 끝낼 때(addDoc) 같은 검사.
+     * 예전엔 끝낼 때만 주인을 봐서, 남의 작업 번호로도 1GB 를 끝까지 올린 뒤에야 막혔다(R157)
+     */
+    public static function checkDocUpload(string $jobId, string $email, int $size): array
     {
         $j = self::own($jobId, $email, false);
         if (!in_array($j['status'], ['hold', 'queued', 'review', 'done', 'failed', 'canceled'], true)) Legacy::fail('진행 중인 작업에는 자료를 더할 수 없습니다.', 409);
+        $mb = max(1, (int) Legacy::cfg('max_job_docs_mb', self::DOC_TOTAL_MB));
+        $st = Db::pdo()->prepare('SELECT COALESCE(SUM(size), 0) FROM deck_job_docs WHERE job_id = ?');
+        $st->execute([$jobId]);
+        if ((int) $st->fetchColumn() + $size > $mb * 1024 * 1024) Legacy::fail("작업 하나에 올릴 수 있는 자료는 합계 {$mb}MB 까지입니다. 필요 없는 자료를 뺀 뒤 다시 올려 주세요.", 413);
+        return $j;
+    }
+
+    public static function addDoc(string $jobId, string $email, string $partPath, string $filename, int $size): array
+    {
+        self::checkDocUpload($jobId, $email, $size);
         if (!preg_match('/\.(' . self::DOC_EXT . ')$/i', $filename)) Legacy::fail('맥락 자료는 pdf·docx·hwp·hwpx·xlsx·pptx·md·txt 만 올릴 수 있습니다.');
         $id = bin2hex(random_bytes(8));
         $dest = self::dir($jobId, 'docs') . '/' . $id . '_' . basename($filename);
@@ -371,11 +409,12 @@ final class Jobs
      * 시작 옵션 — slides: 장 수(0·없음 = 자동), mockups: 'plan'(기획만 먼저 보기) | 'sample'(샘플 N장) | 'all', sample: N
      * 기본은 'plan' — 돈이 드는 시안 이미지는 기획을 본 뒤 고른 장만 만든다.
      */
-    /** 표지·목차·간지를 넣을지 — 안 주면 모두 넣는다 */
+    /** 표지·목차·간지·엔딩(감사합니다·질의응답)을 넣을지 — 안 주면 모두 넣는다. ending 을 버려 '엔딩 끄기'가 무시됐다(10-28 점검 D06) */
     private static function front($f): array
     {
         $f = is_array($f) ? $f : [];
-        return ['cover' => !isset($f['cover']) || !empty($f['cover']), 'toc' => !isset($f['toc']) || !empty($f['toc']), 'divider' => !isset($f['divider']) || !empty($f['divider'])];
+        return ['cover' => !isset($f['cover']) || !empty($f['cover']), 'toc' => !isset($f['toc']) || !empty($f['toc']), 'divider' => !isset($f['divider']) || !empty($f['divider']),
+                'ending' => !isset($f['ending']) || !empty($f['ending'])];
     }
 
     private static function opts(array $b, bool $design = false): string
@@ -384,7 +423,8 @@ final class Jobs
         // 새로 기획하는 장표는 장 수를 안 적으면 5장(2026-10-07 사용자) — '자동'이 자료 14만 자에 37장을 잡아 몇 시간씩 걸렸다
         if ($design && $n === 0) $n = ['submit' => 30, 'company' => 14][$b['purpose'] ?? ''] ?? 5;   // 제출용(세로 제안서)은 본문 쪽 수 — 미입력이면 30쪽, 회사소개용(회사소개서)은 14쪽
         $m = in_array($b['mockups'] ?? '', ['plan', 'sample', 'all'], true) ? $b['mockups'] : 'plan';
-        return json_encode(['slides' => $n, 'mockups' => $m, 'sample' => max(1, min(20, (int) ($b['sample'] ?? 3))),
+        // slides_set — 사용자가 쪽 수를 직접 적었나(세로 제안서는 적었을 때만 엔진이 목차 항목을 그 수에 맞춰 줄인다, 10-28 R107)
+        return json_encode(['slides' => $n, 'slides_set' => !empty($b['slides_set']) && (int) ($b['slides'] ?? 0) > 0, 'mockups' => $m, 'sample' => max(1, min(20, (int) ($b['sample'] ?? 3))),
             'project' => mb_substr(trim((string) ($b['project'] ?? '')), 0, 80), 'front' => self::front($b['front'] ?? null),
             'event' => mb_substr(trim((string) ($b['event'] ?? '')), 0, 30), 'date' => mb_substr(trim((string) ($b['date'] ?? '')), 0, 20),   // 표지 꼬리 글·날짜(비우면 엔진이 '제안설명회'·작성 날짜)
             'style' => preg_match('/^[a-z]{1,2}$/', (string) ($b['style'] ?? '')) ? $b['style'] : 'a',
@@ -392,6 +432,7 @@ final class Jobs
             'vstyle' => in_array($b['vstyle'] ?? '', ['band', 'tab', 'side', 'split', 'pill', 'line'], true) ? $b['vstyle'] : 'band',   // 세로 제안서 디자인 스타일(모양) — engine/vertical.py STYLES
             'vtone' => in_array($b['vtone'] ?? ($b['vtheme'] ?? ''), ['navy', 'blue', 'deep', 'teal', 'gray', 'glass'], true) ? ($b['vtone'] ?? $b['vtheme']) : 'navy',   // 톤(색) — TONES(옛 vtheme 도 받는다)
             'ctheme' => in_array($b['ctheme'] ?? '', ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'], true) ? $b['ctheme'] : 'a',   // 회사소개서 테마 — A 다크 임팩트 · B 라이트 에디토리얼 · C 솔리드 · D 프렌들리 라운드 · E 포토 · F 라인 · G 소프트 3D · H 기하 곡선(engine/company.py COMPANY_THEMES)
+            'keep' => !empty($b['keep']) && ($b['purpose'] ?? 'present') === 'present',   // 기존 구성 그대로 — 올린 장표의 장 순서·배치·글을 그대로 두고 디자인만 새로(발표용 + pptx, engine/keeplayout.py, 11-03)
             'cfree' => !empty($b['cfree']),   // 자유도 — 표지·간지·마무리 배경을 AI 가 파워에셋에서 고른다(kind build → Claude Opus 5.5, 없으면 OpenRouter)
             'ctone' => preg_match('/^([a-z]{3,10}|#[0-9A-Fa-f]{6})$/', (string) ($b['ctone'] ?? '')) ? $b['ctone'] : 'blue',   // 회사소개서 톤 — TONES 의 id 또는 직접 고른 색 #RRGGBB(모르는 id 는 엔진이 blue 로)
             'lang' => in_array($b['lang'] ?? '', self::LANGS, true) ? $b['lang'] : 'ko',   // 제작 언어 — 장표 글·시안·대본
@@ -490,11 +531,21 @@ final class Jobs
             }
             self::event($id, 'info', '작업 설정을 바꿨습니다 — 디자인 타입 ' . strtoupper((string) ($op['style'] ?? 'a')) . (isset($st['accent']) ? ' · 강조색 ' . self::accent($st['accent']) : ''));
         }
+        // 기획(plan) 고치기 — 행을 잠그고 읽어 고친 뒤 쓴다. 와이어 상자 저장(0.7초)과 키메시지·글 저장(1초)이
+        // 따로 오면 잠금 없이는 늦게 끝난 쪽이 먼저 쓴 수정을 옛 기획으로 덮었다(일부 글만 반영 안 됨, R103)
+        $doSlides = isset($b['slides']) && is_array($b['slides']);
+        $doFront = isset($b['front_edit']) && is_array($b['front_edit']);
+        if ($doSlides || $doFront) {
+            self::own($id, $email, $admin);
+            Db::tx(static function (\PDO $pdo) use ($id, $b, $doSlides, $doFront): void {
+            $st = $pdo->prepare('SELECT plan FROM deck_jobs WHERE id = :i FOR UPDATE');
+            $st->execute([':i' => $id]);
+            $raw = $st->fetchColumn();
+            $plan = $raw ? json_decode((string) $raw, true) : null;
+            if (!is_array($plan)) return;
         // 기획 장별 수정 자동 저장 — slides: [{n, title?, message?, scene?, layout?, content?}]
-        if (isset($b['slides']) && is_array($b['slides'])) {
-            $j0 = self::own($id, $email, $admin);
-            $plan = !empty($j0['plan']) ? json_decode((string) $j0['plan'], true) : null;
-            if ($plan && isset($plan['slides'])) {
+        if ($doSlides) {
+            if (isset($plan['slides'])) {
                 $lim = ['title' => 300, 'section' => 300, 'keyword' => 200, 'message' => 3000, 'scene' => 3000, 'layout' => 3000, 'content' => 20000];
                 foreach ($b['slides'] as $s) {
                     if (!is_array($s)) continue;
@@ -520,14 +571,11 @@ final class Jobs
                     }
                     unset($ps);
                 }
-                $sets[] = 'plan = :pl'; $p[':pl'] = json_encode($plan, JSON_UNESCAPED_UNICODE);
             }
         }
         // 표지·목차·간지 글 고치기 — front_edit: {id: {project?, tail?, date?, name?}}. 엔진이 앞장을 다시 짤 때 우선하고, 지금 front 에도 바로 반영
-        if (isset($b['front_edit']) && is_array($b['front_edit'])) {
-            $j0 = self::own($id, $email, $admin);
-            $plan = !empty($j0['plan']) ? json_decode((string) $j0['plan'], true) : null;
-            if ($plan) {
+        if ($doFront) {
+            {
                 $fe = is_array($plan['front_edit'] ?? null) ? $plan['front_edit'] : [];
                 foreach ($b['front_edit'] as $fid => $v) {
                     if (!preg_match('/^(cover|toc|end|qna|div\d{0,2})$/', (string) $fid) || !is_array($v)) continue;
@@ -545,8 +593,10 @@ final class Jobs
                         if ($nm !== '') $plan['front'][$i]['chapters'][$ci]['name'] = $nm;
                     }
                 }
-                $sets[] = 'plan = :pl2'; $p[':pl2'] = json_encode($plan, JSON_UNESCAPED_UNICODE);
             }
+        }
+            $pdo->prepare('UPDATE deck_jobs SET plan = :pl WHERE id = :i')->execute([':pl' => json_encode($plan, JSON_UNESCAPED_UNICODE), ':i' => $id]);
+            });
         }
         if (array_key_exists('budget_usd', $b)) {  // 작업 한도는 관리자만 올릴 수 있다
             if (!$admin) Legacy::fail('비용 한도는 관리자만 바꿀 수 있습니다.', 403);
@@ -869,7 +919,9 @@ final class Jobs
         if (!$c) Legacy::fail('의견을 찾을 수 없습니다.', 404);
         $owner = $admin || $j['email'] === $email;
         $editor = $owner || ((int) ($j['shared'] ?? 0) === 2 && $email !== '');   // 편집 권한으로 공유받은 사람
-        if (!$owner && $c['email'] !== strtolower($email)) Legacy::fail('내가 쓴 의견만 바꿀 수 있습니다.', 403);
+        // 해결 표시만 바꾸는 요청은 편집자도 — 화면은 버튼을 주는데 남의 의견이면 여기서 403 이었다(R168). 글 고치기·지우기는 글쓴이·주인만
+        $onlyResolve = !$delete && array_keys($b) === ['resolved'];
+        if (!$owner && $c['email'] !== strtolower($email) && !($editor && $onlyResolve)) Legacy::fail('내가 쓴 의견만 바꿀 수 있습니다.', 403);
         if ($delete) {
             Db::pdo()->prepare('DELETE FROM deck_job_comments WHERE id = ?')->execute([$cid]);
             Db::pdo()->prepare('DELETE FROM deck_job_comment_replies WHERE comment_id = ?')->execute([$cid]);
@@ -981,6 +1033,7 @@ final class Jobs
         $j['owner_label'] = $mine ? $local : (mb_substr($local, 0, 2) . '***');
         $j['comments'] = $email === '' ? [] : self::comments($id);   // 로그인 없이 보는 사람에게는 의견(남긴 사람 메일)을 보이지 않는다
         if (!$mine) unset($j['note'], $j['feedback'], $j['email']);   // 공유받은 사람에게 주인 메일을 보이지 않는다(leak-audit 2026-10-06)
+        if (!$mine && $email === '') $j = self::forAnon($j);   // 로그인 없이 링크로 보는 사람 — 비용·엔진·오류·보고서를 빼고 화면에 필요한 칸만(R151)
         $f = Db::pdo()->prepare('SELECT kind, slide, name, size, UNIX_TIMESTAMP(created_at) AS ts FROM deck_job_files WHERE job_id = :j ORDER BY kind, slide, name');
         $f->execute([':j' => $id]);
         $files = ['before' => [], 'after' => [], 'result' => [], 'extra' => [], 'source' => [], 'live' => [], 'frames' => [], 'draft' => [], 'pilot' => [], 'mockup' => []];
@@ -988,23 +1041,48 @@ final class Jobs
             $x['size'] = (int) $x['size'];
             $x['ts'] = (int) $x['ts'];
             $x['slide'] = $x['slide'] !== null ? (int) $x['slide'] : null;
+            if (!$mine && !self::sharedFileOk((string) $x['kind'], (string) $x['name'])) continue;   // 공유 사용자는 받을 수 없는 파일을 이름도 보지 않는다(R151)
             $files[$x['kind']][] = $x;
         }
+        if ($mine && count($files['result']) > 1) {   // 화면은 첫 줄을 내려받는다 — 지금 결과를 맨 앞으로(R154)
+            $cur = basename((string) self::currentResult($id, (string) ($raw['result_name'] ?? '')));
+            usort($files['result'], static fn (array $a, array $b): int => ($b['name'] === $cur) <=> ($a['name'] === $cur));
+        }
         $j['files'] = $files;
-        $j['docs'] = $email === '' ? [] : self::docs($id);
-        if (($j['kind'] ?? '') === 'design') $j['est_image_usd'] = self::estImageUsd((string) $j['email']);
+        // 자료 이름·작업 기록(자료 이름·비용·오류가 적힌다)은 주인·관리자만. 공유 사용자의 진행 화면은 단계·진행률로 충분하다(R151)
+        $j['docs'] = $mine ? self::docs($id) : [];
+        // 주인 메일은 위에서 지웠으므로 원본 행에서 — 지운 칸을 읽어 공유 사용자 조회마다 Undefined key 경고가 났다(R169). 예상 비용은 시안을 만들 수 있는 사람에게만
+        if (($j['kind'] ?? '') === 'design' && $j['can_edit']) $j['est_image_usd'] = self::estImageUsd((string) $raw['email']);
         if ($mine) $j['costs'] = self::costs($id);
         if ($mine) $j['script'] = Script::info($id, $j);
-        $j['events'] = $email === '' ? [] : self::events($id, 0);
+        $j['events'] = $mine ? self::events($id, 0) : [];
         $q = Db::pdo()->query("SELECT id FROM deck_jobs WHERE status = 'queued' ORDER BY created_at")->fetchAll(PDO::FETCH_COLUMN);
         $p = array_search($id, $q, true);
         $j['queue_pos'] = $p === false ? null : $p + 1;
         return $j;
     }
 
+    /** 공유 사용자(주인·관리자 아님)가 받을 수 있는 파일 — 시안·렌더 그림만. mockup 폴더에는 사업 요약(context.md)·자료 수치(facts.json)·기획(plan.json)이 같이 있다(R151) */
+    public static function sharedFileOk(string $kind, string $name): bool
+    {
+        return in_array($kind, ['mockup', 'before', 'after', 'live'], true) && (bool) preg_match('/\.(png|jpe?g|webp)$/i', basename($name));
+    }
+
+    /** 로그인 없이 링크로 보는 사람의 응답 — 비용·엔진·오류를 빼고, 보고서는 쪽 구성(결과 화면의 장 줄)만 남긴다(R151) */
+    public static function forAnon(array $j): array
+    {
+        unset($j['spent_usd'], $j['budget_usd'], $j['budget_base_usd'], $j['worker'], $j['error']);
+        $pages = is_array($j['report'] ?? null) ? ($j['report']['pages'] ?? null) : null;
+        $j['report'] = $pages ? ['pages' => $pages] : null;
+        return $j;
+    }
+
     public static function events(string $id, int $after): array
     {
-        $st = Db::pdo()->prepare('SELECT id, ts, kind, message FROM deck_job_events WHERE job_id = :j AND id > :a ORDER BY id LIMIT 500');
+        // 처음 받을 때(after 0)는 최근 500건 — 오래된 것부터 500건만 보내 긴 작업의 기록이 멈춘 것처럼 보였다(10-28 점검 D07)
+        $sql = $after > 0 ? 'SELECT id, ts, kind, message FROM deck_job_events WHERE job_id = :j AND id > :a ORDER BY id LIMIT 500'
+            : 'SELECT * FROM (SELECT id, ts, kind, message FROM deck_job_events WHERE job_id = :j AND id > :a ORDER BY id DESC LIMIT 500) t ORDER BY id';
+        $st = Db::pdo()->prepare($sql);
         $st->execute([':j' => $id, ':a' => $after]);
         return array_map(static fn($e) => ['id' => (int) $e['id']] + $e, $st->fetchAll());
     }
@@ -1014,14 +1092,43 @@ final class Jobs
     public static function cancel(string $id, string $email, bool $admin): array
     {
         $j = self::own($id, $email, $admin);
-        if ($j['status'] === 'queued' || $j['status'] === 'review' || $j['status'] === 'hold') {
+        if ($j['status'] === 'queued' && ($j['phase'] ?? '') === 'edit') {   // 대기 중인 글 고치기만 거둔다 — 완성본이 '취소'로 보이지 않게(R166)
+            self::endEdit($id, (string) ($j['kind'] ?? ''), 'warn', '글 고치기를 취소했습니다. 장표는 이전 그대로입니다.');
+        } elseif ($j['status'] === 'queued' || $j['status'] === 'review' || $j['status'] === 'hold') {
             Db::pdo()->prepare("UPDATE deck_jobs SET status = 'canceled', finished_at = NOW() WHERE id = :i")->execute([':i' => $id]);
             self::event($id, 'warn', '사용자가 대기 중인 작업을 취소했습니다.');
         } elseif ($j['status'] === 'running') {
-            Db::pdo()->prepare('UPDATE deck_jobs SET cancel_requested = 1 WHERE id = :i')->execute([':i' => $id]);
+            // 멈추기를 눌렀으면 앞서 남은 '내용 입력으로' 표시는 지운다 — 남아 있으면 취소가 기획·시안을 지우는 길로 들어갔다(R156)
+            Db::pdo()->prepare('UPDATE deck_jobs SET cancel_requested = 1, opts = :o WHERE id = :i')->execute([':o' => self::optsWithoutBack($j), ':i' => $id]);
             self::event($id, 'warn', '취소를 요청했습니다. 엔진이 현재 단계를 마치는 대로 멈춥니다.');
         }
         return self::get($id, $email, $admin);
+    }
+
+    /** 끝난 작업의 글 고치기를 거두고 완성 상태로 — 장표는 이전 그대로다. 실패·취소·엔진 끊김 모두 여기로(R152·R166) */
+    private static function endEdit(string $id, string $kind, string $evKind, string $msg): void
+    {
+        Db::pdo()->prepare("UPDATE deck_jobs SET status = 'done', stage = '완료', progress = 100, phase = :p, review = NULL, worker = NULL, error = NULL, cancel_requested = 0,
+                            finished_at = NOW(), heartbeat_at = NOW() WHERE id = :i")
+            ->execute([':p' => $kind === 'design' ? 'build' : 'full', ':i' => $id]);
+        self::event($id, $evKind, $msg);
+    }
+
+    /** 「멈추고 내용 입력으로」가 지금 유효한가 — 기획 단계에서 멈춤을 요청한 채일 때만. 옛 표시가 남은 작업을 hold 로 되돌려 기획·시안을 지우지 않게(R156) */
+    public static function backRequested(array $j): bool
+    {
+        return !empty($j['cancel_requested']) && !empty((json_decode((string) ($j['opts'] ?? ''), true) ?: [])['back'])
+            && in_array($j['phase'] ?? 'plan', ['plan', '', null], true);
+    }
+
+    /** opts 에서 '내용 입력으로' 표시를 뺀 JSON — 표시가 없으면 원래 값 그대로 */
+    private static function optsWithoutBack(array $j): ?string
+    {
+        $raw = $j['opts'] ?? null;
+        $op = !empty($raw) ? (json_decode((string) $raw, true) ?: null) : null;
+        if (!is_array($op) || !isset($op['back'])) return $raw !== null ? (string) $raw : null;
+        unset($op['back']);
+        return json_encode($op, JSON_UNESCAPED_UNICODE);
     }
 
     /**
@@ -1082,9 +1189,11 @@ final class Jobs
         $j = self::own($id, $email, $admin);
         if ($j['status'] === 'running') Legacy::fail('진행 중인 작업은 먼저 취소한 뒤 지울 수 있습니다.', 409);
         $pdo = Db::pdo();
-        foreach (['deck_job_files', 'deck_job_events'] as $t) $pdo->prepare("DELETE FROM $t WHERE job_id = :i")->execute([':i' => $id]);
+        // 자료 목록·의견·답글도 함께 — 외래 키가 없어 작업을 지운 뒤에도 행이 남았다(R168)
+        foreach (['deck_job_files', 'deck_job_events', 'deck_job_docs', 'deck_job_comment_replies', 'deck_job_comments'] as $t) $pdo->prepare("DELETE FROM $t WHERE job_id = :i")->execute([':i' => $id]);
         Links::dropForJob($id);   // 받기 링크(0044) — 남아도 작업이 없으면 404 지만 같이 지운다
         $pdo->prepare('DELETE FROM deck_jobs WHERE id = :i')->execute([':i' => $id]);
+        if (preg_match('/^[0-9a-f]{16}$/', $id)) @unlink(Legacy::dataDir() . '/wire_feedback/' . $id . '.json');   // WireAi::learn 이 남긴 배치 기록(기획 글이 들어 있다)
         $root = Legacy::dataDir() . '/jobs/' . $id;
         if (preg_match('/^[0-9a-f]{16}$/', $id) && is_dir($root)) {
             $it = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($root, FilesystemIterator::SKIP_DOTS), RecursiveIteratorIterator::CHILD_FIRST);
@@ -1095,17 +1204,47 @@ final class Jobs
     }
 
     /** 다시 돌리기 — 끝난 작업을 같은 원본으로 대기열에 다시 올린다. */
+    /** 작업 용도(opts.purpose) — present(발표 장표) · submit(세로 제안서) · company(회사소개서) */
+    private static function purposeOf(array $j): string
+    {
+        $o = !empty($j['opts']) ? (json_decode((string) $j['opts'], true) ?: []) : [];
+        return is_array($o) ? (string) ($o['purpose'] ?? 'present') : 'present';
+    }
+
     public static function retry(string $id, string $email, bool $admin): array
     {
         $j = self::own($id, $email, $admin);
         if (!in_array($j['status'], ['failed', 'canceled', 'done'], true)) Legacy::fail('진행 중인 작업은 다시 돌릴 수 없습니다.', 409);
         self::limitCheck((string) $j['email']);
+        if (self::nothingToRead($j)) Legacy::fail('올린 자료의 보관 기간이 지나 서버에서 지워졌습니다. 다시 만들 수 없습니다(비용 없음). 자료를 다시 올려 새 작업으로 시작해 주세요.', 409);
         AiKeys::creditCheck((string) $j['email']);
+        // 세로 제안서·회사소개서가 장표 제작(build) 단계에 묶여 있으면(예전 수정 요청) 기획 단계로 — 이 둘은 build 단계가 없어 다시 돌려도 404 로 실패했다(R108)
+        $fixPhase = ($j['kind'] ?? '') === 'design' && ($j['phase'] ?? '') === 'build' && in_array(self::purposeOf($j), ['submit', 'company'], true);
+        // 완성된 작업을 다시 돌리면 전부 새로 — 앞선 부분 수정(review.revise)이 남아 있으면 의견 달린 장만 만들고 끝났다(R155). 실패한 수정 요청을 다시 돌릴 때는 그대로 이어 간다
+        $dropRevise = $j['status'] === 'done' && ($j['phase'] ?? '') === 'build';
+        // budget_base_usd = spent_usd — 다시 돌리기도 작업 한도를 다시 채운다. 세로 제안서·회사소개서는 시안 확정이 없어 기준선이 늘 0 이라 돈을 쓴 뒤 중간에 '한도 도달'로 멈췄다(R153)
+        // opts 의 '내용 입력으로' 표시도 지운다 — 남아 있으면 이번 실행을 멈출 때 기획·시안이 지워진다(R156)
         Db::pdo()->prepare("UPDATE deck_jobs SET status='queued', stage=NULL, progress=0, worker=NULL, claimed_at=NULL, heartbeat_at=NULL,
-                             started_at=NULL, finished_at=NULL, error=NULL, cancel_requested=0, created_at=NOW() WHERE id = :i")
-            ->execute([':i' => $id]);
-        self::event($id, 'info', '다시 돌리기 — 대기열에 다시 올렸습니다.');
+                             started_at=NULL, finished_at=NULL, error=NULL, cancel_requested=0, attempts=0, created_at=NOW(), budget_base_usd=spent_usd, opts=:o" . ($fixPhase ? ", phase='plan', review=NULL" : ($dropRevise ? ', review=NULL' : '')) . " WHERE id = :i")
+            ->execute([':o' => self::optsWithoutBack($j), ':i' => $id]);
+        self::event($id, 'info', '다시 돌리기 — 대기열에 다시 올렸습니다.' . ($fixPhase ? ' (세로 제안서·회사소개서는 처음 단계부터 다시 만듭니다)' : ''));
         return self::get($id, $email, $admin);
+    }
+
+    /**
+     * 다시 돌려도 읽을 것이 없는 작업 — 보관 기간이 지나 자료·글·원본이 지워졌고 다시 쓸 기획도 없다.
+     * 그대로 돌리면 표지 '사업명'·빈칸뿐인 결과에 비용만 썼다(R159). 세로 제안서·회사소개서는 기획을 자료에서 다시 만들므로 기획이 있어도 본다
+     */
+    public static function nothingToRead(array $j): bool
+    {
+        $polish = ($j['kind'] ?? '') !== 'design';
+        if (!$polish && !in_array($j['phase'] ?? 'plan', ['plan', 'build', '', null], true)) return false;
+        $direct = in_array(self::purposeOf($j), ['submit', 'company'], true);
+        if (!$polish && !$direct && (($j['phase'] ?? '') === 'build' || !empty(json_decode((string) ($j['plan'] ?? ''), true)['slides']))) return false;
+        if (mb_strlen(trim((string) ($j['note'] ?? ''))) >= 200) return false;   // 직접 적은 요청이 충분하면 엔진 검사(need_material)와 같이 지나간다
+        if (self::docs((string) $j['id'])) return false;
+        if (($j['source_kind'] ?? '') === 'pptx') return !is_file(self::dir((string) $j['id'], 'source') . '/source.pptx');
+        return !$polish && trim((string) ($j['brief'] ?? '')) === '';
     }
 
     /** 파일 내려주기 (로그인 확인 후). */
@@ -1114,7 +1253,7 @@ final class Jobs
         $j = self::view($id, $email, $admin);
         if (!in_array($kind, self::KINDS, true)) Legacy::fail('잘못된 파일 종류', 400);
         // 공유로 들어온 팀원은 시안·렌더만 (원본·결과 파일·자료는 주인만)
-        if (!$admin && $j['email'] !== $email && !in_array($kind, ['mockup', 'before', 'after', 'live'], true)) Legacy::fail('작업 주인만 받을 수 있습니다.', 403);
+        if (!$admin && $j['email'] !== $email && !self::sharedFileOk($kind, $name)) Legacy::fail('작업 주인만 받을 수 있습니다.', 403);
         $name = basename($name);
         $p = self::dir($id, $kind) . '/' . $name;
         if (!is_file($p)) Legacy::fail('파일이 없습니다.', 404);
@@ -1127,7 +1266,8 @@ final class Jobs
         };
         $out = $name;
         if ($kind === 'source') $out = $j['filename'];
-        if ($kind === 'result') $out = $j['result_name'] ?: $name;
+        // 결과 이름은 지금 결과에만 붙인다 — 옛 판 내용이 최신 이름으로 내려가지 않게(R154)
+        if ($kind === 'result') $out = basename((string) self::currentResult($id, (string) ($j['result_name'] ?? ''))) === $name ? ($j['result_name'] ?: $name) : $name;
         if ($kind === 'pilot' && $name === 'pilot.pptx') $out = preg_replace('/\.pptx$/i', '', (string) $j['filename']) . '_시안.pptx';
         if ($kind === 'draft') $out = preg_replace('/\.pptx$/i', '', (string) $j['filename']) . '_작업중.pptx';
         header('Content-Type: ' . $type);
@@ -1162,17 +1302,24 @@ final class Jobs
     {
         $pdo = Db::pdo();
         $out = ['canceled' => 0, 'requeued' => 0, 'failed' => 0, 'engine_down' => 0];
-        $dead = $pdo->query("SELECT id, opts FROM deck_jobs WHERE status = 'running' AND cancel_requested = 1 AND heartbeat_at < (NOW() - INTERVAL 90 SECOND)")->fetchAll(PDO::FETCH_KEY_PAIR);
-        foreach ($dead as $d => $dOpts) {
-            if (!empty((json_decode((string) $dOpts, true) ?: [])['back'])) { self::toHold((string) $d); continue; }
+        $dead = $pdo->query("SELECT id, opts, phase, kind, cancel_requested FROM deck_jobs WHERE status = 'running' AND cancel_requested = 1 AND heartbeat_at < (NOW() - INTERVAL 90 SECOND)")->fetchAll();
+        foreach ($dead as $dj) {
+            $d = (string) $dj['id'];
+            if (($dj['phase'] ?? '') === 'edit') { self::endEdit($d, (string) ($dj['kind'] ?? ''), 'warn', '글 고치기를 취소했습니다. 장표는 이전 그대로입니다.'); $out['canceled']++; continue; }
+            if (self::backRequested($dj)) { self::toHold($d); continue; }
             $st = $pdo->prepare("UPDATE deck_jobs SET status = 'canceled', stage = '취소됨', finished_at = NOW() WHERE id = :i AND status = 'running'");
             $st->execute([':i' => $d]);
-            if ($st->rowCount() === 1) { self::event((string) $d, 'warn', '취소되었습니다.'); $out['canceled']++; }
+            if ($st->rowCount() === 1) { self::event($d, 'warn', '취소되었습니다.'); $out['canceled']++; }
         }
-        $stale = $pdo->query("SELECT id, worker, attempts FROM deck_jobs WHERE status = 'running' AND heartbeat_at < (NOW() - INTERVAL 15 MINUTE)")->fetchAll();
+        $stale = $pdo->query("SELECT id, worker, attempts, phase, kind FROM deck_jobs WHERE status = 'running' AND heartbeat_at < (NOW() - INTERVAL 15 MINUTE)")->fetchAll();
         foreach ($stale as $s) {
             $id = (string) $s['id'];
             if ((int) $s['attempts'] >= self::MAX_ATTEMPTS) {
+                if (($s['phase'] ?? '') === 'edit') {   // 끝난 장표의 글 고치기 — 완성본은 그대로니 실패 작업으로 만들지 않는다(R152)
+                    self::endEdit($id, (string) ($s['kind'] ?? ''), 'warn', '글 고치기에 실패했습니다 — 장표는 이전 그대로입니다 (엔진과 연결이 끊겼습니다).');
+                    $out['failed']++;
+                    continue;
+                }
                 $msg = "엔진과 연결이 {$s['attempts']}번 끊겨 작업을 멈췄습니다. 자료가 너무 크거나 엔진에서 오류가 난 것 같습니다. 다시 돌리거나 관리자에게 문의해 주세요.";
                 $st = $pdo->prepare("UPDATE deck_jobs SET status = 'failed', stage = '실패', progress = 0, worker = NULL, finished_at = NOW(), error = :e WHERE id = :i AND status = 'running'");
                 $st->execute([':e' => $msg, ':i' => $id]);
@@ -1214,7 +1361,7 @@ final class Jobs
         for ($try = 0; $try < 3; $try++) {
             // 세로 제안서(제출용)는 기획 단계에서 결과까지 만드는 무거운 작업이라 가벼운 자리에 주지 않는다(엔진 is_heavy 와 같은 판정, 2026-10-15)
             $id = $pdo->query("SELECT id FROM deck_jobs WHERE status = 'queued'" . ($lightOnly ? " AND kind = 'design' AND phase IN ('plan', 'edit')
-                               AND NOT (COALESCE(JSON_UNQUOTE(JSON_EXTRACT(opts, '$.purpose')), '') IN ('submit', 'company') AND COALESCE(source_kind, '') <> 'pptx')" : '') . "
+                               AND NOT (COALESCE(JSON_UNQUOTE(JSON_EXTRACT(opts, '$.purpose')), '') IN ('submit', 'company'))" : '') . "
                                ORDER BY (SELECT COUNT(*) FROM deck_jobs r WHERE r.email = deck_jobs.email AND r.status = 'running'), created_at LIMIT 1")->fetchColumn();
             if ($id === false) return null;
             $st = $pdo->prepare("UPDATE deck_jobs SET status = 'running', worker = :w, claimed_at = NOW(), heartbeat_at = NOW(),
@@ -1223,13 +1370,13 @@ final class Jobs
             $st->execute([':w' => $worker, ':i' => $id]);
             if ($st->rowCount() === 1) {
                 self::event((string) $id, 'info', "변환 엔진이 작업을 시작했습니다 ({$worker}).");
-                $j = $pdo->prepare('SELECT id, email, title, filename, size, slides, note, phase, pilot_slide, feedback, kind, source_kind, brief, budget_usd, spent_usd, budget_base_usd, plan, review, theme, opts FROM deck_jobs WHERE id = :i');
+                $j = $pdo->prepare('SELECT id, email, title, filename, size, slides, note, phase, pilot_slide, feedback, kind, source_kind, brief, budget_usd, spent_usd, budget_base_usd, plan, review, theme, opts, result_name, docs_purged_at FROM deck_jobs WHERE id = :i');
                 $j->execute([':i' => $id]);
                 $row = $j->fetch();
                 $row['budget_usd'] = AiKeys::engineCap($row);   // 엔진은 누계(spent_usd)와 견준다 — 기준선을 더한 한도(0043)
                 unset($row['budget_base_usd']);
-                $rf = glob(self::dir((string) $id, 'result') . '/*.pptx') ?: [];
-                $row['result_file'] = $rf ? basename($rf[0]) : null;   // 글 고치기(phase=edit)가 받아 갈 결과 파일
+                $rf = self::currentResult((string) $id, (string) ($row['result_name'] ?? ''));
+                $row['result_file'] = $rf !== null ? basename($rf) : null;   // 글 고치기(phase=edit)가 받아 갈 결과 파일 — 내려받기와 같은 파일(R154)
                 $row['comments'] = self::comments((string) $id, true);  // 해결 안 된 핀 의견 — 엔진이 시안·장표에 반영
                 // 자가 개선 — 지난 작업들에서 반복된 결함(개선 체크리스트)을 이번 작업 지시에 넣는다
                 $row['lessons'] = [];
@@ -1266,13 +1413,52 @@ final class Jobs
         return $j;
     }
 
+    /** 엔진 단계 이름 → 화면 이름. 화면(stages.ts)이 '자산'을 '에셋'으로 바꾼 뒤(ab754b3) 옛 엔진이 보내는 '자산 교체'를 못 찾아 단계가 멈춰 보였다(2026-10-28) */
+    public static function stageName(string $s): string
+    {
+        $s = trim($s);
+        return ['자산 교체' => '에셋 교체', '자산교체' => '에셋 교체', '에셋교체' => '에셋 교체'][$s] ?? $s;
+    }
+
+    /**
+     * 엔진이 막 켜졌다고 알린다 — 이 이름으로 '진행 중' 인 작업은 앞 프로세스가 하던 것(배포·재시작으로 끊김).
+     * 15분(reap) 기다리지 않고 바로 대기열로 되돌려 같은 엔진이 곧바로 다시 잡아 이어 한다(엔진 쪽 이어 만들기, 2026-10-28 배포로 3번 끊김).
+     * 끊긴 횟수(attempts)는 세지 않는다 — 엔진을 죽이는 작업이 아니라 엔진이 다시 켜진 것이라서. 취소를 요청한 작업은 취소로 끝낸다.
+     * @return array{requeued:int, canceled:int}
+     */
+    public static function workerRestarted(string $worker): array
+    {
+        $pdo = Db::pdo();
+        $out = ['requeued' => 0, 'canceled' => 0];
+        $st = $pdo->prepare("SELECT id, cancel_requested, opts, phase, kind FROM deck_jobs WHERE status = 'running' AND worker = :w");
+        $st->execute([':w' => $worker]);
+        foreach ($st->fetchAll() as $r) {
+            $id = (string) $r['id'];
+            if ((int) $r['cancel_requested'] === 1) {
+                if (($r['phase'] ?? '') === 'edit') { self::endEdit($id, (string) ($r['kind'] ?? ''), 'warn', '글 고치기를 취소했습니다. 장표는 이전 그대로입니다.'); $out['canceled']++; continue; }
+                if (self::backRequested($r)) { self::toHold($id); $out['canceled']++; continue; }
+                $u = $pdo->prepare("UPDATE deck_jobs SET status = 'canceled', stage = '취소됨', finished_at = NOW() WHERE id = :i AND status = 'running'");
+                $u->execute([':i' => $id]);
+                if ($u->rowCount() === 1) { self::event($id, 'warn', '취소되었습니다.'); $out['canceled']++; }
+                continue;
+            }
+            $u = $pdo->prepare("UPDATE deck_jobs SET status = 'queued', worker = NULL, attempts = GREATEST(attempts - 1, 0) WHERE id = :i AND status = 'running' AND worker = :w");
+            $u->execute([':i' => $id, ':w' => $worker]);
+            if ($u->rowCount() === 1) {
+                self::event($id, 'info', "엔진({$worker})이 다시 켜졌습니다 — 하던 곳부터 이어서 합니다.");
+                $out['requeued']++;
+            }
+        }
+        return $out;
+    }
+
     /** 진행 보고 — 응답으로 취소 요청 여부를 돌려준다. */
     public static function progress(string $id, string $worker, array $b): array
     {
         $j = self::mine($id, $worker);
         $sets = ['heartbeat_at = NOW()'];
         $p = [':i' => $id];
-        if (isset($b['stage'])) { $sets[] = 'stage = :s'; $p[':s'] = mb_substr((string) $b['stage'], 0, 64); }
+        if (isset($b['stage'])) { $sets[] = 'stage = :s'; $p[':s'] = mb_substr(self::stageName((string) $b['stage']), 0, 64); }
         if (isset($b['progress'])) { $sets[] = 'progress = :p'; $p[':p'] = max(0, min(99, (int) $b['progress'])); }
         Db::pdo()->prepare('UPDATE deck_jobs SET ' . implode(', ', $sets) . ' WHERE id = :i')->execute($p);
         foreach ((array) ($b['events'] ?? []) as $e) {
@@ -1306,18 +1492,32 @@ final class Jobs
         $status = in_array($b['status'] ?? '', ['done', 'failed', 'canceled', 'review'], true) ? $b['status'] : 'failed';
         if (isset($b['engine']) && is_array($b['engine'])) {
             $en = $b['engine'];
+            // 모델 이름이 '회사/모델'(OpenRouter·서버 경로)이면 호출마다 'build' 로 이미 적었다 — 합계를 또 적으면 두 번 센다(10-28: $10.56 중 $2.12 가 겹침). 턴·시간만 남긴다
+            $enCost = str_contains((string) ($en['model'] ?? ''), '/') ? 0.0 : (float) ($en['cost'] ?? 0);
             Db::pdo()->prepare("INSERT INTO deck_ai_usage (email, job_id, kind, model, cost_usd, tokens_in, tokens_out, created_at) VALUES (?, ?, 'engine', ?, ?, ?, ?, NOW())")
-                ->execute([strtolower((string) $j0['email']), $id, mb_substr((string) ($en['model'] ?? 'claude'), 0, 128), (float) ($en['cost'] ?? 0),
+                ->execute([strtolower((string) $j0['email']), $id, mb_substr((string) ($en['model'] ?? 'claude'), 0, 128), $enCost,
                            (int) ($en['turns'] ?? 0), (int) ($en['seconds'] ?? 0)]);   // engine 행은 tokens_in=턴 수, tokens_out=걸린 초
         }
         // 개선 체크리스트 — 엔진 확인 목록·실패 사유를 쌓는다(막지 않음)
         if (isset($b['report']) && is_array($b['report'])) Checklist::safe(static fn () => Checklist::fromReport($id, $b['report']));
         if (isset($b['report']['guard']) && is_array($b['report']['guard'])) Checklist::safe(static fn () => Checklist::fromGuard($id, $b['report']));
         if ($status === 'failed' && !empty($b['error'])) Checklist::safe(static fn () => Checklist::fromFail($id, (string) $b['error']));
+        // 글 고치기가 안 됐다 — 장표는 이전 그대로라 완성 상태로 돌리고, 실패를 kind warn 으로 남긴다(화면 안내가 이것을 본다). 성공일 때만 '반영했습니다'(R152)
+        if (($j0['phase'] ?? '') === 'edit' && (!empty($b['failed']) || $status !== 'done')) {
+            $why = trim((string) ($b['message'] ?? ''));
+            if ($why === '') $why = '글 고치기에 실패했습니다 — 장표는 이전 그대로입니다' . (!empty($b['error']) ? ' (' . mb_substr((string) $b['error'], 0, 200) . ')' : '') . '.';
+            self::endEdit($id, (string) ($j0['kind'] ?? ''), 'warn', $why);
+            return ['ok' => true];
+        }
         // 「멈추고 내용 입력으로」를 눌러 멈춘 기획 — 취소로 끝내지 않고 시작 대기로 되돌린다
-        if ($status === 'canceled' && !empty((json_decode((string) ($j0['opts'] ?? ''), true) ?: [])['back'])) {
+        if ($status === 'canceled' && self::backRequested($j0)) {
             self::toHold($id);
             return ['ok' => true];
+        }
+        // 멈추기 전에 엔진이 먼저 끝냈다 — 표시를 지운다. 남겨 두면 나중에 멈추기만 해도 기획·시안이 지워졌다(R156)
+        if (!empty((json_decode((string) ($j0['opts'] ?? ''), true) ?: [])['back'])) {
+            Db::pdo()->prepare('UPDATE deck_jobs SET opts = :o, cancel_requested = 0 WHERE id = :i')->execute([':o' => self::optsWithoutBack($j0), ':i' => $id]);
+            self::event($id, 'warn', '멈추기 전에 이번 단계가 끝났습니다. 내용 입력으로 돌아가려면 다시 눌러 주세요.');
         }
         if ($status === 'done' && ($j0['phase'] ?? 'full') === 'pilot') return self::finishPilot($id, $b);
         if ($status === 'review') return self::finishPlan($id, $b);
@@ -1330,7 +1530,7 @@ final class Jobs
                        ':rep' => isset($b['report']) ? json_encode($b['report'], JSON_UNESCAPED_UNICODE) : null,
                        ':e' => isset($b['error']) ? mb_substr((string) $b['error'], 0, 4000) : null, ':i' => $id]);
         if (($j0['phase'] ?? '') === 'edit') {   // 글 고치기 — 원래 단계로 되돌리고 끝. 핀 의견·보고서는 건드리지 않는다
-            Db::pdo()->prepare('UPDATE deck_jobs SET phase = :p, review = NULL WHERE id = :i')->execute([':p' => ($j0['kind'] ?? '') === 'design' ? 'build' : 'full', ':i' => $id]);
+            Db::pdo()->prepare('UPDATE deck_jobs SET phase = :p, review = NULL, cancel_requested = 0 WHERE id = :i')->execute([':p' => ($j0['kind'] ?? '') === 'design' ? 'build' : 'full', ':i' => $id]);
             self::event($id, 'done', (string) ($b['message'] ?? '글 고치기를 반영했습니다.'));
             return ['ok' => true];
         }
@@ -1485,27 +1685,41 @@ final class Jobs
      */
     private static function approveDesign(array $j, string $email, bool $admin, array $b): array
     {
-        AiKeys::creditCheck((string) $j['email']);   // 시안·장표를 만들러 가기 전에
         $id = $j['id'];
         $mode = (string) ($b['mode'] ?? 'build');
+        // 세로 제안서(제출용)·회사소개서는 기획 단계에서 PPT 까지 한 번에 만든다 — 장표 제작(build) 단계가 없다.
+        // 수정 요청으로 phase=build 가 되면 엔진이 가로 장표 제작 길로 들어가 plan.json 을 찾다 404 로 1초 만에 실패했고,
+        // 다시 돌리기도 같은 단계라 계속 실패했다(10-28 'AI 민원 플랫폼', R108). 돈이 들기 전에 막는다
+        if ($mode === 'revise' && in_array(self::purposeOf($j), ['submit', 'company'], true)) {
+            Legacy::fail('세로 제안서·회사소개서는 수정 요청으로 다시 만들 수 없습니다. 결과 PPT 를 내려받아 고치거나, 요청을 메모에 적어 새 작업으로 만들어 주세요.', 409);
+        }
+        AiKeys::creditCheck((string) $j['email']);   // 시안·장표를 만들러 가기 전에
         $fb = trim((string) ($b['feedback'] ?? ''));
         $slides = array_values(array_filter((array) ($b['slides'] ?? []), 'is_array'));
-        $plan = !empty($j['plan']) ? json_decode((string) $j['plan'], true) : null;
-        if ($plan) WireAi::learn($id, $plan);   // 사람이 고친 와이어프레임을 남긴다(배치 학습용)
-        // 장별 내용 수정은 어느 모드든 plan 에 반영한다
-        if ($plan && isset($plan['slides'])) {
-            foreach ($slides as $s) {
-                foreach ($plan['slides'] as &$ps) {
-                    if ((int) ($ps['n'] ?? 0) === (int) ($s['n'] ?? -1)) {
-                        if (isset($s['content'])) $ps['content'] = mb_substr((string) $s['content'], 0, 20000);
-                        if (isset($s['title'])) $ps['title'] = mb_substr((string) $s['title'], 0, 300);
-                        foreach (['message', 'scene', 'layout'] as $k) if (isset($s[$k])) $ps[$k] = mb_substr((string) $s[$k], 0, 3000);
+        // 기획을 잠그고 최신본에 장별 수정을 얹어 돌려준다(확정·시안 다시 만들기가 같은 트랜잭션에서 쓴다). 함수 앞머리에서 읽은 기획을 쓰면,
+        // creditCheck(외부 호출) 동안 끝난 와이어 자동 저장을 옛 기획으로 덮어 "자동 저장됨" 뒤에도 수정이 사라졌다(R103 과 같은 꼴, R160)
+        $mergePlan = static function (\PDO $pdo) use ($id, $slides): ?string {
+            $st = $pdo->prepare('SELECT plan, status FROM deck_jobs WHERE id = :i FOR UPDATE');
+            $st->execute([':i' => $id]);
+            $row = $st->fetch();
+            if (!$row || $row['status'] !== 'review') Legacy::fail('시안 확인 단계가 아닙니다.', 409);   // 두 번 눌러도 돌고 있는 작업을 되돌리지 않게
+            $plan = !empty($row['plan']) ? json_decode((string) $row['plan'], true) : null;
+            if (!is_array($plan) || !$plan) return null;
+            WireAi::learn($id, $plan);   // 사람이 고친 와이어프레임을 남긴다(배치 학습용)
+            if (isset($plan['slides'])) {
+                foreach ($slides as $s) {
+                    foreach ($plan['slides'] as &$ps) {
+                        if ((int) ($ps['n'] ?? 0) === (int) ($s['n'] ?? -1)) {
+                            if (isset($s['content'])) $ps['content'] = mb_substr((string) $s['content'], 0, 20000);
+                            if (isset($s['title'])) $ps['title'] = mb_substr((string) $s['title'], 0, 300);
+                            foreach (['message', 'scene', 'layout'] as $k) if (isset($s[$k])) $ps[$k] = mb_substr((string) $s[$k], 0, 3000);
+                        }
                     }
+                    unset($ps);
                 }
-                unset($ps);
             }
-        }
-        $planJson = $plan ? json_encode($plan, JSON_UNESCAPED_UNICODE) : null;
+            return json_encode($plan, JSON_UNESCAPED_UNICODE);
+        };
         // 개선 체크리스트 — 사용자가 적은 의견(전체·장별·표지류)을 주제별로 쌓는다
         Checklist::safe(static function () use ($id, $fb, $slides, $b, $mode): void {
             $where = ['build' => '확정 요청', 'redo' => '다시 만들기', 'revise' => '수정 요청'][$mode] ?? '의견';
@@ -1523,8 +1737,11 @@ final class Jobs
             if ($j['status'] !== 'review') Legacy::fail('시안 확인 단계가 아닙니다.', 409);
             $all = trim(((string) ($j['feedback'] ?? '')) . ($fb !== '' ? "\n- " . mb_substr($fb, 0, 3000) : ''));
             // budget_base_usd = spent_usd — 시안 확정 때 작업 한도를 다시 채워 장표 제작이 한도만큼 온전히 쓴다(0043, 2026-10-18 사용자 결정)
-            Db::pdo()->prepare("UPDATE deck_jobs SET $requeue, phase = 'build', plan = COALESCE(:pl, plan), review = NULL, feedback = :f, budget_base_usd = spent_usd WHERE id = :i")
-                ->execute([':pl' => $planJson, ':f' => $all !== '' ? $all : null, ':i' => $id]);
+            Db::tx(static function (\PDO $pdo) use ($mergePlan, $requeue, $all, $id): void {
+                $planJson = $mergePlan($pdo);
+                $pdo->prepare("UPDATE deck_jobs SET $requeue, phase = 'build', plan = COALESCE(:pl, plan), review = NULL, feedback = :f, budget_base_usd = spent_usd WHERE id = :i")
+                    ->execute([':pl' => $planJson, ':f' => $all !== '' ? $all : null, ':i' => $id]);
+            });
             self::event($id, 'info', '시안 확정 — 장표를 만듭니다.' . ($fb !== '' ? " 요청: $fb" : ''));
             self::dropDocs($id, '장표 만들기로 넘어가 — 기획에만 쓰는');
         } elseif ($mode === 'redo') {
@@ -1539,9 +1756,13 @@ final class Jobs
             $ffb = [];
             foreach ((array) ($b['front_feedback'] ?? []) as $k => $v) if (preg_match('/^(cover|toc|div\d{0,2})$/', (string) $k) && trim((string) $v) !== '') $ffb[$k] = mb_substr(trim((string) $v), 0, 3000);
             if (!$redo && !$fr) Legacy::fail('다시 만들 장을 골라 주세요.');
-            Db::pdo()->prepare("UPDATE deck_jobs SET $requeue, phase = 'plan', plan = COALESCE(:pl, plan), review = :r WHERE id = :i")
-                ->execute([':pl' => $planJson, ':r' => json_encode(['redo' => $redo, 'feedback' => $fb, 'front_redo' => $fr, 'front_feedback' => (object) $ffb], JSON_UNESCAPED_UNICODE), ':i' => $id]);
-            $lab = ['cover' => '표지', 'toc' => '목차', 'div' => '간지'];
+            $review = json_encode(['redo' => $redo, 'feedback' => $fb, 'front_redo' => $fr, 'front_feedback' => (object) $ffb], JSON_UNESCAPED_UNICODE);
+            Db::tx(static function (\PDO $pdo) use ($mergePlan, $requeue, $review, $id): void {
+                $planJson = $mergePlan($pdo);
+                $pdo->prepare("UPDATE deck_jobs SET $requeue, phase = 'plan', plan = COALESCE(:pl, plan), review = :r WHERE id = :i")
+                    ->execute([':pl' => $planJson, ':r' => $review, ':i' => $id]);
+            });
+            $lab =['cover' => '표지', 'toc' => '목차', 'div' => '간지'];
             self::event($id, 'info', '시안을 다시 만듭니다: ' . implode(', ', array_merge(array_map(static fn($s) => $s['n'] . '쪽', $redo),
                 array_map(static fn($x) => $lab[preg_replace('/\d+$/', '', $x)] . (preg_match('/\d+$/', $x, $mm) ? " {$mm[0]}" : ''), $fr))));
         } elseif ($mode === 'revise') {
@@ -1551,7 +1772,8 @@ final class Jobs
             $all = trim(((string) ($j['feedback'] ?? '')) . ($fb !== '' ? "\n- " . mb_substr($fb, 0, 3000) : ''));
             $ns = array_values(array_unique(array_map(static fn($c) => (int) $c['slide'], self::comments($id, true))));
             // revise.all = 글로 적은 요청이 있어 전체를 다시 / 아니면 slides(의견이 달린 장)만 다시 만든다
-            Db::pdo()->prepare("UPDATE deck_jobs SET $requeue, phase = 'build', feedback = :f, review = :r WHERE id = :i")
+            // budget_base_usd = spent_usd — 수정 요청도 작업 한도를 다시 채운다. 안 그러면 첫 제작에 쓴 돈이 수정 몫에서 빠져 곧바로 '한도 도달'로 실패했다(10-28 점검 D01)
+            Db::pdo()->prepare("UPDATE deck_jobs SET $requeue, phase = 'build', feedback = :f, review = :r, budget_base_usd = spent_usd WHERE id = :i")
                 ->execute([':f' => $all !== '' ? $all : null, ':r' => json_encode(['revise' => ['all' => $fb !== '', 'slides' => $ns]]), ':i' => $id]);
             self::clearFront($id);
             self::event($id, 'info', '수정 요청을 반영해 장표를 다시 만듭니다' . ($pins ? " (장표 위 의견 {$pins}개)" : '') . ($fb !== '' ? ': ' . $fb : '.'));

@@ -54,6 +54,25 @@ export interface AdminOps {
   members: { signups7: number; dormant_requests: number; dormant: number; expiring30: number; free_viewers: number };
 }
 export const fetchOps = () => apiFetch<AdminOps>("/admin/ops");
+
+/** 지금 도는 장표 작업 — 모든 사용자의 진행·대기·확인 대기·시작 대기(api/routes/admin.php GET /admin/deck/live). 시간은 서버 기준 초 */
+export type DeckLiveStatus = "running" | "queued" | "review" | "hold";
+export interface DeckLiveJob {
+  id: string; title: string; email: string; owner: string | null; owner_name: string | null;
+  kind: string; phase: string | null; purpose: string | null; status: DeckLiveStatus; stage: string | null; progress: number; worker: string | null;
+  cancel_requested: boolean; spent_usd: number; budget_usd: number | null;
+  created_at: string; started_at: string | null; heartbeat_at: string | null;
+  elapsed_sec: number; heartbeat_sec: number | null; queue_pos: number | null;
+  last_event: { ts: string; kind: string; message: string } | null; url: string;
+}
+export interface DeckLive {
+  now: string;
+  jobs: DeckLiveJob[];
+  counts: Record<DeckLiveStatus, number>;
+  today: { done: number; failed: number; canceled: number; failures: Array<{ id: string; title: string; owner: string | null; stage: string | null; error: string | null; finished_at: string; url: string }> };
+  engine: { online: boolean; slots: number | null; workers: Array<{ name: string; seen_sec: number; slots: number | null; running: number }> };
+}
+export const fetchDeckLive = () => apiFetch<DeckLive>("/admin/deck/live");
 export const fetchContacts = (o: { status?: string; q?: string; page?: number }) => apiList<AdminContact>(`/admin/contacts${qs(o)}`);
 export const fetchRemovals = (o: { status?: string; q?: string; page?: number }) => apiList<AdminRemoval>(`/admin/removals${qs(o)}`);
 export const fetchUsers = (o: { kind?: string; role?: string; q?: string; page?: number }) => apiList<AdminUser>(`/admin/users${qs(o)}`);
@@ -61,7 +80,7 @@ export const fetchUsers = (o: { kind?: string; role?: string; q?: string; page?:
 export const CONTACT_STATUS_KO: Record<ContactStatus, string> = { open: "새 문의", answered: "답변함", closed: "닫음" };
 export const REMOVAL_STATUS_KO: Record<RemovalStatus, string> = { received: "접수", reviewing: "검토 중", done: "삭제 처리", rejected: "반려" };
 export const REASON_KO: Record<AdminRemoval["reason_kind"], string> = { copyright: "저작권", privacy: "개인정보·초상권", other: "기타" };
-export const TOPIC_KO: Record<string, string> = { general: "일반", team: "팀·도입", data: "데이터", bug: "오류", partner: "제휴", removal: "삭제 요청" };
+export const TOPIC_KO: Record<string, string> = { general: "일반", team: "팀·도입", data: "데이터", bug: "오류", partner: "제휴", removal: "삭제 요청", limit: "한도 증액" };
 
 /** 문의에 붙은 AI 판단을 짧은 꼬리표로 — 작성자가 고른 주제와 다르면 AI 가 본 주제, 급함·스팸 */
 export function contactAiTags(c: AdminContact): string[] {
@@ -340,7 +359,7 @@ export const auditTargetKo = (t: string) => {
 export const AUDIT_KO: Record<string, string> = {
   "user.create": "수동 추가", "user.plan": "플랜 지정", "user.block": "차단", "user.unblock": "차단 해제", "points.adjust": "포인트 조정",
   "credits.adjust": "크레딧 조정", "key.revoke": "키 폐기", "role.grant": "역할 부여", "role.revoke": "역할 회수",
-  "key.issue": "키 발급", "user.rename": "이름 변경", "user.consent": "약관 동의", "user.delete": "탈퇴",
+  "key.issue": "키 발급", "user.rename": "이름 변경", "user.profile": "첫 정보 입력", "user.consent": "약관 동의", "user.delete": "탈퇴",
   "asset.delete": "에셋 삭제", "asset.restore": "에셋 복원", "asset.request": "자료 요청", "asset.request.update": "자료 요청 처리",
   "comm.admin.notice": "공지 쓰기", "comm.admin.update": "글 상태 변경", "comm.admin.delete": "글 삭제",
   "comm.admin.comment.hide": "댓글 숨김", "comm.admin.comment.show": "댓글 보이기",

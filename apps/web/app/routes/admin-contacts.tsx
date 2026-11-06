@@ -16,7 +16,7 @@ import { Table, TableBody, TableCell, TableHeader, TableRow } from "@/components
 import { Textarea } from "@/components/ui/textarea";
 import { CONTACT_STATUS_KO, contactAiTags, fetchContacts, fmtAt, TOPIC_KO, type AdminContact, type ContactStatus } from "@/lib/admin";
 import { bulkContacts, bulkMessage } from "@/lib/admin-bulk";
-import { postJson } from "@/lib/api";
+import { apiFetch, postJson } from "@/lib/api";
 import type { Route } from "./+types/admin-contacts";
 
 export const meta: Route.MetaFunction = () => [{ title: "문의 — powerPlus 관리자" }];
@@ -99,6 +99,44 @@ export default function AdminContacts() {
   );
 }
 
+type ImageCap = { cap: number | null; spent: number; personal: boolean; blocked: boolean; requested: boolean };
+
+/** 그림 한도 증액 요청 — 그 사람의 이달 그림 사용·상한을 보고 바로 올린다. 올리면 요청은 답변 완료로 닫히고 본인에게 알림(관리자만) */
+function ImageCapBox({ email }: { email: string }) {
+  const qc = useQueryClient();
+  const q = useQuery({ queryKey: ["admin", "image-cap", email], queryFn: () => apiFetch<ImageCap>(`/deck/ai/image-cap/user?email=${encodeURIComponent(email)}`), retry: false });
+  const [cap, setCap] = useState("");
+  const set = useMutation({
+    mutationFn: (v: number | null) => postJson<ImageCap>("/deck/ai/image-cap/user", { email, cap: v }, "PUT"),
+    onSuccess: (r) => {
+      toast.success(r.cap == null ? "그림 상한을 없앴습니다." : `그림 월 상한을 $${r.cap}(으)로 바꿨습니다.`);
+      setCap("");
+      void qc.invalidateQueries({ queryKey: ["admin"] });
+    },
+    onError: (e) => toastError(e),
+  });
+  if (q.isError) return null;   // 관리자가 아니면(문의 담당) 보이지 않는다
+  const s = q.data;
+  const n = Number(cap);
+  const bad = cap.trim() === "" || !isFinite(n) || n < 0;
+  return (
+    <section className="rounded-xl border border-line p-4">
+      <h3 className="text-sm font-semibold text-ink-4">그림 한도 늘리기</h3>
+      <p className="mt-2 text-md">
+        {s ? <>이달 그림 사용 <b>${s.spent.toFixed(2)}</b> / 상한 <b>{s.cap == null ? "없음" : `$${s.cap.toFixed(2)}`}</b>{s.personal && " (개인 값)"}{s.blocked && <span className="ml-1 font-bold text-[var(--color-warn)]">· 막힘</span>}</> : "불러오는 중…"}
+      </p>
+      <div className="mt-3 flex flex-wrap items-center gap-2">
+        <label className="flex items-center gap-2 text-sm text-ink-4">새 월 상한 $
+          <input className="h-9 w-[110px] rounded-md border border-line px-2 text-right font-mono" inputMode="decimal" value={cap} onChange={(e) => setCap(e.target.value)} placeholder={s?.cap != null ? String(Math.max(s.cap * 2, 40)) : "40"} aria-label="새 그림 월 상한 (USD)" />
+        </label>
+        <Button onClick={() => set.mutate(n)} disabled={set.isPending || bad}><Save aria-hidden />적용</Button>
+        {s?.personal && <Button variant="outline" onClick={() => set.mutate(null)} disabled={set.isPending}>전체 값으로 되돌리기</Button>}
+      </div>
+      <p className="mt-2 text-sm text-ink-4">적용하면 이 요청은 답변 완료로 닫히고 요청한 사람에게 알림이 갑니다. 0 은 상한 없음입니다.</p>
+    </section>
+  );
+}
+
 function ContactDetail({ c }: { c: AdminContact }) {
   const qc = useQueryClient();
   const [reply, setReply] = useState(c.reply ?? "");
@@ -134,6 +172,7 @@ function ContactDetail({ c }: { c: AdminContact }) {
           <h3 className="text-sm font-semibold text-ink-4">문의 내용</h3>
           <p className="mt-2 whitespace-pre-wrap rounded-xl bg-ground-3 p-4 text-md leading-relaxed">{c.message}</p>
         </section>
+        {c.topic === "limit" && <ImageCapBox email={c.email} />}
         <section>
           <label htmlFor="reply" className="text-sm font-semibold text-ink-4">답변</label>
           <Textarea id="reply" value={reply} onChange={(e) => setReply(e.target.value)} rows={7} maxLength={5000} placeholder="보낸 사람에게 보낼 답변이나 처리 메모" className="mt-2 text-md" />

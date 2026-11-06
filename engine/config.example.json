@@ -1,5 +1,5 @@
 {
-  "api_base": "https://powerplus.hom2box.com/api/v1/deck",
+  "api_base": "https://<서버 주소>/api/v1/deck",
   "worker_key": "서버 platform_conf 의 worker.key 와 같은 값(pp_worker_…)",
   "name": "office-pc",
   "python": "C:/Users/<사용자>/AppData/Local/Python/pythoncore-3.14-64/python.exe",

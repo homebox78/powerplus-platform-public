@@ -220,7 +220,7 @@ def layout(s):
         spc = max(0.1, spc - lred)
         n, w, segtxt = 0, 0.0, []
         for sg in segs:
-            sw = sum(_width(_font(_face(rp, end, ldef)), t, _sz(rp, end, ldef) * fscale) for t, rp in sg)
+            sw = sum(_width(_font(_face(rp, ldef, end)), t, _sz(rp, ldef, end) * fscale) for t, rp in sg)
             st = "".join(t for t, _ in sg)
             k = max(1, -(-int(sw) // max(1, int(box_w)))) if wrap and box_w > 0 and st.strip() else 1
             n += k

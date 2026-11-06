@@ -172,11 +172,12 @@ export function MockupReview({ job, onChange, isAdmin, me, onLogout }: { job: Jo
   const [focus, setFocus] = useState<number | null>(null);      // 스레드 창이 열린 핀
   const [showDone, setShowDone] = useState(false);
   const imgBox = useRef<HTMLDivElement>(null);
-  useEffect(() => {  // 팀원 의견이 들어오는지 8초마다
-    const f = () => api<{ data: PinComment[] }>(`/jobs/${job.id}/comments`).then((r) => setComments(unwrapList(r))).catch(() => {});
+  useEffect(() => {  // 팀원 의견이 들어오는지 8초마다 — 로그인 없이 보는 사람은 묻지 않는다(R168)
+    if (job.anon) return;
+    const f = () => { if (!document.hidden) api<{ data: PinComment[] }>(`/jobs/${job.id}/comments`).then((r) => setComments(unwrapList(r))).catch(() => {}); };
     const t = setInterval(f, 8000);
     return () => clearInterval(t);
-  }, [job.id]);
+  }, [job.id, job.anon]);
   useEffect(() => {
     const k = (e: KeyboardEvent) => {
       const tag = (e.target as HTMLElement)?.tagName;
@@ -355,22 +356,41 @@ export function MockupReview({ job, onChange, isAdmin, me, onLogout }: { job: Jo
 
   /* ── 기획 수정 자동 저장 ── */
   const [saved, setSaved] = useState<"idle" | "saving" | "saved" | "error">("idle");
+  const wireNow = useRef(wireEd);   // 지금 안 저장된 와이어 — 넘어가기 전 저장(flushWires)이 본다
+  wireNow.current = wireEd;
+  const wireTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const wireSaving = useRef<Promise<unknown> | null>(null);
+  const saveWires = (edited: Record<number, WireBlock[]>) => {
+    const ns = Object.keys(edited).map(Number);
+    const p = api<Job>(`/jobs/${job.id}`, { method: "PATCH", body: JSON.stringify({ slides: ns.map((n) => ({ n, wire: edited[n] })) }) });
+    wireSaving.current = p;
+    return p.then((j) => {
+      setWireEd((w) => { const x = { ...w }; for (const n of ns) if (x[n] === edited[n]) delete x[n]; return x; });
+      return j;
+    });
+  };
   useEffect(() => {   // 와이어프레임 자동 저장 — 끄는 중에는 0.7초마다 한 번
     if (!mine) return;
-    const ns = Object.keys(wireEd).map(Number);
-    if (!ns.length) return;
+    if (!Object.keys(wireEd).length) return;
     setSaved("saving");
     const sent = { ...wireEd };
     const t = setTimeout(async () => {
       try {
-        onChange(await api<Job>(`/jobs/${job.id}`, { method: "PATCH", body: JSON.stringify({ slides: ns.map((n) => ({ n, wire: sent[n] })) }) }));
-        setWireEd((w) => { const x = { ...w }; for (const n of ns) if (x[n] === sent[n]) delete x[n]; return x; });
+        onChange(await saveWires(sent));
         setSaved("saved");
       } catch { setSaved("error"); }
     }, 700);
+    wireTimer.current = t;
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [wireEd]);
+  /** 시안 확정·다시 만들기 전에 — 기다리는 와이어 수정을 먼저 저장한다. 그냥 넘어가면 화면이 바뀌며 타이머가 취소돼 마지막 수정이 사라졌다(R160). 저장이 실패하면 넘어가지 않는다 */
+  const flushWires = async () => {
+    clearTimeout(wireTimer.current);
+    if (wireSaving.current) await wireSaving.current.catch(() => {});
+    if (Object.keys(wireNow.current).length) await saveWires({ ...wireNow.current });
+    setSaved("saved");
+  };
   const dirtyKey = JSON.stringify(slides.map((s) => FIELDS.map((k) => (ed(s.n)[k] !== undefined && ed(s.n)[k] !== (s[k] ?? "") ? ed(s.n)[k] : null))));
   useEffect(() => {
     if (!mine) return;
@@ -412,7 +432,10 @@ export function MockupReview({ job, onChange, isAdmin, me, onLogout }: { job: Jo
     try { onChange(await f()); setEdits({}); } catch (e) { setErr((e as Error).message); }
     setBusy(null);
   };
-  const build = () => run("build", () => api<Job>(`/jobs/${job.id}/approve`, { method: "POST", body: JSON.stringify({ mode: "build", feedback: fb.trim(), slides: payload(), front }) }));
+  const build = () => run("build", async () => {
+    await flushWires();
+    return api<Job>(`/jobs/${job.id}/approve`, { method: "POST", body: JSON.stringify({ mode: "build", feedback: fb.trim(), slides: payload(), front }) });
+  });
   const make = async () => {
     const und = picked.filter(abWait);
     if (und.length && !(await ask(`${und.map((s) => s.n).join(", ")}쪽은 A·B 배치 중 아직 고르지 않았습니다.
@@ -420,6 +443,7 @@ export function MockupReview({ job, onChange, isAdmin, me, onLogout }: { job: Jo
     return makeRun();
   };
   const makeRun = () => run("redo", async () => {
+    await flushWires();
     const b = budget.trim() === "" ? null : Number(budget);
     if (isAdmin && b !== job.budget_usd) await api(`/jobs/${job.id}`, { method: "PATCH", body: JSON.stringify({ budget_usd: b }) });
     const r = await api<Job>(`/jobs/${job.id}/approve`, { method: "POST", body: JSON.stringify({ mode: "redo", feedback: fb.trim(), slides: payload(), redo: picked.map((s) => s.n),
@@ -703,7 +727,7 @@ export function MockupReview({ job, onChange, isAdmin, me, onLogout }: { job: Jo
   const costNote = isAdmin && est != null && nPick ? ` · ≈ ${usd(est * (nPick + fauto), 3)}` : "";
   const actions = (
     <>
-      <button className="btn-danger" title="그만두기" disabled={!!busy} onClick={() => run("cancel", () => api<Job>(`/jobs/${job.id}/cancel`, { method: "POST" }))}><Ms name="close" size={20} />그만두기</button>
+      <button className="btn-danger" title="그만두기" disabled={!!busy} onClick={async () => { if (await ask("이 작업을 그만둡니다. 다시 돌리면 시안을 새로 그려 AI 비용이 듭니다.", { title: "그만둘까요?", ok: "그만두기", danger: true })) run("cancel", () => api<Job>(`/jobs/${job.id}/cancel`, { method: "POST" })); }}><Ms name="close" size={20} />그만두기</button>
       {job.status === "review" && (job.phase ?? "plan") === "plan" && (
         <button className="btn-back" disabled={!!busy} title="기획을 지우고 내용 입력으로 — 자료를 더하거나 뺀 뒤 기획을 처음부터 다시 짭니다"
           onClick={async () => {

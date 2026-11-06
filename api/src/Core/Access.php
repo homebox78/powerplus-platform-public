@@ -119,6 +119,31 @@ final class Access
         return preg_match('#^/assets/setup/download|^/deck/jobs/[^/]+/(export\.zip|files/|plan\.md|script\.(html|md)|practice\.html)|^/deck/kit/|^/deck/reference\.zip#', $path) !== 1;
     }
 
+    /**
+     * 임직원 전용 잠금(팀장 2026-10-28 "임직원 및 pro 이상만 서비스 이용 가능. free 는 가입 후, 현재는 임직원만 이용 가능하다고 안내").
+     * 웹 세션으로 로그인했지만 member() 가 아닌 사람(외부·Free·임직원 기간 끝) — 예전의 '보기만'(viewAllowed)도 닫는다.
+     * 판정은 member() 그대로: 운영 역할(관리자·큐레이터·지원) · 플랜 pro/team(활성 구독, 개인·조직) · staff(kind=staff + 이용 기간 안, Users::plan).
+     * API 키(MCP)·워커는 여기서 보지 않는다 — 키 요청은 예전대로 member() 검사(402)만. 테스트 계정은 기존 정책(읽기 전용)대로 통과.
+     */
+    public static function staffOnlyBlocks(Actor $a): bool
+    {
+        return $a->user !== null && $a->via === 'session' && !self::member($a) && !TestLogin::isActor($a);
+    }
+
+    /** 잠긴 사람에게도 열어 두는 요청(내 정보·이름 저장·로그아웃·탈퇴·문의 보내기) */
+    public static function staffOnlyAllowed(string $method, string $path): bool
+    {
+        return Profile::allowed($method, $path) || ($method === 'POST' && $path === '/contact');
+    }
+
+    public static function staffOnlyError(Actor $a): HttpError
+    {
+        $hint = ($a->user !== null && ($a->user['kind'] ?? '') === 'staff' && Users::staffExpired($a->user))
+            ? '임직원 이용 기간이 끝났습니다. 관리자에게 연장을 요청하세요.'
+            : 'Pro 이상 이용권이 있으면 이용할 수 있습니다. 문의하기로 알려 주세요.';
+        return new HttpError('STAFF_ONLY', '현재 powerPlus 는 임직원만 이용할 수 있습니다.', 403, $hint);
+    }
+
     /** member() 가 false 일 때 돌려줄 오류 — 화면이 code 로 안내를 고른다(로그인 / 임직원 기간 끝 / 플랜 필요). */
     public static function memberError(Actor $a): HttpError
     {

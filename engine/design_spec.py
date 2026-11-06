@@ -14,6 +14,8 @@ BASE = {
     "grid": [
         "Canvas reference 1600×900 px (scale proportionally). Top 11% (≈100 px) stays EMPTY plain background — the headline is set later.",
         "12-column grid: outer side margins 48 px, gutter 20 px. Every block starts and ends on a column edge; blocks in one row share the same top edge and the same height unless the layout says otherwise.",
+        # 11-03 사용자 "카드 안 컨텐츠도 마감 마지막에 서로 맞게 — 그래야 균형" — 칸 높이만 같고 안쪽 끝이 들쭉날쭉했다
+        "EVEN BOTTOMS: in cards or panels side by side, the CONTENT also ends on one line — the last chip row or last text line of each card sits at the same bottom, with the same bottom padding. A card with fewer items spreads its rows (larger row gap, taller chips or cards) to reach that line instead of stopping early with an empty band below; never fill the gap with added items.",
         "Vertical rhythm: 20 px between rows of blocks, 32 px empty at the very bottom. No block touches the image edge.",
     ],
     "type": [
@@ -89,6 +91,7 @@ BASE = {
         "each form block is drawn as its form (Gantt grid, staircase, chevrons, big numbers, chart) — not as a header-band box with bullets",
         "at most one panel header band on the slide; no empty or one-word boxes",
         "all cards: same border, radius, padding",
+        "side-by-side cards end their content on the same bottom line (no card stops early with an empty band below)",
         "all icons: same family, size and stroke",
         "type sizes follow the scale; exactly two weights",
         "no text touches a card edge or a picture",

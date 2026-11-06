@@ -6,7 +6,7 @@ type Provider = "google" | "naver" | "kakao" | "email";
 type Role = "superadmin" | "admin" | "curator" | "support";
 
 interface Me {
-  user: { id: string; email: string | null; name: string | null; avatar_url: string | null; birthday: string | null; marketing_opt_in: boolean; name_changed_at: string | null; created_at: string | null } | null;
+  user: { id: string; email: string | null; name: string | null; nickname?: string | null; dept?: string | null; avatar_url: string | null; birthday: string | null; marketing_opt_in: boolean; name_changed_at: string | null; created_at: string | null } | null;
   kind: "staff" | "external" | "anon" | "worker";
   plan: "staff" | "free" | "pro" | "team";
   roles: Role[];
@@ -14,10 +14,12 @@ interface Me {
   logins?: Array<{ provider: Provider; email: string | null; email_verified: 0 | 1; last_login_at: string | null }>;
   limits?: { api_daily: number };
   billing_visible?: boolean;
-  /** 가입 동의 상태 — required 면 웹이 동의 화면을 띄우고, 서버는 로그인 기능을 428 로 막는다. */
+  /** 가입 동의 기록(열람용) — 웹은 더 이상 동의 창을 띄우지 않는다(임직원 전용, 2026-10-28). */
   consent?: { required: boolean; version: string; missing: string[]; agreed_at: string | null };
+  /** 첫 화면 정보(이름 필수) — required 면 웹이 '처음 오셨네요' 창을 띄우고, 서버는 로그인 기능을 428 PROFILE_REQUIRED 로 막는다. */
+  profile?: { required: boolean; name: string | null; nickname: string | null; dept: string | null; done_at: string | null };
   /** 서비스 이용 자격(회원 전용) — member 가 아니면 reason 으로 안내를 고른다. staff_until = 임직원 이용 기간 끝 */
-  access?: { member: boolean; view?: boolean; reason: "UNAUTHORIZED" | "PLAN_REQUIRED" | "STAFF_EXPIRED" | null; staff_until: string | null };
+  access?: { member: boolean; view?: boolean; reason: "UNAUTHORIZED" | "PLAN_REQUIRED" | "STAFF_EXPIRED" | null; staff_until: string | null; staff_only?: boolean };
 }
 
 const meQuery = queryOptions({

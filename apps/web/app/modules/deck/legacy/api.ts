@@ -106,13 +106,13 @@ export type Job = {
   kind?: JobKind; source_kind?: "pptx" | "md" | "text"; budget_usd?: number | null; spent_usd?: number;
   /** 작업 한도 기준선(0043) — 시안 확정 때 spent_usd 로 다시 잡고 대본·예상 질문 비용만큼 오른다. 한도 판정 = spent_usd − budget_base_usd ≥ budget_usd */
   budget_base_usd?: number; plan?: Plan | null; theme?: string | null;
-  review?: { redo?: { n: number; feedback: string }[]; feedback?: string } | null;
+  review?: { redo?: { n: number; feedback: string }[]; feedback?: string; revise?: { all?: boolean; slides?: number[] } } | null;
   files?: Record<"before" | "after" | "result" | "extra" | "source" | "live" | "frames" | "draft" | "pilot" | "mockup", JobFile[]>;
   docs?: JobDoc[];
   mine?: boolean; shared?: boolean; comments?: PinComment[];
   /** 공유 링크 권한 0 끔 · 1 의견 · 2 편집 · 3 링크로 누구나 보기 / can_edit: 내가 기획·와이어프레임을 고칠 수 있다 / anon: 로그인 없이 링크로 보는 중 */
   share?: 0 | 1 | 2 | 3; can_edit?: boolean; anon?: boolean;
-  opts?: { slides: number; mockups: "plan" | "sample" | "all"; sample: number; front?: Front; style?: string; vstyle?: string; vtone?: string; ctheme?: string; ctone?: string; cfree?: boolean; purpose?: "submit" | "present" | "company"; lang?: string; font_title?: string; font_body?: string; back?: number } | null;
+  opts?: { slides: number; slides_set?: boolean; mockups: "plan" | "sample" | "all"; sample: number; front?: Front; style?: string; vstyle?: string; vtone?: string; ctheme?: string; ctone?: string; cfree?: boolean; purpose?: "submit" | "present" | "company"; lang?: string; font_title?: string; font_body?: string; back?: number } | null;
   est_image_usd?: number | null;
   /** 단계별 비용 — engine 은 구독 사용분의 API 환산액(실제 청구 아님). engine 행의 a = 턴 수, b = 걸린 초 */
   script?: { made_at: string; chars: number; sec?: number; goal?: number; brief?: boolean; stale?: boolean; batch?: number; none?: boolean; slides: ScriptSlide[]; qa?: QA[] } | null;
@@ -124,6 +124,18 @@ export type Job = {
 export const isDesign = (j: Job) => j.kind === "design";
 /** 글 고치기·표지 넣기를 반영하는 중 — 화면은 결과 화면에 그대로 둔다(진행 화면으로 넘기지 않는다) */
 export const isEditing = (j: Job) => j.phase === "edit" && (j.status === "queued" || j.status === "running");
+/** 작업 목록 화면 상태 — 처음 불러오기가 실패하면 '불러오는 중'에 멈추지 않고 오류로(R158) */
+export const listLoadState = (jobs: unknown[] | null, err: string | null): "error" | "loading" | "ready" => (jobs !== null ? "ready" : err ? "error" : "loading");
+/** 방금 글 고치기가 실패했으면 그 안내 글 — 서버가 kind warn 으로 남긴다(성공은 kind done). 마지막 기록만 본다(R152) */
+export const editFailure = (events?: Pick<JobEvent, "kind" | "message">[] | null): string | null => {
+  const last = (events ?? []).slice(-1)[0];
+  return last?.kind === "warn" && /글 고치기에 실패/.test(last.message) ? last.message : null;
+};
+/** 지금 다시 돌리면 일부 장만 만드나 — 실패한 수정 요청을 잇는 경우. 완성된 작업을 다시 돌리면 서버가 수정 범위를 지우고 전부 만든다(R155) */
+export const retryOnlySlides = (j: Pick<Job, "status" | "review">): number | null => {
+  const rv = j.review?.revise;
+  return j.status !== "done" && rv && !rv.all && rv.slides?.length ? rv.slides.length : null;
+};
 /** 산출물 링크 — 기획 MD, 전체 zip (세션 쿠키 인증) */
 export const refZipUrl = () => `${API}/reference.zip`;
 export const jobUrl = (jobId: string, what: "plan.md" | "export.zip" | "fonts.zip" | "script.html" | "script.md" | "script.html?dl=1" | "script.md?dl=1" | "practice.html" | "practice.html?dl=1") => `${API}/jobs/${jobId}/${what}`;
@@ -143,7 +155,7 @@ const RESUME_KEY = (f: File) => `pd_up_${f.name}_${f.size}_${f.lastModified}`;
 
 export type MockupMode = "plan" | "sample" | "all";
 type UploadMeta = { title: string; note: string; pilot?: boolean; kind?: JobKind; budget_usd?: number | null; accent?: string | null; hold?: boolean;
-  slides?: number; mockups?: MockupMode; sample?: number; front?: Front; style?: string; ctheme?: string; ctone?: string; cfree?: boolean; purpose?: "submit" | "present" | "company"; lang?: string; font_title?: string; font_body?: string; event?: string; date?: string };
+  slides?: number; slides_set?: boolean; mockups?: MockupMode; sample?: number; project?: string; front?: Front; style?: string; vstyle?: string; vtone?: string; ctheme?: string; ctone?: string; cfree?: boolean; purpose?: "submit" | "present" | "company"; lang?: string; font_title?: string; font_body?: string; event?: string; date?: string };
 /** 맥락 자료(RFP 등)를 작업에 붙인다 — 같은 분할 업로드, purpose=doc */
 export const uploadDoc = (file: File, jobId: string, onProgress: (p: UploadProgress) => void, signal: AbortSignal) =>
   uploadFile(file, { title: "", note: "" }, onProgress, signal, { purpose: "doc", job_id: jobId }) as unknown as Promise<{ docs: JobDoc[] }>;

@@ -494,7 +494,7 @@ ON DUPLICATE KEY UPDATE name = VALUES(name);
 INSERT INTO core_point_rules (reason, delta, daily_cap, yearly_cap, note) VALUES
  ('signup', 100, 1, NULL, '가입'), ('attend', 5, 1, NULL, '출석(일 1회)'), ('attend_streak7', 20, 1, NULL, '연속 7일'),
  ('birthday', 50, NULL, 1, '생일'), ('share_create', 20, 3, NULL, '공유 링크 만들기'), ('share_open', 5, 20, NULL, '내 공유 링크 열림'),
- ('mockup_keep', 20, 5, NULL, '시안 보관 81점+'), ('like_received', 2, 50, NULL, '좋아요 받기'), ('post', 10, 5, NULL, '글'),
+ ('mockup_keep', 20, 5, NULL, '시안 보관 85점+'), ('like_received', 2, 50, NULL, '좋아요 받기'), ('post', 10, 5, NULL, '글'),
  ('comment', 3, 20, NULL, '댓글'), ('guide_proposal_accepted', 100, NULL, NULL, '규칙 제안 채택'), ('asset_request_accepted', 50, NULL, NULL, '콘텐츠 요청 채택'),
  ('use_mockup_open', -30, NULL, NULL, '남의 시안 열기'), ('use_asset_preview', -50, 3, NULL, 'pro 에셋 미리보기'),
  ('use_deck_credit', -300, NULL, NULL, '장표 체험 1크레딧'), ('use_screen_unlock', -20, NULL, NULL, '잠긴 화면 1장')

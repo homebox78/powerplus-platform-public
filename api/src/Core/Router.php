@@ -111,9 +111,16 @@ final class Router
                 if (!empty($r['opt']['auth']) && $actor->user === null) {
                     throw HttpError::unauthorized();
                 }
-                // 가입 동의(만 14세·약관·개인정보·국외 이전) 전에는 로그인이 필요한 기능을 막는다 — 웹은 동의 화면을 띄운다.
-                if ((!empty($r['opt']['auth']) || !empty($r['opt']['role'])) && Consents::blocks($actor) && !Consents::allowed($method, $path)) {
-                    throw new HttpError('CONSENT_REQUIRED', '이용약관 등 필수 항목에 동의해야 이용할 수 있습니다.', 428, '로그인 후 나오는 동의 화면에서 동의해 주세요.');
+                // 첫 화면 정보(이름 필수) 입력 전에는 로그인이 필요한 기능을 막는다 — 웹은 '처음 오셨네요' 창을 띄운다.
+                // 예전 약관 동의 검사(Consents::blocks, CONSENT_REQUIRED)는 뺐다 — 임직원만 쓰는 서비스라 동의 창을 띄우지 않는다(팀장 2026-10-28).
+                if ((!empty($r['opt']['auth']) || !empty($r['opt']['role'])) && Profile::blocks($actor) && !Profile::allowed($method, $path)) {
+                    throw new HttpError('PROFILE_REQUIRED', '이름을 입력해야 이용할 수 있습니다.', 428, '로그인 후 나오는 창에서 이름을 입력해 주세요.');
+                }
+                // 임직원 전용(팀장 2026-10-28): 웹 세션의 외부·Free 회원은 로그인 기능·회원 전용 경로를 403 STAFF_ONLY 로 막는다(웹은 안내 창).
+                // 공개 경로(OPEN_PATHS 중 로그인이 필요 없는 것)는 그대로 — 비로그인과 같게 본다. 키·워커는 Access::staffOnlyBlocks 가 건너뛴다.
+                if ((!empty($r['opt']['auth']) || !empty($r['opt']['role']) || !self::isOpen($method, $path))
+                    && Access::staffOnlyBlocks($actor) && !Access::staffOnlyAllowed($method, $path)) {
+                    throw Access::staffOnlyError($actor);
                 }
                 if (!empty($r['opt']['role']) && !$actor->hasRole((string) $r['opt']['role'])) {
                     throw HttpError::forbidden();

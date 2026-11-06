@@ -204,7 +204,7 @@ def test_single_engine_resume():
 def _vertical_mocks(calls, fail_b, fail_build):
     import vertical as V
 
-    def outline(job, brief, note, ctx, raw, pages):
+    def outline(job, brief, note, ctx, raw, pages, fallback_name=""):
         calls["outline"] += 1
         return {"project": {"name": "가짜 사업", "client": "", "year": "2026", "doc": "기술제안서"}, "_reqs": 0,
                 "chapters": [{"no": "Ⅰ", "title": "가", "sections": []}, {"no": "Ⅱ", "title": "나", "sections": []}, {"no": "※", "title": "별첨", "sections": []}]}

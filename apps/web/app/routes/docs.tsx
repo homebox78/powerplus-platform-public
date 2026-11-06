@@ -403,7 +403,7 @@ const ERROR_BLOCKS: DocBlock[] = [
     ["FORBIDDEN_SCOPE", "403", "키에 그 모듈(assets·deck·mock·guide) 범위가 없습니다. REST·powerMCP 같습니다. 마이페이지 › API·MCP 키에서 범위를 확인하세요."],
     ["JUDGE_REQUIRED", "403", "시안 판정은 powerMCP 의 mock_check_mockup 으로만 기록됩니다."],
     ["TEST_READ_ONLY", "403", "테스트 계정은 읽기 전용입니다."],
-    ["CONSENT_REQUIRED", "428", "필수 약관 동의 전입니다. 웹에 로그인해 동의 화면에서 동의하세요."],
+    ["PROFILE_REQUIRED", "428", "이름을 아직 입력하지 않았습니다. 웹에 로그인해 처음 나오는 창에서 이름을 입력하세요."],
     ["CSRF_BLOCKED", "403", "상태를 바꾸는 요청에 X-Requested-With·JSON 본문·키가 없습니다."],
     ["BLOCKED", "403", "이용이 정지된 계정입니다."],
     ["UPGRADE_REQUIRED", "402", PLANS_UI ? "지금 플랜에서 볼 수 없는 자료입니다." : "지금 계정 권한으로 볼 수 없는 자료입니다."],

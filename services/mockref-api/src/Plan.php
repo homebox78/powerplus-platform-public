@@ -73,9 +73,15 @@ final class Plan
             return ['id' => 'enterprise', 'limits' => self::limits('enterprise'), 'admin' => true, 'logged_in' => true, 'via_key' => true, 'staff' => true];
         }
         // powerMCP 중계: 플랫폼이 /keys/verify 에서 판정한 플랜을 X-Pp-Plan 으로 싣는다(staff·pro·team·admin = pro, 그 외 free).
-        // 서비스 키가 유효할 때만 믿는다 — 여기 구독표는 서비스 키 소유자 것이라 사용자 플랜을 모른다(2026-10-09 시험: staff 가 Pro 402).
+        // 여기 구독표는 서비스 키 소유자 것이라 사용자 플랜을 모른다(2026-10-09 시험: staff 가 Pro 402).
+        // 키 표에는 서비스 키 표시가 없다 — powerMCP 만 쥔 판정 비밀(judge.secret = PP_JUDGE_SECRET)의 서명이 맞을 때만 믿는다(MC-131).
+        // 예전엔 아무 유효 키나 이 헤더만 붙이면 staff 로 올라가 공공누리 2~4유형 원본까지 받았다. 서명이 없으면 헤더를 무시하고 그 키 자신의 구독으로 본다.
         $hint = strtolower(trim((string) ($_SERVER['HTTP_X_PP_PLAN'] ?? '')));
-        if ($hint !== '') {
+        $secret = (string) \Config::get('judge.secret', '');
+        if ($hint !== '' && $secret === '') {
+            error_log('[mockref] X-Pp-Plan 이 왔지만 config judge.secret 이 비어 믿지 않는다');
+        }
+        if ($hint !== '' && self::planHintSigned($hint, (string) ($_SERVER['HTTP_X_PP_PLAN_SIG'] ?? ''), (int) ($_SERVER['HTTP_X_PP_PLAN_TS'] ?? 0), $secret, time())) {
             if (in_array($hint, ['pro', 'team', 'staff', 'enterprise'], true)) {
                 $pro = self::limits('pro');
                 $pro['design_data'] = 'full';
@@ -88,6 +94,15 @@ final class Plan
         $sub = Db::row("SELECT plan_id FROM subscriptions WHERE owner_type = ? AND owner_id = ? AND status IN ('trial','active','past_due') ORDER BY id DESC LIMIT 1", [$k['owner_type'], (int) $k['owner_id']]);
         $pid = (string) ($sub['plan_id'] ?? 'free');
         return ['id' => $pid, 'limits' => self::limits($pid), 'admin' => false, 'logged_in' => true, 'via_key' => true];
+    }
+
+    /** X-Pp-Plan 서명 확인 — HMAC-SHA256(비밀, "plan|{플랜}|{유닉스 초}"), 시각은 ±300초(판정 서명 homebox_judge_signed 와 같은 폭). 비밀이 비면 늘 false */
+    public static function planHintSigned(string $hint, string $sig, int $ts, string $secret, int $now): bool
+    {
+        if ($secret === '' || $sig === '' || $ts <= 0 || abs($now - $ts) > 300) {
+            return false;
+        }
+        return hash_equals(hash_hmac('sha256', 'plan|' . $hint . '|' . $ts, $secret), strtolower(trim($sig)));
     }
 
     /** @return array<string,mixed> */

@@ -192,13 +192,26 @@ def merge(out, parts):
 
 
 def replace(base, pairs):
+    """새 장을 모두 먼저 붙인 뒤 자리를 바꾸고, 옛 장은 마지막에 뺀다.
+    예전엔 장마다 '붙이기 → 옛 장 빼기' 를 번갈아 해, 뺀 장의 파트 이름을 다음 새 장이 다시 받아 여러 장이 한 이름(slideN.xml)으로
+    저장됐다 — 표지·목차·간지가 모두 마지막 간지(PART 4)로 나왔다(10-28 사용자, R110)"""
     pres = Presentation(base)
+    lst = pres.slides._sldIdLst
+    olds = list(lst)
     for n, f in pairs:
-        if n < 1 or n > len(pres.slides):
+        if n < 1 or n > len(olds):
             raise ValueError(f"{n}쪽이 없습니다")
+    news = []
+    for n, f in pairs:
         append(pres, f, n)
-        move(pres, len(pres.slides) - 1, n)   # 예전 n 뒤로
-        delete(pres, n - 1)
+        news.append((n, list(lst)[-1]))
+    for n, el in news:   # 새 장을 옛 장 바로 앞으로
+        lst.remove(el)
+        olds[n - 1].addprevious(el)
+    for n, _ in news:   # 옛 장을 뺀다(이제는 새 장을 더 만들지 않으니 이름이 겹치지 않는다)
+        old = olds[n - 1]
+        pres.part.drop_rel(old.rId)
+        lst.remove(old)
     pres.save(base)
     return len(pairs)
 

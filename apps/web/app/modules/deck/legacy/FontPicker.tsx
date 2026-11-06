@@ -9,6 +9,14 @@ export const TITLE_FONTS: F[] = (list as { title: F[] }).title;
 export const BODY_FONTS: F[] = (list as { body: F[] }).body;
 /** 세로 제안서(제출용) 본문 서체 — 가로 장표와 같은 목록(2026-10-14 사용자 지정 4종, 전부 OFL). 엔진 vertical.VBODY 도 같은 파일을 읽는다 */
 export const VERTICAL_BODY_FONTS: F[] = BODY_FONTS;
+/** 서체 고르기 보이기 — 2026-10-28 사용자 "국문은 제목 G마켓 산스·본문 a시월구일2~4 로 통일, 서체 고르는 건 지우지 말고 화면에서 가려 줘(나중에 살릴 수 있게)".
+ * 엔진은 국문 장표면 고른 값과 상관없이 통일 서체(fonts.json ko_unified)를 쓴다. 다시 보이려면 true 로 */
+export const SHOW_FONT_PICKER = false;
+const KO_UNIFIED = (list as unknown as { ko_unified?: { title: string; body: string } }).ko_unified;
+/** 요약에 보일 서체 — 국문이고 통일이 켜져 있으면 통일 서체, 아니면 고른 서체(다국어는 엔진이 언어에 맞게 고친다) */
+export const fontSummary = (title: string | undefined, body: string | undefined, lang?: string) =>
+  (lang ?? "ko") === "ko" && KO_UNIFIED ? `${fontName("title", KO_UNIFIED.title)} / ${fontName("body", KO_UNIFIED.body)}`
+    : SHOW_FONT_PICKER ? `${fontName("title", title)} / ${fontName("body", body)}` : "언어에 맞는 기본 서체";
 export const fontName = (kind: "title" | "body", id?: string) => (kind === "title" ? TITLE_FONTS : BODY_FONTS).find((f) => f.id === id)?.name ?? (kind === "title" ? TITLE_FONTS : BODY_FONTS)[0]?.name;
 
 /* ── 언어별 서체(R82, 2026-10-18) — 지원율 표 data/font_cover.json = engine/fontcover.py 가 서체 파일로 잰 값(엔진 fontset.for_lang 과 같은 표·같은 기준).

@@ -19,6 +19,7 @@ import { PLANS_UI } from "@/lib/plans-ui";
 import { api, ApiError, isEditing, type Engine, type Job } from "./legacy/api";
 import { ask, Asker, GlobalContextMenu, Toaster, useToastOn } from "./legacy/ui";
 import { getAi } from "./legacy/openrouter";
+import { ImageCapNotice } from "./legacy/ImageCapNotice";
 import { Upload } from "./legacy/screens/Upload";
 import { Running } from "./legacy/screens/Running";
 import { Review } from "./legacy/screens/Review";
@@ -38,6 +39,7 @@ type Ctx = {
   loadAi: () => void;
   logout: () => Promise<void>;
   go: (to: string) => void;
+  jobsErr: string | null;
 };
 
 const LIVE = (s: Job["status"]) => s === "queued" || s === "running" || s === "hold";
@@ -88,7 +90,11 @@ function DeckRoot({ children, anon = false, plain = false }: { children: (c: Ctx
   }, [email]);
 
   // 작업 목록 — 목록 화면 + 진행 중이면 4초마다
-  const loadJobs = useCallback(() => { api<{ data: Job[] } | Job[]>(`/jobs${all ? "?all=1" : ""}`).then((r) => setJobs(Array.isArray(r) ? r : r.data)).catch(() => {}); }, [all]);
+  const [jobsErr, setJobsErr] = useState<string | null>(null);   // 못 불러오면 화면에 알린다 — 삼키면 영원히 '불러오는 중'이었다(R158)
+  const loadJobs = useCallback(() => {
+    setJobsErr(null);
+    api<{ data: Job[] } | Job[]>(`/jobs${all ? "?all=1" : ""}`).then((r) => setJobs(Array.isArray(r) ? r : r.data)).catch((e: unknown) => setJobsErr((e as Error).message || "잠시 뒤 다시 시도해 주세요."));
+  }, [all]);
   // 작업 한 건(?id=)으로 들어오면 목록은 부르지 않는다 — 비로그인 공유 링크가 목록 401 로 로그인에 튕기던 것(상2)
   useEffect(() => { if (email && !anon) loadJobs(); }, [email, anon, loadJobs, pathname]);
   const listLive = (jobs ?? []).some((j) => LIVE(j.status));
@@ -111,7 +117,8 @@ function DeckRoot({ children, anon = false, plain = false }: { children: (c: Ctx
   return (
     <div className={plain ? "pd" : "pd pd-root mt-8"}>
       <GlobalContextMenu />
-      {children({ me, engine, jobs, all, setAll, loadJobs, loadAi, logout, go })}
+      {!anon && <ImageCapNotice />}
+      {children({ me, engine, jobs, jobsErr, all, setAll, loadJobs, loadAi, logout, go })}
       <Toaster />
       <Asker />
     </div>
@@ -159,7 +166,8 @@ function JobView({ id, c }: { id: string; c: Ctx }) {
   // 실패·멈춘 design 작업도 기획·와이어·시안을 다시 본다(2026-10-13 사용자 지시) — 이 작업 id 면 기획 화면
   const [planView, setPlanView] = useState<string | null>(null);
   // 설정·취소·시작은 작업 주인(또는 관리자)만 — 공유받은 사람 화면에서는 숨긴다(중4). 서버는 어차피 403 이지만 보이지 않아야 한다
-  const owner = job?.is_owner ?? job?.mine !== false;
+  // 관리자는 남의 작업도 멈추기·시작할 수 있다(서버 Jobs::cancel 도 관리자를 받는다) — 다른 직원 작업에 멈춤 버튼이 없었다(10-28 사용자)
+  const owner = (job?.is_owner ?? job?.mine !== false) || !!(me as { isAdmin?: boolean }).isAdmin;
   const onNew = () => go("/deck/convert");
 
   if (!job) return <div className="flex-1 flex items-center justify-center text-[14px] font-semibold text-dim">{jobErr ?? "불러오는 중…"}</div>;
@@ -208,7 +216,7 @@ function JobsScreen() {
     <DeckRoot anon={!!id}>
       {(c) => id
         ? <JobView key={id} id={id} c={c} />
-        : <JobList jobs={c.jobs} all={c.all} isAdmin={c.me.isAdmin} onToggleAll={() => c.setAll((a) => !a)}
+        : <JobList jobs={c.jobs} loadErr={c.jobsErr} all={c.all} isAdmin={c.me.isAdmin} onToggleAll={() => c.setAll((a) => !a)}
             onOpen={(jid) => c.go(`/deck/jobs?id=${encodeURIComponent(jid)}`)} onNew={() => c.go("/deck/convert")} onChanged={c.loadJobs} />}
     </DeckRoot>
   );

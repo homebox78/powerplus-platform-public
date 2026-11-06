@@ -31,8 +31,9 @@ return static function (Router $r): void {
     $catIds = array_column(COMM_CATEGORIES, 'id');
     $author = static fn (array $row): array => [
         'id' => (string) $row['author_pid'],
-        'name' => trim((string) ($row['author_name'] ?? '')) ?: '회원',
-        'avatar' => $row['author_avatar'] ?: null,
+        // 운영자(admin·superadmin) 글은 개인 이름·이메일 대신 'powerplus' 로(2026-10-28 사용자) — 공지·답변이 회사 이름으로 보이게
+        'name' => !empty($row['author_admin']) ? 'powerplus' : (trim((string) ($row['author_name'] ?? '')) ?: '회원'),
+        'avatar' => !empty($row['author_admin']) ? null : ($row['author_avatar'] ?: null),
         'admin' => !empty($row['author_admin']),
         'staff' => ($row['author_kind'] ?? '') === 'staff',
     ];

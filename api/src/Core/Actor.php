@@ -65,6 +65,8 @@ final class Actor
                 'id' => $this->user['public_id'],
                 'email' => $this->user['email'],
                 'name' => $this->user['name'],
+                'nickname' => $this->user['nickname'] ?? null,
+                'dept' => $this->user['dept'] ?? null,
                 'avatar_url' => $this->user['avatar_url'] ?? null,
                 'birthday' => $this->user['birthday'] ?? null,
                 'marketing_opt_in' => (bool) ($this->user['marketing_opt_in'] ?? 0),

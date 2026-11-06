@@ -17,6 +17,7 @@ use Pp\Core\HttpError;
 use Pp\Core\Keys;
 use Pp\Core\OAuth;
 use Pp\Core\Otp;
+use Pp\Core\Profile;
 use Pp\Core\Response;
 use Pp\Core\Router;
 use Pp\Core\Scan;
@@ -127,7 +128,10 @@ return static function (Router $r): void {
             $out['logins'] = Db::rows('SELECT provider, email, email_verified, last_login_at FROM core_user_logins WHERE user_id = ? ORDER BY id', [$a->id()]);
             $out['limits'] = ['api_daily' => Access::limit($a, 'api_daily', 0)];
             $out['billing_visible'] = (bool) Config::get('features.billing_visible', false) || $a->hasRole('superadmin');
-            $out['consent'] = Consents::status((int) $a->id());
+            $out['consent'] = Consents::status((int) $a->id());   // 기록 열람용으로만 남긴다 — 웹은 더 이상 동의 창을 띄우지 않는다
+            // 첫 화면 정보 입력(이름 필수) — required 면 웹이 '처음 오셨네요' 창을 띄우고 서버는 428 PROFILE_REQUIRED 로 막는다
+            $out['profile'] = Profile::status($a->user);
+            $out['profile']['required'] = Profile::blocks($a);
         }
         // 서비스 이용 자격(회원 전용, 2026-10-16) — 화면이 잠금 안내를 고른다. staff_until = 임직원 이용 기간 끝
         $member = Access::member($a);
@@ -136,6 +140,8 @@ return static function (Router $r): void {
             'view' => $member || Access::viewer($a),   // 보기 — 로그인한 Free 회원은 화면을 볼 수 있다(쓰기·내려받기는 member 만)
             'reason' => $member ? null : Access::memberError($a)->errorCode,
             'staff_until' => $a->user !== null && ($a->user['kind'] ?? '') === 'staff' ? ($a->user['access_until'] ?? null) : null,
+            // 임직원 전용 잠금(2026-10-28) — true 면 웹이 닫을 수 없는 안내 창을 띄우고, 서버는 로그인 기능을 403 STAFF_ONLY 로 막는다
+            'staff_only' => Access::staffOnlyBlocks($a),
         ];
         Response::json($out);
     });
@@ -143,6 +149,11 @@ return static function (Router $r): void {
     // ---- 가입 동의(만 14세·약관·개인정보·국외 이전 필수, 마케팅 선택). 동의 전에는 Router 가 로그인 기능을 막는다.
     $r->post('/me/consents', function (array $p, Actor $a): void {
         Response::json(Consents::record($a, Response::input()));
+    }, ['auth' => true]);
+
+    // ---- 첫 화면 정보 입력(이름 필수 2~20자·닉네임·소속 선택). 본인 행만 바꾼다. 입력 전에는 Router 가 로그인 기능을 막는다.
+    $r->post('/me/profile', function (array $p, Actor $a): void {
+        Response::json(Profile::save($a, Response::input()));
     }, ['auth' => true]);
 
     // ---- 내 크레딧 지갑(결제 공개 여부와 무관하게 본다 — 관리자 지급·월 포함분도 여기서 보인다)
@@ -308,6 +319,10 @@ return static function (Router $r): void {
         // 결제·청구 기록은 전자상거래법에 따라 5년 보존(core_invoices 그대로).
         // ACC-005: 사용자 행에 남는 개인정보는 전부 이 자리에서 비운다(생일·마케팅 동의·환경설정·알림 메일 설정·이름 변경 시각·차단 사유).
         Db::tx(function () use ($u, $a, $mailTo): void {
+            // 첫 화면에서 받은 닉네임·소속도 개인정보 — 비운다(0048 칸이 있을 때만, 마이그레이션 전에도 탈퇴가 깨지지 않게)
+            if (array_key_exists('nickname', $u)) {
+                Db::exec('UPDATE core_users SET nickname = NULL, dept = NULL WHERE id = ?', [$u['id']]);
+            }
             Db::exec(
                 "UPDATE core_users SET email = CONCAT('deleted-', id, '@deleted.local'), name = '탈퇴한 사용자', avatar_url = NULL,
                     birthday = NULL, marketing_opt_in = 0, marketing_opt_at = NULL, name_changed_at = NULL, prefs = NULL,

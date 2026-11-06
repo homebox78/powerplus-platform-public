@@ -10,12 +10,12 @@
      표지 1 · 목차(장마다) · 간지(장마다) · 본문을 만든다. 쪽 번호는 장별(Ⅱ - 3), 목차 쪽 번호는 실제 쪽.
   기본 양식의 출처: design/제안서템플릿(사내 표준 세로 템플릿)을 2026-10-14 세션에서 정비한 것."""
 import contextvars, copy, hashlib, io, json, math, os, re, time, urllib.parse, urllib.request
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from PIL import Image, ImageDraw, ImageFont
 from lxml import etree
 from pptx import Presentation
 from pptx.oxml import parse_xml   # python-pptx 요소 클래스로 만든다 — etree.fromstring 도형은 도형 목록을 훑을 때 깨진다
-from pptx.util import Cm, Pt
+from pptx.util import Cm, Emu, Pt
 
 import design
 import resume
@@ -48,7 +48,8 @@ OUTLINE_SYSTEM = """너는 공공 SI 제안서 기획자다. 올린 자료(제�
   concept(추진 체계·비전) · strategy(전략 목록) · compare(현행→개선) · process(절차·단계) · cards(구성 요소 2~4개) · rows(구분별 방안)
   · layers(계층 구성도) · table(목록·비교 표) · org(조직·역할) · gantt(일정) · kpi(목표 수치)
   같은 kind 가 세 항목 연속으로 오지 않게 하고, 한 kind 가 전체 항목의 30%를 넘지 않게 한다(엔진이 규칙표로 한 번 더 맞춘다).
-- project.name 은 자료에 적힌 공식 사업명, client 는 발주기관 정식 명칭, year 는 사업연도(없으면 올해).
+- project.name 은 자료에 적힌 공식 사업명, client 는 발주기관 정식 명칭, year 는 자료에 적힌 사업연도(자료에 없으면 빈 글 — 짐작하지 않는다).
+- project.doc 은 문서 종류. 제안요청서에 답하는 문서면 "기술제안서", 교육자료·보고서·안내서처럼 제안서가 아니면 그 이름("교육자료" 등).
 - chapter.art 는 그 장을 상징하는 '작은 사물 하나'를 영어로(예: "a glass magnifier over data cards"). 사람·장면·글자 없이.
 - chapter.keywords 는 배경 그림 검색용 한국어 낱말 2~4개(예: ["사업이해", "돋보기", "분석"]).
 - 자료에 없는 사실을 지어내지 않는다.
@@ -379,11 +380,12 @@ def text_cm(t, pt, face="a시월구일2"):
 # ───────────────────────── 기획
 def _ctx(job, j, brief):
     raw = design.load_context(job, 1200000) or ""
+    design.need_material(job, raw, brief, str(j.get("note") or ""))   # 원본 pptx 로 시작한 작업은 그 글이 brief 로 온다(design._plan_phase) — 같은 검사로 지나간다
     ctx = design.digest_context(job, raw) if raw else ""
     return ctx, raw
 
 
-def outline(job, brief, note, ctx, raw, pages):
+def outline(job, brief, note, ctx, raw, pages, fallback_name=""):
     user = (f"# 메모·요청\n{note or '(없음)'}\n\n# 사업 요약\n{ctx or '(없음)'}\n\n# 원문 발췌(제안서 목차·작성요령·평가 항목)\n"
             + design._excerpts(raw, ["제안서 목차", "작성요령", "작성지침", "평가 항목", "배점", "사업명", "발주"], 9000) + f"\n\n# 직접 쓴 글\n{brief or '(없음)'}")
     o = design._plan_call(job, OUTLINE_SYSTEM.replace("{pages}", str(pages)), user, 7000, "세로 제안서 목차")
@@ -397,6 +399,7 @@ def outline(job, brief, note, ctx, raw, pages):
     o["chapters"] = body + [att]
     reqs = vertical_rules.collect(raw)   # 자료 수집 — RFP 요구사항 상세표(고유번호·명칭·정의·세부내용)
     o["_reqs"] = len(reqs)
+    o["_req_list"] = [{"id": r["id"], "name": r.get("name") or ""} for r in reqs.values()]   # 별첨 요구사항 대응표(R117) — 번호·명칭만 보관
     flat = []
     for c in body:   # 항목마다 규칙 + 근거, 주 구성은 규칙 후보 안에서·세 번 연속 금지(조건문)
         for s in c.get("sections") or []:
@@ -406,11 +409,208 @@ def outline(job, brief, note, ctx, raw, pages):
                 flat.append(it)
     vertical_rules.assign_kinds(flat)
     p = o.setdefault("project", {})
-    p["name"] = str(p.get("name") or "").strip() or "사업명"
+    # 사업명을 못 찾으면 입력한 사업명 → 작업 이름 — 예전엔 글자 그대로 '사업명'이 표지에 찍혔다(10-29 057f·d4fd·d448, R144)
+    nm = str(p.get("name") or "").strip()
+    p["name"] = (nm if nm and not re.fullmatch(r"[(\[]?\s*사업\s*명\s*[)\]]?", nm) else "") or fallback_name or "사업명"
     p["client"] = str(p.get("client") or "").strip()
-    p["year"] = re.sub(r"[^0-9]", "", str(p.get("year") or "")) or time.strftime("%Y")
+    # 연도는 자료에 있을 때만 — AI 가 자료에 없는 연도를 지어냈다(지금 2026년인데 표지 2025년, 10-29 057f·d4fd·d448·110d, R144)
+    yr = re.sub(r"[^0-9]", "", str(p.get("year") or ""))
+    p["year"] = yr if len(yr) == 4 and yr in f"{raw} {ctx} {brief} {note}" else time.strftime("%Y")
     p["doc"] = str(p.get("doc") or "기술제안서")
     return o
+
+
+def fit_outline(job, o, pages, explicit):
+    """목차를 사용자가 적은 쪽 수에 맞춘다(R107) — '5장 지정' 인데 RFP 목차 규칙(절마다 1쪽)이 이겨 본문 65쪽을 만들었다(10-28).
+    적지 않았으면(explicit=False) 그대로 두고 최소 쪽 수만 알린다. 줄일 때: ① 항목마다 1쪽 ② 그래도 많으면 절마다 앞 항목부터 남긴다.
+    RFP 권고 목차의 절은 빼지 않는다(위원이 채점표와 1:1 로 맞춰 본다) — 그래서 절 수보다 적게는 줄지 않는다"""
+    body = [c for c in o.get("chapters") or [] if c.get("no") != "※"]
+    secs = [s for c in body for s in c.get("sections") or []]
+    its = [it for s in secs for it in s.get("items") or []]
+    total = sum(int(it.get("pages") or 1) for it in its)
+    n_sec = sum(1 for s in secs if s.get("items"))
+    msg = f"RFP 권고 목차: 장 {len(body)} · 절 {len(secs)} · 항목 {len(its)} → 본문 {total}쪽"
+    if not explicit or not its or total <= pages * 1.15 + 1:
+        job.event(msg + ("" if explicit else f" (쪽 수를 적으면 그 수에 맞춰 줄입니다 — 최소 {n_sec}쪽)"), "done")
+        return o
+    for it in its:
+        it["pages"] = 1
+    target = max(pages, n_sec)
+    if len(its) > target:
+        keep, level = set(), 0
+        while len(keep) < target:
+            added = False
+            for s in secs:
+                lst = s.get("items") or []
+                if level < len(lst) and len(keep) < target:
+                    keep.add(id(lst[level]))
+                    added = True
+            if not added:
+                break
+            level += 1
+        for s in secs:
+            s["items"] = [it for it in (s.get("items") or []) if id(it) in keep]
+    new_total = sum(int(it.get("pages") or 1) for s in secs for it in s.get("items") or [])
+    job.event(msg + f" — 지정한 {pages}쪽에 맞춰 {new_total}쪽으로 줄였습니다"
+              + (f"(RFP 목차 절 {n_sec}개는 빼지 않아 최소 {n_sec}쪽)" if pages < n_sec else "") + ".", "done")
+    return o
+
+
+class _Split(Exception):
+    """긴 장 — 한 번에 쓰지 않고 처음부터 조각으로 나눠 쓴다는 표시"""
+
+
+CHUNK_ITEMS = 4   # 긴 장을 나눠 쓸 때 한 번에 쓰는 항목 수(절 안에서)
+
+
+def _cache_path(job):
+    return os.path.join(job.dir, "_slides", "_vertical_parts.json")
+
+
+def _cached_call(job, user, tokens, what):
+    """본문 요청 하나 — 같은 요청(지시문 해시)을 앞 실행에서 이미 받았으면 다시 부르지 않는다.
+    장 단위 보관만으로는 41쪽 장 도중에 멈추면 끝난 조각도 버렸다(10-28 사용자 "한 데까지 저장되고 이어서", R106)"""
+    k = hashlib.sha1((CHAPTER_SYSTEM + "\n" + user + f"\n{tokens}").encode("utf-8", "replace")).hexdigest()
+    vp = getattr(job, "_vp", None)
+    lock = vp["lock"] if vp else None
+    try:
+        got = json.load(open(_cache_path(job), encoding="utf-8")).get(k)
+    except Exception:
+        got = None
+    if got:
+        job.event(f"{what} — 앞 실행에서 받은 것을 다시 씁니다(AI 호출 없음).", "done")
+        return got
+    d = design._plan_call(job, CHAPTER_SYSTEM, user, tokens, what)
+    try:
+        if lock:
+            lock.acquire()
+        p = _cache_path(job)
+        os.makedirs(os.path.dirname(p), exist_ok=True)
+        try:
+            allc = json.load(open(p, encoding="utf-8"))
+        except Exception:
+            allc = {}
+        allc[k] = d
+        with open(p + ".tmp", "w", encoding="utf-8") as f:
+            json.dump(allc, f, ensure_ascii=False)
+        os.replace(p + ".tmp", p)
+    except Exception as e:
+        design.W["log"]("본문 조각 보관 실패(무시):", e)
+    finally:
+        if lock:
+            lock.release()
+    return d
+
+
+def _live(job, ch, pages):
+    """쓴 쪽을 화면에 하나씩 — 장 번호·쪽 제목·블록 종류를 vertical_live.json 으로 올린다(진행률 아래 카드, R106)"""
+    vp = getattr(job, "_vp", None)
+    if not vp or not pages:
+        return
+    with vp["lock"]:
+        live = vp.setdefault("live", {})
+        for pg in pages:
+            t = str(pg.get("title") or "")
+            if t:
+                live[f"{ch['no']}|{t}"] = {"ch": ch["no"], "chapter": ch.get("title") or "", "t": t[:60],
+                                         "k": [str(b.get("kind") or "text") for b in (pg.get("blocks") or [])][:6]}
+        order = {r: i for i, r in enumerate(ROMAN)}
+        num = lambda t: tuple(int(n) for n in (re.match(r"(\d+)\.(\d+)", t) or re.match(r"()()", "")).groups() if n) or (999,)
+        rows = sorted(live.values(), key=lambda x: (order.get(x["ch"], 99), num(x["t"]), x["t"]))   # 1.10 이 1.2 앞에 오지 않게 숫자로
+        try:
+            d = os.path.join(job.dir, "_mockup")
+            os.makedirs(d, exist_ok=True)
+            p = os.path.join(d, "vertical_live.json")
+            json.dump({"pages": rows, "total": vp.get("pages_total", 0)}, open(p, "w", encoding="utf-8"), ensure_ascii=False)
+            design.W["put_file"](job.id, "mockup", p, "vertical_live.json")
+        except Exception as e:
+            design.W["log"]("쓴 쪽 미리 보기 올리기 실패(무시):", e)
+
+
+def _body_pct(vp):
+    """본문 진행률 — 첫 쓰기(항목) 12→34%, 고쳐 쓰기(조각) 34→38%. 고쳐 쓰기 조각 수는 장마다 늘어나지만 job.push 는 줄지 않는다"""
+    w = min(1.0, vp["done"] / max(1, vp["total"]))
+    f = min(1.0, vp.get("fdone", 0) / vp["ftotal"]) if vp.get("ftotal") else 0.0
+    return 12 + int(22 * w) + int(4 * f)
+
+
+def _tick(job, n):
+    """첫 쓰기 진행 — 쓸 항목 전체(job._vp total) 중 끝난 항목 수. 장·조각 스레드가 함께 부른다"""
+    vp = getattr(job, "_vp", None)
+    if not vp:
+        return
+    with vp["lock"]:
+        vp["done"] += n
+        pct = _body_pct(vp)
+    job.push("기획", pct)
+
+
+def _fix_add(job, n):
+    vp = getattr(job, "_vp", None)
+    if vp:
+        with vp["lock"]:
+            vp["ftotal"] = vp.get("ftotal", 0) + n
+
+
+def _fix_tick(job):
+    """고쳐 쓰기 조각 하나가 끝남 — 38% 앞에서 멈춘 듯 보이지 않게(R107)"""
+    vp = getattr(job, "_vp", None)
+    if not vp:
+        return
+    with vp["lock"]:
+        vp["fdone"] = vp.get("fdone", 0) + 1
+        pct = _body_pct(vp)
+    job.push("기획", pct)
+
+
+def _pinpoint(ch, bad, pages, ok):
+    """'(장 전체)' 위반을 쪽 단위로 — 장 전체 위반 하나 때문에 41쪽 전부를 한 요청에 다시 쓰다 '최대 토큰' 으로 잘렸다(10-28 15:30, R107).
+    사진이 없으면 엔진이 덜 찬 쪽에 사진 블록을 직접 넣고(AI 호출 없음), 나머지는 고칠 쪽만 골라 그 쪽의 위반으로 바꾼다.
+    → (쪽 위반 목록, 엔진이 바로 고친 것 글 목록). rule 이 없는(모르는) 장 전체 위반은 쪽을 고를 수 없어 고쳐 쓰기에서 뺀다"""
+    out = [b for b in bad if b.get("title") != "(장 전체)"]
+    fixed = []
+    flagged = {b["title"] for b in out}
+    kinds = lambda pg: [vertical_rules._kind(b, ok) for b in pg.get("blocks") or []]
+
+    def pick(cands, n, why):
+        cands = sorted(cands, key=lambda pg: 0 if pg.get("title") in flagged else 1)   # 이미 고칠 쪽을 먼저 — 조각 수를 늘리지 않게
+        for pg in cands[:max(0, n)]:
+            out.append({"title": pg.get("title"), "why": why})
+            flagged.add(pg.get("title"))
+
+    for w in [b for b in bad if b.get("title") == "(장 전체)"]:
+        r = w.get("rule")
+        if r == "kind_cap":
+            nm = vertical_rules.NAMES.get(w["kind"], w["kind"])
+            pick([pg for pg in reversed(pages) if w["kind"] in kinds(pg)], w["n"] - w["max"],
+                 f"장 안에 {nm} 구성이 많다({w['n']}쪽, 최대 {w['max']}) — 이 쪽은 {nm} 말고 다른 구성으로 바꿀 것")
+        elif r == "no_photo":
+            done = 0
+            for pg in sorted(pages, key=page_fill):   # 덜 찬 쪽부터 — 사진이 빈 자리도 채운다
+                if done >= 2 or page_fill(pg) > 0.85:
+                    break
+                t = re.sub(r"^\d+(\.\d+)*\s*|\s*\(\d+/\d+\)\s*$", "", str(pg.get("title") or "")).strip()
+                blk = {"kind": "photo", "head": t[:18], "fig": {"queries": [q for q in (t, str(ch.get("title") or "")) if q], "caption": t, "items": []}}
+                trial = dict(pg, blocks=list(pg.get("blocks") or []) + [blk])
+                if page_fill(trial) <= 1.02:
+                    pg["blocks"] = trial["blocks"]
+                    done += 1
+                    fixed.append(f"{pg.get('title')}: 사진 블록 넣음")
+            if not done:
+                pick(sorted(pages, key=page_fill)[:1], 1, "이 쪽에 사진(photo) 블록 하나 — 현장·장비·서비스 장면을 검색어로(장 안에 사진이 없다)")
+        elif r == "halves":
+            cands = sorted([pg for pg in pages if len(pg.get("blocks") or []) >= 2 and not any(b.get("half") for b in pg.get("blocks") or [])],
+                           key=lambda pg: -page_fill(pg))   # 넘친 쪽부터 — 2단으로 묶으면 높이도 준다
+            pick(cands, w["need"] - w["have"], "작은 블록 둘을 \"half\": true 로 나란히(2단) — 장 안에 2단 쪽이 모자라다")
+        elif r == "text_ratio":
+            excess, sel = w["texts"] - w["cap"], []
+            for pg in sorted([pg for pg in pages if "text" in kinds(pg)], key=lambda pg: -kinds(pg).count("text")):
+                if excess <= 0:
+                    break
+                sel.append(pg)
+                excess -= kinds(pg).count("text")
+            pick(sel, len(sel), "글 블록 하나를 내용에 맞는 도식(표·절차·카드·구분 행)으로 — 장 안에 글 블록이 많다")
+    return out, fixed
 
 
 def chapter_pages(job, o, ch, ctx, raw):
@@ -426,26 +626,58 @@ def chapter_pages(job, o, ch, ctx, raw):
     keys = [ch["title"]] + [s["title"] for s in ch.get("sections") or []] + [x for it in items for x in it["req"]]
     user = (f"# 사업\n{o['project']['name']} — 발주 {o['project']['client']}\n\n# 이 장\n{ch['no']} {ch['title']}\n\n# 쓸 항목(순서대로)\n"
             + json.dumps(shown, ensure_ascii=False) + f"\n\n# 사업 요약\n{ctx or '(없음)'}\n\n# 원문 발췌\n{design._excerpts(raw, keys, 9000)}")
+    # 항목이 많은 장은 한 번에 쓰면 답이 16k 를 넘어 '최대 토큰' 으로 두 번 잘린 뒤에야 나눴다(II 기술부문, 10-28 R105) — 처음부터 절마다
+    full = json.dumps(shown, ensure_ascii=False)   # user 안의 항목 목록 — 조각·고쳐 쓰기에서 이 부분만 바꿔 넣는다
+    n_pages = sum(int(it.get("pages") or 1) for it in items)
+    big = len(items) > 7 or n_pages > 9
+    counted = False   # 진행률(항목 단위)에 이 장을 이미 셌나 — 조각으로 쓰면 조각마다 센다
     try:
-        d = design._plan_call(job, CHAPTER_SYSTEM, user, 16000, f"{ch['no']} {ch['title']} 본문")   # 도식 자료(fig)가 붙어 글보다 길다
+        if big:
+            raise _Split(f"항목 {len(items)}개·{n_pages}쪽")
+        d = _cached_call(job, user, 16000, f"{ch['no']} {ch['title']} 본문")   # 도식 자료(fig)가 붙어 글보다 길다
         pages = [pg for pg in (d.get("pages") or []) if pg.get("title")]
+        _live(job, ch, pages)
     except design.Cancelled:
         raise
     except Exception as e:   # 장 한 번에 두 번 다 깨지면 절마다 따로(응답이 짧을수록 JSON 이 덜 깨진다) — 장 2개가 통째로 빠졌다(2026-10-14)
-        job.event(f"{ch['no']} 장 한 번에 쓰기 실패 — 절마다 나눠 다시 씁니다: {str(e)[:80]}", "warn")
-        pages = []
+        # 절 하나도 항목이 많으면 9천 토큰에서 잘려 '이 절은 빠집니다' 로 갔다(II 1절, 10-28 15:03) — 절 안에서 항목 4개씩 조각,
+        # 조각은 동시에 쓰고 끝날 때마다 진행률에 든다(41쪽 장이 12% 에서 멈춘 듯 보이던 것, R106)
+        parts = []
         for sec in dict.fromkeys(x["section"] for x in shown):
-            part = [x for x in shown if x["section"] == sec]
-            u = user.replace(json.dumps(shown, ensure_ascii=False), json.dumps(part, ensure_ascii=False))
-            try:
-                d = design._plan_call(job, CHAPTER_SYSTEM, u, 9000, f"{ch['no']} {sec} 본문")
-                pages += [pg for pg in (d.get("pages") or []) if pg.get("title")]
-            except design.Cancelled:
-                raise
-            except Exception as e2:
-                job.event(f"{ch['no']} {sec} 본문 실패 — 이 절은 빠집니다: {str(e2)[:80]}", "warn")
+            sec_items = [x for x in shown if x["section"] == sec]
+            parts += [sec_items[k:k + CHUNK_ITEMS] for k in range(0, len(sec_items), CHUNK_ITEMS)]
+        if isinstance(e, _Split):
+            job.event(f"{ch['no']} 장은 길어서({e}) 처음부터 항목 {CHUNK_ITEMS}개씩 {len(parts)}조각으로 나눠 동시에 씁니다.")
+        else:
+            job.event(f"{ch['no']} 장 한 번에 쓰기 실패 — 항목 {CHUNK_ITEMS}개씩 {len(parts)}조각으로 나눠 다시 씁니다: {str(e)[:80]}", "warn")
+
+        def one(part):
+            u = user.replace(full, json.dumps(part, ensure_ascii=False))
+            pg_n = sum(int(x.get("pages") or 1) for x in part)
+            d = _cached_call(job, u, min(14000, 4000 + 1800 * pg_n), f"{ch['no']} {part[0]['item'][:24]} 외 {len(part) - 1}개 본문")
+            got_pages = [pg for pg in (d.get("pages") or []) if pg.get("title")]
+            _live(job, ch, got_pages)
+            return got_pages
+
+        got = [None] * len(parts)
+        with ThreadPoolExecutor(max_workers=max(1, min(3, len(parts)))) as ex:
+            futs = {ex.submit(_carry(one), part): k for k, part in enumerate(parts)}
+            for f in as_completed(futs):
+                k = futs[f]
+                try:
+                    got[k] = f.result()
+                except design.Cancelled:
+                    raise
+                except Exception as e2:
+                    got[k] = []
+                    job.event(f"{ch['no']} {parts[k][0]['item'][:30]} 외 {len(parts[k]) - 1}개 본문 실패 — 이 항목들은 빠집니다: {str(e2)[:80]}", "warn")
+                _tick(job, len(parts[k]))
+        pages = [pg for g in got for pg in (g or [])]   # 조각 순서(= 목차 순서)대로
         if not pages:
             raise
+        counted = True
+    if not counted:
+        _tick(job, len(items))
     normalize_blocks(pages)
     ok = lambda b: bool(fig_data(b))
     bad, fixed = vertical_rules.check(items, pages, ok, page_fill, block_empty)   # 규칙 검사(조건문)
@@ -453,25 +685,74 @@ def chapter_pages(job, o, ch, ctx, raw):
     for rnd in (1, 2):   # 어긴 쪽만 사유와 함께 다시 쓴다 — 최대 두 번(5차: 한 번으로는 채움 위반이 남아 '(계속)' 쪽 5개)
         if not bad or (rnd == 2 and not any(re.search(r"찼다|넘친다|블록 조합|첫 블록|구성을", b["why"]) for b in bad)):
             break
-        job.event(f"{ch['no']} 규칙 검사 위반 {len(bad)}건 — " + " / ".join(f"{b['title']}: {b['why']}" for b in bad[:4]) + f" … 고쳐 씁니다({rnd}차).", "warn")
-        whole = any(b["title"] == "(장 전체)" for b in bad)
+        n_bad = len(bad)
+        # 장 전체 위반은 고칠 쪽을 골라 쪽 위반으로(사진 없음은 엔진이 직접) — 예전엔 장 전체 위반 하나로 41쪽 전부를 한 요청에 다시 써 잘렸다(R107)
+        bad, auto = _pinpoint(ch, bad, pages, ok)
+        if auto:
+            fixed += auto
+            normalize_blocks(pages)
         names = {b["title"] for b in bad}
-        redo = [pg for pg in pages if whole or pg.get("title") in names]
-        if not redo:
+        have = {key(pg.get("title")) for pg in pages}
+        redo = [pg for pg in pages if pg.get("title") in names]
+        want = {key(pg.get("title")) for pg in redo} | {key(it["item"]) for it in items if it["item"] in names and key(it["item"]) not in have}
+        order_keys = [key(it["item"]) for it in items if key(it["item"]) in want]
+        if not order_keys:
             break
+        # 고칠 항목을 목차 순서대로 조각 — 항목 4개·6쪽 이하씩, 조각은 동시에(첫 쓰기와 같은 방식)
+        chunks, cur, cur_n = [], [], 0
+        for k in order_keys:
+            npg = max(1, sum(1 for pg in redo if key(pg.get("title")) == k))
+            if cur and (len(cur) >= CHUNK_ITEMS or cur_n + npg > 6):
+                chunks.append(cur)
+                cur, cur_n = [], 0
+            cur.append(k)
+            cur_n += npg
+        if cur:
+            chunks.append(cur)
+        kinds_n = {"덜 참": sum(1 for b in bad if "찼다" in b["why"]), "넘침": sum(1 for b in bad if "넘친다" in b["why"]),
+                   "구성": sum(1 for b in bad if re.search(r"구성|블록 조합|첫 블록|2단|도식", b["why"]))}
+        job.event(f"{ch['no']} 규칙 검사 위반 {n_bad}건 — 고칠 쪽 {len(redo)}쪽을 {len(chunks)}조각으로 나눠 동시에 고쳐 씁니다({rnd}차)"
+                  + (" · " + " · ".join(f"{k} {v}" for k, v in kinds_n.items() if v) if any(kinds_n.values()) else "")
+                  + (f" · 엔진이 바로 고침 {len(auto)}" if auto else ""), "warn")
         by_t = {str(pg.get("title")): pg for pg in pages}
-        why = []
-        for b in bad:   # 채움 위반엔 그 쪽 블록별 높이를 붙인다 — 무엇을 얼마나 줄이고 늘릴지 AI 가 알게
-            w = f"- {b['title']}: {b['why']}"
-            pg = by_t.get(str(b["title"]))
-            if pg is not None and re.search(r"찼다|넘친다", b["why"]):
-                w += " (지금 블록: " + " · ".join(f"{vertical_rules.NAMES.get(str(x.get('kind') or 'text'), x.get('kind'))} {block_height(x):.1f}cm"
-                                                for x in pg.get("blocks") or [] if not block_empty(x)) + f" / 본문 영역 {BODY_BOTTOM - 7.55:.1f}cm)"
-            why.append(w)
-        fix_user = (user + "\n\n# 먼저 쓴 쪽(이 중 고칠 것)\n" + json.dumps(redo, ensure_ascii=False)
-                    + '\n\n# 규칙 검사 위반 — 이 쪽들만 고쳐 같은 JSON 형식({"pages": [...]})으로 다시 낸다. 제목은 그대로.\n' + "\n".join(why))
+
+        def why_of(ks):
+            out_ = []
+            for b in bad:   # 채움 위반엔 그 쪽 블록별 높이를 붙인다 — 무엇을 얼마나 줄이고 늘릴지 AI 가 알게
+                if key(b["title"]) not in ks:
+                    continue
+                w = f"- {b['title']}: {b['why']}"
+                pg = by_t.get(str(b["title"]))
+                if pg is not None and re.search(r"찼다|넘친다", b["why"]):
+                    w += " (지금 블록: " + " · ".join(f"{vertical_rules.NAMES.get(str(x.get('kind') or 'text'), x.get('kind'))} {block_height(x):.1f}cm"
+                                                    for x in pg.get("blocks") or [] if not block_empty(x)) + f" / 본문 영역 {BODY_BOTTOM - 7.55:.1f}cm)"
+                out_.append(w)
+            return out_
+
+        def fix_one(ks):
+            part_items = [x for x in shown if key(x["item"]) in ks]
+            part_pages = [pg for pg in redo if key(pg.get("title")) in ks]
+            fu = (user.replace(full, json.dumps(part_items, ensure_ascii=False))
+                  + "\n\n# 먼저 쓴 쪽(이 중 고칠 것)\n" + json.dumps(part_pages, ensure_ascii=False)
+                  + '\n\n# 규칙 검사 위반 — 이 쪽들만 고쳐 같은 JSON 형식({"pages": [...]})으로 다시 낸다. 제목은 그대로.\n' + "\n".join(why_of(set(ks))))
+            d = _cached_call(job, fu, min(14000, 4000 + 1800 * max(1, len(part_pages))),
+                             f"{ch['no']} 고쳐 쓰기 {rnd}차 · {part_items[0]['item'][:20]}" + (f" 외 {len(part_items) - 1}개" if len(part_items) > 1 else ""))
+            return d.get("pages") or []
+
+        _fix_add(job, len(chunks))
+        got_fix = []
+        with ThreadPoolExecutor(max_workers=max(1, min(3, len(chunks)))) as ex:
+            futs = {ex.submit(_carry(fix_one), ks): ks for ks in chunks}
+            for f in as_completed(futs):
+                try:
+                    got_fix += f.result()
+                except design.Cancelled:
+                    raise
+                except Exception as e:   # 조각 하나가 실패해도 다른 조각은 받는다 — 그 항목은 앞의 것 그대로
+                    job.event(f"{ch['no']} 고쳐 쓰기 조각 실패(그 항목은 앞의 것으로): {str(e)[:100]}", "warn")
+                _fix_tick(job)
         try:
-            d2 = design._plan_call(job, CHAPTER_SYSTEM, fix_user, 16000, f"{ch['no']} 규칙 맞춰 고쳐 쓰기 {rnd}")
+            d2 = {"pages": got_fix}
             # 항목 번호 기준으로 합친다 — 제목이 바뀌거나 빠졌던 항목 쪽도 받는다(4차: 고쳐 쓴 뒤 '이 항목의 쪽이 없다')
             new_by, old_by = {}, {}
             normalize_blocks(d2.get("pages") or [])   # 항목별 비교(item_cost)가 채움을 재려면 먼저 다듬어야 한다
@@ -480,7 +761,7 @@ def chapter_pages(job, o, ch, ctx, raw):
                     new_by.setdefault(key(pg["title"]), []).append(pg)
             for pg in pages:
                 old_by.setdefault(key(pg.get("title")), []).append(pg)
-            redo_keys = {key(pg.get("title")) for pg in redo}
+            redo_keys = {k for ks in chunks for k in ks}
             merged = []
             for it in items:
                 k = key(it["item"])
@@ -495,12 +776,12 @@ def chapter_pages(job, o, ch, ctx, raw):
             pages = merged
             normalize_blocks(pages)
             bad2, fixed2 = vertical_rules.check(items, pages, ok, page_fill, block_empty)
-            if len(bad2) > len(bad):   # 고쳐 쓴 것이 더 나쁘면 앞의 것으로(6차: 2차 고쳐 쓰기에서 4→5, 2→4, 4→7)
-                job.event(f"{ch['no']} 고쳐 쓴 뒤({rnd}차) 위반이 {len(bad)} → {len(bad2)}건으로 늘어 앞의 것을 씁니다", "warn")
+            if len(bad2) > n_bad:   # 고쳐 쓴 것이 더 나쁘면 앞의 것으로(6차: 2차 고쳐 쓰기에서 4→5, 2→4, 4→7) — 같은 검사 건수끼리 견준다
+                job.event(f"{ch['no']} 고쳐 쓴 뒤({rnd}차) 위반이 {n_bad} → {len(bad2)}건으로 늘어 앞의 것을 씁니다", "warn")
                 pages = prev_pages
                 break
             fixed += fixed2
-            job.event(f"{ch['no']} 고쳐 쓴 뒤({rnd}차) 규칙 위반 {len(bad)} → {len(bad2)}건"
+            job.event(f"{ch['no']} 고쳐 쓴 뒤({rnd}차) 규칙 위반 {n_bad} → {len(bad2)}건"
                       + (" — " + " / ".join(f"{b['title']}: {b['why']}" for b in bad2[:3]) if bad2 else ""), "warn" if bad2 else "done")
             bad = bad2
         except Exception as e:
@@ -553,7 +834,7 @@ def _api(method, path, body=None, raw=False):
     return r if raw else json.loads(r)
 
 
-def find_bg(job, text, keywords, used, kind):
+def find_bg(job, text, keywords, used, kind, topic=""):
     """powerAssets 배경 세트에서 고르기 — AI 확신 0.5 이상만 쓴다. 사람이 나오는 장면 키비주얼은 피한다."""
     try:
         d = _api("POST", "/assets/pick", {"category": "photo", "set": BG_SET, "text": text, "queries": keywords[:4], "exclude": list(used), "limit": 20})
@@ -565,11 +846,61 @@ def find_bg(job, text, keywords, used, kind):
     name = str((d.get("picked") or {}).get("label") or "")
     if not pick or conf < 0.9 or re.search(r"공무원|국민|회의|교육|고민|상담원|사람", name):
         return None, None
+    if offtopic(name, f"{text} {' '.join(keywords)} {topic}"):   # 사업과 동떨어진 범주(R120)
+        return None, None
+    if not relevance(asset_text(d.get("picked") or {}) or name, f"{text} {' '.join(keywords)} {topic}".replace("배경", "")):   # 일반어만 겹치면 안 맞는 그림 — 생성으로(10-29)
+        return None, None
     try:
         used.add(pick)
         return _api("GET", f"/assets/items/{pick}/file/original", raw=True), f"powerAssets '{name}'(확신 {conf})"
     except Exception:
         return None, None
+
+
+# ───────── 그림 주제 검사(R120) — 10-28: 4d58(바이오 빅데이터) 간지에 '곡물·채소·고기·생선 — 식품 데이터 수집' 그림(낱말 점수 0 인데 세트 안 최고점이라 뽑힘),
+#   e25(K-브랜드 광고) '자막 제작·검수 현장' 사진 칸에 군용 다연장 로켓 차량('현장' 같은 일반어 검색에 걸림).
+#   ① 사업과 동떨어진 범주(그림 이름·태그에 있고 사업·칸 글에는 없는 것)는 뽑지 않는다 ② 일반어만 겹친 그림은 관련 없음으로 본다
+OFFTOPIC = {
+    "군사·무기": r"군사|군용|군대|군인|무기|미사일|로켓|전차|탱크|장갑차|전투|포탄|포병|총기|탄약|발사대|발사 차량|전투기|폭격|폭탄",
+    "음식·식재료": r"식품|곡물|채소|고기|육류|생선|수산|과일|음식|요리|식재료|조리|급식|식당|빵|쌀",
+    "의료": r"병원|의료|진료|환자|수술|약품|의약|간호",
+    "농축산": r"농업|농장|농작물|가축|축산|양식장|어선|어업",
+    "종교·장례": r"종교|교회|사찰|장례|묘지",
+}
+GENERIC = {"현장", "제작", "검수", "관리", "운영", "지원", "체계", "방안", "계획", "구성", "사진", "이미지", "장면", "서비스", "시스템", "업무", "과정",
+           "절차", "결과", "모습", "세로", "제안서", "키비주얼", "배경", "간지", "표지", "목차", "본문", "데이터", "기반", "통합", "전략", "추진", "개요",
+           "현황", "분석", "구축", "사업", "수행", "방법", "기술", "품질", "일반", "단계", "흐름", "연계", "센터", "플랫폼"}
+
+
+def _toks(t):
+    return {w for w in re.findall(r"[가-힣A-Za-z0-9]{2,}", str(t or ""))}
+
+
+def asset_text(r):
+    """자산 행의 이름·키워드·태그·설명을 한 줄로"""
+    parts = [r.get("name"), r.get("label"), r.get("title"), r.get("description"), r.get("desc")]
+    for k in ("keywords", "tags"):
+        v = r.get(k)
+        parts += v if isinstance(v, list) else [v]
+    return " ".join(str(x) for x in parts if x)
+
+
+def offtopic(asset, context):
+    """그림(asset 글)이 사업·칸 글(context)과 동떨어진 범주면 그 범주 이름, 아니면 ''"""
+    for name, rx in OFFTOPIC.items():
+        if re.search(rx, asset or "") and not re.search(rx, context or ""):
+            return name
+    return ""
+
+
+def relevance(asset, slot):
+    """칸 글(slot)의 일반어가 아닌 낱말 중 그림 글(asset)에 든 것 — 부분 일치(2자 이상)도 센다"""
+    at = _toks(asset)
+    hit = set()
+    for t in _toks(slot) - GENERIC:
+        if any(t in a or (len(a) >= 2 and a in t and a not in GENERIC) for a in at):
+            hit.add(t)
+    return hit
 
 
 PEOPLE = r"공무원|국민|회의|교육|고민|상담원|사람|조리원|점검원|연구원|어르신|엄마|아이"
@@ -641,7 +972,7 @@ def _sg(r):
     return (r.get("set") or {}).get("name") or r.get("style_group") or ""
 
 
-def pick_portrait(pool, key, words, used, kind="photo", half=None):
+def pick_portrait(pool, key, words, used, kind="photo", half=None, topic=""):
     """조건문 — 칸 역할(표지·목차·간지)이 이름에 있는 것만, 그중 테마에 맞는 세트(kind = photo|3d|glass|dark)를 먼저, 장 낱말이 가장 많이 겹치는 것.
     그 세트에 그 역할이 남아 있지 않을 때만 다른 밝은 세트에서. 같은 점수면 목록 순서.
     half = 0|1 이면 그 세트를 반으로 갈라 한쪽만(같은 세트를 쓰는 두 테마가 서로 다른 그림을 뽑게), 그 반이 바닥나면 세트 전체"""
@@ -658,14 +989,22 @@ def pick_portrait(pool, key, words, used, kind="photo", half=None):
     else:
         cands = [r for r in pool if role in str(r.get("name") or "") and r["id"] not in used and _sg(r) in (VP_SETS["photo"], VP_SETS["3d"])]
         cands = halved([r for r in cands if _sg(r) == VP_SETS[kind]]) or cands
+    ctx = " ".join(str(w) for w in words) + " " + str(topic or "")
+    cands = [r for r in cands if not offtopic(asset_text(r), ctx)]   # 사업과 동떨어진 범주(식품 그림을 바이오 빅데이터 간지에 등)는 빼고 — 남는 게 없으면 생성으로(R120)
     if not cands:
         return None, None
-    toks = {t for w in words for t in re.findall(r"[가-힣A-Za-z0-9]{2,}", str(w)) if t not in ("배경", "표지", "목차", "간지")}
+    # 맞는 그림만 — 일반어(관리·운영·시스템·배경…)를 뺀 장·사업 낱말이 그림 이름·키워드에 하나 이상 있어야 고른다.
+    # 예전엔 점수 0 이어도 후보 중 최고점을 골라 사업과 안 맞는 그림이 많이 나왔다(사용자 10-29 "테스트해 보니 안 맞는 게 많이 나와") — 없으면 생성으로
+    toks = {t for w in list(words) + [topic] for t in re.findall(r"[가-힣A-Za-z0-9]{2,}", str(w))
+            if t not in ("배경", "표지", "목차", "간지") and t not in GENERIC}
 
     def score(r):
         hay = str(r.get("name") or "") + " " + " ".join(str(k) for k in r.get("keywords") or [])
-        return sum(1 for t in toks if t in hay or any(t in k or k in t for k in re.findall(r"[가-힣A-Za-z0-9]{2,}", hay)))
+        ht = [k for k in re.findall(r"[가-힣A-Za-z0-9]{2,}", hay) if k not in GENERIC and k not in ("배경", "표지", "목차", "간지", "세로", "제안서")]
+        return sum(1 for t in toks if any(t in k or (len(k) >= 2 and k in t) for k in ht))
     best = max(cands, key=score)
+    if score(best) < 1:
+        return None, None
     try:
         blob = _api("GET", f"/assets/items/{best['id']}/file/original", raw=True)
     except Exception:
@@ -720,11 +1059,13 @@ VP_ROLE = r"표지|목차|간지|맺음말"
 PHOTO_PREFER = {"photo-doc-business": 1.0}       # 실사 문서·비즈니스 사진 우선
 
 
-def photo_pick(text, queries, used, kind="photo"):
+def photo_pick(text, queries, used, kind="photo", topic=""):
     """본문 사진 — 검색어마다 사진 분류를 검색해 후보를 모으고 조건 점수로 고른다(겹친 검색어 수 + 세트 선호, 배경 세트 제외, 이미 쓴 것 제외).
     세로 전용 세트는 톤에 맞는 쪽(kind)의 본문 장면만 — 실사 톤에 3D 가, 3D 톤에 실사 키비주얼이 섞이지 않게"""
     other = VP_SETS["3d" if kind == "photo" else "photo"]
     score, meta = {}, {}
+    slot = f"{text} {' '.join(str(q) for q in queries)}"
+    ctx = f"{slot} {topic}"
     for q in queries[:5]:
         try:
             rows = _api("GET", "/assets/items?" + urllib.parse.urlencode({"q": q, "category": "photo", "limit": 30})).get("data") or []
@@ -734,16 +1075,28 @@ def photo_pick(text, queries, used, kind="photo"):
             sg = ((r.get("set") or {}).get("name") or r.get("style_group") or "")
             if r["id"] in used or sg in PHOTO_SKIP or sg == other or (sg == "photo-keyvisual-climate" and "기후" not in text)                     or (sg in VP_SETS.values() and re.search(VP_ROLE, str(r.get("name") or ""))):
                 continue
-            score[r["id"]] = score.get(r["id"], 0) + 1.0
+            at = asset_text(r)
+            hit = relevance(at, slot)
+            if offtopic(at, ctx) or not hit:   # 동떨어진 범주 · 일반어('현장'·'제작')만 겹친 그림은 넣지 않는다(R120)
+                continue
+            score[r["id"]] = score.get(r["id"], 0) + 1.0 + 0.5 * len(hit) / max(1, len(queries))
             meta[r["id"]] = sg
-    if not score:
-        pid, conf = _pick("photo", text, queries, used)   # 검색어로 못 찾으면 서버 AI 고르기
-        return (pid, conf, "") if pid and conf >= 0.3 else (None, 0, "")
+    if not score:   # 검색어로 못 찾으면 서버 AI 고르기 — 확신 0.6 이상, 이름이 칸과 관련 있고 동떨어진 범주가 아닐 때만
+        body = {"category": "photo", "text": text[:400], "queries": [q for q in queries if q][:4], "exclude": list(used), "limit": 24}
+        try:
+            d = _api("POST", "/assets/pick", body)
+            d = d.get("data", d)
+        except Exception:
+            return None, 0, ""
+        pid, conf = d.get("pick"), float(d.get("confidence") or 0)
+        label = asset_text(d.get("picked") or {})
+        ok_ = pid and conf >= 0.6 and label and relevance(label, slot) and not offtopic(label, ctx)
+        return (pid, conf, "") if ok_ else (None, 0, "")
     best = max(score, key=lambda i: score[i] + PHOTO_PREFER.get(meta[i], 0))
     return best, 1.0, meta[best]
 
 
-def resolve_assets(job, chapters_pages, kind="photo"):
+def resolve_assets(job, chapters_pages, kind="photo", topic=""):
     """본문 사진·아이콘을 파워에셋에서 — 사용자 2026-10-14 "파워에셋을 다양하게 검색해서 이미지를 잘 활용".
     사진: AI 가 준 검색어 + 쪽 제목·소제목 낱말로(검색어 최대 4개) 고르고 문서 안 중복 금지. 아이콘: 카드·허브 노드·전략 항목 제목으로, 세트 고정"""
     used, jobs = set(), []
@@ -766,13 +1119,13 @@ def resolve_assets(job, chapters_pages, kind="photo"):
                     jobs += [("icon", it, f"{it.get('title')} — {it.get('desc') or ''}", [str(it.get("title") or "")]) for it in (f.get("items") or [])[:5]]
     if not jobs:
         return {}
-    got = {"photo": 0, "icon": 0, "miss": 0}
+    got = {"photo": 0, "icon": 0, "miss": 0, "skipped": []}
 
     def one(j):
         kind, target, text, qs = j
         try:
             if kind == "photo":
-                pid, conf, sg = photo_pick(text, qs, used, kind)
+                pid, conf, sg = photo_pick(text, qs, used, kind, topic)
                 if pid:
                     if sg == "photo-hero-keyvisual":   # 왼쪽·위가 글 자리로 하얗게 날아간 그림 — 장면이 있는 오른쪽 아래만
                         target["_ax"], target["_ay"] = 0.9, 0.75
@@ -783,6 +1136,8 @@ def resolve_assets(job, chapters_pages, kind="photo"):
                     target["_id"] = pid
                     got["photo"] += 1
                     return
+                got["skipped"].append(text)   # 관련 있는 사진이 없다 — 빈 사진 자리 + 확인 목록(R120)
+                target["_need_photo"] = True
             else:
                 pid, conf = _pick("icon", text, qs, (), ICON_SET)
                 if pid:
@@ -806,24 +1161,61 @@ def resolve_assets(job, chapters_pages, kind="photo"):
     return got
 
 
-# powerAssets 에 맞는 그림이 없을 때 나노바나나로 만드는 배경 — 그 테마 세트와 같은 화풍으로(세트 그림과 섞여도 튀지 않게)
+# 표지·목차·간지 배경 — 고른 테마(스타일)의 화풍으로, 그 장의 제안 내용에 맞게 나노바나나가 새로 그린다(사용자 10-29 "테마 스타일 선택하면
+# 그런 스타일로 제안 내용에 맞게 배경이 만들어져야 함"). 화풍 문장은 사용자 배경 프롬프트 모음(docs/발표장표_배경이미지_프롬프트_모음.md)에서:
+#   3d(클래식 밴드) = §2-5 VP2 세로 3D · glass(인덱스 탭·플로팅 필) = §2-1·2-3 라이트 아크릴(유리는 사용자가 덜 좋아해 아크릴로) ·
+#   photo(사이드 레일·미니멀 라인) = §1-2 FS1 밝은 하이키 실사 · dark(다크 키비주얼) = §2-8 VP3 풀컬러 다크 SF
 BG_LOOK = {
-    "3d": "A single small object made of clear and frosted glass with a subtle pale-blue glow: {art}. Placed in the lower right of the frame on a seamless white surface. "
-          "Minimal high-key product-style 3D render, soft diffused light, gentle shadow, white and very pale blue palette, restrained and elegant. "
-          "The upper half and the left half of the frame are empty pure white.",
-    "glass": "An isometric scene of translucent frosted-glass blocks and platforms with blue accents and thin connecting lines: {art}. "
-             "The scene sits in the lower middle of the frame on a very light grey-blue surface with faint rounded panel outlines. "
-             "Clean 3D isometric render, soft light, white and blue palette. The upper 40% of the frame is empty and calm.",
-    "photo": "A bright, clean real documentary photograph related to: {art}. Natural soft daylight, high-key, white and light blue tones, shallow depth of field. "
-             "The subject sits in the lower part of the frame; the upper half is a calm, nearly empty bright area.",
-    "dark": "A glowing holographic object with neon blue light: {art}. Deep navy to black background, the glowing object in the lower middle, "
-            "cinematic 3D render. The upper half of the frame is dark and empty.",
+    "3d": "Premium 3D RENDER illustration (not a photo), high-end polished tech key visual (octane / C4D look). Soft studio lighting, smooth gradients, gentle glow, "
+          "floating holographic data cards and thin light lines used tastefully, a subtle light grid floor. Materials: matte white, soft frosted surfaces, glowing light; "
+          "avoid clear glass and crystal objects. Palette: very light and airy, white and pale sky blue with cobalt blue and light cyan glow accents and a tiny warm peach highlight, "
+          "no dark tones, no purple. The subject itself has clear vivid cobalt blue and cyan glowing accents so it reads well against the white background.",
+    "glass": "Clean premium light-theme 3D ISOMETRIC illustration. Background is a very light cool gray to white surface (#F3F5FA to #FFFFFF) with soft large rounded panels and thin pale-blue "
+             "line grooves on the floor, gentle isometric 3/4 top view. Objects are thick blue-tinted ACRYLIC (polished, slightly frosted plates and blocks with crisp bright edges, like cut plexiglass) "
+             "with glossy white plastic and solid cobalt blue parts (#1F4FE0, #3B82F6, sky blue #8DB8FF), clean rounded bevels — not thin glass, not liquid, not crystal. "
+             "Thin blue connecting cables and tiny orange accent dots (#FF7A30) are allowed. No glass spheres, marbles or floating orbs. Soft diffused studio light, very subtle contact shading, airy and minimal. "
+             "Platforms have plain blank edges with no engraved words or numbers.",
+    "photo": "Bright PHOTOREALISTIC key visual, ultra detailed, sharp, premium advertising photography. A BRIGHT, LIGHT, HIGH-KEY image: bright daylight, soft white and pale sky-blue overall tone, "
+             "airy and clean like a premium corporate advertisement, accents in fresh cobalt blue and light cyan glow, a touch of soft warm sunlight. Never dark, never night, no heavy shadows, no dim interiors. "
+             "Glowing data lines and particles only tastefully. The scene is clearly in South Korea (Seoul, Pangyo, Yeouido, Korean offices, labs and field sites); any people are Korean, few, "
+             "seen from behind or at a distance. Devices show their screen only toward their user, no brand logos on devices. Vary the setting; do not default to a window city view.",
+    "dark": "Premium full-color sci-fi technology key visual: a rich background filling the whole frame, deep navy to cobalt blue gradient with luminous cyan and electric blue glow, "
+            "volumetric light rays, fine particles, glowing data lines, a subtle perspective light grid floor, digital bokeh. Cinematic, high-end CG render quality, crisp and vivid. "
+            "Avoid clear glass objects as the main subject. No people faces; if a figure appears it is a tiny silhouette seen from behind.",
+}
+# 쪽마다 그림이 놓이는 자리 — 글(제목·목록)은 위·왼쪽에 얹힌다. 깔기(STYLE_COMPOSE)가 오른쪽 아래·아래 띠를 쓴다
+BG_PLACE = {
+    "3d": "LAYOUT: the 3D subject group is compact and sits in the LOWER-RIGHT part of the frame (bottom 45%, right 65%), not filling the whole frame. The whole upper half and the left side are very bright, almost pure white, empty space that fades smoothly into white.",
+    "glass": "LAYOUT: the object group sits in the LOWER part of the frame (bottom 50%), slightly right of center. The upper half stays calm, almost empty light-gray/white surface with only faint panel lines; toward the left the floor lines fade out into soft white.",
+    "photo": "LAYOUT: one single continuous scene; the main subject and dense detail are in the LOWER part of the frame (bottom 50%), slightly to the right. The upper half is calm, bright and low in detail (open sky, soft white haze or a bright out-of-focus area), blending smoothly with no hard edge.",
+    "dark": "LAYOUT: the glowing main object group is compact and sits in the LOWER part of the frame (bottom 45%), centered or slightly right. The upper half stays a calm, smooth deep-blue gradient with only very faint particles.",
 }
 
 
-def make_bg(job, art, field, kind="3d"):
+def bg_subject(o, key, chapter=None):
+    """배경 그림의 주제 — 제안 내용에서(사업 분야·장 이름·절 이름·장 상징 사물). 영어 지시 속에 한국어 이름은 '뜻'으로만 준다(그림에 쓰지 않게)"""
+    field = str(o.get("field") or "")
+    proj = str((o.get("project") or {}).get("name") or "")
+    if key == "cover":
+        names = " / ".join(str(c.get("title") or "") for c in (o.get("chapters") or [])[:6])
+        return (f"the field of this proposal — {field or proj}. The project (meaning only, never write it): '{proj}'. "
+                f"Show the project's own field, place or core equipment as one strong key visual that sums up the proposal (chapters: {names}).")
+    if key == "toc":
+        return (f"a wide, calm view of the PLACE or the EQUIPMENT of this project's field ({field or proj}) — no people in the foreground. "
+                "A quieter picture than the cover, different subject from the cover.")
+    c = chapter or {}
+    secs = " / ".join(str(s.get("title") or "") for s in (c.get("sections") or [])[:6])
+    return (f"what this chapter of the proposal is about (meaning only, never write it): chapter '{c.get('title') or ''}' — sections: {secs}. "
+            f"Field of the project: {field or proj}. Symbolic object of the chapter: {c.get('art') or 'one fitting object'}. "
+            "Show ONE clear object group or scene that a reader immediately links to this chapter's content — different from the other chapters.")
+
+
+def make_bg(job, art, field, kind="3d", subject=""):
     look = BG_LOOK.get(kind) or BG_LOOK["3d"]
-    prompt = look.format(art=art) + f" Theme of the project: {field}. No people, no text, no letters, no numbers, no logos."
+    prompt = ("VERTICAL 9:16 portrait background picture for a page of a Korean public-sector technical proposal document (A4 vertical pages). "
+              + look + "\n" + BG_PLACE.get(kind, BG_PLACE["3d"]) + "\n"
+              + f"SUBJECT: {subject or art}. Theme of the project: {field}.\n"
+              + "Nothing extends past the left or top edges." + design.BG_COMMON)
     nb2 = str(design.W["CFG"].get("nb2_model") or design.styles.nb2_model())
     return design.gen_image(job, prompt, [], "9:16", None, model=nb2, plain=True)   # 세로 쪽 — 예전 4:3 은 위아래를 많이 잘라 냈다
 
@@ -951,10 +1343,54 @@ def full_light(blob, fy=0.0):
     return _jpg(_crop_to(Image.open(io.BytesIO(blob)).convert("RGB"), PW, PH, fy))
 
 
-def card_bg(blob, top=0.45, accent="2F5BD3"):
+DIV_LIST_PITCH = 1.2   # 간지 절 목록 한 줄(cm) — 16pt·줄 간격 155%, LibreOffice 렌더 실측 1.19cm(10-28 캡처)
+BG_MIN_CM = 7.0        # 목록을 피해 그림을 내릴 때 남길 최소 그림 높이(cm) — 이보다 낮아지면 내리지 않고 흰 그라데이션으로 가린다
+BG_GAP_CM = 0.8        # 글 끝과 그림 시작 사이
+
+
+def _veil_rows(h, top_px, bottom_px, fade_px, alpha=1.0):
+    """세로 막(L 모드 1×h) — top_px~bottom_px 는 alpha(흰색), 그 아래 fade_px 동안 0 으로(위로 갈수록 흰색)"""
+    m = Image.new("L", (1, h))
+    vals = []
+    for y in range(h):
+        if top_px <= y <= bottom_px:
+            a = alpha
+        elif bottom_px < y < bottom_px + fade_px:
+            a = alpha * (1 - _ss((y - bottom_px) / max(1, fade_px)))
+        else:
+            a = 0.0
+        vals.append(int(255 * a))
+    m.putdata(vals)
+    return m
+
+
+def text_veil(blob, bottom_cm, fade_cm=3.0, alpha=1.0):
+    """목차·간지 배경 — 글이 있는 높이(위 ~ bottom_cm)까지는 흰색으로 가리고, 그 아래 fade_cm 동안 그림이 서서히 드러난다.
+    글과 배경 그림이 겹쳐 글이 묻히던 것(10-28 사용자: 간지 목록 4~6번이 유리 카드 그림 위, 목차 쪽도 배경과 겹침, R107)"""
+    im = Image.open(io.BytesIO(blob)).convert("RGB")
+    w, h = im.size
+    b = int(h * min(PAGE_H, max(0.0, bottom_cm)) / PAGE_H)
+    m = _veil_rows(h, 0, b, int(h * fade_cm / PAGE_H), alpha)
+    return _jpg(Image.composite(Image.new("RGB", (w, h), (255, 255, 255)), im, m.resize((w, h))))
+
+
+def _below_text(top, text_bottom, bottom_margin_cm):
+    """그림 시작 높이(쪽 비율)를 글 아래로 — (새 top, 그림 안에서 가릴 높이 cm 또는 None).
+    글 끝 + 틈이 그림 최소 높이를 침범하면 더 내리지 않고, 겹치는 만큼만 흰 그라데이션으로 가린다"""
+    if text_bottom is None:
+        return top, None
+    want = text_bottom + BG_GAP_CM
+    limit = PAGE_H - bottom_margin_cm - BG_MIN_CM
+    top_cm = max(top * PAGE_H, min(want, limit))
+    return top_cm / PAGE_H, (text_bottom - top_cm if text_bottom + 0.3 > top_cm else None)
+
+
+def card_bg(blob, top=0.45, accent="2F5BD3", text_bottom=None):
     """떠 있는 둥근 카드(플로팅 필) — 흰 쪽 아래쪽에 좌우 여백을 둔 둥근 모서리 카드로 그림을 넣고 옅은 그림자.
-    카드 경계는 또렷하게(흐린 페이드 금지 — 사용자 2026-10-15), 3배로 그려 줄여 모서리를 매끈하게"""
+    카드 경계는 또렷하게(흐린 페이드 금지 — 사용자 2026-10-15), 3배로 그려 줄여 모서리를 매끈하게.
+    text_bottom(cm) = 그 쪽 글이 끝나는 높이 — 카드를 글 아래로 내리고, 못 내리면 카드 안 그림만 흰 그라데이션(테두리는 또렷하게, R107)"""
     from PIL import ImageDraw, ImageFilter
+    top, veil_cm = _below_text(top, text_bottom, 1.6)
     S, mx, mb = 3, PW * 1.2 / PAGE_W, PH * 1.6 / PAGE_H
     x0, y0, x1, y1 = int(mx), int(PH * top), int(PW - mx), int(PH - mb)
     rad = int(PW * 0.7 / PAGE_W)
@@ -964,7 +1400,12 @@ def card_bg(blob, top=0.45, accent="2F5BD3"):
     page.paste(Image.new("RGB", (PW, PH), (30, 50, 90)), (0, 0), sh.filter(ImageFilter.GaussianBlur(18)))
     m = Image.new("L", ((x1 - x0) * S, (y1 - y0) * S), 0)
     ImageDraw.Draw(m).rounded_rectangle((0, 0, (x1 - x0) * S - 1, (y1 - y0) * S - 1), rad * S, fill=255)
-    page.paste(_crop_to(Image.open(io.BytesIO(blob)).convert("RGB"), x1 - x0, y1 - y0, 0.8), (x0, y0), m.resize((x1 - x0, y1 - y0), Image.LANCZOS))
+    pic = _crop_to(Image.open(io.BytesIO(blob)).convert("RGB"), x1 - x0, y1 - y0, 0.8)
+    if veil_cm is not None:   # 카드 안 그림의 위쪽(글과 겹치는 높이까지)을 흰색으로 — 아래로 3cm 동안 드러난다
+        ph_ = y1 - y0
+        vm = _veil_rows(ph_, 0, int(PH * max(0.0, veil_cm + 0.3) / PAGE_H), int(PH * 3.0 / PAGE_H), 0.94)
+        pic = Image.composite(Image.new("RGB", pic.size, (255, 255, 255)), pic, vm.resize(pic.size))
+    page.paste(pic, (x0, y0), m.resize((x1 - x0, y1 - y0), Image.LANCZOS))
     line = Image.new("L", ((x1 - x0) * S, (y1 - y0) * S), 0)
     ImageDraw.Draw(line).rounded_rectangle((0, 0, (x1 - x0) * S - 1, (y1 - y0) * S - 1), rad * S, outline=255, width=3 * S)
     rgb = tuple(int(accent[i:i + 2], 16) for i in (0, 2, 4))
@@ -972,11 +1413,17 @@ def card_bg(blob, top=0.45, accent="2F5BD3"):
     return _jpg(page)
 
 
-def cut_bg(blob, top=0.5, accent="2F5BD3"):
-    """아래 띠(미니멀 라인) — 쪽 아래쪽을 가로 직선으로 또렷하게 잘라 그림을 채우고, 경계 위에 톤 색 굵은 줄(위쪽 굵은 줄과 짝)"""
+def cut_bg(blob, top=0.5, accent="2F5BD3", text_bottom=None):
+    """아래 띠(미니멀 라인) — 쪽 아래쪽을 가로 직선으로 또렷하게 잘라 그림을 채우고, 경계 위에 톤 색 굵은 줄(위쪽 굵은 줄과 짝).
+    text_bottom(cm) = 글 끝 — 자르는 선을 글 아래로 내리고, 못 내리면 그림 위쪽만 흰 그라데이션(R107)"""
+    top, veil_cm = _below_text(top, text_bottom, 0.0)
     y0 = int(PH * top)
     page = Image.new("RGB", (PW, PH), (255, 255, 255))
-    page.paste(_crop_to(Image.open(io.BytesIO(blob)).convert("RGB"), PW, PH - y0, 0.8), (0, y0))
+    pic = _crop_to(Image.open(io.BytesIO(blob)).convert("RGB"), PW, PH - y0, 0.8)
+    if veil_cm is not None:
+        vm = _veil_rows(PH - y0, 0, int(PH * max(0.0, veil_cm + 0.3) / PAGE_H), int(PH * 3.0 / PAGE_H), 0.94)
+        pic = Image.composite(Image.new("RGB", pic.size, (255, 255, 255)), pic, vm.resize(pic.size))
+    page.paste(pic, (0, y0))
     th = max(2, int(PH * 0.12 / PAGE_H))
     page.paste(Image.new("RGB", (PW, th), tuple(int(accent[i:i + 2], 16) for i in (0, 2, 4))), (0, y0 - th))
     return _jpg(page)
@@ -986,16 +1433,33 @@ def _mix_rgb(a, b, t):
     return tuple(int(a[k] * (1 - t) + b[k] * t) for k in range(3))
 
 
-def style_bg(blob, style, role, accent):
-    """표지(role=cover)·간지(div) 배경을 테마 모양대로 — STYLE_COMPOSE. 다크(split)는 따로(full_bg·band_bg)"""
+BG_TRANSPARENCY = 0.65   # 목차·간지 배경 그림 투명도(PowerPoint 기준 — 그림 35% + 흰 바탕 65%, 사용자 10-29)
+
+
+def faded(blob, t=BG_TRANSPARENCY):
+    """배경 그림을 투명도 t 로 — 흰 바탕과 섞는다(그림이 원래 진하기의 1-t 만 남는다). 글이 그림 위에서도 읽히게"""
+    if not blob or t <= 0:
+        return blob
+    im = Image.open(io.BytesIO(blob)).convert("RGB")
+    out = Image.blend(Image.new("RGB", im.size, (255, 255, 255)), im, 1 - t)
+    b = io.BytesIO()
+    out.save(b, "JPEG", quality=90)
+    return b.getvalue()
+
+
+def style_bg(blob, style, role, accent, text_bottom=None):
+    """표지(role=cover)·간지(div) 배경을 테마 모양대로 — STYLE_COMPOSE. 다크(split)는 따로(full_bg·band_bg).
+    text_bottom(cm) = 그 쪽 글(간지 절 목록)이 끝나는 높이 — 그림이 글을 덮지 않게 내리거나 흰 그라데이션으로 가린다(R107)"""
     how = STYLE_COMPOSE.get(style, "fade")
     if how == "full":
-        return full_light(blob, 0.0)
+        im = full_light(blob, 0.0)
+        return text_veil(im, text_bottom) if text_bottom is not None else im
     if how == "card":
-        return card_bg(blob, 0.45 if role == "cover" else 0.52, accent)
+        return card_bg(blob, 0.45 if role == "cover" else 0.52, accent, text_bottom)
     if how == "cut":
-        return cut_bg(blob, 0.55 if role == "cover" else 0.56, accent)
-    return compose(blob, 1.0, 0.68, 0.82, 0.6, 0.55) if role == "cover" else compose(blob, 1.0, 0.5, 0.72, 0.8, 0.6)
+        return cut_bg(blob, 0.55 if role == "cover" else 0.56, accent, text_bottom)
+    im = compose(blob, 1.0, 0.68, 0.82, 0.6, 0.55) if role == "cover" else compose(blob, 1.0, 0.5, 0.72, 0.8, 0.6)
+    return text_veil(im, text_bottom) if text_bottom is not None else im
 
 
 def fill_image(owner, el, im):
@@ -1013,36 +1477,50 @@ def fill_image(owner, el, im):
 
 
 def backgrounds(job, o, style="band"):
-    """표지·목차·간지(장마다) 배경. 같은 그림을 두 번 쓰지 않는다. 세트는 테마(style)가 정한다 — STYLE_BG·STYLE_HALF.
-    ① powerAssets 세로 전용 세트 ② powerAssets 의미 검색 ③ 나노바나나 생성(그 테마 화풍으로)"""
+    """표지·목차·간지(장마다) 배경. 같은 그림을 두 번 쓰지 않는다. 세트·화풍은 테마(style)가 정한다 — STYLE_BG·STYLE_HALF·BG_LOOK.
+    ① powerAssets 세로 전용 세트 ② powerAssets 의미 검색 ③ 맞는 게 없으면 나노바나나가 그 테마 화풍으로 제안 내용(bg_subject)에 맞게 생성"""
     kind, half = bg_kind(style), STYLE_HALF.get(style)
     used, out, log = set(), {}, []
     field = str(o.get("field") or o["project"]["name"])
-    slots = [("cover", f"{o['project']['name']} 표지 배경", ["표지 배경"] + [o["project"]["name"][:10]], "a glass cube holding simple icons of the project's field"),
-             ("toc", "목차 배경", ["목차 배경", "목차"], "a row of clear glass shelves or bars rising step by step")]
+    topic = f"{o['project'].get('name', '')} {o.get('field') or ''}"   # 사업 주제 — 그림 범주 검사(R120)
+    slots = [("cover", f"{o['project']['name']} 표지 배경", ["표지 배경"] + [o["project"]["name"][:10]], "one key object of the project's field"),
+             ("toc", "목차 배경", ["목차 배경", "목차"], "a row of shelves or bars rising step by step")]
     slots += [(f"div{i}", f"{c['title']} 간지 배경", list(c.get("keywords") or [c["title"]]), str(c.get("art") or "a small glass object"))
               for i, c in enumerate(o["chapters"])]
 
+    n_slot, n_done = max(1, len(slots)), [0]
+
+    def step():   # 배경 칸 하나 끝 — 40→68%(본문 뒤 단계에서 멈춘 듯 보이지 않게, R107)
+        n_done[0] += 1
+        job.push("시안 생성", 40 + int(28 * min(1.0, n_done[0] / n_slot)))
+
     pool = portrait_pool(job)
     gen = []
-    for key, text, kws, art in slots:   # 고르기는 순서대로(같은 그림 두 번 금지), 못 찾은 칸은 모아서 한꺼번에 생성
+    for key, text, kws, art in slots:   # ① 테마 세트에서 고르기(순서대로, 같은 그림 두 번 금지) — 사용자 10-29 "파워에셋에서 골라서 맞는 게 없을 때 만들어야 함"
         k_ = "3d" if kind == "dark" and key == "toc" else kind   # 목차는 흰 바탕 쪽 — 다크 배경은 표지·간지만
-        blob, src = pick_portrait(pool, key, [text] + kws, used, k_, 1 if k_ != kind else half)   # ① 세로 배경(역할·장 낱말 조건) ② 의미 검색 ③ 생성
+        blob, src = pick_portrait(pool, key, [text] + kws, used, k_, 1 if k_ != kind else half, topic)   # 세로 배경(역할·장 낱말 조건) → 의미 검색
         if blob is None:
-            blob, src = find_bg(job, text, kws, used, key)
+            blob, src = find_bg(job, text, kws, used, key, topic)
         if blob is None:
             gen.append((key, art))
         else:
             out[key] = blob
             log.append(f"{key}: {src}")
+            step()
+    # ② 맞는 그림이 없는 칸만 — 그 테마 화풍(BG_LOOK, 사용자 배경 프롬프트 모음)으로 그 장의 제안 내용(bg_subject)에 맞게 새로 그린다
+    chs = {f"div{i}": c for i, c in enumerate(o["chapters"])}
     with ThreadPoolExecutor(max_workers=max(1, int(design.W["CFG"].get("image_parallel", 3)))) as ex:
-        futs = {ex.submit(_carry(make_bg), job, art, field, "3d" if kind == "dark" and key == "toc" else kind): key for key, art in gen}
+        futs = {ex.submit(_carry(make_bg), job, art, field, "3d" if kind == "dark" and key == "toc" else kind,
+                          bg_subject(o, key, chs.get(key))): key for key, art in gen}
         for f in futs:
             try:
                 out[futs[f]] = f.result()
-                log.append(f"{futs[f]}: 나노바나나 생성")
+                log.append(f"{futs[f]}: 나노바나나 생성({'3d' if kind == 'dark' and futs[f] == 'toc' else kind} 화풍)")
+            except (design.Cancelled, design.Budget):
+                raise
             except Exception as e:
                 log.append(f"{futs[f]}: 생성 실패(기본 배경 유지) {str(e)[:60]}")
+            step()
     return out, log
 
 
@@ -1494,11 +1972,134 @@ def shift_to(sh, x_cm):
     sh.left = int(sh.left + Cm(x_cm - vis_left(sh)))
 
 
+def head_span(prs):
+    """본문 머리 영역의 가로 끝(cm) — 왼쪽 = 장 번호 배지(로마자) 왼쪽, 오른쪽 = 사업명 글 오른쪽 끝. 왼쪽 레일(side)이면 레일 안쪽 선"""
+    for m in prs.slide_masters:
+        bd = next((x for x in m.shapes if x.name == "장 번호 배지"), None)
+        if bd is None:
+            continue
+        pn = next((x for x in m.shapes if x.has_text_frame and x.top < Cm(1.5) and x.text_frame.text.strip() and x is not bd), None)
+        if pn is None:
+            return None
+        bp = pn.text_frame._txBody.find("a:bodyPr", NS)
+        l_ = bd.left / 360000
+        rail = next((x for x in m.shapes if x.name == "왼쪽 레일"), None)
+        if rail is not None:
+            l_ = max(l_, (rail.left + rail.width) / 360000 + 0.6)
+        return m, l_, (pn.left + pn.width - int(bp.get("rIns", 91440))) / 360000
+    return None
+
+
+SPAN_TAG = "본문폭"
+
+
+def widen_body(prs):
+    """세로 제안서 본문 좌우 여백 = 머리 영역 좌우 끝(사용자 10-28 "컨텐츠 좌우 여백이 너무 크다", R125).
+    본문은 기준선 G(2.04)~G+15 로 짜여 있다 — 짠 뒤 본문 장의 도형을 가로로만 [G, G+15] → [배지 왼쪽, 사업명 끝] 으로 옮긴다.
+    글 상자·막대·표·선은 폭도 같은 비율로 넓히고(세로 높이는 그대로 — 줄이 줄면 줄었지 늘지 않는다),
+    그림·작은 아이콘(정사각형에 가까운 1.6cm 미만)은 비율을 지키려 크기는 두고 자리만 옮긴다. 두 번 돌려도 한 번만(마스터 표시)."""
+    hs = head_span(prs)
+    if hs is None:
+        return 0
+    m, L, R = hs
+    if (m._element.cSld.get("name") or "").startswith(SPAN_TAG):
+        return 0
+    G, W0 = BODY_G, 15.0
+    k = (R - L) / W0
+    if not (1.0 < k < 1.4):
+        return 0
+    f = lambda x: L + (x - G) * k
+
+    def keep(el, w, h):
+        tag = etree.QName(el).localname
+        if tag == "pic":
+            return True
+        if tag == "graphicFrame" or tag == "cxnSp" or tag == "grpSp":
+            return False
+        return w < 1.6 and h > 0 and abs(w - h) / max(w, h) < 0.35
+
+    def move(el, mapx, scale, clamp=None):
+        """el 의 xfrm 을 가로로 — mapx: 이 좌표계의 x 변환, scale: 이 좌표계 1 단위의 실제 cm(크기 판정용),
+        clamp: 오른쪽 끝 상한(맨 위 도형만 — 경로 글 상자처럼 원래 G+15 를 넘던 빈 폭이 쪽 밖으로 나가지 않게)"""
+        xf = el.find("p:spPr/a:xfrm", NS) if el.find("p:spPr", NS) is not None else None
+        if xf is None:
+            xf = el.find("p:grpSpPr/a:xfrm", NS)
+        if xf is None:
+            xf = el.find("p:xfrm", NS)
+        if xf is None:
+            return
+        off, ext = xf.find("a:off", NS), xf.find("a:ext", NS)
+        if off is None or ext is None:
+            return
+        x, w, h = int(off.get("x")), int(ext.get("cx")), int(ext.get("cy"))
+        rot = int(xf.get("rot", "0")) % 21600000
+        side = rot in (5400000, 16200000)
+        if keep(el, w * scale / 360000, h * scale / 360000) or side:
+            c = mapx(x + w / 2)
+            off.set("x", str(int(round(c - w / 2))))
+            return
+        nx = mapx(x)
+        nr = mapx(x + w)
+        if clamp is not None and nr > clamp:
+            nr = max(clamp, nx + 1)
+        nw = int(round(nr - nx))
+        off.set("x", str(int(round(nx))))
+        ext.set("cx", str(nw))
+        tag = etree.QName(el).localname
+        if tag == "graphicFrame":
+            for gc in el.iter(f"{{{A}}}gridCol"):
+                gc.set("w", str(int(round(int(gc.get("w")) * nw / max(1, w)))))
+        elif tag == "grpSp":
+            co, ce = xf.find("a:chOff", NS), xf.find("a:chExt", NS)
+            if co is not None and ce is not None:
+                c0, cw = int(co.get("x")), int(ce.get("cx"))
+                ce.set("cx", str(int(round(cw * nw / max(1, w)))))
+                sub = lambda cx_, c0=c0: c0 + (cx_ - c0) * k
+                for ch in el:
+                    if etree.QName(ch).localname in ("sp", "pic", "grpSp", "graphicFrame", "cxnSp"):
+                        move(ch, sub, scale * (w / max(1, cw)))
+
+    n = 0
+    for s in prs.slides:
+        if s.slide_layout.slide_master is not m:
+            continue
+        for sh in list(s.shapes):
+            if sh.top is None or not (Cm(1.6) < sh.top < Cm(26.3)):
+                continue   # 머리·바닥(쪽 번호·로고)은 그대로
+            move(sh._element, lambda v: f(v / 360000) * 360000, 1.0, R * 360000)
+            n += 1
+    m._element.cSld.set("name", f"{SPAN_TAG} {L:.2f}-{R:.2f}")
+    return n
+
+
+def span_k(prs):
+    """widen_body 를 거친 장표의 가로 배율(안 거쳤으면 1)"""
+    hs = head_span(prs)
+    if hs is None or not (hs[0]._element.cSld.get("name") or "").startswith(SPAN_TAG):
+        return 1.0
+    return (hs[2] - hs[1]) / 15.0
+
+
+def _is_toc_slide(s):
+    """목차 쪽 — 레이아웃·마스터 머리에 '목차' 글이 있다"""
+    try:
+        for src in (s.slide_layout.shapes, s.slide_layout.slide_master.shapes):
+            for sh in walk(src):
+                if sh.has_text_frame and sh.text_frame.text.strip() == "목차":
+                    return True
+    except Exception:
+        pass
+    return False
+
+
 def audit_align(prs, lo=0.05, hi=0.9):
     """정렬 검사 — 한 장 안에서 왼쪽 정렬 요소들의 시작점이 '거의 같은데 다른'(lo~hi cm 차이) 곳을 찾는다.
     눈대중으로 놓친 사례: 표지 뱃지가 글 기준선보다 0.56cm 왼쪽(사용자 2026-10-14). 들여쓰기는 같은 상자 안 문단이라 걸리지 않는다."""
     out = []
+    ind = (BODY_T - BODY_G) * span_k(prs)   # 기준선 → 블록 안 글 들여쓰기(본문 폭을 넓혔으면 같은 비율)
     for k, s in enumerate(prs.slides, 1):
+        if _is_toc_slide(s):   # 목차는 장 이름 ↔ 절 이름 들여쓰기가 원래 양식 — 작업마다 6~10건 오탐이 진짜 경고를 묻었다(R146)
+            continue
         items = []
         for src in (s.slide_layout.shapes, s.shapes):
             for sh in walk(src):
@@ -1523,7 +2124,7 @@ def audit_align(prs, lo=0.05, hi=0.9):
                     items.append((x, sh.name))
         items.sort()
         for (x1, a), (x2, b) in zip(items, items[1:]):
-            if lo < x2 - x1 < hi and abs(x2 - x1 - (BODY_T - BODY_G)) > 0.03:   # 본문 2단(기준선 → 블록 안 글 0.50)은 의도한 들여쓰기
+            if lo < x2 - x1 < hi and abs(x2 - x1 - ind) > 0.03:   # 본문 2단(기준선 → 블록 안 글 0.50)은 의도한 들여쓰기
                 out.append(f"{k}쪽 '{a}' {x1:.2f}cm ↔ '{b}' {x2:.2f}cm ({x2 - x1:.2f}cm 어긋남)")
     return out
 
@@ -1623,7 +2224,10 @@ class Build:
                 fill_image(self.m_body, x._element, _glow_strip(self.bgs.get("cover"), int(w_ * 60), int(h_ * 60), 0.62, 0.25))
         self.normalize_body()
         self.pageno = {}     # (장 번호) → 쪽 수
-        self.trimmed = []    # 넘쳐서 덜어 낸 행(작업 기록에 남긴다)
+        self.trimmed = []    # 넘쳐서 덜어 낸 행(작업 기록·확인 목록에 남긴다 — 지금은 지우지 않고 '(계속)' 쪽으로 넘겨 비어 있어야 한다)
+        self.req_at = {}     # 요구사항 번호 → [(첫 쪽 'Ⅱ-3', 항목 제목)] — 별첨 대응표
+        self.item_at = {}    # (장 번호, 항목 제목) → 첫 쪽
+        self.appendix = 0    # 별첨 쪽 수
         self.pn = {}         # 장 → 본문 레이아웃에서 떼어 낸 쪽 번호 칸
 
     def normalize_body(self):
@@ -1665,9 +2269,21 @@ class Build:
                     set_text(sh, name)
         # 본문 바닥 왼쪽: 발주기관 로고(있으면 그림, 없으면 이름)
         x, y, h = Cm(1.75 if self.style == "side" else 1.02), Cm(26.61), Cm(0.6)
+        # 바닥 오른쪽 제안사 로고(견본 마스터의 그림) — 이름을 붙여 로고 쌍 검사(logosize.check)가 알아보게(R121)
+        ven = next((sh for sh in self.m_body.shapes if sh.shape_type == 13 and sh.top > Cm(26) and sh.left > Cm(9)), None)
+        if ven is not None:
+            ven.name = "제안사 로고"
         if self.logo:
             im = Image.open(io.BytesIO(self.logo))
-            self.m_body.shapes._spTree.append(self._pic_el(self.m_body, self.logo, x, y, int(h * im.width / im.height), h, "발주기관 로고"))
+            w = int(h * im.width / im.height)
+            if ven is not None:   # 발주기관 로고 높이 ≥ 제안사 로고 × 1.15(사용자 10-28, R121) — 발주기관은 견본 높이 0.6cm 를 넘지 않고, 모자라면 제안사 로고를 줄인다(오른쪽 끝·세로 가운데 유지)
+                import logosize
+                cs, vs = logosize.enforce_height((w, h), (ven.width, ven.height), h, None)
+                vw, vh = logosize.ints_pair(cs, vs)[1]
+                if (vw, vh) != (ven.width, ven.height):
+                    r_, cy = ven.left + ven.width, ven.top + ven.height // 2
+                    ven.width, ven.height, ven.left, ven.top = vw, vh, r_ - vw, cy - vh // 2
+            self.m_body.shapes._spTree.append(self._pic_el(self.m_body, self.logo, x, y, w, h, "발주기관 로고"))
         elif self.o["project"]["client"]:
             self._text_el(self.m_body, self.o["project"]["client"], x, y, Cm(6), h, 900, "595959", "a시월구일3")
 
@@ -1778,6 +2394,8 @@ class Build:
                     t = sh.text_frame.text.strip()
                     is_tag = "CHAPTER" in t or t in ("※", "*")
                     set_text(sh, tag if is_tag else c["title"])
+                    if not is_tag:   # 긴 장 이름이 상자 폭에서 꺾이지 않게(LibreOffice 썸네일 포함, R119)
+                        fit_box(sh, c["title"], center=(m is self.m_div))
                     if is_tag and m is self.m_div and self.style in ("band", "pill", "tab"):   # 간지 장 태그 = 뱃지(좌우 = 상하 × 1.5)
                         bx = abs_box(sh)[0] + _lins(sh)
                         geo = {"band": ("roundRect", 18000), "pill": ("roundRect", 50000), "tab": ("snip1Rect", 28000)}[self.style]
@@ -1794,6 +2412,8 @@ class Build:
                     sh._element.getparent().remove(sh._element)
                 elif sh.top < Cm(2):
                     set_text(sh, c["no"] if sh.name == "Rectangle 95" else c["title"])
+                    if sh.name != "Rectangle 95":
+                        fit_box(sh, c["title"], grow=False)
 
     def divider(self, i, c):
         s = self.prs.slides.add_slide(layout_for(self.m_div, i))
@@ -1813,6 +2433,11 @@ class Build:
             for r in rs[1:]:
                 e.remove(r)
             tf._txBody.append(e)
+        if not c.get("sections"):   # 절이 없는 장(별첨 등) — 문단이 하나도 없는 글 상자는 PowerPoint 가 '복구' 를 요구한다(10-28 확인, R107)
+            e = copy.deepcopy(p0)
+            for r in e.findall("a:r", NS):
+                e.remove(r)
+            tf._txBody.append(e)
         if self.style in ("tab", "side"):   # 왼쪽 정렬 스타일 — 장 이름과 같은 줄에서 시작
             b.left = Cm(2.0 if self.style == "tab" else 5.2)
         # 견본 상자는 줄바꿈 없음(wrap=none)·폭 6.5cm 라, 글줄이 더 길면 LibreOffice 는 상자를 양옆으로 넓혀 글이 왼쪽 레일 위로 밀렸다
@@ -1821,12 +2446,35 @@ class Build:
         b.text_frame._txBody.bodyPr.set("wrap", "square")
         if self.style not in ("tab", "side"):   # 가운데 정렬 스타일 — 가장 긴 줄을 재서 목록 묶음 전체를 쪽 가운데에(LibreOffice 가 하던 모양을 PowerPoint 에서도)
             sz = next((int(r.get("sz")) / 100 for r in b._element.iter(f"{{{A}}}rPr") if r.get("sz")), 16.0)
-            lw = max([text_cm(f"{k}. {sec['title']}", sz) for k, sec in enumerate(c.get("sections") or [], 1)] or [6.0])
+            face = next((e.get("typeface") for e in b._element.iter(f"{{{A}}}latin") if e.get("typeface")), "a시월구일2")
+            lw = max([text_cm(f"{k}. {sec['title']}", sz, face) for k, sec in enumerate(c.get("sections") or [], 1)] or [6.0])
             b.left = Cm(max(1.2, (PAGE_W - lw) / 2 - 0.25))
         b.width = Cm(PAGE_W) - b.left - Cm(1.2)
+        # 절 이름이 아주 길면(쪽 폭 가까이) 줄이 꺾여 목록 높이가 어긋난다 — 가장 긴 줄이 안쪽 폭의 92% 안에 들도록 글자를 줄인다(12pt 까지, R119)
+        rs_ = [r for r in b._element.iter(f"{{{A}}}rPr") if r.get("sz")]
+        sz0 = int(rs_[0].get("sz")) / 100 if rs_ else 16.0
+        face0 = next((e.get("typeface") for e in b._element.iter(f"{{{A}}}latin") if e.get("typeface")), "a시월구일2")
+        bpi = b.text_frame._txBody.bodyPr
+        inner = Emu(b.width).cm - (int(bpi.get("lIns") if bpi.get("lIns") is not None else 91440) + int(bpi.get("rIns") if bpi.get("rIns") is not None else 91440)) / 360000
+        lw0 = max([text_cm(f"{k}. {sec['title']}", sz0, face0) for k, sec in enumerate(c.get("sections") or [], 1)] or [0.0])
+        if lw0 > inner * 0.92:
+            nsz = max(12.0, sz0 * inner * 0.92 / lw0)
+            for r in rs_:
+                r.set("sz", str(int(nsz * 100)))
+        # 글에 맞춰 늘리기(spAutoFit)를 끄고 높이를 직접 — LibreOffice(결과 썸네일)는 이 상자를 견본 폭(6.5cm)으로 다시 재 '1. 요구사항 / 참조표' 처럼 줄을 바꿨다(10-28, R111)
+        bp_ = b.text_frame._txBody.bodyPr
+        for k_ in list(bp_):
+            if k_.tag.endswith("Autofit") or k_.tag.endswith("AutoFit"):
+                bp_.remove(k_)
+        bp_.insert(0, bp_.makeelement(f"{{{A}}}noAutofit", {}))
+        b.height = Cm(0.4 + max(1, len(c.get("sections") or [])) * DIV_LIST_PITCH)
         # 다크 키비주얼 간지는 흰 바탕 + 위쪽 띠(band_bg) — 목록은 띠 아래라 먹색 그대로(2026-10-15, 예전엔 위쪽 색 블록이라 흰 글씨)
         if self.bgs.get(f"div{i}"):
-            set_bg(s, band_bg(self.bgs[f"div{i}"], self.th["point"]) if self.style in DARK_STYLES else style_bg(self.bgs[f"div{i}"], self.style, "div", self.th["point"]))
+            # 절 목록이 끝나는 높이 — 배경 그림이 목록을 덮지 않게(절 6개면 16cm 넘게 내려와 카드 그림과 겹쳤다, 10-28 R107)
+            n_sec = len(c.get("sections") or [])
+            list_bottom = Emu(b.top).cm + 0.13 + n_sec * DIV_LIST_PITCH + 0.15
+            set_bg(s, band_bg(self.bgs[f"div{i}"], self.th["point"]) if self.style in DARK_STYLES
+                   else style_bg(faded(self.bgs[f"div{i}"]), self.style, "div", self.th["point"], list_bottom))   # 간지 배경 투명도 65%(사용자 10-29) — 다크 띠는 흰 장 제목이 얹혀 그대로
         elif self.style in DARK_STYLES:   # 배경을 못 구했으면 짙은 남색 띠라도 — 띠 위 흰 장 제목이 흰 바탕에 묻히지 않게(도형으로 덮으면 레이아웃의 장 제목이 가려진다)
             set_bg(s, band_bg(None, self.th["point"]))
         return s
@@ -1847,6 +2495,7 @@ class Build:
                 s.shapes._spTree.append(copy.deepcopy(el))
         # 머리: 경로·제목·요구사항
         rect2 = sorted([x for x in s.shapes if x.name == "Rectangle 2"], key=lambda x: x.top)
+        cont = cont or pg.get("_cont")   # 그리기 전에 나눈 '(계속)' 쪽(paginate·trim_overflow)
         title = (re.sub(r"\s*\(\d+/\d+\)\s*$", "", str(pg.get("title") or "").strip()) + " (계속)") if cont else str(pg.get("title") or "").strip()
         if rect2:   # 경로는 AI 글을 믿지 않고 목차에서 만든다(장 이름이 섞여 목차와 어긋났다 — 운영 점검 2026-10-14). 가이드 견본은 fixed_path
             set_text(rect2[0], pg["fixed_path"] if "fixed_path" in pg else (page_path(c, title) or str(pg.get("path") or "")))
@@ -1880,13 +2529,14 @@ class Build:
         us = units(blocks)
         tot = sum(unit_height(u) for u in us)
         gap = 0.55
+        g_min, m_bot = (TIGHT_GAP, TIGHT_BOTTOM) if pg.get("_tight") else (0.25, 0.4)   # 촘촘한 쪽(split_page 가 정함, R117)
         if len(us) > 1 and tot + gap * (len(us) - 1) > BODY_BOTTOM - y:   # 조금 넘치면 간격을 줄여 한 쪽에(최소 0.25)
-            gap = max(0.25, (BODY_BOTTOM + 0.4 - y - tot) / (len(us) - 1))
+            gap = max(g_min, (BODY_BOTTOM + m_bot - y - tot) / (len(us) - 1))
         elif len(us) > 1 and (tot + gap * (len(us) - 1)) / (BODY_BOTTOM - y) >= 0.75:   # 조금 빈 쪽은 남는 높이를 간격에 고르게(최대 1.2cm) — 아래만 비지 않게
             gap = min(1.2, (BODY_BOTTOM - y - tot) / (len(us) - 1))
         for ui, u in enumerate(us):
             h = unit_height(u)
-            if y + h > BODY_BOTTOM + 0.4 and ui:   # 바닥 여유 0.4cm 까지 — 블록 하나만 담긴 '(계속)' 쪽을 줄인다(쪽 번호·로고는 26.6cm)
+            if y + h > BODY_BOTTOM + m_bot + 1e-6 and ui:   # 바닥 여유 0.4cm 까지 — 블록 하나만 담긴 '(계속)' 쪽을 줄인다(쪽 번호·로고는 26.6cm)
                 rest = [b for uu in us[ui:] for b in uu]
                 break
             if len(u) == 1:
@@ -2062,7 +2712,12 @@ class Build:
                 fill.append(fill.makeelement(f"{{{A}}}srgbClr", {"val": "FFFFFF"}))
                 sp.find("a:prstGeom", NS).addnext(fill)
                 # 'Ⅰ' 는 서체에 없어 대체 글꼴로 그려진다 — 라틴 I 로 재고 대체 글꼴 옆 여백(0.15)을 더해야 실제 폭에 맞는다(PowerPoint 실측)
-                w = text_cm(txt.translate(ROMAN_LATIN), 14) + (0.15 if txt != txt.translate(ROMAN_LATIN) else 0) + 2 * TOC_PAD - (0 if right else 0.1)
+                # 글 크기는 그 문단의 실제 크기로(견본 15.5pt) + 12% 여유 — 14pt 로 재 상자가 좁았다. PowerPoint 는 wrap=none 이라 넘겨도
+                # 한 줄로 그리지만, 결과 화면 썸네일을 만드는 LibreOffice 는 상자 폭에서 줄을 바꿔 글이 겹쳤다(10-28 사용자, R111)
+                pt = next((int(r.get("sz")) / 100 for r in p_el.iter(f"{{{A}}}rPr") if r.get("sz")), 14.0)
+                # 서체도 그 문단의 것으로 — 장 줄은 굵은 단계(a시월구일3)인데 본문 단계로 재 '1. 사업에 대한 이해' 의 '이해' 가 다음 줄로 꺾였다(10-28 썸네일, R119)
+                face = next((e.get("typeface") for e in p_el.iter(f"{{{A}}}latin") if e.get("typeface")), "a시월구일2")
+                w = text_cm(txt.translate(ROMAN_LATIN), pt, face) * 1.12 + (0.15 if txt != txt.translate(ROMAN_LATIN) else 0) + 2 * TOC_PAD - (0 if right else 0.1)
                 x = (right - TOC_PAD - (w - 2 * TOC_PAD)) if right else (x_dot0 - TOC_PAD)
                 e.find(".//a:off", NS).set("x", str(int(Cm(x))))
                 e.find(".//a:off", NS).set("y", str(int(Cm(TOC_Y0 + row * TOC_PITCH - TOC_PITCH / 2))))
@@ -2087,17 +2742,23 @@ class Build:
                     if pno:
                         put(pg_box, _para(P_PG, [pno]), row, pno, right=x_dot1)
                     row += 1
+            # 이 목차 쪽의 글 끝(마지막 줄 상자 아래) — 쪽마다 배경을 이 높이에 맞춰 가린다(R107)
+            self.__dict__.setdefault("toc_bottom", {})[s.slide_id] = TOC_Y0 + (max(1, row) - 1) * TOC_PITCH + TOC_PITCH / 2
             made.append(s)
         return made
 
     def build(self, chapters_pages, out):
         self.project_text()
         self.chapter_layouts()
-        if self.bgs.get("toc"):
-            pic = next((x for x in walk(self.m_toc.shapes) if x.shape_type == 13 and x.width > Cm(15)), None)
-            if pic is not None:
-                rid = pic._element.find(".//a:blip", NS).get(f"{{{R}}}embed")
-                pic.part.related_part(rid)._blob = compose(self.bgs["toc"], 0.85, 0.42, 0.5, 0.6, 0.6)
+        # 목차 배경 — 마스터의 쪽 전체 그림 한 장을 모든 목차 쪽이 같이 써서, 줄이 많은 쪽은 아래쪽 그림과 글이 겹쳤다(10-28 사용자, R107).
+        # 그림은 마스터에서 떼고, 목차 쪽마다 그 쪽 글이 끝나는 높이까지 흰색으로 가린 배경을 쪽 배경으로 넣는다(아래 TOC 를 만든 뒤)
+        self.toc_bottom = {}
+        toc_pic = next((x for x in walk(self.m_toc.shapes) if x.shape_type == 13 and x.width > Cm(15)), None)
+        toc_src = None
+        if toc_pic is not None:
+            rid = toc_pic._element.find(".//a:blip", NS).get(f"{{{R}}}embed")
+            toc_src = faded(self.bgs["toc"] if self.bgs.get("toc") else toc_pic.part.related_part(rid).blob)   # 목차 배경 투명도 65%(사용자 10-29)
+            toc_src = compose(toc_src, 0.85, 0.42, 0.5, 0.6, 0.6) if self.bgs.get("toc") else toc_src
         cover = self.cover()
         order = [cover]
         toc_rows, chapter_slides, chapter_kinds = [], [], []
@@ -2106,12 +2767,14 @@ class Build:
             kinds = ["div"]
             rows = []
             pages = chapters_pages.get(i) or []
-            if c["no"] == "※":
-                rows = [((f"{k}. ", sec["title"]), []) for k, sec in enumerate(c.get("sections") or [], 1)]
-            else:
+            if True:
                 by_sec = {}
-                pages = merge_item_pages([fit_page(dict(pg)) for pg in pages])
-                pages = trim_overflow(pages, self.trimmed)   # 넘친 쪽은 끝 행을 다음 쪽으로 · 다음 쪽이 없으면 덜어 냄(기록)
+                if c["no"] == "※":   # 별첨 — AI 없이 엔진이 쪽을 만든다(요구사항 대응표·약어표·빈 서식, R117). 예전엔 간지 목록 줄만 있었다
+                    pages = appendix_pages(self.o, c, chapters_pages, self.req_at, self.item_at)
+                    self.appendix = len(pages)
+                else:
+                    pages = merge_item_pages([fit_page(strip_marks(dict(pg))) for pg in pages])
+                    pages = trim_overflow(pages, self.trimmed)   # 넘친 쪽은 끝 행을 다음 쪽으로 · 다음 쪽이 없으면 '(계속)' 쪽을 새로(지우지 않는다, R117)
                 for pi, pg in enumerate(pages):   # 넘칠 블록을 같은 항목 다음 쪽 앞으로(자리가 있을 때) — 블록 하나뿐인 '(계속)' 쪽이 생겼다(3차 검수)
                     if page_fill(pg) <= 1.02 or pi + 1 >= len(pages):
                         continue
@@ -2124,12 +2787,20 @@ class Build:
                             break
                         pg["blocks"] = pg["blocks"][:-1]
                         nxt["blocks"] = trial["blocks"]
+                if c["no"] != "※":   # 그리기 전에 쪽을 나누고(넘치는 단위 → '(계속)'), 반쯤 빈 뒤쪽은 합치거나 고르게(R117)
+                    pages = balance_pages(paginate(pages))
                 for pg in pages:
                     rest, cont = None, None
                     s, rest = self.body_page(i, c, pg)
                     sl.append(s)
-                    kinds.append(str(pg.get("title") or ""))
+                    kinds.append(str(pg.get("title") or "") + (" (계속)" if pg.get("_cont") else ""))
                     first = f"{c['no']}-{self.pageno[c['no']]}"
+                    if c["no"] != "※" and not pg.get("_cont"):   # 별첨 요구사항 대응표가 쓸 자리 — 요구사항 번호·항목 → 첫 쪽
+                        key_ = re.sub(r"\s*\(\d+/\d+\)\s*$", "", str(pg.get("title") or "").strip())
+                        self.item_at.setdefault((i, key_), first)
+                        for rid in re.findall(r"[A-Z]{2,4}-\d{2,4}", str(pg.get("req") or "")):
+                            if first not in [x[0] for x in self.req_at.setdefault(rid, [])]:
+                                self.req_at[rid].append((first, key_))
                     k = 2
                     while rest:
                         s, rest2 = self.body_page(i, c, dict(pg, blocks=rest), cont=f"{k}")
@@ -2150,6 +2821,15 @@ class Build:
         tocs = []
         for i, c, rows in toc_rows:
             tocs += self.toc(i, c, rows)
+        if toc_pic is not None and toc_src:
+            rid = toc_pic._element.find(".//a:blip", NS).get(f"{{{R}}}embed")
+            toc_pic._element.getparent().remove(toc_pic._element)
+            try:
+                toc_pic.part.drop_rel(rid)   # 떼어 낸 그림 부품은 파일에서도 뺀다
+            except Exception:
+                pass
+            for s in tocs:
+                set_bg(s, text_veil(toc_src, self.toc_bottom.get(s.slide_id, PAGE_H)))
         order += tocs + [x for sl in chapter_slides for x in sl]
         # 결과 화면 캔버스용 — 쪽마다 종류·장(章)·제목(장 줄 = 표지·목차 한 줄 + 장마다 간지·본문 한 줄)
         self.pages = [{"n": 1, "kind": "cover", "ch": "표지 · 목차", "title": "표지"}]
@@ -2164,6 +2844,7 @@ class Build:
         for s in (self.s_body, self.s_cover, self.s_toc, self.s_div):
             drop_slide(self.prs, s)
         refont(self.prs)
+        widen_body(self.prs)   # 본문 좌우 = 머리 영역 좌우 끝(R125)
         self.prs.save(out)
         return len(order)
 
@@ -2237,6 +2918,39 @@ def fit_one_line(sh, text, width_cm, start=18, low=12):
         pt -= 1
     for r in sh.text_frame.paragraphs[0].runs:
         r.font.size = Pt(pt)
+
+
+def fit_box(sh, text, center=False, grow=True, low=0.7, margin=1.06):
+    """한 줄 글 상자를 글 폭에 맞춘다 — ① 상자를 넓히고(가운데 정렬이면 양쪽, 아니면 오른쪽 · 쪽 여백 1.2cm 까지) ② 그래도 넘치면 글자를 줄인다(원래의 70% 까지).
+    LibreOffice(결과 화면 썸네일)는 wrap 과 상관없이 상자 폭에서 줄을 바꿔 아래 줄과 겹쳤다(10-28 사용자, R119). 폭은 그 문단 서체 파일로 잰다"""
+    rs = [r for p in sh.text_frame.paragraphs for r in p.runs]
+    if not rs:
+        return
+    r0 = rs[0]._r.find("a:rPr", NS)
+    pt = int(r0.get("sz")) / 100 if r0 is not None and r0.get("sz") else 18.0
+    lat = r0.find("a:latin", NS) if r0 is not None else None
+    face = lat.get("typeface") if lat is not None else "a시월구일2"
+    scale = TITLE_SCALE[0] if face == TITLE0[1] else 1.0
+    bp = sh.text_frame._txBody.bodyPr
+    ins = (int(bp.get("lIns") if bp.get("lIns") is not None else 91440) + int(bp.get("rIns") if bp.get("rIns") is not None else 91440)) / 360000
+    need = lambda p_: text_cm(text.translate(ROMAN_LATIN), p_ * scale, face) * margin + ins
+    if need(pt) <= sh.width / 360000:
+        return
+    if grow:
+        x, w = sh.left / 360000, sh.width / 360000
+        if center:
+            half = min((PAGE_W - 2.4) / 2, max(w / 2, need(pt) / 2))
+            cx = x + w / 2
+            half = min(half, cx - 1.2, PAGE_W - 1.2 - cx)
+            sh.left, sh.width = Cm(cx - half), Cm(2 * half)
+        else:
+            sh.width = Cm(min(PAGE_W - 1.2 - x, max(w, need(pt))))
+    p_ = pt
+    while p_ > pt * low and need(p_) > sh.width / 360000:
+        p_ -= 0.5
+    if p_ != pt:
+        for r in rs:
+            r.font.size = Pt(p_)
 
 
 def split_title(name):
@@ -2374,6 +3088,17 @@ def unit_height(u):
     return max(block_height(b, HW - (BODY_T - BODY_G)) for b in u)
 
 
+def strip_marks(v):
+    """AI 가 글에 남긴 강조 표시(**)를 지운다 — 도입 문장에 '**전담 조직**'이 그대로 찍혔다(10-30 809c 5곳·d448 1곳, R145). 쪽 전체(블록·표 안까지)"""
+    if isinstance(v, str):
+        return v.replace("**", "")
+    if isinstance(v, list):
+        return [strip_marks(x) for x in v]
+    if isinstance(v, dict):
+        return {k: (x if k.startswith("_") else strip_marks(x)) for k, x in v.items()}
+    return v
+
+
 def fit_page(pg):
     """넘치는 쪽(100% 초과)은 이어진 작은 블록 둘을 2단으로 묶는다 — AI 가 half 지시를 거의 안 따랐다(3차 시험 2단 0쪽)"""
     bl = [b for b in pg.get("blocks") or [] if not block_empty(b)]
@@ -2448,41 +3173,432 @@ def _rows_of(b):
     return None
 
 
+ROWS_KEY = {"rows": "rows", "strategy": "items", "process": "steps", "cards": "cards"}
+
+
+def _row_list(b):
+    """블록의 행 목록(참조) — _rows_of 와 달리 행 수 조건 없이(이어 붙일 때 쓴다)"""
+    if isinstance(b.get("table"), dict) and str(b.get("kind") or "") in ("table", "text"):
+        return b["table"].setdefault("rows", [])
+    k = ROWS_KEY.get(str(b.get("kind") or ""))
+    return b["fig"].setdefault(k, []) if k and isinstance(b.get("fig"), dict) else None
+
+
+def _push_rows(b, moved, nxt):
+    """b 에서 덜어 낸 끝 행(moved, 순서대로)을 같은 항목 다음 쪽(nxt) 맨 앞의 '(이어서)' 블록에 이어 붙인다"""
+    head = (nxt.get("blocks") or [None])[0]
+    if head is not None and head.get("_cont_of") == b.get("_cont_id") and _row_list(head) is not None:
+        _row_list(head)[0:0] = moved
+        return
+    b.setdefault("_cont_id", f"c{id(b)}")
+    nb = copy.deepcopy(b)
+    nb["head"] = re.sub(r"\s*\(이어서\)$", "", str(b.get("head") or "")) + " (이어서)"
+    nb["_cont_of"] = b["_cont_id"]
+    nb.pop("_cont_id", None)
+    nb["half"] = False
+    nb["bullets"] = []   # 보충 글은 앞 블록에만
+    if isinstance(nb.get("table"), dict) and str(nb.get("kind") or "") in ("table", "text"):
+        nb["table"]["rows"] = list(moved)
+    elif isinstance(nb.get("fig"), dict):
+        nb["fig"][ROWS_KEY[str(nb.get("kind"))]] = list(moved)
+    nxt["blocks"] = [nb] + list(nxt.get("blocks") or [])
+
+
+def _rejoin(blocks):
+    """'(이어서)' 블록이 원래 블록 바로 뒤에 다시 붙으면 한 블록으로 — 같은 쪽에 같은 소제목이 두 번 나오지 않게"""
+    out = []
+    for b in blocks:
+        if out and b.get("_cont_of") and b.get("_cont_of") == out[-1].get("_cont_id") and _row_list(out[-1]) is not None and _row_list(b) is not None:
+            out[-1] = copy.deepcopy(out[-1])
+            _row_list(out[-1]).extend(_row_list(b))
+            continue
+        out.append(b)
+    return out
+
+
+def cont_page(pg):
+    """같은 항목의 '(계속)' 쪽 — 제목·경로·요구사항은 그대로, 블록은 비운다(body_page 가 제목에 '(계속)' 을 붙인다)"""
+    return dict(pg, blocks=[], _cont=True)
+
+
+def _split_block(b, r):
+    """행을 나눌 수 있는 블록 b 를 앞 r 행 / 나머지('(이어서)')로 — 원본은 건드리지 않는다"""
+    b1 = copy.deepcopy(b)
+    b1.setdefault("_cont_id", b.get("_cont_id") or f"c{id(b)}")
+    rows = _row_list(b1)
+    rest = rows[r:]
+    del rows[r:]
+    holder = {"blocks": []}
+    _push_rows(b1, rest, holder)
+    return b1, holder["blocks"][0]
+
+
+def _cuts(bl):
+    """쪽을 둘로 가르는 자리 — (앞 블록들, 뒤 블록들). 단위 사이 + 행을 나눌 수 있는 한 칸 블록의 행 사이(양쪽 2행 이상).
+    2단 묶음은 가르지 않는다(왼쪽·오른쪽 칸이 다른 쪽으로 갈라진다)"""
+    sp = _spans(bl)
+    out = []
+    for u, (s0, s1) in enumerate(sp):
+        if u:
+            out.append((bl[:s0], bl[s0:]))
+        if s1 - s0 == 1 and _rows_of(bl[s0]) is not None:
+            n = len(_row_list(bl[s0]))
+            for r in range(2, n - 1):
+                b1, b2 = _split_block(bl[s0], r)
+                out.append((bl[:s0] + [b1], [b2] + bl[s1:]))
+    return out
+
+
+def split_page(pg):
+    """한 쪽에 안 드는 쪽을 쪽 여러 개로(앞 쪽 + '(계속)' 쪽) — 행은 지우지 않는다(R117).
+    두 쪽으로 될 때: 두 쪽 다 60% 이상이 되는 자리 중 앞 쪽이 가장 꽉 차는 곳, 그런 자리가 없으면 덜 찬 쪽이 가장 차는 곳(고르게).
+    두 쪽으로 안 되면 앞 쪽을 가장 꽉 채우고 나머지를 다시 나눈다"""
+    bl = [b for b in pg.get("blocks") or [] if not block_empty(b)]
+    if fits(bl) or len(bl) == 0:
+        return [dict(pg, blocks=bl)]
+    if fits_tight(bl):   # 글자·행 간격을 줄이면 한 쪽에 든다 — 0.5cm 넘침에 '(계속)' 쪽을 만들지 않는다
+        return [dict(pg, blocks=tighten(bl), _tight=True)]
+    cuts = _cuts(bl)
+    fill = lambda x: page_fill({"blocks": x})
+    two = [(p1, p2) for p1, p2 in cuts if fits(p1) and fits(p2)]
+    if two:
+        good = [c for c in two if min(fill(c[0]), fill(c[1])) >= SPARSE]
+        p1, p2 = max(good, key=lambda c: fill(c[0])) if good else max(two, key=lambda c: min(fill(c[0]), fill(c[1])))
+        return [dict(pg, blocks=p1), dict(cont_page(pg), blocks=p2)]
+    one = [(p1, p2) for p1, p2 in cuts if fits(p1)]
+    if not one:   # 나눌 자리가 없다(블록 하나가 쪽보다 크고 행도 못 나눔) — 그대로 그리고 body_page 가 넘치는 단위를 넘긴다
+        return [dict(pg, blocks=bl)]
+    p1, p2 = max(one, key=lambda c: fill(c[0]))
+    rest = split_page(dict(cont_page(pg), blocks=p2))
+    return [dict(pg, blocks=p1)] + rest
+
+
 def trim_overflow(pages, log=None):
-    """넘치는 쪽(102% 초과)은 나눌 수 있는 블록의 끝 행부터 — 같은 항목 다음 쪽이 있으면 그쪽으로 옮기고, 없으면 덜어 내 기록한다.
-    블록 하나가 통째로 '(계속)' 쪽에 밀려 반쯤 빈 쪽이 생기던 것(6차: 넘친 쪽 8개 → '(계속)' 7쪽)"""
-    for i, pg in enumerate(pages):
-        guard = cut = 0
-        while page_fill(pg) > 1.02 and guard < 12:
-            guard += 1
-            nxt = pages[i + 1] if i + 1 < len(pages) and _item_key(pages[i + 1]) == _item_key(pg) else None
-            if nxt is None and cut >= 2:
-                break   # 덜어 내는 것은 한 쪽에 2행까지 — 더 넘치면 '(계속)' 쪽으로(내용을 많이 잃지 않게)
-            cand = [b for b in reversed(pg.get("blocks") or []) if _rows_of(b) is not None]
-            if not cand:
+    """넘치는 쪽은 split_page 로 '(계속)' 쪽을 만들어 나눈다 — 행을 지우지 않는다.
+    예전엔 같은 항목 다음 쪽이 없으면 끝 행을 한 쪽에 2행까지 조용히 지웠다(10-28 4d58: 37행 삭제, R117).
+    log 에는 '정말 지운 행'만 남긴다(지금은 지우는 길이 없다 — 작업 기록·확인 목록 자리만 남겨 둔다)"""
+    out = []
+    for pg in pages:
+        out += split_page(pg)
+    return out
+
+
+TIGHT_GAP, TIGHT_BOTTOM, TIGHT_ROW, TIGHT_STEP = 0.15, 0.5, 0.54, 0.2   # 촘촘한 쪽 — 블록 사이·바닥 여유·표 행(8pt)·절차 단계 사이(cm)
+
+
+def fits(blocks, tight=False):
+    """한 쪽에 들어가는가 — body_page 와 같은 계산(블록 사이 간격은 0.25cm 까지 줄이고 바닥 여유 0.4cm 까지).
+    tight = 촘촘한 쪽(간격 0.15·바닥 0.5·표 행 0.54·절차 단계 사이 0.2) — blocks 는 tighten() 한 것이어야 한다"""
+    us = units([b for b in blocks if not block_empty(b)])
+    g, m = (TIGHT_GAP, TIGHT_BOTTOM) if tight else (0.25, 0.4)
+    return len(us) <= 1 or sum(unit_height(u) for u in us) + g * (len(us) - 1) <= BODY_BOTTOM + m - 7.55 + 1e-6
+
+
+def tighten(blocks):
+    """글자·행 간격 조정(R117) — 표는 행 0.54cm·8pt, 세로 절차는 단계 사이 0.2cm. 원본은 그대로 두고 사본에 표시"""
+    out = []
+    for b in blocks:
+        b = copy.deepcopy(b)
+        if isinstance(b.get("table"), dict):
+            b["table"]["_tight"] = True
+        if str(b.get("kind") or "") == "process" and isinstance(b.get("fig"), dict):
+            b["fig"]["_tight"] = True
+        out.append(b)
+    return out
+
+
+def fits_tight(blocks):
+    return fits(tighten(blocks), True)
+
+
+def _spans(blocks):
+    """units() 와 같은 묶음을 원래 블록 번호 구간으로 — [(시작, 끝)]"""
+    out, i = [], 0
+    while i < len(blocks):
+        n = 2 if (is_half(blocks[i]) and i + 1 < len(blocks) and is_half(blocks[i + 1])) else 1
+        out.append((i, i + n))
+        i += n
+    return out
+
+
+def paginate(pages):
+    """쪽을 그리기 전에 나눈다 — 한 쪽에 안 드는 단위는 '(계속)' 쪽으로(예전엔 body_page 가 그리면서 나눠 반쯤 빈 쪽을 고칠 수 없었다)"""
+    out = []
+    for pg in pages:
+        bl = [b for b in pg.get("blocks") or [] if not block_empty(b)]
+        sp = _spans(bl)
+        cur, first = [], True
+        for a, z in sp:
+            if cur and not fits(cur + bl[a:z]):
+                out.append(dict(pg, blocks=cur) if first else dict(cont_page(pg), blocks=cur))
+                cur, first = [], False
+            cur = cur + bl[a:z]
+        out.append(dict(pg, blocks=cur) if first else dict(cont_page(pg), blocks=cur))
+    return out
+
+
+SPARSE = 0.6   # 같은 항목 뒤쪽이 이보다 덜 차면(page_fill) 앞 쪽과 합치거나 고르게 나눈다(R117)
+
+
+def balance_pages(pages):
+    """반쯤 빈 '(계속)'·(2/2) 쪽(채움 60% 미만) — ① 앞 쪽과 합쳐 한 쪽에 들면(블록 간격을 줄이는 범위 안에서) 합친다
+    ② 안 들면 앞 쪽 끝 단위(블록·2단)나 끝 행을 넘겨 두 쪽을 고르게 — 한쪽만 텅 비지 않게"""
+    j = 1
+    while j < len(pages):
+        a, b = pages[j - 1], pages[j]
+        if _item_key(a) != _item_key(b) or page_fill(b) >= SPARSE:
+            j += 1
+            continue
+        ab = [x for x in a.get("blocks") or [] if not block_empty(x)]
+        bb = [x for x in b.get("blocks") or [] if not block_empty(x)]
+        if fits(_rejoin(ab + bb)):   # ① 합치기 — 앞 쪽 제목·도입 그대로
+            pages[j - 1] = dict(a, blocks=_rejoin(ab + bb))
+            del pages[j]
+            continue
+        if fits_tight(_rejoin(ab + bb)):   # ① 글자·행 간격을 줄여 합치기
+            pages[j - 1] = dict(a, blocks=tighten(_rejoin(ab + bb)), _tight=True)
+            del pages[j]
+            continue
+        c_ = pages[j + 1] if j + 1 < len(pages) and _item_key(pages[j + 1]) == _item_key(b) else None
+        if c_ is not None and fits(_rejoin(bb + list(c_.get("blocks") or []))):   # ①' 뒤에 같은 항목 쪽이 또 있으면 그쪽 앞에 합친다
+            pages[j + 1] = dict(c_, blocks=_rejoin(bb + list(c_.get("blocks") or [])))
+            del pages[j]
+            continue
+
+        def ok(na, nb):   # 한 쪽에 들고, 두 쪽 중 덜 찬 쪽이 더 차게 될 때만(한쪽만 텅 비지 않게)
+            lo = min(page_fill(dict(a, blocks=ab)), page_fill(dict(b, blocks=bb)))
+            return fits(nb) and min(page_fill(dict(a, blocks=na)), page_fill(dict(b, blocks=nb))) > lo + 1e-6
+        for _ in range(60):   # ② 고르게 — 뒤쪽이 60% 에 닿으면 멈춘다(앞 쪽은 되도록 꽉 찬 채로)
+            if page_fill(dict(b, blocks=bb)) >= SPARSE:
                 break
-            b = cand[0]
-            rows = _rows_of(b)
-            moved = rows.pop()
-            cut += nxt is None
-            if nxt is not None:   # 같은 항목 다음 쪽 앞에 같은 구성 블록으로 이어 붙인다
-                head = (nxt.get("blocks") or [None])[0]
-                if head is not None and head.get("_cont_of") == id(b):
-                    _rows_of(head).insert(0, moved) if _rows_of(head) is not None else None
-                else:
-                    nb = copy.deepcopy(b)
-                    nb["head"] = str(b.get("head") or "") + " (이어서)"
-                    nb["_cont_of"] = id(b)
-                    rr = _rows_of(nb) if _rows_of(nb) is not None else None
-                    if isinstance(nb.get("table"), dict):
-                        nb["table"]["rows"] = [moved]
-                    elif isinstance(nb.get("fig"), dict):
-                        key = {"rows": "rows", "strategy": "items", "process": "steps", "cards": "cards"}[str(nb.get("kind"))]
-                        nb["fig"][key] = [moved]
-                    nxt["blocks"] = [nb] + list(nxt.get("blocks") or [])
-            elif log is not None:
-                log.append(f"{pg.get('title')}: '{b.get('head')}' 끝 행 덜어 냄 — {str(moved)[:40]}")
+            sp = _spans(ab)
+            moved = False
+            if len(sp) > 1:   # 끝 단위 하나를 뒤 쪽 앞으로
+                s0 = sp[-1][0]
+                na, nb = ab[:s0], _rejoin(ab[s0:] + bb)
+                if ok(na, nb):
+                    ab, bb, moved = na, nb, True
+            if not moved and ab and _rows_of(ab[-1]) is not None and (len(sp) == 1 or sp[-1][1] - sp[-1][0] == 1):   # 끝 블록의 끝 행 하나를
+                ta = copy.deepcopy(ab)
+                tb_ = dict(b, blocks=list(bb))
+                ta[-1].setdefault("_cont_id", ab[-1].get("_cont_id") or f"c{id(ab[-1])}")
+                ab[-1]["_cont_id"] = ta[-1]["_cont_id"]
+                if bb and bb[0].get("_cont_of") == ta[-1]["_cont_id"]:
+                    tb_["blocks"] = [copy.deepcopy(bb[0])] + bb[1:]
+                _push_rows(ta[-1], [_rows_of(ta[-1]).pop()], tb_)
+                if ok(ta, tb_["blocks"]):
+                    ab, bb, moved = ta, tb_["blocks"], True
+            if not moved:
+                break
+        a, b = dict(a, blocks=ab), dict(b, blocks=bb)
+        pages[j - 1], pages[j] = a, b
+        j += 1
     return pages
+
+
+# ───────────────────────── 별첨 — AI 없이 엔진이 만든다(R117). 예전엔 별첨 장을 본문 작성에서 빼고 간지 목록 줄만 만들어,
+#   4d58(요구사항 수용여부 비교표·평가항목 조견표·약어표·기술적용계획표·증빙)·e25(별첨 3항목)에 본문 쪽이 하나도 없었다(10-28).
+#   요구사항 대응표 = 목차가 모은 요구사항 번호 + 본문 쪽의 req · 약어표 = 본문에서 모은 영문 약어 · 나머지 = '[제안사 작성]' 빈 서식(제목·표 머리)
+ABBR = {   # 흔한 약어만(뜻이 하나로 정해진 것). 본문에 '풀이(약어)'·'약어(원어)' 가 있으면 그것이 먼저, 없고 여기에도 없으면 [제안사 작성]
+    "AI": "인공지능(Artificial Intelligence)", "API": "응용 프로그램 인터페이스(Application Programming Interface)",
+    "BCP": "업무 연속성 계획(Business Continuity Plan)", "CCTV": "폐쇄회로 텔레비전(Closed-Circuit Television)",
+    "CMS": "콘텐츠 관리 시스템(Content Management System)", "CPU": "중앙 처리 장치(Central Processing Unit)",
+    "CR": "변경 요청(Change Request)", "CRM": "고객 관계 관리(Customer Relationship Management)", "DB": "데이터베이스(Database)",
+    "DBMS": "데이터베이스 관리 시스템(Database Management System)", "DR": "재해 복구(Disaster Recovery)",
+    "ERP": "전사적 자원 관리(Enterprise Resource Planning)", "FAQ": "자주 묻는 질문(Frequently Asked Questions)",
+    "FTP": "파일 전송 규약(File Transfer Protocol)", "GIS": "지리 정보 시스템(Geographic Information System)",
+    "GPU": "그래픽 처리 장치(Graphics Processing Unit)", "HW": "하드웨어(Hardware)", "ICT": "정보통신기술(Information and Communications Technology)",
+    "IP": "인터넷 프로토콜(Internet Protocol)", "ISMS": "정보보호 관리체계(Information Security Management System)",
+    "ISO": "국제표준화기구(International Organization for Standardization)", "IT": "정보기술(Information Technology)",
+    "ITSM": "IT 서비스 관리(IT Service Management)", "IoT": "사물인터넷(Internet of Things)", "KPI": "핵심 성과 지표(Key Performance Indicator)",
+    "LAN": "근거리 통신망(Local Area Network)", "MOU": "업무 협약(Memorandum of Understanding)", "OS": "운영체제(Operating System)",
+    "OTP": "일회용 비밀번호(One-Time Password)", "PC": "개인용 컴퓨터(Personal Computer)", "PL": "파트 책임자(Part Leader)",
+    "PM": "사업 책임자(Project Manager)", "PMO": "사업 관리 조직(Project Management Office)", "QA": "품질 보증(Quality Assurance)",
+    "RFP": "제안요청서(Request for Proposal)", "ROI": "투자 수익률(Return on Investment)", "RPO": "목표 복구 시점(Recovery Point Objective)",
+    "RTO": "목표 복구 시간(Recovery Time Objective)", "SaaS": "서비스형 소프트웨어(Software as a Service)",
+    "SLA": "서비스 수준 협약(Service Level Agreement)", "SMS": "문자 메시지 서비스(Short Message Service)",
+    "SNS": "소셜 네트워크 서비스(Social Network Service)", "SR": "서비스 요청(Service Request)", "SSO": "통합 인증(Single Sign-On)",
+    "SW": "소프트웨어(Software)", "UI": "사용자 인터페이스(User Interface)", "URL": "인터넷 주소(Uniform Resource Locator)",
+    "UX": "사용자 경험(User Experience)", "VDI": "가상 데스크톱 환경(Virtual Desktop Infrastructure)", "VPN": "가상 사설망(Virtual Private Network)",
+    "WAS": "웹 애플리케이션 서버(Web Application Server)", "WBS": "작업 분류 체계(Work Breakdown Structure)",
+}
+ROMAN_ABBR = {"I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X"}
+ABBR_RX = re.compile(r"(?<![A-Za-z0-9])([A-Z][A-Za-z0-9]{0,8}[A-Z0-9]|[A-Z]{2})(?![A-Za-z0-9])(?!-\d)")
+FILL = "[제안사 작성]"
+
+
+def _josa(w, a, b):
+    """받침 있으면 a, 없으면 b — '약어표는', '비교표는'"""
+    ch = str(w or "").strip()[-1:] or "가"
+    return a if ("가" <= ch <= "힣" and (ord(ch) - 0xAC00) % 28) else b
+
+
+def _req_sort(rid):
+    m = re.match(r"([A-Z]+)-(\d+)", rid)
+    return (m.group(1), int(m.group(2))) if m else (rid, 0)
+
+
+def collect_abbr(chapters_pages, item_at, chapters):
+    """본문 글에서 영문 약어(대문자 둘 이상)를 모은다 → [(약어, 풀이, 처음 나온 쪽)] 가나다(알파벳)순"""
+    seen, text_all = {}, []
+    # 요구사항 번호 접두(OMR·SFR …)는 약어가 아니다 — 본문 표에 'OMR 19' 처럼 따로 나와도 뺀다
+    pre = {m.group(1) for c in chapters for s_ in c.get("sections") or [] for it in s_.get("items") or []
+           for m in [re.match(r"([A-Z]{2,4})-\d", str(x)) for x in it.get("req") or []] if m}
+    for i in sorted(k for k in chapters_pages if k < len(chapters) and chapters[k].get("no") != "※"):
+        for pg in chapters_pages.get(i) or []:
+            pre |= set(re.findall(r"\b([A-Z]{2,4})-\d{2,4}", str(pg.get("req") or "")))
+            t = " ".join(str(v) for v in vertical_rules._walk_text({k: v for k, v in pg.items() if k not in ("req", "path")}))
+            text_all.append(t)
+            for m in ABBR_RX.finditer(t):
+                a = m.group(1)
+                if a in ROMAN_ABBR or a in pre or (sum(1 for x in a if x.isupper()) < 2 and a not in ABBR):
+                    continue
+                seen.setdefault(a, item_at.get((i, _item_key(pg))) or "")
+    blob = " ".join(text_all)
+    out = []
+    for a in sorted(seen, key=lambda x: x.upper()):
+        mean = ""
+        m = re.search(re.escape(a) + r"\s*\(\s*([A-Za-z][A-Za-z\s&\-/]{3,60}?)\s*\)", blob)   # 약어(원어)
+        if m:
+            mean = m.group(1).strip()
+        m = re.search(r"([가-힣][가-힣·\s]{1,24}?)\s*\(\s*" + re.escape(a) + r"\s*[,)]", blob)   # 풀이(약어)
+        if m:
+            ko = m.group(1).split()
+            ko = ko[-3:]
+            while len(ko) > 1 and re.search(r"(은|는|이|가|을|를|의|에|로|와|과|및|등|해|고|며)$", ko[0]):
+                ko = ko[1:]
+            known = ABBR.get(a, "").split("(")[0].split()
+            if len("".join(ko)) < 3:   # '1조원(OECD 기준)' 의 '조원' 처럼 풀이가 아닌 앞 글자 — 버린다
+                pass
+            elif known and known[-1] == ko[-1]:   # 본문 풀이 끝 낱말이 사전과 같으면 사전 풀이 — 앞 문맥('발주기관 서비스 요청')이 섞이지 않게
+                mean = ABBR[a]
+            else:
+                mean = " ".join(ko) + (f"({mean})" if mean else "")
+        out.append((a, mean or ABBR.get(a) or FILL, seen[a]))
+    return out
+
+
+def _table_pages(base, head, cols, rows, bullets, blank=False):
+    """별첨 표 쪽 — 쪽에 드는 만큼 행을 담고, 여러 쪽이면 행을 고르게(마지막 쪽만 텅 비지 않게). 빈 서식은 쪽 85% 까지 빈 행"""
+    # 긴 별첨 표는 PowerPoint 가 행을 어림(0.62cm)보다 조금 높게 그린다(a시월구일 8.5pt 실측 약 0.65 — 26행이면 0.6cm 넘쳐 바닥 꼬리와 겹침) — 7% 여유
+    avail = (BODY_BOTTOM - 7.55) * 0.93
+    blk = lambda rs, first: {"kind": "table", "head": head + ("" if first else " (이어서)"), "bullets": list(bullets) if first else [],
+                             "table": {"cols": list(cols), "rows": [list(r) for r in rs], "_max_rows": max(1, len(rs))}}
+    if blank:
+        rs = [[""] * len(cols)]
+        while block_height(blk(rs + [[""] * len(cols)], True)) <= avail * 0.85 and len(rs) < 40:
+            rs.append([""] * len(cols))
+        if cols and cols[0] == "번호":
+            rs = [[str(k)] + r[1:] for k, r in enumerate(rs, 1)]
+        return [dict(base, blocks=[blk(rs, True)])]
+    chunks, cur = [], []
+    for r in rows:   # 먼저 채우는 대로 → 쪽 수
+        if cur and block_height(blk(cur + [r], not chunks)) > avail:
+            chunks.append(cur)
+            cur = []
+        cur.append(r)
+    if cur or not chunks:
+        chunks.append(cur)
+    if len(chunks) > 1:   # 같은 쪽 수로 고르게 다시 나눠 본다(첫 쪽은 안내 글이 있어 덜 담는다)
+        n, per = len(chunks), math.ceil(len(rows) / len(chunks))
+        even = [rows[k:k + per] for k in range(0, len(rows), per)]
+        if len(even) == n and all(block_height(blk(ch, k == 0)) <= avail for k, ch in enumerate(even)):
+            chunks = even
+    return [dict(base, blocks=[blk(ch, k == 0)], **({"_cont": True} if k else {})) for k, ch in enumerate(chunks)]
+
+
+def appendix_pages(o, c, chapters_pages, req_at, item_at):
+    """별첨 장(※)의 쪽 — 절마다 항목(없으면 절 자체)을 쪽으로. 제목 'k.j 이름' 이라 목차·경로가 본문과 같은 길로 나온다"""
+    chapters = o.get("chapters") or []
+    out = []
+    for k, sec in enumerate(c.get("sections") or [], 1):
+        its = [it for it in sec.get("items") or [] if str(it.get("title") or "").strip()] or [{"title": sec.get("title") or "별첨"}]
+        for j, it in enumerate(its, 1):
+            name = str(it["title"]).strip()
+            title = f"{k}.{j} {name}"
+            base = {"title": title, "path": page_path(c, title), "req": "", "strong": "", "lead": [], "band": ""}
+            key = f"{sec.get('title') or ''} {name}"
+            if re.search(r"요구사항|과업|대응표|참조표|수용", key):
+                refs = {rid: list(v) for rid, v in req_at.items()}
+                for ci, ch in enumerate(chapters):   # 목차 항목의 요구사항 번호 → 그 항목 첫 쪽
+                    if ch.get("no") == "※":
+                        continue
+                    for s_ in ch.get("sections") or []:
+                        for it_ in s_.get("items") or []:
+                            at = next(((v, kk[1]) for kk, v in item_at.items() if kk[0] == ci
+                                       and re.sub(r"^\d+(\.\d+)*\s*", "", kk[1]) == str(it_.get("title") or "").strip()), None)
+                            for rid in it_.get("req") or []:
+                                lst = refs.setdefault(str(rid).strip(), [])
+                                if at and at[0] not in [x[0] for x in lst]:
+                                    lst.append(at)
+                names = {str(r.get("id")): str(r.get("name") or "") for r in o.get("_req_list") or [] if r.get("id")}
+                for rid in names:
+                    refs.setdefault(rid, [])
+                refs = {r: v for r, v in refs.items() if re.match(r"^[A-Z]{2,4}-\d{2,4}$", r)}
+                accept = "수용" in key
+                if refs:
+                    has_name = any(names.get(r) for r in refs)
+                    cols = ["고유번호", "요구사항 명칭" if has_name else "대응 항목", "대응 쪽", "수용 여부" if accept else "비고"]
+                    rows = []
+                    for rid in sorted(refs, key=_req_sort):
+                        v = refs[rid]
+                        rows.append([rid, names.get(rid) or (re.sub(r"^\d+(\.\d+)*\s*", "", v[0][1]) if v else ""),
+                                     ", ".join(x[0] for x in v[:3]) + (f" 외 {len(v) - 3}" if len(v) > 3 else "") if v else "-",
+                                     "" if accept else ("" if v else "본문 대응 없음")])
+                    n_hit = sum(1 for r in refs if refs[r])
+                    base.update(lead=[f"RFP 요구사항 {len(refs)}건과 제안서 본문의 대응 쪽을 한 표로 정리했습니다.",
+                                      "고유번호 순으로 적어 요구사항별 대응 내용을 바로 찾을 수 있습니다."],
+                                strong=f"{len(refs)}건", band=f"요구사항 {len(refs)}건 · 본문 대응 {n_hit}건")
+                    bl = ([f"{FILL} 수용 여부(수용·부분 수용·대안 제시)는 제안사가 확인해 적습니다."] if accept else []) \
+                        + ([f"대응 쪽이 '-' 인 {len(refs) - n_hit}건은 본문에 대응 쪽이 없습니다 — {FILL}"] if n_hit < len(refs) else [])
+                    out += _table_pages(base, name, cols, rows, bl)
+                else:   # 요구사항 번호가 없는 RFP — 본문 항목을 기준으로 과업 대응 칸을 비워 둔다
+                    rows = [["", re.sub(r"^\d+(\.\d+)*\s*", "", kk[1]), v, ""] for kk, v in item_at.items()]
+                    base.update(lead=["과업지시서의 과업과 제안서 본문 항목을 한 표로 대응합니다.",
+                                      f"본문 항목 {len(rows)}개와 첫 쪽을 먼저 적어 두었습니다."],
+                                strong="한 표로 대응", band=f"본문 항목 {len(rows)}개 · 과업 내용 {FILL}")
+                    out += _table_pages(base, name, ["과업 내용", "제안서 대응 항목", "대응 쪽", "비고"], rows,
+                                        [f"{FILL} 과업 내용 칸은 과업지시서의 과업 항목을 옮겨 적습니다."])
+            elif re.search(r"약어|용어", key):
+                ab = collect_abbr(chapters_pages, item_at, chapters)
+                rows = [[a, m, p] for a, m, p in ab]
+                n_fill = sum(1 for r in rows if r[1] == FILL)
+                base.update(lead=[f"본문에 쓴 영문 약어 {len(rows)}개를 알파벳 순으로 정리했습니다.",
+                                  "처음 나온 쪽을 함께 적어 본문에서 바로 찾을 수 있습니다."],
+                            strong=f"{len(rows)}개", band=f"약어 {len(rows)}개" + (f" · 풀이 {FILL} {n_fill}개" if n_fill else ""))
+                bl = [f"풀이가 {FILL} 인 약어는 제안사가 뜻을 적습니다."] if n_fill else []
+                if not rows:
+                    base.update(lead=[f"{name}{_josa(name, '은', '는')} 제안사가 작성하는 서식입니다.", "본문에 쓴 용어를 표에 옮겨 적습니다."], strong="", band=FILL)
+                    out += _table_pages(base, name, ["약어·용어", "풀이", "처음 나온 쪽"], [], [f"{FILL} 본문에 쓴 약어·용어를 적습니다."], blank=True)
+                else:
+                    out += _table_pages(base, name, ["약어", "풀이", "처음 나온 쪽"], rows, bl)
+            else:   # 빈 서식 — 제목·표 머리만, 행은 제안사가 채운다
+                if re.search(r"평가|조견", key):
+                    cols = ["평가 항목", "배점", "제안서 대응 목차", "쪽"]
+                    rows = []
+                    for ci, ch in enumerate(chapters):
+                        if ch.get("no") == "※":
+                            continue
+                        for sk, s_ in enumerate(ch.get("sections") or [], 1):
+                            pg_ = next((v for kk, v in item_at.items() if kk[0] == ci and re.match(rf"{sk}\.\d+\s", kk[1] + " ")), "")
+                            rows.append(["", "", f"{ch.get('no')}-{sk}. {s_.get('title') or ''}", pg_])
+                    base.update(lead=["RFP 평가 항목과 제안서 목차를 한 표로 맞춰 봅니다.", "제안서 목차와 쪽은 본문 기준으로 먼저 적어 두었습니다."],
+                                strong="한 표로", band=f"평가 항목·배점 {FILL}")
+                    out += _table_pages(base, name, cols, rows, [f"{FILL} 평가 항목·배점은 RFP 제안서 평가표에서 옮겨 적습니다."])
+                    continue
+                if re.search(r"기술", key):
+                    cols, tip = ["적용 기술", "적용 부문", "적용 방안", "대응 쪽"], ["적용할 기술과 부문·방안을 적습니다.", "대응 쪽 칸에는 그 기술을 설명한 본문 쪽 번호를 적습니다."]
+                elif re.search(r"증빙|서류|서식|산출|내역|확약|각서|인증|경력|재직", key):
+                    cols, tip = ["번호", "서류 이름", "제출 부수", "비고"], ["제출할 서류 이름과 부수를 적고, 사본은 이 쪽 뒤에 붙입니다.", "서류 순서는 RFP 의 제출 서류 목록 순서를 따릅니다."]
+                else:
+                    cols, tip = ["구분", "내용", "비고"], ["RFP 가 요구한 내용을 적습니다."]
+                rq = [str(x).strip() for x in it.get("req") or [] if str(x).strip()]
+                base["req"] = ", ".join(rq)   # 목차가 이 별첨에 붙인 요구사항 번호(머리 꼬리표)
+                base.update(lead=[f"{name}{_josa(name, '은', '는')} 제안사가 작성하는 서식입니다.", "표 머리만 두었으니 RFP 기준에 맞춰 행을 채웁니다."],
+                            strong="제안사가 작성", band=f"{name} · {FILL}")
+                out += _table_pages(base, name, cols, [], [f"{FILL} {tip[0]}"] + tip[1:]
+                                    + ([f"관련 요구사항 {', '.join(rq)} 의 증빙·내용을 이 표에 맞춰 적습니다."] if rq else []), blank=True)
+    return out
 
 
 def block_empty(blk):
@@ -2509,20 +3625,22 @@ def col_widths(cols, rows, total):
 
 def table_height(tb, total):
     cols = [str(c) for c in tb["cols"]][:4]
-    rows = [[str(v) for v in r][:len(cols)] for r in tb["rows"][:8]]
+    rows = [[str(v) for v in r][:len(cols)] for r in tb["rows"][:int(tb.get("_max_rows") or 8)]]
     ws = col_widths(cols, rows, total)
-    h = 0.62
+    rh = TIGHT_ROW if tb.get("_tight") else 0.62   # 촘촘한 쪽(R117)은 행 높이를 줄인다(글자 8pt)
+    h = rh
     for r in rows:
         lines = max([1] + [math.ceil(text_cm(v, 8.5) / max(0.5, ws[i] - 0.3)) for i, v in enumerate(r)])
-        h += 0.62 if lines == 1 else 0.62 + (lines - 1) * 0.36 * BODY_SCALE[0]
+        h += rh if lines == 1 else rh + (lines - 1) * 0.36 * BODY_SCALE[0]
     return h
 
 
 def add_table(s, tb, x, y, w, th=None):
     th = th or THEMES["navy"]
     cols = [str(c) for c in tb["cols"]][:4]
-    rows = [[str(v) for v in r][:len(cols)] + [""] * (len(cols) - len(r)) for r in tb["rows"][:8]]
-    g = s.shapes.add_table(len(rows) + 1, len(cols), x, y, w, Cm(0.62 * (len(rows) + 1)))
+    rows = [[str(v) for v in r][:len(cols)] + [""] * (len(cols) - len(r)) for r in tb["rows"][:int(tb.get("_max_rows") or 8)]]   # 별첨 표는 쪽에 드는 만큼(_max_rows)
+    rh, fpt = (TIGHT_ROW, 8.0) if tb.get("_tight") else (0.62, 8.5)
+    g = s.shapes.add_table(len(rows) + 1, len(cols), x, y, w, Cm(rh * (len(rows) + 1)))
     t = g.table
     tblPr = g._element.find(".//a:tblPr", NS)
     for k in list(tblPr.attrib):
@@ -2535,7 +3653,7 @@ def add_table(s, tb, x, y, w, th=None):
     for ci in range(len(cols)):
         t.columns[ci].width = Cm(widths[ci])
     for ri in range(len(rows) + 1):
-        t.rows[ri].height = Cm(0.62)
+        t.rows[ri].height = Cm(rh)
         for ci in range(len(cols)):
             cell = t.cell(ri, ci)
             cell.text = cols[ci] if ri == 0 else rows[ri - 1][ci]
@@ -2555,7 +3673,7 @@ def add_table(s, tb, x, y, w, th=None):
             for p_ in cell.text_frame.paragraphs:
                 p_.alignment = 2 if (ri == 0 or short[ci]) else 1   # 정렬은 열 단위(사용자 표 규칙 — 칸마다 섞지 않는다)
                 for r in p_.runs:
-                    r.font.size = Pt(8.5)
+                    r.font.size = Pt(fpt)
                     r.font.color.rgb = __import__("pptx").dml.color.RGBColor.from_string("FFFFFF" if ri == 0 else "4D4D4D")
                     rp = r._r.get_or_add_rPr()
                     for tag in ("latin", "ea"):
@@ -2572,6 +3690,7 @@ FIG_KINDS = ("concept", "hub", "photo", "compare", "process", "cards", "rows", "
 FIG_NAMES = {"개선", "개선 내용", "곁 조직", "구분", "기간", "기대효과 내용", "기대효과 바탕", "기대효과 이름", "기둥 내용", "기둥 머리", "내용", "단계", "단계 설명", "단계 원", "단계 제목", "마일스톤", "마일스톤 이름", "막대", "목표", "바탕", "사진", "사진 글", "사진 바탕", "사진 설명", "사진 자리", "아이콘", "요소", "일정 머리", "전략 내용", "전략 바탕", "전략 번호", "지표", "총괄", "층 바탕", "층 이름", "카드 내용", "카드 머리", "칸", "팀", "팀 역할", "허브 노드", "허브 중심", "허브 테", "현재", "현재 내용", "화살표", "활동"}   # 도식이 그리는 도형 이름(정렬 검사에서 안쪽 칸을 가려낸다)
 FW = BODY_G + 15.0 - BODY_T   # 도식 폭(블록 안 글 시작선 T ~ 오른쪽 끝)
 LINE = "D3D7DE"
+BOX_PAD = 0.15   # 면·테두리 있는 글 상자의 최소 안쪽 여백(cm, R120)
 LH = _PerJob("lh", lambda: [0.38])   # [0] = 8.5~9pt 한 줄 높이(cm) — use_fonts 가 본문 서체 크기 보정만큼 바꾼다(작업마다 따로)
 
 
@@ -2594,6 +3713,10 @@ def _box(tree, name, x, y, w, h, fill=None, line=None, geom="rect", adj=None, pa
     ps = ""
     # 낱말 중간 줄바꿈 금지(사용자 2026-10-14 '식품안전나/라' '03/적재' — "줄바꿈 되면 안 되는 곳에서의 줄바꿈 지양"):
     # 쓸 수 있는 폭(타원은 내접 폭 0.7)에 가장 긴 낱말이 안 들어가면 그 문단 글자를 줄인다(최소 6.5pt)
+    # 면·테두리가 있는 글 상자는 안쪽 여백을 0.15cm 이상(위아래는 위 정렬일 때) — 조직도 '사업책임자(PM)' 가 상자 테두리에 붙었다(10-28 사용자, R120)
+    has_text = any((t if isinstance(t, str) else "x") for t, *_ in (paras or []))
+    if (fill or line) and has_text and geom not in ("ellipse", "rightArrow", "diamond", "chevron", "homePlate") and w >= 1.2:
+        ins = (max(ins[0], BOX_PAD), max(ins[1], BOX_PAD if anchor == "t" else 0), max(ins[2], BOX_PAD), max(ins[3], BOX_PAD if anchor == "t" else 0))
     usable = w * (0.7 if geom == "ellipse" else 1.0) - ins[0] - ins[2] - (0.32 if bullet else 0)
     fitted = []
     for t, pt, col, face in paras or [("", 9, INK, "a시월구일2")]:
@@ -2602,6 +3725,29 @@ def _box(tree, name, x, y, w, h, fill=None, line=None, geom="rect", adj=None, pa
             while pt > 6.5 and longest and text_cm(longest, pt, face) * 1.06 > usable:
                 pt -= 0.5
         fitted.append((t, pt, col, face))
+
+    def norm(ps_):   # 문단마다 [(글, pt, 서체)…] 조각으로(여러 색 문단 포함)
+        return [[(rt, rp, rf) for rt, rp, _, rf in t] if isinstance(t, list) else [(str(t), pt, face)] for t, pt, _, face in ps_]
+
+    def text_h(ps_):   # 줄바꿈까지 센 글 높이(cm) — 줄 간격 100%(PowerPoint 한 줄 ≈ 1.2em), 본문 서체는 저장 때 곱하는 크기 보정까지
+        hh = 0.0
+        for runs in norm(ps_):
+            w_ = sum(text_cm(rt, rp, rf) for rt, rp, rf in runs)
+            pmax = max(rp * (BODY_SCALE[0] if _level(rf) is not None else 1.0) for _, rp, rf in runs)
+            n = 1 if wrap == "none" else max(1, math.ceil(w_ * 1.03 / max(0.3, usable)))
+            hh += n * pmax * 0.03528 * 1.2
+        return hh
+
+    def smaller(ps_):
+        return [([(rt, max(6.5, rp - 0.5), rc, rf) for rt, rp, rc, rf in t], pt, col, face) if isinstance(t, list) else (t, max(6.5, pt - 0.5), col, face)
+                for t, pt, col, face in ps_]
+
+    def biggest(ps_):
+        return max(rp for runs in norm(ps_) for _, rp, _ in runs)
+    if (fill or line) and has_text and geom not in ("ellipse",):   # 상자 높이에 안 들면 글자를 줄인다(6.5pt 까지) — 글이 테두리를 넘지 않게(R120)
+        room = h - ins[1] - ins[3]
+        while text_h(fitted) > room + 0.02 and biggest(fitted) > 6.5:
+            fitted = smaller(fitted)
     for t, pt, col, face in fitted:
         bu = ('<a:pPr marL="114300" indent="-114300" algn="{a}" latinLnBrk="0"><a:lnSpc><a:spcPct val="100000"/></a:lnSpc><a:buFont typeface="Arial"/><a:buChar char="·"/></a:pPr>'
               if bullet else '<a:pPr algn="{a}" latinLnBrk="0"><a:lnSpc><a:spcPct val="100000"/></a:lnSpc><a:buNone/></a:pPr>').format(a=algn)
@@ -2657,6 +3803,11 @@ def _vstep_h(st, W):
     return max(0.8, 0.45 + _list_h(_items(st.get("items"), 3), W - 1.3) - 0.2)
 
 
+def _org_top_h(f):
+    """조직도 총괄 상자 높이 — 이름 한 줄(10pt)이면 0.8, 메모 줄(8pt)이 있으면 1.25"""
+    return 1.25 if str(f.get("top_note") or "").strip() else 0.8
+
+
 def fig_height(k, f, W=None):
     W = W or FW
     if k == "concept":
@@ -2670,7 +3821,7 @@ def fig_height(k, f, W=None):
     if k == "process":
         st = (f.get("steps") or [])[:7]
         if _vproc(f, W):   # 세로 절차 — 단계마다 한 줄(왼쪽 이름 · 오른쪽 설명), 사이 화살표 0.3
-            return sum(_vstep_h(s_, W) for s_ in st) + 0.3 * (len(st) - 1)
+            return sum(_vstep_h(s_, W) for s_ in st) + (TIGHT_STEP if f.get("_tight") else 0.3) * (len(st) - 1)
         st = st[:6]
         cw = W / max(1, len(st))
         return 0.8 + 0.15 + max([_list_h(_items(s.get("items"), 3), cw - 0.1) for s in st] + [0.5])
@@ -2697,7 +3848,7 @@ def fig_height(k, f, W=None):
     if k == "org":
         ts = (f.get("teams") or [])[:5]
         cw = (W - 0.25 * (len(ts) - 1)) / max(1, len(ts))
-        return 0.8 + 0.5 + 0.35 + 0.62 + max([_list_h(_items(t.get("items"), 4), cw, 8) for t in ts] + [0.5])
+        return _org_top_h(f) + 0.5 + 0.35 + 0.62 + max([_list_h(_items(t.get("items"), 4), cw, 8) for t in ts] + [0.5])
     if k == "gantt":
         return 0.6 + 0.5 * len((f.get("rows") or [])[:10]) + (0.75 if f.get("milestones") else 0)
     if k == "kpi":
@@ -2750,7 +3901,7 @@ def draw_fig(tree, k, f, x, y, th, W=None, pic=None):
     elif k == "process" and _vproc(f, W):   # 세로 절차 = 타임라인 — 번호 원이 세로 선으로 이어지고 오른쪽에 단계 제목·설명(구분 행과 모양이 달라야 한다, 3차 검수)
         st = (f.get("steps") or [])[:7]
         hs = [_vstep_h(s_, W) for s_ in st]
-        ys = [y + sum(hs[:i]) + 0.3 * i for i in range(len(st))]
+        ys = [y + sum(hs[:i]) + (TIGHT_STEP if f.get("_tight") else 0.3) * i for i in range(len(st))]
         if len(st) > 1:
             _line(tree, x + 0.35, ys[0] + 0.35, x + 0.35, ys[-1] + 0.35, "B8BEC8", 15875)
         for i, (s_, h, yy) in enumerate(zip(st, hs, ys)):
@@ -2835,7 +3986,7 @@ def draw_fig(tree, k, f, x, y, th, W=None, pic=None):
             if f.get("_img"):
                 pic(cover_crop(f["_img"], W, 3.8, ax=f.get("_ax", 0.5), ay=f.get("_ay", 0.4)), x, y, W, 3.8, "사진")
             else:
-                _box(tree, "사진 자리", x, y, W, 3.8, soft, None, paras=[("[사진]", 9, SUB, B2)], algn="ctr", anchor="ctr")
+                _box(tree, "사진 자리", x, y, W, 3.8, soft, None, paras=[("[사진 — 제안사 첨부]" if f.get("_need_photo") else "[사진]", 9, SUB, B2)], algn="ctr", anchor="ctr")
             _box(tree, "사진 설명", x, y + 3.95, W, 0.5, None, None, paras=[(cap, 9, INK, B3)], ins=(0, 0, 0, 0), anchor="ctr")
             if it:
                 lst("사진 글", x, y + 4.45, W, _list_h(it, W), it, None, None)
@@ -2844,7 +3995,7 @@ def draw_fig(tree, k, f, x, y, th, W=None, pic=None):
             if f.get("_img"):
                 pic(cover_crop(f["_img"], 6.5, H, ax=f.get("_ax", 0.5), ay=f.get("_ay", 0.4)), x, y, 6.5, H, "사진")
             else:
-                _box(tree, "사진 자리", x, y, 6.5, H, soft, None, paras=[("[사진]", 9, SUB, B2)], algn="ctr", anchor="ctr")
+                _box(tree, "사진 자리", x, y, 6.5, H, soft, None, paras=[("[사진 — 제안사 첨부]" if f.get("_need_photo") else "[사진]", 9, SUB, B2)], algn="ctr", anchor="ctr")
             _box(tree, "사진 바탕", x + 6.7, y, W - 6.7, H, soft, None, ins=(0, 0, 0, 0))
             _box(tree, "사진 설명", x + 6.9, y + 0.15, W - 7.1, 0.5, None, None, paras=[(cap, 10, INK, "a시월구일4")], ins=(0, 0, 0, 0), anchor="ctr")
             if it:
@@ -2866,17 +4017,18 @@ def draw_fig(tree, k, f, x, y, th, W=None, pic=None):
         ts = (f.get("teams") or [])[:5]
         n = max(1, len(ts))
         cw = (W - 0.25 * (n - 1)) / n
-        tw = 4.6
+        th_ = _org_top_h(f)   # 메모(top_note)가 있으면 두 줄 + 위아래 여백(예전엔 0.8cm 에 두 줄이라 글이 테두리에 붙었다, R120)
+        tw = min(W, max(4.6, max(text_cm(str(f.get("top") or "사업책임자(PM)"), 10, "a시월구일4"), text_cm(str(f.get("top_note") or ""), 8, B2)) * 1.08 + 2 * BOX_PAD + 0.2))
         tx = x + (W - tw) / 2
-        _box(tree, "총괄", tx, y, tw, 0.8, calm, None, "roundRect", 12000,
+        _box(tree, "총괄", tx, y, tw, th_, calm, None, "roundRect", 12000,
              [(f.get("top") or "사업책임자(PM)", 10, "FFFFFF", "a시월구일4")] + ([(f["top_note"], 8, "E8EBF0", B2)] if f.get("top_note") else []), "ctr", "ctr")
         side = [str(s) for s in (f.get("side") or [])][:2]
         for j, sname in enumerate(side):
             sx = x + 0.2 if j == 0 else x + W - 3.6 - 0.2
-            _line(tree, sx + (3.6 if j == 0 else 0), y + 0.4, tx if j == 0 else tx + tw, y + 0.4, "9AA1AC", 9525)
-            _box(tree, "곁 조직", sx, y + 0.12, 3.6, 0.56, "FFFFFF", "9AA1AC", "roundRect", 12000, [(sname, 8.5, INK, B3)], "ctr", "ctr", ins=(0.05, 0, 0.05, 0))
-        ly = y + 0.8 + 0.5
-        _line(tree, x + W / 2, y + 0.8, x + W / 2, ly, "9AA1AC")
+            _line(tree, sx + (3.6 if j == 0 else 0), y + th_ / 2, tx if j == 0 else tx + tw, y + th_ / 2, "9AA1AC", 9525)
+            _box(tree, "곁 조직", sx, y + th_ / 2 - 0.28, 3.6, 0.56, "FFFFFF", "9AA1AC", "roundRect", 12000, [(sname, 8.5, INK, B3)], "ctr", "ctr", ins=(0.05, 0, 0.05, 0))
+        ly = y + th_ + 0.5
+        _line(tree, x + W / 2, y + th_, x + W / 2, ly, "9AA1AC")
         if n > 1:
             _line(tree, x + cw / 2, ly, x + W - cw / 2, ly, "9AA1AC")
         body = max([_list_h(_items(t.get("items"), 4), cw, 8) for t in ts] + [0.5])
@@ -3001,7 +4153,8 @@ def run(job, j, opts, brief, note):
         old_pages = {int(k): v for k, v in (saved.get("pages") or {}).items() if str(k).lstrip("-").isdigit()}
         job.event(f"앞 실행에서 만든 목차를 다시 씁니다 — {o['project'].get('name', '')} / {len(o['chapters'])}장 (목차 AI 호출 없음).", "done")
     else:
-        o = outline(job, brief, note, ctx, raw, pages)
+        o = outline(job, brief, note, ctx, raw, pages, str(opts.get("project") or "").strip() or design.clean_title(str(j.get("title") or "")))
+        o = fit_outline(job, o, pages, bool(opts.get("slides_set")))   # 쪽 수를 적었으면 그 수에 맞춰(R107)
         old_pages = {}
         keep_plan(o, {})   # 목차만이라도 먼저 — 본문 기획 도중 실패해도 다시 돌리면 목차는 다시 짜지 않는다
     p = o["project"]
@@ -3017,18 +4170,33 @@ def run(job, j, opts, brief, note):
     chapters_pages = {i: old_pages[i] for i, c in body if old_pages.get(i)}   # 앞 실행에서 본문을 만든 장은 그대로(빈 장 = 그때 실패한 장만 다시)
     if chapters_pages:
         job.event(f"앞 실행에서 만든 본문 {len(chapters_pages)}장을 다시 씁니다" + (f" — 나머지 {len(body) - len(chapters_pages)}장만 만듭니다." if len(chapters_pages) < len(body) else " (본문 AI 호출 없음)."), "done")
+    # 본문 진행률은 장이 아니라 항목 단위로(_tick) — 41쪽짜리 장 하나가 남으면 장 단위로는 끝날 때까지 12% 였다(R106)
+    import threading
+    job._vp = {"lock": threading.RLock(), "done": 0,
+               "total": sum(len(s.get("items") or []) for i, c in body if i not in chapters_pages for s in c.get("sections") or []),
+               "pages_total": sum(int(it.get("pages") or 1) for i, c in body for s in c.get("sections") or [] for it in s.get("items") or [])}
+    for i, c in body:   # 앞 실행에서 다 쓴 장도 미리 보기 카드에 먼저 보인다
+        if chapters_pages.get(i):
+            _live(job, c, chapters_pages[i])
     with ThreadPoolExecutor(max_workers=design.par(job, 2, 4)) as ex:
         futs = {ex.submit(_carry(chapter_pages), job, o, c, ctx, raw): i for i, c in body if i not in chapters_pages}
-        for f in futs:
+        total, done = len(body), len(chapters_pages)
+        for f in as_completed(futs):   # 끝나는 순서대로 — 앞 장이 오래 걸려도 다 쓴 장은 바로 저장·진행률에 든다
             i = futs[f]
             try:
                 chapters_pages[i] = f.result()
-                job.event(f"{o['chapters'][i]['no']} {o['chapters'][i]['title']} — 본문 {len(chapters_pages[i])}쪽", "done")
+                job.event(f"{o['chapters'][i]['no']} {o['chapters'][i]['title']} — 본문 {len(chapters_pages[i])}쪽 ({done + 1}/{total}장)", "done")
+            except design.Cancelled:
+                raise
             except Exception as e:
                 chapters_pages[i] = []
                 job.event(f"{o['chapters'][i]['title']} 본문 실패 — 간지만 넣습니다: {str(e)[:120]}", "warn")
+            done += 1
+            # 장마다 바로 보관 — 모든 장이 끝난 뒤 한 번만 저장해, 도중에 멈추면 다 쓴 장도 버리고 처음부터 다시 썼다(10-28, R105)
+            keep_plan(o, {k: v for k, v in chapters_pages.items() if v})
     if futs:
         keep_plan(o, chapters_pages)
+    job.push("기획", 38)   # 본문(첫 쓰기·고쳐 쓰기) 끝
     try:
         d = os.path.join(job.dir, "_mockup")
         os.makedirs(d, exist_ok=True)
@@ -3046,10 +4214,13 @@ def run(job, j, opts, brief, note):
     BGN = {"photo": "실사", "3d": "3D 렌더", "glass": "유리 아이소메트릭", "dark": "다크 키비주얼"}
     job.event(f"배경 그림: 테마 {(STYLES.get(style) or STYLES['band'])['label']} → 표지·간지 {BGN[bgk]}({VP_SETS[bgk]}"
               + (f", 반쪽 {STYLE_HALF[style] + 1}" if style in STYLE_HALF else "") + f") · 깔기 {STYLE_COMPOSE.get(style, '전면')} · 본문 사진 {BGN[bdk]}")
+    photo_got = None
     try:
-        got = resolve_assets(job, chapters_pages, bdk)
+        got = photo_got = resolve_assets(job, chapters_pages, bdk, f"{p.get('name', '')} {o.get('field') or ''}")
         if got:
             job.event(f"파워에셋 본문 그림: 사진 {got['photo']} · 아이콘 {got['icon']}(세트 {ICON_SET})" + (f" · 못 찾음 {got['miss']}" if got["miss"] else ""), "done")
+            if got.get("skipped"):
+                job.event(f"사업·칸 주제와 맞는 사진이 없어 비워 둔 사진 칸 {len(got['skipped'])}개 — " + " / ".join(x[:40] for x in got["skipped"][:4]), "warn")
     except Exception as e:
         job.event(f"파워에셋 본문 그림 검색 실패(도식만으로 만듭니다): {str(e)[:100]}", "warn")
     job.push("시안 생성", 40)
@@ -3068,6 +4239,22 @@ def run(job, j, opts, brief, note):
     n = bd.build(chapters_pages, out)
     if bd.trimmed:
         job.event(f"쪽이 넘쳐 덜어 낸 행 {len(bd.trimmed)}개 — " + " / ".join(bd.trimmed[:4]), "warn")
+    if getattr(bd, "appendix", 0):
+        job.event(f"별첨 {bd.appendix}쪽 — 요구사항 대응표·약어표는 본문에서 엔진이 채우고, 나머지는 「[제안사 작성]」 서식(AI 호출 없음)", "done")
+    # 정말 지운 행이 있으면 확인 목록에 쪽별로(R117 — 지금은 '(계속)' 쪽으로 넘겨 비어 있어야 한다)
+    n_of = {str(x.get("title") or ""): x.get("n", 0) for x in getattr(bd, "pages", [])}
+    left_check = []
+    try:   # 빈칸·메모 문구(R149) — 「제안사 작성」은 양식이라 빼고, 쪽 번호와 함께 확인 목록에
+        import flatfx
+        for no_, sl_ in enumerate(Presentation(out).slides, 1):
+            for t_ in flatfx.leftovers(sl_)[:2]:
+                left_check.append({"slide": no_, "title": "빈칸·메모 문구가 남음", "level": "warn", "detail": t_})
+    except Exception as e:
+        design.W["log"]("빈칸 문구 검사 실패(무시):", e)
+    photo_check = [{"slide": 0, "title": "사진 칸 비어 있음", "level": "warn",
+                    "detail": f"{x[:80]} — 사업·칸 주제와 맞는 파워에셋 사진이 없어 비워 두었습니다(제안사 사진을 넣어 주세요)"}
+                   for x in (photo_got or {}).get("skipped", [])[:10]]
+    trimmed_check = [{"slide": n_of.get(t.split(": ")[0], 0), "title": "넘쳐서 덜어 낸 행", "level": "warn", "detail": t} for t in bd.trimmed]
     try:   # 정렬 검사 — 세로 기준선이 '거의 같은데 다른' 곳(눈대중으로 놓쳤던 표지 뱃지 0.56cm 사례, 2026-10-14)
         align = audit_align(Presentation(out))
     except Exception as e:
@@ -3116,7 +4303,7 @@ def run(job, j, opts, brief, note):
         "summary": f"{p['name']} — A4 세로 제안서 {n}장(본문 {n_body}쪽, {len(o['chapters'])}장 구성)",
         "stats": [{"label": "전체 장", "value": n}, {"label": "본문 쪽", "value": n_body}, {"label": "장 구성", "value": len(o["chapters"])}],
         "pages": getattr(bd, "pages", []), "fonts": {"title": FONT["title"][0], "body": FONT["body"][0]},
-        "checklist": [{"slide": int(re.match(r"(\d+)", a).group(1)) if re.match(r"(\d+)", a) else 0, "title": "세로 기준선 어긋남", "level": "warn", "detail": a} for a in align[:10]]
+        "checklist": trimmed_check + left_check[:12] + photo_check + [{"slide": int(re.match(r"(\d+)", a).group(1)) if re.match(r"(\d+)", a) else 0, "title": "세로 기준선 어긋남", "level": "warn", "detail": a} for a in align[:10]]
                      + [{"slide": 0, "title": "제안사 정보 확인", "level": "info",
                        "detail": "회사 현황·실적·인력·지분처럼 자료에 없는 제안사 정보는 「[제안사 작성]」 자리로 두었습니다."}],
         "changes": bglog}})
@@ -3220,5 +4407,6 @@ def build_guide(project, style, tone, logo, out):
     for s in (b.s_body, b.s_cover, b.s_toc, b.s_div):
         drop_slide(b.prs, s)
     refont(b.prs)
+    widen_body(b.prs)
     b.prs.save(out)
     return len(slides)

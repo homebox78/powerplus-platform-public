@@ -24,8 +24,8 @@ if not CFG.get("pipeline_dir"):   # 리눅스 엔진 — 저장소에 든 PowerP
 if not CFG.get("skill_dir"):
     CFG["skill_dir"] = os.path.join(HERE, "skill", "si-deck")
 STAGE_PCT = [5, 10, 15, 25, 35, 45, 60, 70, 80, 88, 95, 100]  # web/src/stages.ts 와 같은 값
-RENDER_LOCK = threading.Lock()
-STAGES = ["준비", "실측", "디자인 시스템", "톤 통일", "이미지 분류", "자산 교체", "도식 재구성", "마감", "자동 탐지", "재검수", "결과 정리"]
+# 화면(stages.ts)과 같은 이름 — '자산 교체' 는 화면이 '에셋 교체' 로 바꾼 뒤(ab754b3) 못 찾아 단계가 멈춰 보였다(10-28). 받은 이름은 polish_resume.canon 으로 맞춘다
+STAGES = ["준비", "실측", "디자인 시스템", "톤 통일", "이미지 분류", "에셋 교체", "도식 재구성", "마감", "자동 탐지", "재검수", "결과 정리"]
 # design 기획·시안 단계 (web/src/stages.ts STAGES_PLAN 과 같은 값)
 STAGES_PLAN = ["준비", "기획", "시안 생성", "시안 정리"]
 STAGE_PCT_PLAN = [2, 5, 20, 96, 100]
@@ -34,7 +34,10 @@ import design
 import fontset
 import styles
 import osdep
+# 렌더 동시 수 — Windows 는 PowerPoint 하나를 함께 쓰므로 하나씩. 리눅스 LibreOffice 는 실행마다 프로필이 따로라(lo.py) 줄 세울 까닭이 없어 3개까지(11-01, 24코어)
+RENDER_LOCK = threading.Lock() if osdep.IS_WIN else threading.BoundedSemaphore(3)
 import or_agent
+import polish_resume
 
 
 def ai_mode():
@@ -162,14 +165,15 @@ class Job:
         log(f"[{self.id}] {msg}")
 
     def push(self, stage=None, pct=None):
+        self.last_push = time.time()
         if stage:
-            self.stage = stage
+            self.stage = polish_resume.canon(stage)
         if pct is not None:
             self.pct = max(self.pct, min(99, int(pct)))
         with self.lock:
             ev, self.pending = self.pending, []
         try:
-            r = req("POST", f"/worker/jobs/{self.id}/progress", {"stage": self.stage, "progress": self.pct, "events": ev})
+            r = req("POST", f"/worker/jobs/{self.id}/progress", {"stage": polish_resume.canon(self.stage), "progress": self.pct, "events": ev})
             if r.get("cancel"):
                 self.cancel = True
         except Exception as e:
@@ -190,7 +194,11 @@ class Job:
                 d = json.loads(ln)
             except Exception:
                 continue
-            if d.get("stage") in self.stages:
+            if d.get("stage"):
+                d["stage"] = polish_resume.canon(d["stage"])
+            if getattr(self, "polish", False):   # 다듬기 — stage 없는 note 도 낱말로 단계를 올린다(10-28 '준비 5%' 멈춤)
+                polish_resume.on_message(self, d)
+            elif d.get("stage") in self.stages:
                 self.stage = d["stage"]
             if d.get("progress") is not None:
                 self.pct = max(self.pct, min(99, int(d["progress"])))
@@ -201,6 +209,22 @@ class Job:
                 self.event(d["message"], d.get("kind", "info"))
             if d.get("render"):  # 중간 렌더를 올려 달라는 요청(파일 경로)
                 self.renders_requested = True
+
+
+def heartbeat(job, every=60):
+    """오래 걸리는 단계(원본 내려받기·렌더·마무리·결과 올리기)에서도 서버에 살아 있다고 알린다 — 15분 소식이 없으면 서버가
+    '연결 끊김 → 대기열' 로 되돌렸다(10-28 20:17~20:32 '원본을 내려받는 중' 에서 끊김). 반환: 멈추는 함수"""
+    stop = threading.Event()
+
+    def loop():
+        while not stop.wait(15):
+            if time.time() - getattr(job, "last_push", 0) >= every:
+                try:
+                    job.push()
+                except Exception:
+                    pass
+    threading.Thread(target=loop, daemon=True).start()
+    return stop.set
 
 
 def render_tool():
@@ -279,9 +303,9 @@ def phase_block(phase: str, j: dict) -> str:
             if j.get("pilot_slide") else ""
         return ("## 이번 실행 = 시안 한 장 (사용자가 보고 의견을 준 뒤 나머지를 진행한다)\n"
                 "- 표지·목차·간지를 뺀 장 중 **그림·도식이 가장 많은 대표 장 1장**을 골라, 그 장에만 전 과정을 끝까지 적용한다"
-                "(powerPlus 자산 재디자인·도식 재구성·마감 포함). 다른 장은 건드리지 않는다.\n"
+                "(서체·줄바꿈·여백·정렬·마감 — 그림은 원본 그대로). 다른 장은 건드리지 않는다.\n"
                 "- 실측·디자인 시스템은 전체 장 기준으로 하되, 나머지 장에 그대로 쓸 결정을 `_pilot/결정.md` 에 남긴다: "
-                "서체·색·크기 규칙, 고른 powerPlus 세트(스타일)와 검색어→자산 id 매핑, 도식 처리 방식, 겹침 처리 원칙.\n"
+                "서체·색·크기 규칙, 줄바꿈·여백 처리, 겹침 처리 원칙.\n"
                 "- 재검수는 1회. 목표 시간 10분 안팎 — 사용자가 기다리고 있다.\n"
                 "- result.json 에 `\"pilot_slide\": 장 번호` 를 넣는다. result 는 전체 장표 파일(시안 장만 바뀐 상태).\n"
                 + again + fb_txt)
@@ -311,6 +335,8 @@ def push_draft(job: Job):
             return
         put_file(job.id, "draft", p, "draft.pptx")
         job.draft_sent = (p, mt)
+        if getattr(job, "polish", False):   # 이어 하기 — 이미 올린 판을 다음 실행이 다시 올리지 않게
+            polish_resume.save(job, draft_sent=[p, mt])
         job.event(f"지금까지 만든 판을 올렸습니다({os.path.basename(p)}) — 화면에서 바로 내려받을 수 있습니다.")
     except Exception as e:
         log("중간 판 올리기 실패:", e)
@@ -398,6 +424,8 @@ def run_claude(job: Job, prompt: str):
     while p.poll() is None:
         time.sleep(5)
         job.read_progress()
+        if getattr(job, "polish", False):
+            polish_resume.track(job)
         job.push()
         push_live(job)
         push_draft(job)
@@ -410,6 +438,42 @@ def run_claude(job: Job, prompt: str):
     t.join(timeout=10)
     job.read_progress()
     return p.returncode, final
+
+
+FRONT_TPL = "앞장템플릿"   # 화면이 앞장 템플릿 파일 이름 앞에 붙여 맥락 자료로 올린다(Upload.tsx) — 맥락 글로는 읽지 않는다
+
+
+def keep_front_files(job):
+    """기존 구성 그대로의 앞장(R238) — 앞장 템플릿을 올렸으면 그 디자인에 원본 글, 아니면 올린 장표의 앞장 그대로.
+    한 장짜리 굳힌 파일 {fid: 경로}. 확인할 것은 job.front_warn 에"""
+    src = os.path.join(job.dir, "원본.pptx")
+    if not os.path.isfile(src):
+        return {}
+    d = os.path.join(job.dir, "_keepfront")
+    os.makedirs(d, exist_ok=True)
+    tpl = None
+    try:
+        for doc in req("GET", f"/worker/jobs/{job.id}/docs").get("data") or []:
+            if str(doc.get("name") or "").startswith(FRONT_TPL) and str(doc["name"]).lower().endswith(".pptx"):
+                tpl = os.path.join(d, "template.pptx")
+                if not os.path.isfile(tpl):
+                    download(f"/worker/jobs/{job.id}/docs/{doc['id']}", tpl)
+                job.event(f"앞장 템플릿 — {doc['name'][len(FRONT_TPL):].lstrip('_')} 의 표지·목차·간지 디자인에 올린 장표의 글을 넣습니다")
+                break
+    except Exception as e:
+        log("앞장 템플릿 받기 실패(올린 장표 앞장으로):", e)
+        tpl = None
+    out = tool(job, [os.path.join(HERE, "keepfront.py"), "prepare", src, d] + ([tpl] if tpl else [])) or ""
+    job.front_warn = []
+    for ln in out.strip().splitlines():
+        if ln.startswith("WARN: "):
+            no, title, detail = (ln[6:].split("|", 2) + ["", ""])[:3]
+            job.front_warn.append({"slide": 0, "title": title, "detail": detail, "level": "warn"})
+    got = json.loads(out.strip().splitlines()[-1]) if out.strip() else {}
+    nf = sum(1 for k in got if not k.startswith("_"))
+    if nf and not tpl:
+        job.event(f"앞장 {nf}장은 올린 장표의 것을 디자인·그림·글 그대로 씁니다")
+    return got
 
 
 def front_matter(job, j, pptx, front=None):
@@ -429,6 +493,17 @@ def front_matter(job, j, pptx, front=None):
         plan = json.loads(plan) if isinstance(plan, str) and plan else (plan or {"slides": []})
         plan_p = os.path.join(d, "plan.json")
         json.dump(plan, open(plan_p, "w", encoding="utf-8"), ensure_ascii=False)
+    keep_fronts = {}
+    try:   # 기존 구성 그대로 — 앞장은 원본에 있던 것만(작업 옵션 기본값이 표지·목차·엔딩·질의응답을 더 넣었다, 11-03 전체 시험)
+        _kp = json.load(open(plan_p, encoding="utf-8"))
+        if _kp.get("keep"):
+            if isinstance(_kp.get("keep_front"), dict) and not isinstance(front, dict):
+                f = dict(_kp["keep_front"])
+            keep_fronts = keep_front_files(job)   # 결과 화면에서 앞장을 껐다 켜도 사람이 만든 앞장으로
+            if "qna" in keep_fronts and not isinstance(front, dict):   # 앞장 템플릿에 질의응답이 있으면 원본에 없어도 넣는다
+                f["qna"] = True
+    except Exception as e:
+        log("기존 구성 앞장 준비 실패 — 엔진 기본 앞장으로:", e)
     logo = {}
     for which in ("client", "vendor"):
         try:
@@ -437,8 +512,8 @@ def front_matter(job, j, pptx, front=None):
             pass
         hit = glob.glob(os.path.join(job.dir, "_brand", which + ".*"))
         logo[which] = hit[0] if hit else None
-    o = {"cover": bool(f.get("cover")), "toc": bool(f.get("toc")), "divider": bool(f.get("divider")), "ending": bool(f.get("ending", True)), "title": j.get("title") or "",
-         "project": design.project_of(j), "accent": (j.get("theme") or "#FF2A6D")[:7], "date": str((j.get("opts") if isinstance(j.get("opts"), dict) else json.loads(j.get("opts") or "{}")).get("date") or ""), "client_logo": logo["client"], "vendor_logo": logo["vendor"]}
+    o = {"cover": bool(f.get("cover")), "toc": bool(f.get("toc")), "divider": bool(f.get("divider")), "ending": bool(f.get("ending", True)), "qna": bool(f.get("qna", True)), "title": j.get("title") or "",
+         "project": "" if design.project_of(j).startswith("(없음") else design.project_of(j), "accent": (j.get("theme") or "#FF2A6D")[:7], "date": str((j.get("opts") if isinstance(j.get("opts"), dict) else json.loads(j.get("opts") or "{}")).get("date") or ""), "client_logo": logo["client"], "vendor_logo": logo["vendor"]}
     op, tmp = os.path.join(d, "opts.json"), os.path.join(d, "out.pptx")
     json.dump(o, open(op, "w", encoding="utf-8"), ensure_ascii=False)
     job.env = font_env(j)
@@ -450,12 +525,23 @@ def front_matter(job, j, pptx, front=None):
     try:
         kinds = json.loads(tool(job, [os.path.join(HERE, "frontmatter.py"), "kinds", tmp]).splitlines()[-1])
         pairs, tags, seen = [], [], {}
+        dtext, dused = [], set()
+        if keep_fronts.get("_names"):   # 간지는 차례가 아니라 장 이름으로 — 엔진 간지 수가 원본과 다르면 한 칸씩 밀렸다(11-05 시험)
+            from pptx import Presentation as _P
+            dtext = [" ".join(sh.text_frame.text for sh in s.shapes if sh.has_text_frame) for s in _P(tmp).slides]
         for i, k in enumerate(kinds, 1):
             if k == "body":
                 continue
             seen[k] = seen.get(k, 0) + 1
             fid = f"div{seen[k]}" if k == "div" else k
-            fp = os.path.join(job.dir, "_slides", f"{fid}.pptx")
+            kfp = keep_fronts.get(fid) if k != "div" else None
+            if k == "div" and dtext:
+                import keepfront
+                kid = keepfront.pick_div(keep_fronts["_names"], dtext[i - 1], dused)
+                if kid:
+                    dused.add(kid)
+                    kfp = keep_fronts.get(kid)
+            fp = kfp or os.path.join(job.dir, "_slides", f"{fid}.pptx")   # 기존 구성 그대로 — 사람이 만든 앞장이 먼저(R238)
             if not os.path.isfile(fp):
                 os.makedirs(os.path.dirname(fp), exist_ok=True)
                 try:
@@ -510,7 +596,7 @@ def upload_after(job, pptx, only=None):
             put_file(job.id, "after", p, f"front_{k}{seen[k] if k == 'div' else ''}.jpg")
 
 
-BUILD_STAGES = ["준비", "디자인 시스템", "도식 재구성", "자산 교체", "마감", "결과 정리"]
+BUILD_STAGES = ["준비", "디자인 시스템", "도식 재구성", "에셋 교체", "마감", "결과 정리"]   # 화면 STAGES_BUILD 와 같은 이름(받은 '자산 교체' 는 canon 으로)
 
 
 def brand_paths(job):
@@ -667,7 +753,10 @@ def build_single(job, j, prompt, t0):
             sig = whole_sig(job, j, plan)
         except Exception as e:
             log("이어 만들기 지문 실패(새로 만듭니다):", e)
-        m = built_load(job) if sig else {}
+    else:   # 초안 다듬기 — 같은 조건(원본·단계·의견·요청·엔진)으로 에이전트가 끝낸 결과가 있으면 그대로(마무리·올리기에서 끊긴 경우, 10-28)
+        sig = getattr(job, "polish_sig", None)
+    if sig:
+        m = built_load(job)
         w = {} if m.get("done") else (m.get("whole") or {})
         if sig and w.get("sig") == sig and pptx_ok(keep) and isinstance(w.get("report"), dict):
             out = os.path.join(job.dir, w.get("result") or "결과.pptx")
@@ -677,18 +766,32 @@ def build_single(job, j, prompt, t0):
             rep.setdefault("stats", []).append({"label": "이어 쓴 장표(앞 실행에서 만든 것)", "value": 1})
             return rep, out, {"cost": 0, "turns": 0, "seconds": 0, "model": "(이어 만들기 — 엔진 호출 없음)"}, {"turns": 0}
     code, final = run_claude(job, prompt)
-    engine = {"cost": final.get("cost"), "turns": final.get("turns"), "seconds": int(time.time() - t0),
+    # openrouter 경로는 서버가 호출마다 'build' 로 이미 기록했다 — 끝에 합계를 'engine' 으로 또 적으면 두 번 센다(10-28: $1.30·$0.82 가 겹쳐 $10.56 으로 보임)
+    engine = {"cost": 0 if build_engine() == "openrouter" else final.get("cost"), "turns": final.get("turns"), "seconds": int(time.time() - t0),
               "model": build_model(job) if build_engine() == "openrouter" else (CFG.get("model") or job.engine_model or "claude (CLI 기본)")}
     if job.cancel:
         return None, None, engine, final
     res_path = os.path.join(job.dir, "result.json")
+    if not os.path.exists(res_path) and not design_job and int(final.get("turns") or 0) >= or_agent.MAX_ITERS - 1:   # 차례를 다 쓴 경우만 — 중간에 끊긴 실행은 이어 하기(R122)로
+        # 다듬기는 단계마다 판(_v0.N_*.pptx)을 남긴다 — 에이전트가 result.json 없이 끊겨도 마지막 판으로 마무리를 잇는다(R128)
+        def _vno(p):
+            m_ = re.match(r"_v(\d+)\.(\d+)", os.path.basename(p))
+            return (int(m_.group(1)), int(m_.group(2))) if m_ else (0, 0)
+        vers = sorted((p for p in glob.glob(os.path.join(job.dir, "_v*.pptx")) if pptx_ok(p)), key=_vno)
+        if vers:
+            last = os.path.basename(vers[-1])
+            json.dump({"result": last, "summary": f"엔진이 끝 보고 없이 멈춰 마지막 판({last})으로 마무리했습니다.",
+                       "checklist": [{"slide": 0, "title": "끝 보고 없이 멈춤", "level": "warn",
+                                      "detail": f"엔진이 result.json 을 남기기 전에 끊겼습니다 — 마지막 판 {last} 에 마무리(서체·줄바꿈·키메시지)만 더했습니다. 남은 단계는 다시 돌리면 이어서 합니다."}]},
+                      open(res_path, "w", encoding="utf-8"), ensure_ascii=False)
+            job.event(f"엔진이 끝 보고 없이 멈춰 마지막 판 {last} 으로 마무리를 잇습니다.", "warn")
     if not os.path.exists(res_path):
         raise RuntimeError("에이전트가 result.json 을 남기지 않았습니다. " + (final.get("text") or "")[-800:])
     rep = json.load(open(res_path, encoding="utf-8"))
     out = os.path.join(job.dir, rep.get("result") or "")
     if not os.path.isfile(out):
         raise RuntimeError(f"결과 파일을 찾을 수 없습니다: {rep.get('result')}")
-    if design_job and sig:   # 마무리 전에 보관 — 다음 실패에도 엔진 결과는 남는다
+    if sig:   # 마무리 전에 보관 — 다음 실패에도 엔진 결과는 남는다
         try:
             os.makedirs(os.path.dirname(keep), exist_ok=True)
             shutil.copy2(out, keep)
@@ -847,8 +950,8 @@ def build_parallel(job, j, plan, note):
                     dd = json.loads(ln)
                 except Exception:
                     continue
-                if dd.get("stage") in BUILD_STAGES:
-                    x["stage"] = dd["stage"]
+                if polish_resume.canon(dd.get("stage")) in BUILD_STAGES:
+                    x["stage"] = polish_resume.canon(dd["stage"])
                 if dd.get("progress") is not None:
                     x["pct"] = max(x["pct"], min(95, int(dd["progress"])))
                 if dd.get("message"):
@@ -872,7 +975,7 @@ def build_parallel(job, j, plan, note):
         x["t"].join(timeout=10)
     turns = sum(int(x["final"].get("turns") or 0) for x in parts)
     _em = build_model(job) if build_engine() == "openrouter" else (CFG.get("model") or job.engine_model or "claude (CLI 기본)")
-    engine = {"cost": sum(float(x["final"].get("cost") or 0) for x in parts), "turns": turns, "seconds": int(time.time() - t0),
+    engine = {"cost": 0 if build_engine() == "openrouter" else sum(float(x["final"].get("cost") or 0) for x in parts), "turns": turns, "seconds": int(time.time() - t0),   # openrouter 는 서버가 호출마다 기록 — 두 번 세지 않게
               "model": _em + (f" ×{len(parts)}" if len(parts) > 1 else "") if parts else "(이어 만들기 — 엔진 호출 없음)"}
     if job.cancel:
         return None, None, engine, turns
@@ -993,8 +1096,17 @@ def build_parallel(job, j, plan, note):
     logos = brand_paths(job)
     fo = os.path.join(job.dir, "_frame_opts.json")
     proj = design.project_of(j)
+    fr = styles.frame(styles.get(styles.of_job(j)), j.get("theme") or "")
+    head_photo = None
+    # 머리 띠 = 원본 제안서처럼 실사 사진 + 시안 톤 덮개(11-05 사용자). 사진은 나노바나나로 작업마다 한 장 — 끄려면 엔진 설정 head_photo: false
+    if fr.get("head", "band") == "band" and CFG.get("head_photo", True):
+        try:
+            subj = " / ".join(x for x in ("" if proj.startswith("(없음") else proj, j.get("title") or "") if x)
+            head_photo = design.head_photo(job, subj)
+        except Exception as e:
+            log("머리 띠 사진 실패(그라데이션 띠로):", e)
     json.dump({"project": "" if proj.startswith("(없음") else proj, "client_logo": logos["client"], "vendor_logo": logos["vendor"],
-               "frame": styles.frame(styles.get(styles.of_job(j)), j.get("theme") or "")}, open(fo, "w", encoding="utf-8"), ensure_ascii=False)
+               "frame": fr, "head_photo": head_photo}, open(fo, "w", encoding="utf-8"), ensure_ascii=False)
     # 고정 틀은 세로 가운데 실측이 끝난 뒤에 입힌다(실측 도구가 머리 띠의 글을 건드리지 않게) — process() 가 부른다
     job.frame_args = [os.path.join(HERE, "frame.py"), out, os.path.join(src_m, "plan.json"), fo]
     return rep, out, engine, turns
@@ -1013,6 +1125,7 @@ def text_map(job, pptx):
 def run_edit(job, j):
     """웹에서 고친 글을 결과 장표에 넣는다 — AI 없이 글만 바꾸고 다시 렌더. 실패해도 기존 결과는 그대로 둔다"""
     msg = "글 고치기를 반영했습니다."
+    failed = False
     try:
         review = j.get("review")
         if isinstance(review, str):
@@ -1049,17 +1162,139 @@ def run_edit(job, j):
     except Exception as e:
         traceback.print_exc()
         msg = f"글 고치기에 실패했습니다 — 장표는 이전 그대로입니다 ({type(e).__name__}: {str(e)[:200]})"
-        job.event(msg, "warn")
-    req("POST", f"/worker/jobs/{job.id}/finish", {"status": "done", "message": msg})
+        failed = True   # 장표는 살아 있어 상태는 done, 실패 표시만 — 서버가 kind warn 으로 남겨 화면이 안내한다. 예전엔 'done' 기록이라 안내가 뜨지 않았다(R152)
+    req("POST", f"/worker/jobs/{job.id}/finish", {"status": "done", "message": msg, "failed": failed})
     log("글 고치기 끝:", job.id)
 
 
+def _file_sha(path):
+    import hashlib
+    h = hashlib.sha256()
+    with open(path, "rb") as f:
+        for b in iter(lambda: f.read(1 << 20), b""):
+            h.update(b)
+    return h.hexdigest()
+
+
+def polish_icon_fns(job):
+    """polish_icons.run 에 넘길 AI·이미지·자산 함수 — 서버 대리 호출(사용자별 한도·사용 기록 그대로)"""
+    def ai(body):
+        return design.text_of(design.ai(job, "check", body, timeout=320))
+
+    def image(prompt, refs):
+        body = {"prompt": prompt, "aspect_ratio": "16:9", "quality": CFG.get("image_quality", "high"), "n": 1,
+                "input_references": [{"type": "image_url", "image_url": {"url": u}} for u in refs[:3]]}
+        try:
+            r = design.ai(job, "image", body)
+        except RuntimeError as e:   # 참고 그림을 못 받는 모델 — 빼고 한 번 더
+            if "400" not in str(e):
+                raise
+            body.pop("input_references", None)
+            r = design.ai(job, "image", body)
+        png = design.image_of(r)
+        if not png:
+            raise RuntimeError("이미지 모델이 그림을 돌려주지 않았습니다")
+        return png
+
+    def asset(kind, text, out):
+        d = os.path.join(job.dir, "_icons", "pick")
+        res = tool(job, [os.path.join(HERE, "asset_find.py"), "pick", "icon" if kind == "icon" else "illust", d, "--text", text], timeout=180)
+        m = re.search(r"^pick (\S+)", res, re.M)
+        if not m or m.group(1) in ("None", "none"):
+            return None
+        tool(job, [os.path.join(HERE, "asset_find.py"), "get", m.group(1), out], timeout=180)
+        return m.group(1) if os.path.isfile(out) else None
+    return ai, image, asset
+
+
+def polish_start(job, j, src):
+    """초안 다듬기 시작 — 원본 받기·원본 렌더(앞 실행 것이 같으면 건너뜀) → 이어 하기 판단 → (새로 시작이면) 결정적 단계:
+    서체를 원본 굵기·크기대로 · 아이콘·일러스트 한 세트로. 반환: polish_resume.prepare 의 info + 'notes_text'(지시문에 붙일 글)"""
+    job.polish = True
+    keep = os.path.join(job.dir, "_원본보관.pptx")
+    size = int(j.get("size") or 0)
+    if os.path.isfile(keep) and size and os.path.getsize(keep) == size:
+        job.event("원본은 앞 실행에서 받아 둔 것을 씁니다(같은 크기) — 내려받기를 건너뜁니다.")
+    else:
+        job.event("원본을 내려받는 중")
+        download(f"/worker/jobs/{job.id}/source", src)
+        shutil.copy2(src, keep)  # 에이전트가 원본을 고쳐도 되돌릴 수 있게
+    job.push("준비", 2)
+    bdir = os.path.join(job.dir, "_before")
+    mark = os.path.join(bdir, ".sig")
+    ksha = _file_sha(keep)
+    if os.path.isfile(mark) and open(mark, encoding="utf-8").read().strip() == ksha and glob.glob(os.path.join(bdir, "s*.jpg")):
+        job.event("원본 장별 렌더는 앞 실행 것을 그대로 씁니다(같은 원본).")
+    else:
+        job.event("원본 장별 렌더 중(" + ("PowerPoint" if osdep.IS_WIN else "LibreOffice") + ")")
+        for n, p in render(keep, bdir):
+            put_file(job.id, "before", p, f"s{n:02d}.jpg", n)
+        open(mark, "w", encoding="utf-8").write(ksha)
+        job.event("원본 렌더를 올렸습니다.")
+    job.push("준비", 3)
+    info = polish_resume.prepare(job, j, keep, extra={"engine": build_engine(), "prep": 5,   # 5: 제목 서체는 키메시지만·머리 띠 제목은 키메시지 아님(11-02, R183) — 앞 판에서 잇지 않는다
+                                                     
+                                                     "model": build_model(job) if build_engine() == "openrouter" else (CFG.get("model") or "")})
+    job.polish_sig = info["sig"]
+    notes = []
+    if not info["resume"]:
+        shutil.copy2(keep, src)   # 앞 실행이 원본.pptx 를 고쳤을 수 있다 — 깨끗한 원본에서
+        try:   # ① 서체 — 고른 서체로 바꾸되 원본 굵기(획 농도)·글 폭이 같게(polish_prep). 끝의 마무리가 같은 서체로 한 번 더 돌아도 그대로다
+            out = tool(job, [os.path.join(HERE, "polish_prep.py"), "fonts", src, src], timeout=900)
+            job.event(out.splitlines()[-1][:300] if out else "서체 맞춤")
+            notes.append("- **서체·굵기·크기는 엔진이 이미 맞췄다**(고른 서체로, 원본과 같은 굵기·글 폭). 서체 이름·굵기 단계·글자 크기를 다시 바꾸지 않는다 — "
+                         "원본보다 가늘게·작게 만들면 실패다(엔진이 끝에 원본과 견줘 판정하고 되돌린다). 새로 넣는 글은 같은 장의 같은 역할 글의 서체·크기를 그대로 복사한다.")
+        except Exception as e:
+            log("서체 맞춤 실패(무시):", e)
+            job.event(f"서체 맞춤을 못 했습니다 — 마무리에서 서체만 바꿉니다({str(e)[:120]})", "warn")
+        if CFG.get("polish_icon_set", False):   # 꺼 둠 — 다듬기는 원본 그림·일러스트·배경을 건드리지 않는다(사용자 10-29 "건들였더니 많이 깨지고 엉망", R130)
+            try:   # ② 아이콘·일러스트 한 세트(사진·캡처·로고·캐릭터는 그대로)
+                import polish_icons
+                ai, image, asset = polish_icon_fns(job)
+                bj = sorted(glob.glob(os.path.join(bdir, "s*.jpg")))
+                pick = [bj[i] for i in sorted({0, 1, len(bj) // 2, len(bj) - 2}) if 0 <= i < len(bj)] if bj else []
+                job.icon_rep = polish_icons.run(src, src, os.path.join(job.dir, "_icons"), renders=pick, ai=ai, image=image, asset=asset,
+                                                sig=ksha, log=lambda m: job.event(m))
+                for n in (job.icon_rep.get("notes") or [])[:6]:
+                    job.event(n, "warn")
+            except (design.Cancelled, design.Budget):
+                raise
+            except Exception as e:
+                log("아이콘 세트 실패(무시):", e)
+                job.event(f"아이콘·일러스트 세트를 만들지 못했습니다 — 원본 그림 그대로 진행합니다({str(e)[:160]})", "warn")
+        polish_resume.save(job, prep=True)
+    else:
+        try:
+            job.icon_rep = json.load(open(os.path.join(job.dir, "_icons", "set.json"), encoding="utf-8"))
+        except Exception:
+            job.icon_rep = None
+    notes.append("- **그림은 원본 그대로다(사용자 10-29).** 원본의 사진·일러스트·아이콘·캡처·배경 그림은 교체·재생성·추가·삭제·자르기·흐림 모두 하지 않는다. "
+                 "애매하면 그림을 넣지 않는다. 글과 겹칠 때만 위치·크기를 조금(20% 안) 옮기거나 줄인다. 그림으로 박힌 도식을 도형으로 다시 짜지 않는다. "
+                 "엔진이 끝에 원본과 견줘 새 그림은 빼고 바뀐·빠진 그림·배경은 되살린다.")
+    notes.append("- **글 맞춤**: 줄바꿈이 이상하거나(어절·괄호 끊김, 짧은 라벨 두 줄) 카드 좌우 여백이 모자라면 글자를 1pt 씩 줄여 맞춘다(원본의 80% 까지). "
+                 "쉼표로 늘어놓은 목록은 항목 중간에서 꺾지 말고 쉼표 뒤에서 줄을 바꾼다. 아이콘과 한 줄 글은 세로 가운데를 맞추고, 아이콘이 글을 가리지 않게 한다.")
+    notes.append("- 다듬기 = 정리다: 줄바꿈·정렬·간격. 키메시지(장 위쪽 큰 한두 줄)는 상자를 장 가운데, 문단 가운데 정렬. "
+                 "숫자와 단위 사이 공백('173 개')은 붙인다. 엔진이 끝에 줄바꿈·키메시지 가운데·굵기·크기를 다시 검사한다.")
+    info["notes_text"] = ("\n## 엔진이 이미 한 일 · 지킬 것(초안 다듬기)\n" + "\n".join(notes) + "\n") + polish_resume.resume_block(info)
+    return info
+
+
 def process(j):
+    if j.get("kind") == "design" and not (j.get("theme") or "").strip():   # 기존 구성 그대로 — 화면이 강조색을 묻지 않는다. 기획에 적어 둔 원본 강조색을 모든 단계가 쓰게(11-03)
+        try:
+            _pl = j.get("plan")
+            _pl = json.loads(_pl) if isinstance(_pl, str) and _pl else (_pl or {})
+            if (_pl or {}).get("keep_accent"):
+                j["theme"] = _pl["keep_accent"]
+        except Exception:
+            pass
     job = Job(j)
-    job.env = font_env(j)   # 고른 서체를 하위 도구에
+    stop_hb = heartbeat(job)
     src = os.path.join(job.dir, "원본.pptx")
     design_job = j.get("kind") == "design"
     try:
+        # try 안에서 — 밖에서 예외가 나면 하트비트만 남아 서버에는 '진행 중'이 영원히 이어지고 reap 도 못 잡는다(R168)
+        job.env = font_env(j)   # 고른 서체를 하위 도구에
         if (j.get("phase") or "") == "edit":
             run_edit(job, j)
             return
@@ -1067,22 +1302,23 @@ def process(j):
             design.run_plan_phase(job, j)  # 기획 → 시안 → review 보고까지
             log("시안 단계 끝:", job.id)
             return
+        if design_job:   # 세로 제안서·회사소개서는 build 단계가 없다 — 가로 장표 제작 길로 들어가면 plan.json 을 찾다 404 로 실패했다(10-28, R108)
+            try:
+                _o = j.get("opts") or {}
+                _o = json.loads(_o) if isinstance(_o, str) else _o
+            except Exception:
+                _o = {}
+            if (_o or {}).get("purpose") in ("submit", "company"):
+                raise RuntimeError("세로 제안서·회사소개서는 장표 제작(수정 요청) 단계가 없습니다 — 작업 목록에서 '다시 돌리기' 를 누르면 처음 단계부터 다시 만듭니다.")
         job.font_notes = font_choice(j)[2]   # 장표 언어·기획 글에 없는 글자가 있는 서체 → 바꾼 내용(진행 기록 + 확인 목록)
         for m in job.font_notes:
             job.event(m, "warn")
+        pinfo = None
         if design_job:
             job.push("준비", 2)
             design.prepare_build(job, j)
-        else:
-            job.event("원본을 내려받는 중")
-            download(f"/worker/jobs/{job.id}/source", src)
-            shutil.copy2(src, os.path.join(job.dir, "_원본보관.pptx"))  # 에이전트가 원본을 고쳐도 되돌릴 수 있게
-            job.push("준비", 2)
-
-            job.event("원본 장별 렌더 중(" + ("PowerPoint" if osdep.IS_WIN else "LibreOffice") + ")")
-            for n, p in render(src, os.path.join(job.dir, "_before")):
-                put_file(job.id, "before", p, f"s{n:02d}.jpg", n)
-            job.event("원본 렌더를 올렸습니다.")
+        else:   # 초안 다듬기 — 받기·렌더는 앞 실행 것이 같으면 건너뛰고, 끊긴 실행은 이어서(10-28)
+            pinfo = polish_start(job, j, src)
         job.push("준비", 4)
 
         phase = j.get("phase") or "full"
@@ -1111,6 +1347,8 @@ def process(j):
                   .replace("{{NOTE}}", note or "(없음)"))
         if design_job:
             prompt += design.lang_build_rule(design.lang_of(j))
+        elif pinfo:
+            prompt = prompt.replace("{{POLISH}}", pinfo["notes_text"]) if "{{POLISH}}" in prompt else prompt + pinfo["notes_text"]
         t_engine = time.time()
         if design_job:   # 장표 제작 — 원본 맥락 자료는 기획에만 쓴다. 이 엔진의 사본도 지운다(요약 context.md 는 남김). 서버는 '장표 만들기' 때 지웠다
             for f in glob.glob(os.path.join(job.dir, "_docs", "*")) + glob.glob(os.path.join(job.dir, "_part*", "_docs", "*")):
@@ -1132,6 +1370,15 @@ def process(j):
                 req("POST", f"/worker/jobs/{job.id}/finish", {"status": "canceled"})
                 return
 
+        if design_job and CFG.get("illus_redraw", True) and os.path.isfile(out):   # 시안에서 잘라 넣은 그림을 따로 크게 다시 그려 바꿔 끼운다(R197)
+            try:
+                import illus
+                job.push("그림 다시 그리기", 95)
+                illus.run(job, out)
+            except (design.Cancelled, design.Budget):
+                job.event("그림 다시 그리기 — 비용 한도로 멈춰 남은 그림은 시안에서 자른 그대로 둡니다", "warn")
+            except Exception as e:
+                job.event(f"그림 다시 그리기 실패 — 시안에서 자른 그림을 그대로 씁니다: {str(e)[:160]}", "warn")
         job.push("결과 정리", 96)
         guard_warn, guard_hits = [], []
         keep = os.path.join(job.dir, "_원본보관.pptx")
@@ -1172,6 +1419,8 @@ def process(j):
                             "--key-align", key_align_of(job.dir, (styles.get(styles.of_job(j)).get("frame") or {}).get("key_align", "center"))]
                 if os.path.isfile(os.path.join(job.dir, "_mockup", "plan.json")):   # 강조어(keyword)를 키메시지에 강조색으로
                     fin_args += ["--plan", os.path.join(job.dir, "_mockup", "plan.json")]
+                if os.path.isdir(os.path.join(job.dir, "_mockup")):   # 카드 바탕색을 시안 같은 자리 색과 대조(flatfx.match_fills, 10-28 팀장 지적)
+                    fin_args += ["--mockup", os.path.join(job.dir, "_mockup")]
             r = subprocess.run([PY, os.path.join(HERE, "finalize.py"), out, os.path.join(job.dir, "_fonts")] + fin_args,
                                capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=600, env=font_env(j))
             if r.returncode != 0:
@@ -1201,12 +1450,13 @@ def process(j):
                     pj = os.path.join(job.dir, "_mockup", "plan.json")
                     plan = json.load(open(pj, encoding="utf-8")) if os.path.isfile(pj) else {}
                     slides = [{"n": int(sl.get("n") or 0), "text": sl.get("text") or ""} for sl in json.load(open(deck_txt, encoding="utf-8"))]
-                    tc = req("POST", f"/deck/worker/jobs/{job.id}/text-check", {"plan": {k: plan.get(k) for k in ("title", "core", "slides")}, "slides": slides}, timeout=240)
+                    tc = req("POST", f"/worker/jobs/{job.id}/text-check",{"plan": {k: plan.get(k) for k in ("title", "core", "slides")}, "slides": slides}, timeout=240)
                     found = (tc or {}).get("findings") or []
                     fin_warn += [f for f in found if isinstance(f, dict) and f.get("title")]
                     job.event(f"글 검사 — 오타·기획과 다른 숫자·개인 정보 {len(found)}건" if found else "글 검사 — 오타·기획과 다른 숫자·개인 정보 없음")
-                except Exception as e:
-                    log("글 검사 실패(무시):", e)
+                except Exception as e:   # 예전엔 로그만 남겨 경로가 틀린 채(/deck/deck/… 404) 한 번도 돌지 않은 걸 몰랐다(10-28 점검 D04)
+                    log("글 검사 실패:", e)
+                    job.event(f"글 검사를 하지 못했습니다(오타·숫자 확인 건너뜀): {str(e)[:120]}", "warn")
             if design_job:
                 vc = out[:-5] + "_vc.pptx"
                 with RENDER_LOCK:
@@ -1219,6 +1469,35 @@ def process(j):
         except Exception as e:
             log("마무리 실패(무시):", e)
             fin_warn.append({"slide": 0, "title": "마무리 단계 실패", "detail": f"키메시지·가이드·세로 가운데 보정이 적용되지 않았습니다 ({str(e)[:120]})", "level": "warn"})
+        if not design_job and os.path.isfile(keep):   # 다듬기 — 원본보다 얇거나 작아진 글 되돌림 · 줄바꿈 · 키메시지 가운데 · 판정(polish_prep post)
+            try:
+                p_out = out[:-5] + "_post.pptx"
+                res = tool(job, [os.path.join(HERE, "polish_prep.py"), "post", keep, out, p_out], timeout=900)
+                if os.path.isfile(p_out) and os.path.getsize(p_out) > 10000:
+                    os.replace(p_out, out)
+                for ln in res.splitlines():
+                    if ln.startswith("WARN: "):
+                        no, title, detail = (ln[6:].split("|", 2) + ["", ""])[:3]
+                        fin_warn.append({"slide": int(no) if no.isdigit() else 0, "title": title, "detail": detail, "level": "warn"})
+                    elif ln.strip():
+                        job.event(ln.strip()[:300])
+            except Exception as e:
+                log("가독성 지키기 실패(무시):", e)
+                fin_warn.append({"slide": 0, "title": "가독성 지키기 단계 실패", "detail": str(e)[:200], "level": "warn"})
+            try:   # 그림은 원본대로 · 쉼표 목록 · 카드 안 글 1pt 맞춤 · 아이콘·일러스트 겹침 · 도넛 라벨 · 아이콘 세로 가운데(polish_fix, R130)
+                f_out = out[:-5] + "_fix.pptx"
+                res = tool(job, [os.path.join(HERE, "polish_fix.py"), keep, out, f_out], timeout=900)
+                if os.path.isfile(f_out) and os.path.getsize(f_out) > 10000:
+                    os.replace(f_out, out)
+                for ln in res.splitlines():
+                    if ln.startswith("WARN: "):
+                        no, title, detail = (ln[6:].split("|", 2) + ["", ""])[:3]
+                        fin_warn.append({"slide": int(no) if no.isdigit() else 0, "title": title, "detail": detail, "level": "warn"})
+                    elif ln.startswith("다듬기 마감"):
+                        job.event(ln.strip()[:300])
+            except Exception as e:
+                log("다듬기 마감 실패(무시):", e)
+                fin_warn.append({"slide": 0, "title": "다듬기 마감 단계 실패", "detail": str(e)[:200], "level": "warn"})
         fin_warn = [{"slide": 0, "title": "서체를 장표 언어에 맞게 바꿈", "detail": m, "level": "warn" if "그대로" in m else "info"}
                     for m in getattr(job, "font_notes", [])] + fin_warn
         if fin_warn:
@@ -1234,9 +1513,35 @@ def process(j):
         if design_job:
             try:
                 job.event("표지·목차·간지 — " + front_matter(job, j, out))
+                if getattr(job, "front_warn", None):   # 앞장 템플릿에 자리가 모자란 글 등(R238)
+                    rep["checklist"] = list(job.front_warn) + list(rep.get("checklist") or [])
             except Exception as e:
                 log("표지·목차·간지 실패(무시):", e)
                 rep["checklist"] = [{"slide": 0, "title": "표지·목차·간지를 넣지 못함", "detail": str(e)[:200], "level": "warn"}] + list(rep.get("checklist") or [])
+            try:   # 틀·표지·목차·간지까지 붙은 최종 장표의 테마 그림자를 끊는다 — 빈 effectLst 를 LibreOffice 가 무시해 카드·머리 띠 아래 그림자가 생겼다(10-28)
+                _fx = (tool(job, [os.path.join(HERE, "flatfx.py"), out]) or "").strip().splitlines()
+                _sum = [ln for ln in _fx if not ln.startswith("WARN: ")]
+                job.event("마감 정리 — " + (_sum[-1][:300] if _sum else "그림자·표 테두리·메모 정리"))
+                for ln in _fx:   # 건너뛴 단계·쪽도 확인 목록에 — 도형 하나 때문에 빠진 것을 사용자가 알게(R164)
+                    if ln.startswith("WARN: "):
+                        no, title, detail = (ln[6:].split("|", 2) + ["", ""])[:3]
+                        rep["checklist"] = [{"slide": int(no) if no.isdigit() else 0, "title": title, "detail": detail, "level": "warn"}] + list(rep.get("checklist") or [])
+            except Exception as e:
+                log("그림자 정리 실패:", e)
+                rep["checklist"] = [{"slide": 0, "title": "마감 정리를 하지 못함", "detail": f"그림자·표 테두리·메모·바닥 채움이 적용되지 않았습니다 ({str(e)[:160]})", "level": "warn"}] + list(rep.get("checklist") or [])
+        _kplan = os.path.join(job.dir, "_mockup", "plan.json")
+        _ksrc = os.path.join(job.dir, "원본.pptx")
+        if design_job and os.path.isfile(_kplan) and os.path.isfile(_ksrc):   # 기존 구성 그대로 — 원본 발표 스크립트(노트)를 같은 장에(R237). keep 이 아니면 도구가 건너뜀
+            try:
+                for ln in (tool(job, [os.path.join(HERE, "keepnotes.py"), out, _ksrc, _kplan]) or "").strip().splitlines():
+                    if ln.startswith("WARN: "):
+                        no, title, detail = (ln[6:].split("|", 2) + ["", ""])[:3]
+                        rep["checklist"] = [{"slide": int(no) if no.isdigit() else 0, "title": title, "detail": detail, "level": "warn"}] + list(rep.get("checklist") or [])
+                    elif ln.strip() and "건너뜀" not in ln:
+                        job.event(ln.strip()[:300], "done")
+            except Exception as e:
+                log("발표 스크립트 옮기기 실패:", e)
+                rep["checklist"] = [{"slide": 0, "title": "발표 스크립트를 옮기지 못함", "detail": str(e)[:200], "level": "warn"}] + list(rep.get("checklist") or [])
         try:   # 표지·목차·간지까지 붙은 최종 장표에 실제로 적힌 서체로 다시 모은다(앞장에 섞인 언어 서체도 — R82)
             import fontbundle
             _sz = fontbundle.sanitize_pptx(out)   # 앞장(표지·목차·간지)에 따라온 남의 서체까지(R97)
@@ -1265,31 +1570,33 @@ def process(j):
                 log("부가 파일 올리기 실패(무시):", extra, e)
         if final.get("turns"):
             rep.setdefault("stats", []).append({"label": "에이전트 턴", "value": final["turns"]})
-        used = [a for a in (rep.get("assets_used") or []) if isinstance(a, dict) and a.get("id")]
-        if not design_job:
-            rep.setdefault("stats", []).insert(0, {"label": "powerPlus 자산", "value": len(used)})
-        if design_job:
-            pass
-        elif not used:  # 핵심 요구(powerPlus 자산으로 재디자인)를 안 했으면 화면에 분명히 알린다
-            job.event("powerPlus 자산을 하나도 넣지 않았습니다 — 요청 사항에 넣을 곳을 적어 다시 돌려 주세요.", "warn")
-            rep.setdefault("checklist", []).insert(0, {"slide": 0, "title": "powerPlus 자산 0개", "level": "warn",
-                                                      "detail": "엔진이 powerPlus 아이콘·일러스트를 넣지 않았습니다."})
-        else:
-            job.event(f"powerPlus 자산 {len(used)}개를 넣었습니다.", "done")
+        if not design_job and getattr(job, "icon_rep", None):   # 엔진이 바꾼 아이콘·일러스트 세트도 쓴 자산으로 센다
+            rep["assets_used"] = list(rep.get("assets_used") or []) + list(job.icon_rep.get("assets_used") or [])
+            kept = [k for k in job.icon_rep.get("kept") or [] if k.get("why") in ("실사 사진", "화면 캡처", "로고", "캐릭터·마스코트")]
+            if kept:
+                rep.setdefault("checklist", []).append({"slide": 0, "title": f"손대지 않은 그림 {len(kept)}개", "level": "info",
+                    "detail": "실사 사진·화면 캡처·로고·캐릭터는 원본 그대로 두었습니다: " + ", ".join(f"{k['slide']}쪽 {k['why']}" for k in kept[:12])})
+        # 다듬기는 그림을 원본 그대로 둔다(10-29, R130) — 예전의 'powerPlus 자산 0개' 경고는 뺐다
         req("POST", f"/worker/jobs/{job.id}/finish", {"status": "done", "result_name": os.path.basename(out), "engine": engine,
             "pilot_slide": rep.get("pilot_slide"), "report": {
             k: rep.get(k) for k in ("summary", "score", "stats", "checklist", "changes", "assets_used", "pilot_slide", "guard")}})   # guard 가 빠져 있어 10-12 부터 게이트 되돌림이 개선 체크리스트에 안 쌓였다(10-14 실측)
-        if design_job:   # 결과를 올렸다 — 이 장들은 다 썼다. 끝난 작업을 다시 돌리면 새로 만든다(R79)
-            built_done(job)
+        built_done(job)   # 결과를 올렸다 — 끝난 작업을 다시 돌리면 새로 만든다(R79 · 다듬기도 10-28 부터 같은 기록을 쓴다)
+        if not design_job:
+            polish_resume.finish(job)
         log("완료:", job.id)
     except Exception as e:
         traceback.print_exc()
-        job.read_progress()
-        job.push()
+        try:   # 진행 글을 읽다 또 실패해도 실패 보고는 나가야 한다(R168)
+            job.read_progress()
+            job.push()
+        except Exception as e2:
+            log("마지막 진행 보고 실패:", e2)
         try:
             req("POST", f"/worker/jobs/{job.id}/finish", {"status": "failed", "error": f"{type(e).__name__}: {e}"[:3800]})
         except Exception as e2:
             log("실패 보고도 실패:", e2)
+    finally:
+        stop_hb()
 
 
 def ensure_reference():
@@ -1405,7 +1712,7 @@ def main():
                 o = json.loads(o)
             except Exception:
                 o = None
-        if isinstance(o, dict) and str(o.get("purpose") or "") in ("submit", "company") and j.get("source_kind") != "pptx":   # 회사소개서(테마 A·B)도 렌더·PPT 까지 한 번에
+        if isinstance(o, dict) and str(o.get("purpose") or "") in ("submit", "company"):   # 회사소개서(테마 A·B)도 렌더·PPT 까지 한 번에. pptx 로 시작해도 같은 길(R161)
             return True
         return not (j.get("kind") == "design" and (j.get("phase") or "plan") in ("plan", "edit"))
     log(f"powerDeck 엔진 '{NAME}' 시작 — {API} (동시 {slots}개, 그중 장표 제작 {heavy_slots}개)")
@@ -1433,6 +1740,13 @@ def main():
     except Exception as e:
         log("서체 확인 실패(무시):", e)
     ensure_reference()
+    if not once:   # 엔진이 막 켜졌다 = 이 이름으로 '진행 중' 인 작업은 끊긴 것. 15분(reap) 기다리지 않고 바로 대기열로 — 바로 다시 잡아 이어 한다(10-28 배포 3번)
+        try:
+            r = req("POST", "/worker/restarted", {})
+            if (r or {}).get("requeued"):
+                log(f"끊긴 작업 {r['requeued']}개를 바로 대기열로 되돌렸습니다 — 이어서 합니다.")
+        except Exception as e:
+            log("재시작 알림 실패(무시 — 옛 서버면 15분 뒤 reap 이 되돌린다):", e)
     running = []
     while True:
         running = [t for t in running if t.is_alive()]
@@ -1473,7 +1787,7 @@ def main():
 
 
 design.setup({"req": req, "download": download, "put_file": put_file, "CFG": CFG, "HERE": HERE, "log": log, "claude_exe": claude_exe,
-              "upload_after": upload_after, "text_map": text_map})   # 세로 제안서(vertical.py)가 기획 단계에서 결과까지 끝낸다
+              "upload_after": upload_after, "text_map": text_map, "render": render})   # render — 기존 구성 그대로가 원본 장 그림을 시안 참고로(keeplayout)   # 세로 제안서(vertical.py)가 기획 단계에서 결과까지 끝낸다
 
 if __name__ == "__main__":
     main()

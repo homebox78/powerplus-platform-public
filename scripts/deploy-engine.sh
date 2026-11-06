@@ -17,8 +17,30 @@ PY=$(command -v python3 || command -v python)
 "$PY" tests/test_wire_kinds.py || { echo "와이어 종류 시험 실패 — 배포 중단(R62)"; exit 3; }
 "$PY" -X utf8 tests/test_datafacts.py || { echo "자료 데이터·와이어 다양성·시안 일치 시험 실패 — 배포 중단(R64~R66)"; exit 3; }
 "$PY" -X utf8 tests/test_merge_pptx.py || { echo "리눅스 합치기(차트·SmartArt·표·그림) 시험 실패 — 배포 중단(R79)"; exit 3; }
+"$PY" -X utf8 tests/test_font_stale.py >/dev/null 2>&1 || { "$PY" -X utf8 tests/test_font_stale.py; echo "산출물 서체 묶음에 앞 실행 서체가 남음 — 배포 중단(R141)"; exit 3; }
 "$PY" -X utf8 tests/test_fontlang.py || { echo "언어별 서체(판단·글자 검사·lang 속성·서체 동봉) 시험 실패 — 배포 중단(R82)"; exit 3; }
 "$PY" -X utf8 tests/test_resume.py >/dev/null 2>&1 || { "$PY" -X utf8 tests/test_resume.py | grep -E "^(통과|실패)"; echo "이어 만들기(기획·엔진 하나·세로 제안서·견본 복제·합치기 실패 글) 시험 실패 — 배포 중단(R81)"; exit 3; }
+"$PY" -X utf8 tests/test_vertical_bg.py >/dev/null 2>&1 || { "$PY" -X utf8 tests/test_vertical_bg.py | grep -E "^실패"; echo "세로 제안서 목차·간지 배경이 글을 덮음 — 배포 중단(R107)"; exit 3; }
+"$PY" -X utf8 tests/test_vertical_fix.py >/dev/null 2>&1 || { "$PY" -X utf8 tests/test_vertical_fix.py | grep -E "^실패"; echo "세로 제안서 고쳐 쓰기 조각·이어 쓰기 시험 실패 — 배포 중단(R107)"; exit 3; }
+"$PY" -X utf8 tests/test_front_seams.py >/dev/null 2>&1 || { "$PY" -X utf8 tests/test_front_seams.py | grep -E "^실패"; echo "표지·간지 경계 녹이기가 물체를 번지게 함 — 배포 중단(R109)"; exit 3; }
+"$PY" -X utf8 tests/test_replace_distinct.py >/dev/null 2>&1 || { "$PY" -X utf8 tests/test_replace_distinct.py; echo "앞장 갈아 끼우기가 장을 섞음 — 배포 중단(R110)"; exit 3; }
+"$PY" -X utf8 tests/test_card_fx.py >/dev/null 2>&1 || { "$PY" -X utf8 tests/test_card_fx.py | grep -E "^실패"; echo "카드 바탕색·그림자·표 테두리·기획 메모가 시안과 다름 — 배포 중단(R112~R114)"; exit 3; }
+"$PY" -X utf8 tests/test_logo_ratio.py >/dev/null 2>&1 || { "$PY" -X utf8 tests/test_logo_ratio.py | grep -E "^실패"; echo "발주기관 로고가 제안사 로고보다 15% 크지 않음 — 배포 중단(R121)"; exit 3; }
+"$PY" -X utf8 tests/test_vertical_appendix.py >/dev/null 2>&1 || { "$PY" -X utf8 tests/test_vertical_appendix.py | grep -E "^실패"; echo "세로 제안서 별첨·(계속)·글 폭·상자 여백·무관 그림 시험 실패 — 배포 중단(R117·R119·R120)"; exit 3; }
+"$PY" -X utf8 tests/test_vertical_pick.py >/dev/null 2>&1 || { "$PY" -X utf8 tests/test_vertical_pick.py | grep -E "^실패"; echo "세로 제안서 배경 — 안 맞는 파워에셋 그림을 고름 — 배포 중단(R139)"; exit 3; }
+"$PY" -X utf8 tests/test_vertical_span.py >/dev/null 2>&1 || { "$PY" -X utf8 tests/test_vertical_span.py | grep -E "^실패"; echo "세로 제안서 본문 좌우가 머리 영역 끝과 다름 — 배포 중단(R125)"; exit 3; }
+"$PY" -X utf8 tests/test_textfit.py >/dev/null 2>&1 || { "$PY" -X utf8 tests/test_textfit.py | grep -E "^실패"; echo "강조 상자·내어쓰기·아이콘 가운데·앞장 그림 가장자리·키메시지 띠 시험 실패 — 배포 중단(R126·R127)"; exit 3; }
+"$PY" -X utf8 tests/test_front_shrink.py >/dev/null 2>&1 || { "$PY" -X utf8 tests/test_front_shrink.py; echo "앞장 그림 비키기 — 줄인 그림 윗변이 흰 막처럼 끊김 — 배포 중단(R140)"; exit 3; }
+"$PY" -X utf8 tests/test_material_title.py >/dev/null 2>&1 || { "$PY" -X utf8 tests/test_material_title.py | grep -E "^실패"; echo "자료 읽기·표지 글·구조 장 시험 실패 — 배포 중단(R143·R144·R145·R147)"; exit 3; }
+"$PY" -X utf8 tests/test_body_fit.py >/dev/null 2>&1 || { "$PY" -X utf8 tests/test_body_fit.py | grep -E "^실패"; echo "장표 마감(바닥 채움·글 크기·쪽 밖·빈칸 검사·칸 넓힘·알약·구분선) 시험 실패 — 배포 중단(R148~R150)"; exit 3; }
+"$PY" -X utf8 tests/test_lo_pages.py >/dev/null 2>&1 || { "$PY" -X utf8 tests/test_lo_pages.py | grep -E "^실패"; echo "장 그림 동시 렌더 시험 실패 — 배포 중단(R181)"; exit 3; }
+"$PY" -X utf8 tests/test_deck_flow.py >/dev/null 2>&1 || { "$PY" -X utf8 tests/test_deck_flow.py | grep -E "^실패"; echo "엔진 작업 흐름(글 고치기 실패 보고·글꼴 예외·무거운 작업 판정) 시험 실패 — 배포 중단(R152·R161·R168)"; exit 3; }
+if command -v php >/dev/null 2>&1; then php tests/test_deck_flow.php >/dev/null 2>&1 || { php tests/test_deck_flow.php | grep -E "^실패"; echo "파워덱 서버 흐름 시험 실패 — 배포 중단(R151~R169)"; exit 3; }; fi
+"$PY" -X utf8 tests/test_bg_look.py >/dev/null 2>&1 || { "$PY" -X utf8 tests/test_bg_look.py; echo "앞장 배경 그림 기준(사용자 배경 프롬프트 모음) 시험 실패 — 배포 중단"; exit 3; }
+"$PY" -X utf8 tests/test_crop_erase.py >/dev/null 2>&1 || { "$PY" -X utf8 tests/test_crop_erase.py; echo "시안 그림 글자 지우기(그라데이션 얼룩) 시험 실패 — 배포 중단(R137)"; exit 3; }
+"$PY" -X utf8 tests/test_polish_fix.py >/dev/null 2>&1 || { "$PY" -X utf8 tests/test_polish_fix.py | grep -E "^실패"; echo "초안 다듬기 마감(그림 원본대로·글 맞춤·겹침·도넛 라벨·아이콘 목록) 시험 실패 — 배포 중단(R130)"; exit 3; }
+"$PY" -X utf8 tests/test_polish_resume.py >/dev/null 2>&1 || { "$PY" -X utf8 tests/test_polish_resume.py | grep -E "^실패"; echo "초안 다듬기 단계·이어 하기·이중 과금 시험 실패 — 배포 중단(R122)"; exit 3; }
+"$PY" -X utf8 tests/test_polish_quality.py >/dev/null 2>&1 || { "$PY" -X utf8 tests/test_polish_quality.py | grep -E "^실패"; echo "초안 다듬기 굵기·크기·줄바꿈·그림 보존 시험 실패 — 배포 중단(R123)"; exit 3; }
 FILES=$(ls *.py *.md *.sh *.ps1 *.bat config.example.json 2>/dev/null | grep -v '^README.md$')
 FILES="$FILES known_errors.json wire_kinds.json pipeline skill templates"   # wire_kinds.json = 와이어 상자 종류 한 벌(2026-10-18, wirekinds.py 가 읽는다)   # 기본 규칙 원천 · 초안 다듬기 도구·si-deck 스킬 사본(2026-10-12) · 세로 제안서 기본 양식(2026-10-14)
 
@@ -30,7 +52,7 @@ fi
 TS=$(date +%Y%m%d-%H%M%S)
 # 서체(R82, 2026-10-18 언어별 서체) — 서체 파일은 저장소에 두지 않는다(크다, engine/fonts 는 .gitignore). 목록·지원율 표·PowerPoint 글줄 수치표(fonts.json·font_cover.json·ppt_metrics.json)는 저장소에 있고 늘 올린다.
 # 서체 파일은 서버에 없는 것만 올린다(서버에 손으로 맞춘 파일은 덮지 않는다). 목록에 적힌 파일이 이 PC 에 없으면 배포하지 않는다 — 서버에도 없으면 그 서체를 고른 작업이 깨진다.
-NEED=$("$PY" -c 'import json;d=json.load(open("fonts/fonts.json",encoding="utf-8"));print(" ".join(sorted({t["file"] for t in d["title"]}|{f for b in d["body"] for f in b.get("files") or []})))')
+NEED=$("$PY" -X utf8 -c 'import json;d=json.load(open("fonts/fonts.json",encoding="utf-8"));print(" ".join(sorted({t["file"] for t in d["title"]}|{f for b in d["body"] for f in b.get("files") or []})))')
 for f in $NEED; do [ -f "fonts/$f" ] || { echo "fonts.json 의 서체 파일 engine/fonts/$f 가 이 PC 에 없음 — 받아 두고 다시(R82)"; exit 5; }; done
 SRVF=$("${SSH[@]}" 'ls -1 ~/powerDeck/worker/fonts ~/powerDeck/worker/fonts/licenses 2>/dev/null; true')   # 새 서버는 fonts 폴더가 없다 — ls 2 로 set -e 에 죽지 않게(2026-10-19 회사 서버)
 NEWF=""

@@ -226,14 +226,29 @@ def _seams(im, axis="v"):
     return out
 
 
+def _detail(im, box):
+    """칸의 잔결 세기 — 흐리게 한 것과의 차이 평균(0~255). 판·민 바탕·완만한 그라데이션은 0 가까이, 물체(말풍선·글줄·사람·화면)는 6~9"""
+    from PIL import ImageChops
+    c = im.crop(box).convert("L")
+    if c.width < 3 or c.height < 3:
+        return 0.0
+    return ImageStat.Stat(ImageChops.difference(c, c.filter(ImageFilter.GaussianBlur(3)))).mean[0]
+
+
 def _soften_seams(im):
-    """곧은 경계선 둘레를 양쪽 색을 잇는 그라데이션으로 덮어 녹인다(흰 알파 그라데이션 레이어 효과). 경계가 없으면 그대로"""
+    """곧은 경계선 둘레를 양쪽 색을 잇는 그라데이션으로 덮어 녹인다(흰 알파 그라데이션 레이어 효과). 경계가 없으면 그대로.
+    양쪽이 다 평평한 경계(그림 모델이 남긴 판·액자 끝)만 녹인다 — 물체의 곧은 테두리(휴대폰·화면·건물)까지 녹이면 줄마다 양 끝 색을 이어
+    사람·말풍선이 가로로 끌린 결이 됐다(10-28 'PART 4' 간지, R109)"""
     im = im.convert("RGB")
     bw = int(W * 0.06)
     for axis in ("v", "h"):
         for pos, a, b in _seams(im, axis):
             if axis == "h":
                 im = im.transpose(Image.TRANSPOSE)
+            if max(_detail(im, (max(0, pos - bw), a, max(1, pos - 8), b)), _detail(im, (min(im.width - 1, pos + 8), a, min(im.width, pos + bw), b))) >= 2.0:
+                if axis == "h":   # 한쪽이라도 잔결이 있으면 물체 경계 — 건드리지 않는다
+                    im = im.transpose(Image.TRANSPOSE)
+                continue
             x0, x1 = max(0, pos - bw), min(im.width, pos + bw)
             y0, y1 = max(0, a - bw), min(im.height, b + bw)
             band = im.crop((x0, y0, x1, y1))
@@ -355,6 +370,15 @@ def _clear_text(bg, text_alpha, lay, margin=0.05, min_scale=0.6, logo_alpha=None
                 gy.putpixel((0, i), min(gy.getpixel((0, i)), v))
             else:
                 gy.putpixel((0, sh - 1 - i), min(gy.getpixel((0, sh - 1 - i)), v))
+    # 그림 쪽 바탕(옅은 대각선 판·색 면)까지 통째로 줄이면 원래 쪽 위 끝에 닿던 판이 쪽 안에서 끝나, 좁은(5%) 윗변 녹임으로는 그 경계가
+    # 그림 위를 가르는 흰 막으로 보였다(058d 표지 톱니가 흰색에 가려짐 — 10-29 사용자 "우측 이미지 위 흰색 마스크", 10-28 '윗부분 잘림'도 같은 원인, R140).
+    # 줄인 그림의 윗줄이 쪽 바탕색과 다르면(그림 자체 바탕이 있으면) 윗변을 그림 높이의 40% 에 걸쳐 넓게 녹인다 — 위로 갈수록 흰색으로 날리는 앞장 규칙과 같다
+    if py > 0:
+        top_row = ImageStat.Stat(small.crop((0, 0, sw, max(1, int(sh * 0.04))))).median
+        if max(abs(a - b) for a, b in zip(top_row[:3], col[:3])) > 6:
+            n = max(1, int(sh * 0.40))
+            for i, v in enumerate([int(255 * (i / n) ** 1.3) for i in range(n)]):
+                gy.putpixel((0, i), min(gy.getpixel((0, i)), v))
     mask = ImageChops.multiply(gx.resize((sw, sh)), gy.resize((sw, sh)))
     out.paste(small, (px, py), mask)
     return out
@@ -546,14 +570,31 @@ def compose(kind, bg_png, texts, st, accent, title_font=None, body_font=None, lo
             while plain and ls > H * 0.03 and _font(bold, ls).getlength(plain) + ls * 0.6 > textw:
                 ls -= H * 0.002
             f_ln = _font(bold, ls)
-            head = (H * 0.10 * 1.15 + H * 0.02) if no is not None else 0   # 엔딩·질의응답은 PART 번호 없이
-            block = head + size * 1.18 * len(lines) + ((H * 0.045 + ls * 1.5) if plain else 0)
+            show_part = no is not None and not texts.get("no_part")   # 기존 구성 그대로 — 원본 간지에 PART 번호가 없으면 붙이지 않는다(keeplayout)
+            head = (H * 0.10 * 1.15 + H * 0.02) if show_part else 0   # 엔딩·질의응답은 PART 번호 없이
+            lead = re.sub(r"\s+", " ", str(texts.get("lead") or "")).strip()   # 원본 간지의 설명 문장 — 장 이름과 한 줄 사이에 작게
+            f_ld = _font(semi, H * 0.032) if lead else None
+            # 원본 문장 줄바꿈은 그대로, 줄마다 폭에 맞춰 감되 자르지 않는다(두 줄 자르기가 끝인사 둘째 줄을 버렸다, R206)
+            lead_lines = [w for part in str(texts.get("lead") or "").split("\n") if part.strip() for w in _wrap(re.sub(r"\s+", " ", part).strip(), f_ld, 0, textw)] if lead else []
+            # 원본 간지 목록 — 머리(Ⅰ. Ⅱ. …)마다 단을 나누고, 머리가 없으면 8줄씩. 단이 글 폭을 넘으면 글을 줄인다(R206)
+            lst = [re.sub(r"\s+", " ", str(t)).strip() for t in (texts.get("list") or []) if str(t).strip()]
+            cols_l = []
+            for t in lst:
+                if not cols_l or (re.match(r"^[ⅠⅡⅢⅣⅤⅥⅦⅧⅨⅩ]+\s*[.．]", t) and cols_l[-1]) or (not any(re.match(r"^[ⅠⅡⅢⅣⅤⅥⅦⅧⅨⅩ]+\s*[.．]", x) for x in lst) and len(cols_l[-1]) >= 8):
+                    cols_l.append([])
+                cols_l[-1].append(t)
+            ls_l = H * 0.026
+            while lst and ls_l > H * 0.017 and sum(max(_font(semi, ls_l).getlength(t) for t in c) for c in cols_l) + ls_l * 1.6 * (len(cols_l) - 1) > textw:
+                ls_l -= H * 0.001
+            f_li = _font(semi, ls_l) if lst else None
+            list_h = (H * 0.05 + max(len(c) for c in cols_l) * ls_l * 1.6) if lst else 0
+            block = head + size * 1.18 * len(lines) + ((H * 0.045 + ls * 1.5) if plain else 0) + (H * 0.03 + H * 0.032 * 1.35 * len(lead_lines) if lead_lines else 0) + list_h
             if no is not None and lay != "center":   # 간지는 왼쪽 위 — 템플릿처럼 글 덩어리가 화면 위쪽 1/3 에서 시작
                 y = H * 0.17
             else:
                 y = top + (bottom - top - block) / 2 if lay != "center" else H * 0.10
             y_top = y
-            if no is not None:
+            if show_part:
                 part = f"PART {no}"
                 px0 = xo(_width(part, f_no, H * 0.10 * -0.017))
                 # 강약 — PART 번호는 연한 반투명 파랑(바탕에 40% 만 얹은 색), 장 이름이 주인공(10-15 사용자 "강약이 있어야함 part 1은 연한 파랑 반투명")
@@ -564,6 +605,11 @@ def compose(kind, bg_png, texts, st, accent, title_font=None, body_font=None, lo
             for ln in lines:
                 _draw(d, xo(_width(ln, f_nm, tr)), y, ln, f_nm, title_c, tr)
                 y += size * 1.18
+            if lead_lines:
+                y += H * 0.03
+                for ln in lead_lines:
+                    _draw(d, xo(_width(ln, f_ld, 0)), y, ln, f_ld, title_c, 0)
+                    y += H * 0.032 * 1.35
             if plain:
                 y += H * 0.045
                 band = _hex(fd.get("band_dark", "1D4ED8")) if dark else _hex(fd.get("band", fd.get("key", "1D4ED8")))   # 빨강은 핵심어에만 — 띠는 파랑
@@ -582,6 +628,17 @@ def compose(kind, bg_png, texts, st, accent, title_font=None, body_font=None, lo
                         x += w
                 RIGHT[0] = max(RIGHT[0], x)
                 y += ls * 1.5
+            if lst:
+                y += H * 0.05
+                cx = xo(sum(max(f_li.getlength(t) for t in c) for c in cols_l) + ls_l * 1.6 * (len(cols_l) - 1))
+                for c in cols_l:
+                    cw = max(f_li.getlength(t) for t in c)
+                    for r, t in enumerate(c):
+                        is_head = bool(re.match(r"^[ⅠⅡⅢⅣⅤⅥⅦⅧⅨⅩ]+\s*[.．]", t))
+                        d.text((cx, y + r * ls_l * 1.6), t, font=_font(bold, ls_l) if is_head else f_li, fill=key_c if is_head else title_c)
+                    cx += cw + ls_l * 1.6
+                RIGHT[0] = max(RIGHT[0], cx)
+                y += max(len(c) for c in cols_l) * ls_l * 1.6
         return y_top, y
 
     if not panel and not card:   # 글과 그림이 겹치면 그림을 줄여 글 반대쪽으로 민다(R45) — 그림 모델이 '왼쪽을 비워라'를 어기는 일이 잦다

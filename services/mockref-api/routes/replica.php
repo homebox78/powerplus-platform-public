@@ -22,8 +22,9 @@ $router->get('/api/mockups/replica', static function (): void {
     }
     // 와이어(2026-10-18 고도화 2단계) — 주면 배치의 기준이 와이어가 된다(줄 순서·칸 폭·칸 종류). 화면 종류는 와이어 것, 기관 유형이 비면 와이어 묶음의 기본 유형
     $wire = null; $wireNote = null;
-    if (isset($_GET['wire']) && (string) $_GET['wire'] !== '') {
-        $wire = ReplicaKit::parseWire((string) $_GET['wire']);
+    $wireJson = homebox_wire_query();
+    if ($wireJson !== '') {
+        $wire = ReplicaKit::parseWire($wireJson);
         if ($wire === null) { Response::error(400, 'BAD_WIRE', 'wire 는 {screen, org, lnb, rows:[{zone, cols:[{k, span}]}]} 형식의 JSON 입니다(줄 40·칸 6 이하, span 1~12).'); }
     }
     $ot = homebox_infer_ot(trim((string) ($_GET['org_type'] ?? '')), (string) ($_GET['org_name'] ?? ''));
@@ -245,11 +246,25 @@ function homebox_wire_main_rows(array $wire, array $sc, string $ot, int $rank, s
     return ['rows' => $rows, 'ref_id' => $plan['ref_id'], 'tally' => $plan['wire']['tally'], 'sources' => $plan['sources']];
 }
 
+/**
+ * 와이어 인자 글(JSON) — wire=JSON 또는 칸이 아주 많을 때 powerMCP 가 보내는 wire_z=(raw deflate + base64url, MC-133: 40줄·6칸이면 JSON 이 약 20KB 라 주소 한도 414).
+ * 풀린 크기는 200KB 까지(압축 폭탄 막기). 못 풀면 JSON 이 아닌 값을 돌려줘 parseWire 가 BAD_WIRE 로 거절한다. 없으면 빈 글.
+ */
+function homebox_wire_query(): string
+{
+    $z = (string) ($_GET['wire_z'] ?? '');
+    if ($z === '') { return (string) ($_GET['wire'] ?? ''); }
+    $bin = base64_decode(strtr($z, '-_', '+/'), true);
+    $raw = $bin === false ? false : @gzinflate($bin, 200_000);
+    return is_string($raw) && $raw !== '' ? $raw : 'invalid';
+}
+
 /** 빠른 초안 와이어 인자 — 메인 와이어만(서브 화면 와이어는 mock_get_replica_kit 으로). 없으면 null, 틀리면 400 */
 function homebox_wire_param(): ?array
 {
-    if (!isset($_GET['wire']) || (string) $_GET['wire'] === '') { return null; }
-    $w = ReplicaKit::parseWire((string) $_GET['wire']);
+    $json = homebox_wire_query();
+    if ($json === '') { return null; }
+    $w = ReplicaKit::parseWire($json);
     if ($w === null) { Response::error(400, 'BAD_WIRE', 'wire 는 {screen, org, lnb, rows:[{zone, cols:[{k, span}]}]} 형식의 JSON 입니다(줄 40·칸 6 이하, span 1~12).'); }
     if ($w['screen'] !== 'main') { Response::error(400, 'BAD_WIRE', '빠른 초안은 메인 와이어만 받습니다. 서브 화면 와이어는 재현 묶음(mock_get_replica_kit, wire_id)으로 만든다.'); }
     return $w;

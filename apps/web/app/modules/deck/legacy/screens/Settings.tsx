@@ -42,9 +42,10 @@ export function Settings({ isAdmin, menu, onChange, onOpen }: { isAdmin: boolean
       const s = await getAi();
       setAi(s); setLoadErr(null);
       setInfo(null);
-      if (s.ready) checkAiKey().then((r) => setInfo(r.info)).catch((e) => setMsg({ t: (e as Error).message }));
+      // 회사 키 잔액은 관리자만(서버도 403, R167) — 일반 사용자 화면은 금액을 안 보인다
+      if (s.ready && isAdmin) checkAiKey().then((r) => setInfo(r.info)).catch((e) => setMsg({ t: (e as Error).message }));
     } catch (e) { setLoadErr((e as Error).message); }
-  }, []);
+  }, [isAdmin]);
   useEffect(() => { load(); }, [load]);
   useEffect(() => { listModels().then(setModels).catch((e) => setModelErr((e as Error).message)); }, []);
 
@@ -139,7 +140,7 @@ const KeyHelp = () => (
 
 /** 연결 상태 한 줄 — 회사 키 끝자리 · OpenRouter 잔액 막대. 관리자 「엔진 · 키」 맨 위와 일반 사용자 「AI 상태」가 같이 쓴다 */
 function StatusRow({ ai, info, last, money = true }: { ai: AiSettings; info: KeyInfo | null; last?: boolean; money?: boolean }) {
-  const st = !ai.ready ? "none" : info ? "ok" : "wait";
+  const st = !ai.ready ? "none" : info || !money ? "ok" : "wait";   // 금액을 안 보는 일반 사용자는 잔액을 묻지 않으니 '확인 중'에 멈추지 않게
   // 막대 = OpenRouter 계정에 실제로 남은 돈(충전한 금액 대비). 키 한도는 사용자 경고에만 쓴다
   const pct = info && info.credits != null && info.credits > 0 ? Math.min(100, Math.max(0, ((info.balance ?? 0) / info.credits) * 100)) : null;
   return (
@@ -246,10 +247,11 @@ function EnginePane({ ai, info, models, modelErr, busy, run, msg }: { ai: AiSett
 function LimitRow({ ai, busy, run }: { ai: AiSettings; busy: boolean; run: Run }) {
   const [def, setDef] = useState(ai.budget.default != null ? String(ai.budget.default) : "");
   const [cap, setCap] = useState(ai.budget.monthly_cap != null ? String(ai.budget.monthly_cap) : "");
+  const [img, setImg] = useState(ai.budget.image_cap != null ? String(ai.budget.image_cap) : "");
   const num = (s: string) => (s.trim() === "" ? null : Number(s));
   const isBad = (s: string) => s.trim() !== "" && (!isFinite(Number(s)) || Number(s) < 0);
-  const bad = isBad(def) || isBad(cap);
-  const dirty = num(def) !== ai.budget.default || num(cap) !== ai.budget.monthly_cap;
+  const bad = isBad(def) || isBad(cap) || isBad(img);
+  const dirty = num(def) !== ai.budget.default || num(cap) !== ai.budget.monthly_cap || num(img) !== (ai.budget.image_cap ?? null);
   const inp = (v: string, set: (s: string) => void, label: string) => (
     <input className={cn("field !w-[120px] text-right font-mono", isBad(v) && "!border-[var(--color-warn)]")} inputMode="decimal" value={v} onChange={(e) => set(e.target.value)} placeholder="없음" aria-label={label} />
   );
@@ -259,11 +261,12 @@ function LimitRow({ ai, busy, run }: { ai: AiSettings; busy: boolean; run: Run }
       <div className="flex items-center gap-2 flex-wrap">
         <label className="flex items-center gap-2 text-[13px] text-dim whitespace-nowrap">작업당 {inp(def, setDef, "작업당 한도 (USD)")}</label>
         <label className="flex items-center gap-2 text-[13px] text-dim whitespace-nowrap ml-2">사용자별 월 상한 {inp(cap, setCap, "사용자별 월 상한 (USD)")}</label>
+        <label className="flex items-center gap-2 text-[13px] text-dim whitespace-nowrap ml-2">그림 월 상한 {inp(img, setImg, "사용자별 시안 그림 월 상한 (USD)")}</label>
         <button className="btn-dark !h-10 !px-[18px] !font-semibold ml-2" disabled={busy || bad || !dirty}
-          onClick={() => run(async () => { await saveBudget({ default_budget_usd: num(def), monthly_cap_usd: num(cap) }); return "비용 한도를 저장했습니다."; })}><Ms name="save" size={19} />저장</button>
+          onClick={() => run(async () => { await saveBudget({ default_budget_usd: num(def), monthly_cap_usd: num(cap), image_cap_usd: num(img) }); return "비용 한도를 저장했습니다."; })}><Ms name="save" size={19} />저장</button>
         {bad && <span className="text-[13px] font-semibold text-[var(--color-warn)] whitespace-nowrap">0 이상의 숫자로 적어 주세요</span>}
       </div>
-      <div className="text-[13px] text-dim mt-3 leading-[1.6] break-keep">{sent("작업당 한도는 시안까지 한 번, 시안 확정 뒤 장표 제작에 다시 한 번 채워집니다. 닿으면 그 작업이 멈추고, 올리면 이어서 합니다. 발표 대본·예상 질문은 작업 한도에 들지 않고 월 상한만 봅니다. 월 상한에 닿으면 그 사람의 새 호출을 막습니다. 비우면 한도가 없습니다.")}</div>
+      <div className="text-[13px] text-dim mt-3 leading-[1.6] break-keep">{sent("작업당 한도는 시안까지 한 번, 시안 확정 뒤 장표 제작에 다시 한 번 채워집니다. 다시 돌릴 때도 새로 채워집니다. 닿으면 그 작업이 멈추고, 올리면 이어서 합니다. 발표 대본·예상 질문은 작업 한도에 들지 않고 월 상한만 봅니다. 월 상한에 닿으면 그 사람의 새 호출을 막습니다. 그림 월 상한은 시안 그림(OpenRouter 이미지)만 사람마다 따로 막고, 기획·대본 같은 글 작업은 막지 않습니다. 관리자 계정은 그림 월 상한을 보지 않습니다. 비우면 한도가 없습니다.")}</div>
     </Row>
   );
 }

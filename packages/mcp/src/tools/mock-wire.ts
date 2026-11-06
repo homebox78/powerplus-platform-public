@@ -103,6 +103,9 @@ const SCREENS = ["main", "board_list", "board_gallery", "board_view", "form", "c
 const ORGS = ["all", "local", "central", "public", "education", "university", "civic", "culture", "private"] as const;
 const STYLES = ["auto", "standard", "reference", "portal", "llm", "landing", "campus", "magazine", "minimal"] as const;
 
+/** 저장할 와이어의 출처 — 서버 AI 가 다듬은 응답이면 ai(MC-132). 예전엔 늘 rule 이라 웹에서 AI 다듬음이 '레퍼런스 초안'으로 보였다 */
+export const wireSource = (data: unknown): "ai" | "rule" => ((data as { source?: unknown } | null)?.source === "ai" ? "ai" : "rule");
+
 export function registerMockWireTools(server: McpServer, ctx: DeckKitCtx, publicOrigin = ""): void {
   const call = async (tool: string, p: string, init?: { method?: string; body?: unknown }) => {
     if (!ctx.key) { const g = await ctx.guard(tool); if (g) return g; }
@@ -135,7 +138,7 @@ export function registerMockWireTools(server: McpServer, ctx: DeckKitCtx, public
     let link: Record<string, unknown> = {};
     if (w && ctx.key) {
       const strip = { ...w, rows: w.rows.map((x) => ({ ...x, cols: x.cols.map(({ ev: _e, ...c }) => c) })) };
-      const s = await ctx.pp("/mock/wireframes", ctx.key, { method: "POST", body: { title: a.title || w.title || "MCP 로 받은 와이어", wire: strip, request: a.request ?? "", source: "rule" } }).catch(() => null);
+      const s = await ctx.pp("/mock/wireframes", ctx.key, { method: "POST", body: { title: a.title || w.title || "MCP 로 받은 와이어", wire: strip, request: a.request ?? "", source: wireSource(data) } }).catch(() => null);
       const sid = (s?.data as { id?: string } | null)?.id;
       link = sid
         ? { wire_id: sid, wire_link: `${publicOrigin}/mock/plan?wire=${encodeURIComponent(sid)}` }

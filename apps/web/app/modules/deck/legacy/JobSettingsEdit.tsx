@@ -3,7 +3,7 @@ import { useState } from "react";
 import { api, type Job } from "./api";
 import { cn, Modal, Ms, SecTitle, toast } from "./ui";
 import { DesignTypePicker } from "./DesignTypes";
-import { FontPicker, BODY_FONTS, TITLE_FONTS, fitFont } from "./FontPicker";
+import { FontPicker, BODY_FONTS, SHOW_FONT_PICKER, TITLE_FONTS, fitFont } from "./FontPicker";
 
 /** 강조색 고르기 — 새 변환(Upload.tsx)과 같은 색 */
 const ACCENTS: [string, string][] = [
@@ -49,7 +49,7 @@ export function JobSettingsEdit({ job, onClose, onSaved }: { job: Job; onClose: 
           <SecTitle icon="palette" title="디자인 타입" desc="시안 이미지 · 머리 띠 · 표지 · 목차 · 간지가 모두 이 타입으로 만들어집니다" />
           <DesignTypePicker value={style} onChange={setStyle} disabled={busy} />
         </section>
-        <FontPicker title={ft} body={fb} onTitle={setFt} onBody={setFb} disabled={busy} lang={lang} />
+        {SHOW_FONT_PICKER && <FontPicker title={ft} body={fb} onTitle={setFt} onBody={setFb} disabled={busy} lang={lang} />}
         <section className="flex flex-col gap-3">
           <SecTitle icon="format_color_fill" title="강조색" desc="제목의 핵심 단어와 강조 표시에 쓰는 색" />
           <div className="flex items-center gap-2.5 flex-wrap">

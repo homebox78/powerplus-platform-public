@@ -107,6 +107,14 @@ if [ "$SCOPE" = engine ]; then
   "$PYX" -X utf8 engine/fontcover.py --check || bad "서체 지원율 표(font_cover.json)가 서체 파일 실측과 다르다 — python engine/fontcover.py (R82)"
 fi
 
+# 12. 파워덱 점검(10-28, R116) — 한 번도 안 돈 기능·죽은 링크가 시험을 다 통과한 채 남아 있던 것들
+#     ① 엔진 API 호출에 /deck 이 두 번(API 기준 주소가 이미 …/api/v1/deck) — 글 검사가 404 로 조용히 꺼져 있었다
+#     ② 화면의 옛 해시 링크(href="#/…") — 받아 줄 처리기가 없어 '내 작업' 링크가 아무 데도 안 갔다
+if [ "$SCOPE" = web ] || [ "$SCOPE" = engine ]; then
+  grep -nE 'req\("[A-Z]+", *f?"/deck/' engine/*.py >/dev/null && bad "엔진 req() 경로가 /deck/ 로 시작한다 — 기준 주소에 이미 /deck 이 있어 404(R116): $(grep -nE 'req\("[A-Z]+", *f?"/deck/' engine/*.py | head -3)"
+  grep -rn 'href="#/' apps/web/app >/dev/null && bad "화면에 옛 해시 링크(href=\"#/…\") — pdGo 나 react-router 로(R116): $(grep -rn 'href="#/' apps/web/app | head -3)"
+fi
+
 # 알림 — 다른 배포가 필요한지
 LAST=$(git log -1 --name-only --format= 2>/dev/null || true)
 echo "$LAST" | grep -q '^services/mockref-api/' && [ "$SCOPE" != mockref ] && echo "ℹ️  마지막 커밋이 mockref 를 고쳤다 → bash scripts/deploy-mockref.sh 도"

@@ -25,7 +25,8 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 
 # 굵기 이름 → 단계(0~3). 어느 본문 서체로 적혀 있든 같은 단계로 읽는다(마무리가 고른 서체로 바꿀 때 쓴다)
 LEVEL = {"Asta Sans": 1, "Asta Sans Regular": 1, "Asta Sans Bold": 3, "맑은 고딕": 1, "Malgun Gothic": 1, "Pretendard Regular": 1, "Pretendard Medium": 1,
-         "Pretendard Bold": 3, "Wanted Sans Regular": 1, "Wanted Sans Medium": 1, "Wanted Sans Bold": 3}
+         "Pretendard Bold": 3, "Wanted Sans Regular": 1, "Wanted Sans Medium": 1, "Wanted Sans Bold": 3,
+         "Freesentation 2 ExtraLight": 0, "Pretendard ExtraLight": 0}   # 옛 옅음 단계(200) — 2026-10-28 부터 300(3 Light·Light). 옛 양식·장표도 옅음 단계로 읽어 새 서체로 바꾼다
 for _f in [ASTA, SIWOL] + [b[1] for b in BODIES.values()]:   # 양식(base pptx)은 a시월구일1~4 이름으로 짜여 있다
     for _i, _n in enumerate(_f):
         LEVEL.setdefault(_n, _i)
@@ -42,7 +43,7 @@ def pick(title=None, body=None):
     t = title if title in TITLES else DEFAULT_TITLE
     b = body if body in BODIES else DEFAULT_BODY
     faces, name = BODIES[b][1], BODIES[b][0]
-    if faces == SIWOL and not HAS_SIWOL:
+    if set(faces) <= set(SIWOL) and not HAS_SIWOL:   # 회사 서체(a시월구일)가 이 PC 에 없으면 같은 굵기 Asta Sans
         faces, name = ASTA, "Asta Sans"
     return t, b, TITLES[t][1], faces, name
 
@@ -60,6 +61,9 @@ KEY_SCALE = TITLE_SCALE.get(TITLE_ID, 1.0)
 import fontcover
 
 LANG_DEFAULT = _LIST.get("lang_default") or {}
+# 국문 장표 서체 통일(fonts.json ko_unified, 2026-10-28 사용자 "제목 G마켓 산스, 본문 a시월구일2~4") — 회사 서체가 없는 PC 면 끄고 예전 판단
+_KU = _LIST.get("ko_unified") or {}
+KO_UNIFIED = (_KU["title"], _KU["body"]) if _KU.get("title") in TITLES and _KU.get("body") in BODIES and HAS_SIWOL else None
 AVOID = {(k, x["id"]): x.get("avoid") or {} for k in ("title", "body") for x in _LIST[k]}
 try:
     COVER = json.load(open(os.path.join(HERE, "fonts", "font_cover.json"), encoding="utf-8"))
@@ -122,6 +126,10 @@ def for_lang(title=None, body=None, lang="ko", text=""):
     알림 예: '제목 서체 G마켓 산스는 일본어 글자가 없는 서체(지원율 0%)라 Noto Sans JP 로 바꿨습니다'"""
     lang = lang_ok(lang)
     notes, out = [], {}
+    if lang == "ko" and KO_UNIFIED:   # 국문은 통일 서체(고른 값과 상관없이) — 글자가 없으면 아래 예전 판단으로
+        ut, ub = KO_UNIFIED
+        if usable("title", ut, lang, text)[0] and usable("body", ub, lang, text)[0]:
+            return ut, ub, notes
     for kind, given, table in (("title", title, TITLES), ("body", body, BODIES)):
         dflt = (LANG_DEFAULT.get(lang) or {}).get(kind)
         dflt = dflt if dflt in table else (DEFAULT_TITLE if kind == "title" else DEFAULT_BODY)
@@ -208,8 +216,13 @@ def title_file(title=None):
 def rule(title=None, body=None):
     """제작 지시문에 넣는 서체 규칙 한 덩어리"""
     _, b, key, (lt, bd, sb, bo), _ = pick(title or TITLE_ID, body or BODY_ID)
-    return (f"`{bd}` = 본문·목록·표 본문 / `{sb}` = 강조 낱말·소제목·카드 제목·라벨 / `{bo}` = 굵은 제목·패널 띠·표 머리·큰 숫자 / "
-            f"`{lt}` = 옅은 보조 설명·주석. 굵기는 **서체 이름으로만** 가른다(`font.bold` 를 쓰지 않는다 — 굵기마다 서체가 따로다). "
+    # 굵기는 계층으로 — 아래 내용을 모두 담아 묶는 최상위 제목 4, 그 하위 제목 3, 일반 내용 2(사용자 2026-11-03).
+    # 예전 '패널 띠 = 굵은 단계'는 패널 안 카드 머리 띠(부처 이름 띠 등)까지 4 로 읽혔고, 굵기를 시안 그림에서 재어 장마다 달랐다
+    return (f"굵기는 **계층**으로 정한다(시안 그림에서 보이는 굵기로 정하지 않는다): "
+            f"`{bo}` = **최상위 제목** — 아래 내용을 모두 담아 묶는 맨 위 제목(장을 여러 칸으로 나눈 각 칸의 머리 띠, 패널 하나뿐이면 그 패널 띠)·표 머리·큰 숫자 / "
+            f"`{sb}` = **그 하위 제목** — 최상위 칸 안에 든 카드·상자의 머리 띠와 제목(모양이 같은 띠라도 다른 칸 안에 들어 있으면 하위)·번호 붙은 소제목·라벨·강조 낱말 / "
+            f"`{bd}` = **일반 내용** — 목록·칩·설명·표 본문 / `{lt}` = 옅은 보조 설명·주석. "
+            f"굵기는 **서체 이름으로만** 가른다(`font.bold` 를 쓰지 않는다 — 굵기마다 서체가 따로다). "
             f"키메시지와 표지·목차·간지의 큰 글자는 `{key}`." + size_rule(b))
 
 

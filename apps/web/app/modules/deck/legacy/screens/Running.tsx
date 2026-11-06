@@ -5,7 +5,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { PaneToggle, usePane } from "@/components/hb/work-space";
 import { pdGo } from "../nav";
 import { api, fileUrl, fmtSize, isDesign, uploadDoc, usd, type Engine, type Job } from "../api";
-import { clampProgress, hasMockup, isPlanPhase, stageIndex, stagesOf } from "../stages";
+import { clampProgress, hasMockup, isPlanPhase, progressKind, stageIndex, stagesOf } from "../stages";
 import { cn, fmtDur, JobHeader, Ms, parseTs, useContextMenu, useToastOn, sent } from "../ui";
 import { TipTicker } from "../TipTicker";
 
@@ -25,7 +25,8 @@ type PlanSlide = { n: number; section?: string; title?: string; message?: string
 /** 기획 미리 보기 — 기획이 나오면 엔진이 plan.json 을 먼저 올린다. 시안을 기다리는 동안 제목·목차·섹션별 내용을 읽고 고칠 곳을 생각해 둘 수 있게 */
 function PlanPreview({ job }: { job: Job }) {
   const f = (job.files?.mockup ?? []).find((x) => x.name === "plan.json");
-  const [plan, setPlan] = useState<{ title?: string; slides: PlanSlide[] } | null>(null);
+  const [filePlan, setPlan] = useState<{ title?: string; slides: PlanSlide[] } | null>(null);
+  const plan = filePlan ?? job.plan ?? null;   // 공유 사용자는 plan.json 을 받지 않는다(그림만, R151) — 작업에 저장된 기획으로
   useEffect(() => {
     if (!f) return;
     let off = false;
@@ -36,8 +37,8 @@ function PlanPreview({ job }: { job: Job }) {
     return () => { off = true; };
   }, [job.id, f?.ts]);
   const [more, setMore] = useState<number[]>([]);   // 훅은 아래 return null 보다 앞에 — 기획이 올라오는 순간 훅 개수가 바뀌면 React #310
-  if (!f || !plan?.slides?.length) return null;
-  const clean = (t?: string) => String(t ?? "").replace(/\*\*/g, "").trim();
+  if (!plan?.slides?.length) return null;
+  const clean =(t?: string) => String(t ?? "").replace(/\*\*/g, "").trim();
   const lines = (t?: string) => clean(t).split("\n").map((l) => l.replace(/^#+\s*/, "").trim()).filter((l) => l && !l.includes("보강 필요"));
   // 섹션(장) 묶음 — 기획의 section 앞부분(“Ⅰ. 사업의 이해 · 현황” → “Ⅰ. 사업의 이해”)
   const groups: { name: string; slides: PlanSlide[] }[] = [];
@@ -189,6 +190,42 @@ function HoldDocs({ job, onChange }: { job: Job; onChange: () => void }) {
 
 const agoText = (s: number) => (s < 60 ? "방금" : s < 3600 ? `${Math.floor(s / 60)}분 전` : `${Math.floor(s / 3600)}시간 전`);
 
+type LivePage = { ch: string; chapter: string; t: string; k: string[] };
+/** 블록 종류 → 카드 안 띠 모양(높이 %·진하기) — 실제 렌더 전이라 구성만 보인다 */
+const LIVE_BAR: Record<string, [number, string]> = {
+  table: [26, "bg-ink/15"], rows: [22, "bg-ink/12"], process: [16, "bg-orange/35"], cards: [20, "bg-orange/25"], kpi: [12, "bg-orange/45"],
+  photo: [22, "bg-ink/25"], layers: [24, "bg-ink/15"], org: [22, "bg-ink/15"], gantt: [18, "bg-ink/12"], compare: [20, "bg-orange/25"],
+};
+
+/** 세로 제안서 — 엔진이 쓴 쪽을 진행률 아래에 하나씩(vertical_live.json, R106). 멈춘 듯 보이지 않게 쓰는 대로 카드가 늘어난다 */
+function LivePages({ job }: { job: Job }) {
+  const f = job.files?.mockup?.find((x) => x.name === "vertical_live.json");
+  const [d, setD] = useState<{ pages: LivePage[]; total: number } | null>(null);
+  useEffect(() => {
+    if (!f) return;
+    let off = false;
+    fetch(fileUrl(job.id, "mockup", f.name) + `&v=${f.ts ?? 0}`, { credentials: "same-origin", headers: { "X-Requested-With": "powerplus" }, cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : null)).then((j) => { if (!off && j?.pages) setD(j); }).catch(() => {});
+    return () => { off = true; };
+  }, [job.id, f?.name, f?.ts]);   // eslint-disable-line react-hooks/exhaustive-deps
+  if (!d?.pages.length) return null;
+  return (
+    <div className="mt-4">
+      <div className="text-[13px] font-semibold text-ink2 mb-2">쓴 쪽 <b className="text-ink">{d.pages.length}</b>{d.total ? <> / 약 {d.total}쪽</> : null} <span className="text-dim font-normal">· 쓰는 대로 하나씩 늘어납니다(그림·배경은 PPT 조립 때 입힙니다)</span></div>
+      <div className="flex flex-wrap gap-1.5">
+        {d.pages.map((pg, i) => (
+          <div key={pg.ch + pg.t + i} title={`${pg.ch} ${pg.chapter} — ${pg.t}`}
+            className="w-[54px] aspect-[1/1.414] rounded-[2px] border border-line bg-white p-[3px] flex flex-col gap-[2px] overflow-hidden animate-[pdpop_.35s_ease-out]">
+            <div className="text-[7px] leading-[8px] font-bold text-orange-d truncate">{pg.ch}</div>
+            <div className="text-[6.5px] leading-[8px] font-semibold text-ink line-clamp-2 break-keep">{pg.t}</div>
+            {pg.k.slice(0, 4).map((k, j) => { const [h, c] = LIVE_BAR[k] ?? [12, "bg-ink/10"]; return <i key={j} className={cn("block rounded-[1px]", c)} style={{ height: `${h * 0.55}%` }} />; })}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 /** 2·3단계 — 대기 / 변환 중. 단계·진행률·작업 기록·렌더가 실시간으로 올라온다. */
 /** onCancel·onStart 는 작업 주인일 때만 온다 — 공유받은 사람 화면에는 버튼이 없다(중4, 2026-10-10) */
 /** onBack — 기획 단계를 멈추고 내용 입력(시작 대기)으로 되돌린다. onReload — 자료를 더하거나 뺀 뒤 작업을 다시 읽는다 */
@@ -216,8 +253,19 @@ export function Running({ job, engine, onCancel, onStart, onBack, onReload }: { 
     return { n: b.slide ?? 0, live: !!l, url: l ? fileUrl(job.id, "live", l.name) + `&v=${l.ts ?? 0}` : fileUrl(job.id, plan ? "mockup" : "before", b.name) + `&v=${b.ts ?? 0}` };
   });
   // 남은 시간 = 지금까지 걸린 시간 × 남은 진행률 ÷ 지난 진행률. 앞 단계(문서 읽기·실측)는 진행률이 낮게 잡혀 있어 10% 전엔 내지 않는다.
-  const p = clampProgress(job.stage, job.progress, plan, design && !plan);
-  const eta = !queued && started && p >= 10 && p < 100 ? Math.max(60, (elapsed * (100 - p)) / p) : null;
+  const p = clampProgress(job.stage, job.progress, plan, design && !plan, progressKind(job));
+  // 진행률이 바뀐 순간의 추정을 잡아 두고 줄여 간다 — 매 초 경과×(100−p)/p 로 다시 재면 진행률이 멈춘 동안 1분에 몇 분씩 늘었다(R105).
+  // 잡아 둔 추정을 다 쓰고도 진행률이 그대로면 시간 대신 '마무리 중'(eta 0)
+  const [etaBase, setEtaBase] = useState<{ p: number; at: number; eta: number } | null>(null);
+  const startMs = started?.getTime() ?? 0;
+  useEffect(() => {
+    if (queued || !startMs || p < 10 || p >= 100) return;
+    const t = Date.now();
+    // 다시 돌리면 진행률이 앞 실행 값(12%)으로 바로 잡혀 경과≈0 → 추정 1분 → 1분 만에 '마무리 중'(R106). 1분은 쌓인 뒤에 잡는다
+    if (t - startMs < 60_000) return;
+    setEtaBase((b) => (b?.p === p ? b : { p, at: t, eta: Math.max(60, (((t - startMs) / 1000) * (100 - p)) / p) }));
+  }, [p, queued, startMs, Math.floor(now / 15000)]);   // 처음 1분이 지나면 다시 본다(15초마다 — 이미 잡은 진행률이면 그대로)
+  const eta = !queued && started && p >= 10 && p < 100 && etaBase ? Math.max(0, etaBase.eta - (now - etaBase.at) / 1000) : null;
   const draft = job.files?.draft?.[0];
   const [pick, setPick] = useState<number | null>(null);
   const sel = slides.find((s) => s.n === pick) ?? slides.find((s) => s.live) ?? slides[0];
@@ -230,9 +278,9 @@ export function Running({ job, engine, onCancel, onStart, onBack, onReload }: { 
     job.slides ? `${job.slides}장` : null,
     job.size > 0 ? fmtSize(job.size) : "내용 입력",
     docs > 0 && !hold ? `맥락 자료 ${docs}개 반영` : null,
-    // 시안 확정 뒤에는 한도를 다시 채운다(0043) — 한도와 견주는 값은 확정 뒤 사용액
+    // 시안 확정·다시 돌리기 때 한도를 다시 채운다(0043·R153) — 한도와 견주는 값은 그 뒤 사용액
     design && (job.spent_usd ?? 0) > 0 ? `AI 비용 ${usd(job.spent_usd, 3)}${job.budget_usd != null ? ((job.budget_base_usd ?? 0) > 0
-      ? ` (확정 뒤 ${usd(Math.max(0, (job.spent_usd ?? 0) - (job.budget_base_usd ?? 0)), 3)} / 한도 ${usd(job.budget_usd)})` : ` / ${usd(job.budget_usd)}`) : ""}` : null,
+      ? ` (이번 실행 ${usd(Math.max(0, (job.spent_usd ?? 0) - (job.budget_base_usd ?? 0)), 3)} / 한도 ${usd(job.budget_usd)})` : ` / ${usd(job.budget_usd)}`) : ""}` : null,
   ].filter(Boolean).join(" · ");
 
   // 오른쪽 클릭 — 멈추기 · 내 작업
@@ -271,7 +319,7 @@ export function Running({ job, engine, onCancel, onStart, onBack, onReload }: { 
             <div className="flex items-end gap-6">
               <div className="min-w-0 flex-1">
                 <div className="text-[21px] font-bold tracking-[-0.02em]">
-                  {hold ? "시작 대기 — 검토 시작을 누르면 진행합니다" : queued ? "변환 차례를 기다리는 중" : backing ? "멈추고 내용 입력으로 돌아가는 중" : job.cancel_requested ? "멈추는 중" : plan ? "기획하고 시안을 만드는 중" : design ? "시안대로 장표를 만드는 중" : job.phase === "pilot" ? "한 장 시안을 만드는 중" : "디자인을 입히는 중"}
+                  {hold ? "시작 대기 — 검토 시작을 누르면 진행합니다" : queued ? "변환 차례를 기다리는 중" : backing ? "멈추고 내용 입력으로 돌아가는 중" : job.cancel_requested ? "멈추는 중" : plan && progressKind(job) === "vertical" ? "제안서 본문을 쓰고 PPT 를 만드는 중" : plan ? "기획하고 시안을 만드는 중" : design ? "시안대로 장표를 만드는 중" : job.phase === "pilot" ? "한 장 시안을 만드는 중" : "디자인을 입히는 중"}
                 </div>
                 <div className="text-dim mt-1 truncate">
                   {hold ? "아직 대기열에 넣지 않았습니다 — 자료를 더 올린 뒤 시작할 수 있습니다" : queued ? (job.queue_pos ? `대기 ${job.queue_pos}번째` : "대기열에 있습니다") : cur >= 0 ? `${STAGES[cur]!.label ?? STAGES[cur]!.name} — ${STAGES[cur]!.desc}` : (job.stage ?? "준비")}
@@ -284,8 +332,8 @@ export function Running({ job, engine, onCancel, onStart, onBack, onReload }: { 
                   <div className="font-bold text-[16px] whitespace-nowrap">{fmtDur(elapsed)}</div>
                 </div>
                 <div className="text-right flex-none">
-                  <div className="text-[12.5px] text-dim whitespace-nowrap">남은 시간(추정){eta !== null && <span className="font-bold text-orange-d"> · {new Date(now + eta * 1000).toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" })} 완료 예상</span>}</div>
-                  {eta === null ? <div className="font-bold text-[16px] text-faint whitespace-nowrap">계산 중</div> : <div className="font-bold text-[16px] whitespace-nowrap">약 {fmtDur(eta)}</div>}
+                  <div className="text-[12.5px] text-dim whitespace-nowrap">남은 시간(추정){eta !== null && eta > 0 && <span className="font-bold text-orange-d"> · {new Date(now + eta * 1000).toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" })} 완료 예상</span>}</div>
+                  {eta === null ? <div className="font-bold text-[16px] text-faint whitespace-nowrap">계산 중</div> : eta <= 0 ? <div className="font-bold text-[16px] whitespace-nowrap">진행 중 · 곧 다시 계산</div> : <div className="font-bold text-[16px] whitespace-nowrap">약 {fmtDur(eta)}</div>}
                 </div>
               </>}
             </div>
@@ -313,6 +361,8 @@ export function Running({ job, engine, onCancel, onStart, onBack, onReload }: { 
                 <span className="flex-none font-extrabold text-[24px] leading-none tracking-[-0.02em] text-orange-d">{p}<span className="text-[15px] font-bold">%</span></span>
               </div>
             )}
+
+            {plan && !queued && <LivePages job={job} />}
 
             {hold && onStart && onReload && design && <HoldDocs job={job} onChange={onReload} />}
 
@@ -379,7 +429,7 @@ export function Running({ job, engine, onCancel, onStart, onBack, onReload }: { 
                     {slides.map((s) => (
                       <button key={s.n} type="button" onClick={() => setPick(s.n)} title={`${s.n}쪽`} aria-label={`${s.n}쪽 보기`} aria-pressed={s.n === sel?.n}
                         className={cn("relative p-0 rounded-md overflow-hidden border-2 bg-panel", s.n === sel?.n ? "border-orange" : "border-transparent hover:border-line")}>
-                        <img src={s.url} alt={`${s.n}쪽`} loading="lazy" className="block w-full aspect-[16/9] object-cover" />
+                        <img src={s.url} alt={`${s.n}쪽`} loading="lazy" className={cn("block w-full object-cover object-top", job.opts?.purpose === "submit" ? "aspect-[210/297]" : "aspect-[3/2]")} />   {/* 시안은 3:2 — 16:9 로 자르면 머리 띠·바닥이 잘렸다(10-28 점검 D19) */}
                         {s.live && <i className="absolute right-1 top-1 w-1.5 h-1.5 rounded-full bg-orange" />}
                       </button>
                     ))}

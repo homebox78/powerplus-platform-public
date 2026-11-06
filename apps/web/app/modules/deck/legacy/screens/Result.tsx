@@ -1,8 +1,8 @@
 // 결과 화면(원본·시안과 결과를 장별로 짝지어 보기) — 출처: powerDeck web/src/screens/Result.tsx (옛 화면 그대로 이식, eslint.config.js legacy 구역).
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { REVIEW_COLS, TextEdit, Thumbs } from "./TextEdit";
-import { isEditing, api, fileUrl, fmtSize, isDesign, usd, type Job, type JobFile, type PlanSlide } from "../api";
-import { cn, fmtDur, GenStamp, GuestHeader, JobHeader, Ms, parseTs, Seg, useToastOn, useContextMenu, type CtxItem, toast, sent } from "../ui";
+import { isEditing, api, fileUrl, fmtSize, isDesign, retryOnlySlides, usd, type Job, type JobFile, type PlanSlide } from "../api";
+import { ask, cn, fmtDur, GenStamp, GuestHeader, JobHeader, Ms, parseTs, Seg, useToastOn, useContextMenu, type CtxItem, toast, sent } from "../ui";
 import { Files } from "./ResultFiles";
 import { Script } from "./ResultScript";
 import { Detail } from "./ResultDetail";
@@ -221,7 +221,8 @@ function Owner({ job, me, isAdmin, onRetry, onChange, onPlan }: Props) {
   const hasFrames = (job.files?.frames?.length ?? 0) > 0;   // 고친 과정 그림이 있을 때만 진입점
   useSlideKeys(tab === "review", slides, sel, setSel);
 
-  // 수정 요청 — 확정된 시안과 이 요청(+ 반영 예정 의견)으로 장표를 다시 만든다
+  // 수정 요청 — 확정된 시안과 이 요청(+ 반영 예정 의견)으로 장표를 다시 만든다. 세로 제안서·회사소개서는 없다(서버도 막는다, R108)
+  const noRevise = job.opts?.purpose === "submit" || job.opts?.purpose === "company";
   const [revise, setRevise] = useState("");
   const [busy, setBusy] = useState(false);
   const [rerr, setRerr] = useState<string | null>(null);
@@ -254,12 +255,14 @@ function Owner({ job, me, isAdmin, onRetry, onChange, onPlan }: Props) {
     "-",
     { label: "이전 장", icon: "chevron_left", disabled: at <= 0, onClick: () => slides[at - 1] && setSel(slides[at - 1]![0]) },
     { label: "다음 장", icon: "chevron_right", disabled: at >= slides.length - 1, onClick: () => slides[at + 1] && setSel(slides[at + 1]![0]) },
-    ...(design && ok ? ["-" as const, { label: "수정 요청 쓰기", icon: "rate_review", onClick: () => { setMode(mode0 === "edit" ? home : mode0); setTimeout(() => reviseBox.current?.focus(), 50); } },
+    ...(design && ok ? ["-" as const, ...(noRevise ? [] : [{ label: "수정 요청 쓰기", icon: "rate_review", onClick: () => { setMode(mode0 === "edit" ? home : mode0); setTimeout(() => reviseBox.current?.focus(), 50); } }]),
       { label: "팀원에게 공유", icon: "share", onClick: share }] : []),
     ...(ok && results[0] ? ["-" as const, { label: "내보내기 (pptx)", icon: "download", onClick: () => { location.href = fileUrl(job.id, "result", results[0]!.name, true); } }] : []),
   ];
   const meta = [job.slides ? `${job.slides}장` : "", dur > 0 ? `${fmtDur(dur)} 걸림` : "", report?.score != null ? `검수 점수 ${report.score}` : "", isAdmin && design && (job.spent_usd ?? 0) > 0 ? `AI 비용 ${usd(job.spent_usd, 3)}` : ""].filter(Boolean).join(" · ");
-  const retryTitle = design ? "확정된 시안으로 장표를 처음부터 다시 만듭니다" : "같은 원본으로 처음부터 다시 변환합니다";
+  // 세로 제안서·회사소개서는 시안 확정 단계가 없다 — 자료에서 다시 만든다(R168)
+  const retryTitle = noRevise ? "올린 자료로 처음부터 다시 만듭니다" : design ? "확정된 시안으로 장표를 처음부터 다시 만듭니다" : "같은 원본으로 처음부터 다시 변환합니다";
+  const onlyN = retryOnlySlides(job);   // 실패한 수정 요청을 잇는 경우 — 의견 달린 장만 다시 만든다(R155)
   const ext = (n: string) => /\.([a-z0-9]+)$/i.exec(n)?.[1]?.toLowerCase() ?? "pptx";
   const actions = (
     <>
@@ -268,7 +271,15 @@ function Owner({ job, me, isAdmin, onRetry, onChange, onPlan }: Props) {
         <a className="btn-back" href={fileUrl(job.id, "draft", draft.name, true) + `&v=${draft.ts ?? 0}`}><Ms name="download" size={17} />멈춘 지점까지 받기 · {fmtSize(draft.size)}</a>
       )}
       {onPlan && <button className="btn-back" onClick={onPlan} title="실패해도 남아 있는 기획·와이어·시안을 다시 봅니다"><Ms name="view_quilt" size={18} />기획·시안 보기</button>}
-      <button className={ok ? "btn-back" : "btn-next"} onClick={onRetry} title={retryTitle}><Ms name="refresh" size={19} />다시 돌리기</button>
+      <button className={ok ? "btn-back" : "btn-next"} title={retryTitle}
+        onClick={async () => {   // 돈이 드는 전체 다시 만들기 — 묻고 한다(10-28 점검 D08)
+          if (await ask(onlyN ? `앞서 실패한 수정 요청을 이어서, 의견이 달린 ${onlyN}장만 다시 만듭니다. AI 비용이 듭니다.`
+            : `${retryTitle}.${job.slides ? ` ${job.slides}장을 모두 다시 만들어 AI 비용이 듭니다.` : ""}${results[0] ? " 지금 결과는 새 결과로 바뀝니다." : ""}${design && ok && !noRevise ? " 일부만 고치려면 '수정 요청'을 쓰세요." : ""}`, { title: "다시 돌릴까요?", ok: "다시 돌리기" })) onRetry();
+        }}><Ms name="refresh" size={19} />다시 돌리기</button>
+      {!ok && results[0] && (
+        // 수정 요청·다시 돌리기가 실패해도 앞서 완성한 장표는 서버에 그대로 — 받을 수 있게(10-28 점검 D02)
+        <a className="btn-back" href={fileUrl(job.id, "result", results[0].name, true)} title="이번 실행은 실패했지만 앞서 완성한 장표는 그대로입니다"><Ms name="download" size={17} />지난 완성본 받기 · {fmtSize(results[0].size)}</a>
+      )}
       {ok && results[0] && (
         <a className="btn-next" href={fileUrl(job.id, "result", results[0].name, true)}><Ms name="download" size={17} />{design ? "내보내기" : "결과 내려받기"} · {ext(results[0].name)} {fmtSize(results[0].size)}</a>
       )}
@@ -291,13 +302,15 @@ function Owner({ job, me, isAdmin, onRetry, onChange, onPlan }: Props) {
     </div>
   );
   const FIT = "100vh - 300px";
-  const noResult = <NoSheet>보여 줄 장표가 없습니다<br />{ok ? "이 장의 렌더가 아직 없습니다" : "「기록 보기」에서 원인을 확인해 주세요"}</NoSheet>;
+  const noResult = <NoSheet>보여 줄 장표가 없습니다<br />{ok ? "이 장의 렌더가 아직 없습니다" : isAdmin ? "「기록 보기」에서 원인을 확인해 주세요" : "위 안내의 사유를 확인해 주세요"}</NoSheet>;
 
   return (
     <>
       {ctx.node}
       <JobHeader job={job} meta={meta || undefined} actions={actions} tab={tab} onTab={setTab}
-        tabs={[["review", "검토"], ...(ok ? [["script", "발표 대본"] as [Tab, string]] : []), ["files", "산출물"], ["detail", !ok ? "상세 · 오류" : checks.length ? `상세 · 확인 ${checks.length}` : "상세"]]} />
+        tabs={[["review", "검토"], ...(ok ? [["script", "발표 대본"] as [Tab, string]] : []), ["files", "산출물"],
+          // 상세(확인 목록·기록·비용)는 관리자만 — 사용자 10-29. 실패 사유는 검토 화면 위 안내 줄에 그대로 나온다
+          ...(isAdmin ? [["detail", !ok ? "상세 · 오류" : checks.length ? `상세 · 확인 ${checks.length}` : "상세"] as [Tab, string]] : [])]} />
 
       {tab === "review" && (mode === "edit" ? (
         <TextEdit job={job} onChange={(j) => onChange?.(j)} toolbar={toolbar} sel={sel} onSel={setSel} />
@@ -310,9 +323,9 @@ function Owner({ job, me, isAdmin, onRetry, onChange, onPlan }: Props) {
               <div className="flex-none mx-4 mt-3 px-3.5 py-2.5 rounded-md bg-[var(--color-warn-soft)] border border-[var(--color-warn-line)] flex items-start gap-2.5">
                 <span className="w-[18px] h-[18px] mt-px rounded-full bg-[var(--color-warn)] text-white grid place-items-center text-[12px] font-extrabold flex-none">!</span>
                 <div className="flex-1 min-w-0 text-[13.5px] leading-[1.5] text-[var(--color-warn)] break-words line-clamp-4">
-                  <b>{job.status === "canceled" ? "변환을 멈췄습니다." : "장표를 만들지 못했습니다."}</b> {job.error || (job.status === "canceled" ? "" : "엔진이 실패 사유를 남기지 않았습니다.")} 머리줄의 「다시 돌리기」로 {design ? "확정된 시안에서 장표를 다시 만들 수 있습니다" : "같은 원본으로 다시 변환할 수 있습니다"}.
+                  <b>{job.status === "canceled" ? "변환을 멈췄습니다." : "장표를 만들지 못했습니다."}</b> {job.error || (job.status === "canceled" ? "" : "엔진이 실패 사유를 남기지 않았습니다.")} 머리줄의 「다시 돌리기」로 {noRevise ? "올린 자료로 다시 만들 수 있습니다" : design ? "확정된 시안에서 장표를 다시 만들 수 있습니다" : "같은 원본으로 다시 변환할 수 있습니다"}.
                 </div>
-                <button className="border-0 bg-transparent p-0 text-[var(--color-warn)] font-semibold text-[13px] whitespace-nowrap flex-none hover:underline" onClick={() => setTab("detail")}>기록 보기</button>
+                {isAdmin && <button className="border-0 bg-transparent p-0 text-[var(--color-warn)] font-semibold text-[13px] whitespace-nowrap flex-none hover:underline" onClick={() => setTab("detail")}>기록 보기</button>}
               </div>
             )}
             {isEditing(job) && (
@@ -338,7 +351,13 @@ function Owner({ job, me, isAdmin, onRetry, onChange, onPlan }: Props) {
           </div>
           {design && (
             <CommentPanel fb={fb} onGo={(c) => { setSel(c.slide); setMode(home); }} onJob={(j) => onChange?.(j)} empty="결과 장표에서 고칠 곳을 눌러 보세요."
-              foot={ok && (
+              foot={ok && noRevise ? (
+                // 세로 제안서·회사소개서는 기획 단계에서 PPT 까지 한 번에 만든다 — '수정 요청(장표 다시 제작)' 단계가 없다(누르면 엔진이 404 로 실패했다, 10-28 R108)
+                <div className="flex-none border-t border-line px-[18px] py-3.5 flex flex-col gap-1.5 bg-panel">
+                  <div className="font-bold">고치려면</div>
+                  <p className="text-[12.5px] text-dim leading-[1.55] break-keep">세로 제안서·회사소개서는 수정 요청으로 다시 만들지 않습니다. 결과 PPT 를 내려받아 PowerPoint 에서 고치거나, 바꿀 점을 메모에 적어 새 작업으로 만들어 주세요.</p>
+                </div>
+              ) : ok && (
                 <div className="flex-none border-t border-line px-[18px] py-3.5 flex flex-col gap-2 bg-panel">
                   <div className="font-bold">수정 요청</div>
                   {(job.feedback ?? "").trim() && (
@@ -404,8 +423,8 @@ function Shared({ job, me, onChange, onLogout }: Props) {
               const cnt = fb.open.filter((c) => c.slide === n).length, on = sel === n;
               return (
                 <button key={n} onClick={() => setSel(n)} className={cn("border-0 p-1.5 rounded-md text-left flex flex-col gap-1.5 flex-none", on ? "bg-white" : "bg-transparent hover:bg-[var(--color-line)]")} style={{ boxShadow: on ? "0 0 0 1.5px var(--color-point)" : "none" }}>
-                  <span className="relative block w-full aspect-[16/9] bg-white border border-line rounded-md overflow-hidden">
-                    <img src={thumbUrl(job, f)} alt="" loading="lazy" className="absolute inset-0 w-full h-full object-contain" />
+                  <span className="relative block w-full bg-white border border-line rounded-md overflow-hidden min-h-[40px]">
+                    <img src={thumbUrl(job, f)} alt="" loading="lazy" className="block w-full h-auto" />
                     {cnt > 0 && <span className="absolute top-1.5 right-1.5 min-w-[18px] h-[18px] px-[5px] rounded-full bg-orange text-white text-[12px] font-bold inline-flex items-center justify-center" title={`의견 ${cnt}개`}>{cnt}</span>}
                   </span>
                   <span className="flex justify-between gap-1.5 text-[12.5px] px-0.5 min-w-0">

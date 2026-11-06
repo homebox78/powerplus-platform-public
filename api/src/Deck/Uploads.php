@@ -51,6 +51,7 @@ final class Uploads
         }
         if ($size <= 0) Legacy::fail('빈 파일입니다.');
         if ($size > $max) Legacy::fail('파일이 너무 큽니다. 최대 ' . (int) Legacy::cfg('max_upload_mb', 1024) . 'MB 까지 올릴 수 있습니다.');
+        if ($doc) Jobs::checkDocUpload((string) $b['job_id'], $email, $size);   // 내 작업인지·자료 합계 — 다 올린 뒤에 막히지 않게(R157)
         $id = bin2hex(random_bytes(12));
         $chunks = (int) ceil($size / self::CHUNK);
         // purpose·job_id 는 filename 뒤에 숨겨 두지 않고 received 앞에 메타로 보관하지 않는다 — 별도 열 없이 status 로 구분
@@ -123,6 +124,17 @@ final class Uploads
         return ['received' => count($got), 'chunks' => $chunks];
     }
 
+    /**
+     * 화면이 보낸 작업 옵션 → Jobs::create — 값 검사는 Jobs::opts 가 한다. 글로 시작(createDesign)과 같은 옵션이 빠짐없이 가게.
+     * 예전엔 목록을 손으로 적어 언어·꼬리표·날짜·세로 스타일·회사소개서 테마·쪽 수 지정이 pptx 로 시작할 때만 버려졌다(R161)
+     */
+    public static function jobOpts(array $b): array
+    {
+        $keys = ['slides', 'slides_set', 'mockups', 'sample', 'project', 'front', 'event', 'date', 'style', 'purpose', 'vstyle', 'vtone', 'vtheme', 'ctheme', 'ctone', 'cfree', 'lang', 'font_title', 'font_body', 'budget_usd', 'accent', 'keep'];
+        return array_intersect_key($b, array_flip($keys))
+            + ['kind' => ($b['kind'] ?? 'polish') === 'design' ? 'design' : 'polish', 'hold' => !empty($b['hold']), 'slides' => 0, 'mockups' => 'plan', 'sample' => 3, 'project' => ''];
+    }
+
     public static function complete(string $email, string $id, array $b): array
     {
         $r = self::row($email, $id);
@@ -146,10 +158,7 @@ final class Uploads
 
         $job = Jobs::create($email, $part, (string) $r['filename'], (int) $r['size'],
             trim((string) ($b['title'] ?? '')), trim((string) ($b['note'] ?? '')), !empty($b['pilot']),
-            ['kind' => ($b['kind'] ?? 'polish') === 'design' ? 'design' : 'polish', 'budget_usd' => $b['budget_usd'] ?? null,
-             'accent' => $b['accent'] ?? null, 'hold' => !empty($b['hold']),
-             'slides' => $b['slides'] ?? 0, 'mockups' => $b['mockups'] ?? 'plan', 'sample' => $b['sample'] ?? 3, 'project' => $b['project'] ?? '', 'front' => $b['front'] ?? null,
-             'style' => $b['style'] ?? null, 'purpose' => $b['purpose'] ?? null, 'font_title' => $b['font_title'] ?? null, 'font_body' => $b['font_body'] ?? null]);   // 디자인 타입·용도·서체도 빠짐없이
+            self::jobOpts($b));
         Db::pdo()->prepare("UPDATE deck_uploads SET status = 'done' WHERE id = :i")->execute([':i' => $id]);
         return $job;
     }

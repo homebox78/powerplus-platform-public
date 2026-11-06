@@ -13,7 +13,7 @@ export type AiSettings = {
   ready: boolean;
   isAdmin: boolean;
   admin_models?: OrModels;
-  budget: { default: number | null; monthly_cap: number | null; month_spent: number };
+  budget: { default: number | null; monthly_cap: number | null; month_spent: number; image_cap?: number | null; image_month_spent?: number };
   engine_model: string;
   text_engine?: "cli" | "api";
   text_model?: string;
@@ -24,7 +24,7 @@ export type AiSettings = {
   hf_key?: { set: boolean; hint?: string | null };
   hf_personal?: { set: boolean; hint?: string | null; provider: "openrouter" | "higgsfield" };
 };
-export const saveBudget = (b: { default_budget_usd: number | null; monthly_cap_usd: number | null }) =>
+export const saveBudget = (b: { default_budget_usd: number | null; monthly_cap_usd: number | null; image_cap_usd?: number | null }) =>
   api<{ budget: AiSettings["budget"] }>("/ai/budget", { method: "PUT", body: JSON.stringify(b) });
 
 export const getAi = () => api<AiSettings>("/ai/settings");

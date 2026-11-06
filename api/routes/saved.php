@@ -55,7 +55,7 @@ return static function (Router $r): void {
             if (!ctype_digit($ref)) {
                 return null;
             }
-            $g = Db::row('SELECT g.id, g.title, g.score, g.status, g.owner_user_id, g.device, g.updated_at, u.name AS owner_name FROM mock_gallery g LEFT JOIN core_users u ON u.id = g.owner_user_id WHERE g.id = ?', [(int) $ref]);
+            $g = Db::row('SELECT g.id, g.title, g.score, g.status, g.owner_user_id, g.device, g.updated_at, u.name AS owner_name FROM mock_gallery g JOIN mock_mockups m ON m.id = g.mockup_id AND m.deleted_at IS NULL LEFT JOIN core_users u ON u.id = g.owner_user_id WHERE g.id = ?', [(int) $ref]);
             if (!$g) {
                 return null;
             }

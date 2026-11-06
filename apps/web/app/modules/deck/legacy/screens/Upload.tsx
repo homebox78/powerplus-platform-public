@@ -8,7 +8,7 @@ import { cn, Ms, SecTitle, Seg, useToastOn, toast, useContextMenu, type CtxItem,
 import { DesignTypePicker, typeName } from "../DesignTypes";
 import { VerticalStylePicker, VerticalTonePicker, verticalStyleName, verticalToneName } from "../VerticalThemes";
 import { COMPANY_THEMES, CompanyThemePicker, CompanyTonePicker, companyThemeName, companyToneName } from "../CompanyThemes";
-import { BODY_FONTS, FontPicker, TITLE_FONTS, VERTICAL_BODY_FONTS, fitFont, fontName } from "../FontPicker";
+import { BODY_FONTS, FontPicker, SHOW_FONT_PICKER, TITLE_FONTS, VERTICAL_BODY_FONTS, fitFont, fontSummary } from "../FontPicker";
 import { LogoSearch } from "../LogoSearch";
 
 /** 제작 언어 — 장표 글·시안·대본(서버 Jobs::LANGS 와 같은 목록) */
@@ -20,6 +20,7 @@ import { PLANS_UI } from "@/lib/plans-ui";
 const MAX = 1024 * 1024 * 1024;
 const FILE_RE = /\.(pdf|docx|hwpx|hwp|xlsx|pptx|md|txt|markdown|csv)$/i;
 const CONTENT_RE = /\.(pptx|md|txt|markdown)$/i;  // '장표 내용'으로 쓸 수 있는 형식
+const KEEP_STYLE = "e";   // 기존 구성 그대로의 타입 — 11-03~05 시험·취합본이 모두 이 타입(아이소메트릭 3D)이다. 엔진 styles.of_job 도 keep 이면 이것
 
 /** 강조색 추천 — 메인(코발트)은 고정, 제목 핵심어·강조 표시에 쓰는 색 */
 const ACCENTS: [string, string][] = [
@@ -33,7 +34,7 @@ const MODE_LABEL: Record<MockupMode, string> = { plan: "기획부터 보기", sa
 const STEPS = ["내용", "디자인", "세부 설정"] as const;
 type Step = 1 | 2 | 3;
 
-type Item = { file: File; role: "context" | "content" };
+type Item = { file: File; role: "context" | "content" | "template" };   // template = 앞장 템플릿(기존 구성 그대로, engine/keepfront.py R238)
 const extOf = (name: string) => (name.split(".").pop() ?? "").toUpperCase().slice(0, 8);
 
 /**
@@ -99,6 +100,7 @@ export function Upload({ engine, isAdmin = false, onUploaded, onCancel, onSettin
   const [front, setFront] = useState({ cover: true, toc: true, divider: true });   // 표지·목차·간지 — 제작 직전에도 바꿀 수 있다
   const [style, setStyle] = useState("a");   // 디자인 타입 — reference/styles/styles.json
   const [purpose, setPurpose] = useState<"submit" | "present" | "company">("present");
+  const [keep, setKeep] = useState(false);   // 기존 구성 그대로 — 올린 장표(.pptx)의 장 순서·배치·글을 그대로 두고 디자인만 새로(발표용, engine/keeplayout.py)
   const [ctheme, setCtheme0] = useState("a");   // 회사소개서 테마 A~H(engine/company.py COMPANY_THEMES)
   const [cfree, setCfree] = useState(false);   // 자유도 — 표지·간지·마무리 배경을 테마 묶음이 아니라 파워에셋에서 AI(Claude Opus 5.5, 없으면 OpenRouter)가 고른다
   const [ctone, setCtone] = useState("blue");   // 회사소개서 톤(색) — engine/company.py TONES 의 id 또는 직접 고른 #RRGGBB
@@ -162,6 +164,12 @@ export function Upload({ engine, isAdmin = false, onUploaded, onCancel, onSettin
   const focusT = useRef(0);
 
   useEffect(() => { getAi().then(setAi).catch(() => {}); }, []);
+  // 기존 구성 그대로 — 올린 첫 .pptx 를 '장표 내용'으로(배경 자료로 들어가 있으면 옮긴다)
+  useEffect(() => {
+    if (!keep || purpose !== "present" || items.some((x) => x.role === "content")) return;
+    const i = items.findIndex((x) => /\.pptx$/i.test(x.file.name));
+    if (i >= 0) setItems((cur) => cur.map((x, k) => (k === i ? { ...x, role: "content" } : x)));
+  }, [keep, purpose, items]);
   useEffect(() => () => window.clearTimeout(focusT.current), []);
   // 단계·방식을 바꾸면 맨 위부터
   useEffect(() => { scroller.current?.scrollTo({ top: 0 }); }, [step, kind]);
@@ -169,12 +177,21 @@ export function Upload({ engine, isAdmin = false, onUploaded, onCancel, onSettin
   const design = kind === "design";
   const accentOk = /^#[0-9a-fA-F]{6}$/.test(accent);
   const content = items.find((i) => i.role === "content");
-  const contexts = items.filter((i) => i.role === "context");
+  const keepPptx0 = !!content && /\.pptx$/i.test(content.file.name);
+  // 앞장 템플릿 — 기존 구성 그대로일 때만. 아니면 배경 자료로 올린다
+  const tpl = keep && purpose === "present" && keepPptx0 ? items.find((i) => i.role === "template") : undefined;
+  const contexts = items.filter((i) => i.role === "context" || (i.role === "template" && !tpl));
   const hasText = text.trim().length >= 20;
   const slideUnset = !slideN || !(parseInt(slideN) > 0);
-  const slideDef = company ? 14 : 5;   // 장 수 미입력 — 회사소개서는 14쪽 안팎(서버 Jobs::opts 와 같다)
+  // 장 수 미입력 — 회사소개서는 14쪽 안팎, 제출용 세로 제안서는 0 = RFP 권고 목차대로(서버 Jobs::opts 가 목표 30쪽으로), 그 밖은 5장.
+  // 제출용도 예전엔 5 를 보내 '5장 지정' 이 되고, 엔진은 RFP 목차 규칙대로 65쪽을 만들었다(10-28, R107). 적었을 때만 slides_set — 엔진이 그 쪽 수에 맞춰 줄인다
+  const submit = purpose === "submit";
+  // 기존 구성 그대로는 발표용 + '장표 내용'으로 올린 .pptx 가 있을 때만 — 장 수는 원본 장 수를 따른다
+  const keepPptx = keepPptx0;
+  const keepOn = keep && purpose === "present" && keepPptx;
+  const slideDef = company ? 14 : submit ? 0 : 5;
   const slides = slideUnset ? slideDef : parseInt(slideN);
-  const planOpts = { slides, mockups, sample: Math.max(1, parseInt(sampleN) || 3), front, style, vstyle, vtone, ctheme, ctone, cfree, purpose, lang, font_title: fontTitle, font_body: fontBody, event: event.trim(), date: evDate.trim() };
+  const planOpts = { slides, slides_set: !slideUnset, mockups, sample: Math.max(1, parseInt(sampleN) || 3), front, style: keepOn ? KEEP_STYLE : style, vstyle, vtone, ctheme, ctone, cfree, purpose, keep: keepOn, lang, font_title: fontTitle, font_body: fontBody, event: event.trim(), date: evDate.trim() };
   const aiBlock = design && ai && !ai.ready;
   const working = busy !== null;
 
@@ -196,18 +213,23 @@ export function Upload({ engine, isAdmin = false, onUploaded, onCancel, onSettin
     if (bad.length) setErr(`올릴 수 없는 파일: ${bad.map((b) => b.name).join(", ")} — pdf·docx·hwp·hwpx·xlsx·pptx·md·txt, 1GB 까지`);
     setItems((cur) => [...cur, ...list.filter((f) => FILE_RE.test(f.name) && f.size <= MAX && !cur.some((x) => x.file.name === f.name && x.file.size === f.size)).map((file) => ({ file, role: "context" as const }))]);
   };
-  const setRole = (i: number, role: Item["role"]) => setItems((cur) => cur.map((x, k) => (k === i ? { ...x, role } : role === "content" && x.role === "content" ? { ...x, role: "context" } : x)));
+  const setRole = (i: number, role: Item["role"]) => setItems((cur) => cur.map((x, k) => (k === i ? { ...x, role } : (role === "content" || role === "template") && x.role === role ? { ...x, role: "context" } : x)));
 
-  const ready = design ? hasText || items.length > 0 : !!content;
+  const ready = design ? (keep && purpose === "present" ? keepPptx : hasText || items.length > 0) : !!content;
 
   // 지금 설정으로 무슨 일이 일어나는지 한 문장
   const summary = !design
     ? content ? `'${content.file.name}' 을 표준 절차로 다듬습니다${pilot ? " — 대표 장 하나를 먼저 보여 드립니다" : ""}.` : "초안 .pptx 를 올려 주세요."
+    : keep && purpose === "present" && !keepPptx ? "기존 구성 그대로 — 고칠 장표 .pptx 를 올리고 '장표 내용'으로 지정해 주세요."
     : !ready ? "장표에 담을 내용을 적거나 파일을 올려 주세요."
+    : keepOn
+    ? `'${content!.file.name}' 의 장 순서·배치·글을 그대로 두고 디자인만 새로 잡습니다(새로 기획하지 않음). `
+      + (mockups === "plan" ? "먼저 장마다 원본을 옮긴 와이어프레임을 보여 드립니다 (지금은 이미지 비용 없음)."
+        : mockups === "sample" ? `이어서 대표 ${planOpts.sample}장만 시안 이미지를 만듭니다.` : "이어서 모든 장의 시안 이미지를 만듭니다.")
     : company   // 회사소개서 — 레이아웃 카탈로그에 글을 채우고 HTML 로 그려 편집 가능한 PPT 로
     ? `${contexts.length ? `회사 자료 ${contexts.length}개를 읽고, ` : ""}${slides}쪽 안팎의 회사소개서를 구성한 뒤 시안 없이 바로 PPT 를 만듭니다. 글·카드는 PowerPoint 에서 고칠 수 있습니다.`
     : purpose === "submit"   // 세로 제안서 — 시안 없이 기획에서 바로 PPT(정해진 양식 + 도식의 조합이라 그림 시안이 필요 없다)
-    ? `${contexts.length ? `배경 자료 ${contexts.length}개를 읽고, ` : ""}RFP 목차대로 ${slides}쪽 안팎을 기획한 뒤 시안 없이 바로 PPT 를 만듭니다. 결과는 실제 PPT 를 쪽마다 캡처해 보여 드립니다.`
+    ? `${contexts.length ? `배경 자료 ${contexts.length}개를 읽고, ` : ""}${slideUnset ? "RFP 권고 목차대로 본문을" : `RFP 권고 목차대로 본문 ${slides}쪽 안팎을`} 기획한 뒤 시안 없이 바로 PPT 를 만듭니다. 결과는 실제 PPT 를 쪽마다 캡처해 보여 드립니다.`
     : `${contexts.length ? `배경 자료 ${contexts.length}개를 읽고, ` : ""}${content ? `'${content.file.name}' 의 내용으로 ` : hasText ? "적어 주신 내용으로 " : "자료에서 핵심을 뽑아 "}${slides}장을 기획합니다. `
       + (mockups === "plan" ? "기획과 장마다 와이어프레임(화면 구성)을 먼저 보여 드립니다. 팀원과 함께 고친 뒤 고른 장만 시안 이미지를 만듭니다 (지금은 이미지 비용 없음)."
         : mockups === "sample" ? `이어서 대표 ${planOpts.sample}장만 시안 이미지를 만듭니다.` : "이어서 모든 장의 시안 이미지를 만듭니다.");
@@ -225,8 +247,9 @@ export function Upload({ engine, isAdmin = false, onUploaded, onCancel, onSettin
         job = await uploadFile(content!.file, { title: t, note: note.trim(), pilot, kind: "polish", font_title: fontTitle, font_body: fontBody }, (p) => setProg({ name: content!.file.name, p }), sig);
         return onUploaded(job);
       }
-      const hold = contexts.length > 0 || logoN > 0;
-      const meta = { title: t, note: note.trim(), accent, hold, project: project.trim(), ...planOpts };
+      const hold = contexts.length > 0 || logoN > 0 || !!tpl;
+      // 기존 구성 그대로 — 강조색을 보내지 않으면 엔진이 원본 장표의 강조색을 쓴다(keeplayout.accent_of). 사업명 자리는 원본 꼬리표
+      const meta = { title: t, note: note.trim(), accent: keepOn ? "" : accent, hold, project: keepOn ? "" : project.trim(), ...planOpts };
       if (content && /\.pptx$/i.test(content.file.name)) {     // 초안 pptx 가 장표 내용
         setBusy("초안 올리는 중…");
         job = await uploadFile(content.file, { ...meta, note: [note.trim(), text.trim()].filter(Boolean).join("\n"), kind: "design" }, (p) => setProg({ name: content.file.name, p }), sig);
@@ -241,6 +264,11 @@ export function Upload({ engine, isAdmin = false, onUploaded, onCancel, onSettin
         setBusy(`배경 자료 올리는 중 ${i + 1}/${contexts.length}…`);
         await uploadDoc(contexts[i]!.file, job.id, (p) => setProg({ name: contexts[i]!.file.name, p }), sig);
         markDone(contexts[i]!.file.name);
+      }
+      if (tpl) {   // 앞장 템플릿 — 이름 앞 '앞장템플릿_' 으로 엔진이 알아본다(맥락 글로 읽지 않음, engine/worker.keep_front_files)
+        setBusy("앞장 템플릿 올리는 중…");
+        await uploadDoc(new File([tpl.file], `앞장템플릿_${tpl.file.name}`, { type: tpl.file.type }), job.id, (p) => setProg({ name: tpl.file.name, p }), sig);
+        markDone(tpl.file.name);
       }
       for (const which of ["client", "vendor"] as const) {
         if (!logos[which].length) continue;
@@ -287,26 +315,26 @@ export function Upload({ engine, isAdmin = false, onUploaded, onCancel, onSettin
 
   const last = !design || step === 3;
   const startLabel = design ? (direct ? "PPT 바로 만들기" : mockups === "plan" ? "기획 시작" : "기획 시작 (시안까지)") : "변환 시작";
-  const canStart = ready && !working && !aiBlock && (!design || accentOk);
+  const canStart = ready && !working && !aiBlock && (!design || accentOk || keepOn);
   const totalSize = items.reduce((a, i) => a + i.file.size, 0);
   const frontTxt = [front.cover && "표지", front.toc && "목차", front.divider && "간지"].filter(Boolean).join(" · ") || "없음";
   const frameTxt = [project.trim() && "사업명", logoN > 0 && `로고 ${logoN}개`].filter(Boolean).join(" · ") || "없음";
-  const fontTxt = `${fontName("title", fontTitle)} / ${fontName("body", fontBody)}`;
+  const fontTxt = fontSummary(fontTitle, fontBody, lang);   // 국문은 통일 서체(서체 고르기는 숨김)
 
   // 요약 패널 — [이름, 값, 단계, 항목]
   const rows: [string, ReactNode, Step, string][] = design ? [
-    ["용도", purpose === "present" ? "발표용" : company ? "회사소개용" : "제출용", 1, "purpose"],
+    ["용도", purpose === "present" ? (keepOn ? "발표용 · 기존 구성 그대로" : "발표용") : company ? "회사소개용" : "제출용", 1, "purpose"],
     ["언어", DECK_LANGS.find((x) => x[0] === lang)?.[1] ?? "한국어", 1, "lang"],
     ["자료", items.length ? `${hasText ? "글 + " : ""}${items.length}개 · ${fmtSize(totalSize)}` : text.trim() ? "직접 적은 글" : "없음", 1, "files"],
-    ["디자인", company ? `테마 ${ctheme.toUpperCase()} · ${companyThemeName(ctheme)}${cfree ? " · 자유도" : ""}` : purpose === "submit" ? `세로 제안서 · ${verticalStyleName(vstyle)}` : `타입 ${style.toUpperCase()} · ${typeName(style)}`, 2, "design"],
+    ["디자인", company ? `테마 ${ctheme.toUpperCase()} · ${companyThemeName(ctheme)}${cfree ? " · 자유도" : ""}` : purpose === "submit" ? `세로 제안서 · ${verticalStyleName(vstyle)}` : keepOn ? "원본 색 · 모양 자동" : `타입 ${style.toUpperCase()} · ${typeName(style)}`, 2, "design"],
     ...(purpose === "submit" ? [["톤", verticalToneName(vtone), 3, "vtone"] as [string, ReactNode, Step, string]]
       : company ? [["톤", companyToneName(ctone), 3, "ctone"] as [string, ReactNode, Step, string]] : []),
-    ["서체", company ? "프리텐다드(고정)" : fontTxt, 2, "font"],
-    ["장 수", slideUnset ? `${slideDef}장 (장 수 미입력)` : `${slides}장`, 3, "count"],
+    ["서체", fontTxt, 2, "font"],
+    keepOn ? ["장 수", "원본 그대로", 3, "timing"] : submit ? ["목표 쪽 수", slideUnset ? "자동 — RFP 권고 목차대로" : `본문 ${slides}쪽`, 3, "count"] : ["장 수", slideUnset ? `${slideDef}장 (장 수 미입력)` : `${slides}장`, 3, "count"],
     ...(direct ? [] : [["시안", `${MODE_LABEL[mockups]}${mockups === "sample" ? ` ${planOpts.sample}장` : ""}`, 3, "timing"] as [string, ReactNode, Step, string]]),
-    ...(company ? [] : [["강조색", <span className="inline-flex items-center gap-1.5 font-mono text-[13px]"><i className="w-3 h-3 rounded-full flex-none" style={{ background: accentOk ? accent : "var(--color-line-3)" }} />{accent}</span>, 3, "accent"] as [string, ReactNode, Step, string]]),
-    ["틀", company ? (logos.vendor.length ? "회사 로고" : "로고 없음 — 회사 이름 글자") : frameTxt, 3, "frame"],
-    ...(company ? [] : [["구성", frontTxt, 3, "extras"] as [string, ReactNode, Step, string]]),
+    ...(company ? [] : [["강조색", keepOn ? "원본 강조색 자동" : <span className="inline-flex items-center gap-1.5 font-mono text-[13px]"><i className="w-3 h-3 rounded-full flex-none" style={{ background: accentOk ? accent : "var(--color-line-3)" }} />{accent}</span>, 3, keepOn ? "timing" : "accent"] as [string, ReactNode, Step, string]]),
+    ["틀", company ? (logos.vendor.length ? "회사 로고" : "로고 없음 — 회사 이름 글자") : keepOn ? (logoN > 0 ? `원본 꼬리표 · 로고 ${logoN}개` : "원본 꼬리표") : frameTxt, 3, "frame"],
+    ...(company ? [] : [["구성", keepOn ? (tpl ? "앞장 템플릿 디자인 + 원본 글" : "원본 표지·목차·간지 그대로") : frontTxt, 3, keepOn ? "timing" : "extras"] as [string, ReactNode, Step, string]]),
     ["요청", note.trim() ? "있음" : "없음", 3, "note"],
   ] : [
     ["방식", "초안 PPT 다듬기", 1, "dfile"],
@@ -323,6 +351,7 @@ export function Upload({ engine, isAdmin = false, onUploaded, onCancel, onSettin
     : [
       content && /\.pptx$/i.test(content.file.name) ? { key: content.file.name, label: `초안 · ${content.file.name}`, size: content.file.size } : { key: "__job", label: "작업 만들기" },
       ...contexts.map((c) => ({ key: c.file.name, label: c.file.name, size: c.file.size })),
+      ...(tpl ? [{ key: tpl.file.name, label: `앞장 템플릿 · ${tpl.file.name}`, size: tpl.file.size }] : []),
       ...(["client", "vendor"] as const).filter((w) => logos[w].length).map((w) => ({ key: "__logo_" + w, label: (w === "client" ? "발주기관 로고" : "제안사 로고") + (logos[w].length > 1 ? ` ${logos[w].length}개` : ""), size: logos[w].reduce((a, f) => a + f.size, 0) })),
       { key: "__start", label: startLabel },
     ];
@@ -339,11 +368,13 @@ export function Upload({ engine, isAdmin = false, onUploaded, onCancel, onSettin
     onDrop: (e: React.DragEvent) => { e.preventDefault(); setDrag(false); if (!working) add(e.dataTransfer.files); },
   };
   const fileRow = (it: Item, i: number) => (
-    <div key={it.file.name + it.file.size} className="flex-none flex items-center gap-2.5 px-2.5 py-2 bg-white border border-line rounded-md">
+    <div key={it.file.name + it.file.size} className="flex-none flex flex-wrap items-center gap-2.5 px-2.5 py-2 bg-white border border-line rounded-md">
       <span className="font-mono text-[12px] font-medium text-orange-d bg-orange-soft rounded-md px-[5px] py-0.5 flex-none">{extOf(it.file.name)}</span>
       <span className="flex-1 min-w-0 truncate font-semibold" title={it.file.name}>{it.file.name}</span>
       {design && (CONTENT_RE.test(it.file.name)
-        ? <Seg sm value={it.role} onChange={(r) => setRole(i, r)} options={[["context", "배경 자료"], ["content", "장표 내용"]] as const} />
+        ? <Seg sm value={it.role} onChange={(r) => setRole(i, r)} options={keep && purpose === "present" && /\.pptx$/i.test(it.file.name)
+          ? [["context", "배경 자료"], ["content", "장표 내용"], ["template", "앞장 템플릿"]] as const
+          : [["context", "배경 자료"], ["content", "장표 내용"]] as const} />
         : <span className="text-[12.5px] font-semibold text-dim whitespace-nowrap flex-none">배경 자료</span>)}
       <span className="text-[13px] text-dim whitespace-nowrap flex-none">{fmtSize(it.file.size)}</span>
       <button type="button" className="btn-icon danger !w-6 !h-6" title="빼기" aria-label={`${it.file.name} 빼기`} disabled={working} onClick={() => setItems((x) => x.filter((_, k) => k !== i))}><Ms name="close" size={17} /></button>
@@ -393,7 +424,7 @@ export function Upload({ engine, isAdmin = false, onUploaded, onCancel, onSettin
             ? (() => {
               // 필수 입력이 비었으면 누를 때 무엇이 빠졌는지 알린다(버튼을 꺼 두기만 하면 이유를 알 수 없다)
               const full = !!engine?.mine && engine.mine.active >= engine.mine.max;
-              const why = full ? `동시에 진행할 수 있는 작업은 ${engine!.mine!.max}건입니다(지금 ${engine!.mine!.active}건 진행 중). 진행 중인 작업이 끝나거나 취소한 뒤 시작해 주세요.` : !ready ? (design ? "장표에 담을 내용을 적거나 자료 파일을 올려 주세요." : "초안 .pptx 파일을 올려 주세요.") : aiBlock ? "AI 키가 필요합니다 — 설정에서 키를 연결해 주세요." : design && !accentOk ? "강조색 코드를 확인해 주세요(예: 1866DA)." : design && !company && (!logos.client.length || !logos.vendor.length) ? `${!logos.client.length ? "발주기관" : "제안사"} 로고를 넣어 주세요 — 기본 로고는 필수입니다.` : undefined;
+              const why = full ? `동시에 진행할 수 있는 작업은 ${engine!.mine!.max}건입니다(지금 ${engine!.mine!.active}건 진행 중). 진행 중인 작업이 끝나거나 취소한 뒤 시작해 주세요.` : !ready ? (design ? "장표에 담을 내용을 적거나 자료 파일을 올려 주세요." : "초안 .pptx 파일을 올려 주세요.") : aiBlock ? "AI 키가 필요합니다 — 설정에서 키를 연결해 주세요." : design && !accentOk && !keepOn ? "강조색 코드를 확인해 주세요(예: 1866DA)." : design && !company && (!logos.client.length || !logos.vendor.length) ? `${!logos.client.length ? "발주기관" : "제안사"} 로고를 넣어 주세요 — 기본 로고는 필수입니다.` : undefined;
               return <button type="button" className={cn("btn-next !pr-3.5 min-w-[210px] justify-center", why && !working && "opacity-55")} disabled={working} title={why}
                 onClick={() => { if (canStart && !why) start(); else if (why) { toast(why, "warn"); if (!ready && design) goStep(1); else if (design && !company && (!logos.client.length || !logos.vendor.length)) focusSec(3, "frame"); } }}>
                 {busy ?? startLabel}<Ms name="play_arrow" size={18} /></button>;
@@ -450,10 +481,10 @@ export function Upload({ engine, isAdmin = false, onUploaded, onCancel, onSettin
                   ))}
                 </div>
               </Sec>
-              <Sec id="dfont" style={hl("dfont")} className="!gap-2.5">
+              {SHOW_FONT_PICKER && <Sec id="dfont" style={hl("dfont")} className="!gap-2.5">
                 <SecTitle icon="text_fields" title="서체" desc="모든 글을 통일 · 20pt 이상은 제목용, 나머지는 본문용 굵기 4단계" />
                 <FontPicker compact title={fontTitle} body={fontBody} onTitle={setFontTitle} onBody={setFontBody} disabled={working} lang={lang} />
-              </Sec>
+              </Sec>}
               <Sec id="dreq" style={hl("dreq")} grow>
                 <SecTitle icon="chat" title="요청 사항" desc="선택" />
                 <textarea aria-label="요청 사항" className="field flex-[1_0_auto] !h-0 min-h-[140px]" maxLength={2000} value={note} disabled={working} onChange={(e) => setNote(e.target.value)}
@@ -489,6 +520,16 @@ export function Upload({ engine, isAdmin = false, onUploaded, onCancel, onSettin
                     );
                   })}
                 </div>
+                {purpose === "present" && (
+                  <label className={cn("flex items-start gap-2.5 rounded-md border px-3.5 py-3 cursor-pointer bg-white", keep ? "card-on" : "border-line hover:border-orange-line", working && "opacity-60 cursor-default")}>
+                    <input type="checkbox" className="accent-[var(--color-point)] m-0 mt-[3px] flex-none" checked={keep} disabled={working} onChange={(e) => setKeep(e.target.checked)} />
+                    <span className="flex flex-col gap-[3px] min-w-0">
+                      <span className="font-bold text-ink">기존 구성 그대로 — 올린 장표로 시안만 새로</span>
+                      <span className="text-[13px] text-ink2 leading-[1.45] break-keep">구성을 끝낸 .pptx 를 올리면 장 순서 · 머리 띠 · 키메시지 · 상자 자리 · 글을 그대로 두고 디자인만 다시 잡습니다. 새로 기획하지 않습니다.</span>
+                      <span className="text-[12.5px] text-faint leading-[1.45] break-keep">올린 .pptx 가 '장표 내용'이 됩니다. 장 수는 원본을 따릅니다. 표지·목차·간지는 원본 장을 그대로 쓰고, 다른 .pptx 를 '앞장 템플릿'으로 지정하면 그 디자인에 원본 글을 넣습니다.</span>
+                    </span>
+                  </label>
+                )}
               </Sec>
               {/* PC 는 작업 이름·제작 언어를 반반(5:5), 좁은 화면은 위아래 */}
               <div className="grid gap-5 lg:grid-cols-2 lg:gap-6 items-start">
@@ -522,8 +563,12 @@ export function Upload({ engine, isAdmin = false, onUploaded, onCancel, onSettin
                       <span className="flex flex-col gap-1 min-w-0">
                         <span className="text-[15px] font-bold text-orange-d">{items.length ? "파일 더 올리기 — 끌어다 놓거나 클릭" : "여기에 파일을 끌어다 놓거나 클릭해서 올리세요"}</span>
                         <span className="text-[13px] text-ink2 break-keep">제안요청서 · 과업지시서 · 평가 기준 · 회사 소개 · 이전 제안서 · 초안 — pdf · docx · hwp · hwpx · xlsx · pptx · md · txt, 여러 개 가능</span>
+                        {/* 회사 현황·실적·인력은 자료가 없으면 빈칸으로 남는다(10-30 809c 43곳) — 미리 올려 두지 않고 작업마다 첨부(사용자 2026-11-01) */}
+                        {!company && <span className="text-[13px] font-semibold text-ink2 break-keep">회사소개서도 함께 올려 주세요. 회사 현황·실적·인력 내용을 채우는 데 씁니다.</span>}
                         {/* 업로드 화면 개인정보 안내(품질 판정 SEC-014, 기획 §17.2 ⑤) */}
                         <span className="text-[13px] font-semibold text-ink2 break-keep">개인정보·대외비가 든 문서는 올리지 마세요.</span>
+                        {/* 보안 — 서버 보유 기간 정리(api/bin/retention.php, 2026-10-28 사용자 지시)와 같은 기준 */}
+                        <span className="text-[13px] text-ink2 break-keep">보안을 위해, 작업이 끝나면(완료·실패·취소) <b className="text-ink">10일 뒤 올린 자료·붙여 넣은 글은 서버에서 모두 지워집니다.</b> 결과 장표는 남습니다.</span>
                       </span>
                     </button>
                     {items.length > 0 && (
@@ -553,43 +598,54 @@ export function Upload({ engine, isAdmin = false, onUploaded, onCancel, onSettin
                 </> : purpose === "submit" ? <>
                   <SecTitle icon="palette" title="세로 제안서 디자인 스타일" desc="표지 · 목차 · 간지 · 본문의 모양이 이 스타일로 정해집니다 — 색은 다음 단계에서 톤으로 고릅니다" />
                   <VerticalStylePicker value={vstyle} onChange={setVstyle} disabled={working} />
+                </> : keepOn ? <>
+                  {/* 기존 구성 그대로 — 색·구성·앞장이 원본을 따라 타입은 모양만 바꾼다. 고르기를 숨기고 검증된 타입(KEEP_STYLE)으로(11-05 사용자) */}
+                  <SecTitle icon="palette" title="디자인" desc="기존 구성 그대로는 색 · 구성 · 표지 · 간지를 원본에서 가져옵니다. 카드 모양과 그림은 엔진이 자동으로 맞춥니다." />
                 </> : <>
                   <SecTitle icon="palette" title="디자인 타입" desc="시안 이미지 · 머리 띠 · 표지 · 목차 · 간지가 모두 이 타입으로 만들어집니다" />
                   <DesignTypePicker value={style} onChange={setStyle} disabled={working} />
                 </>}
               </Sec>
-              <Sec id="font" style={hl("font")} className="!gap-3">
+              {SHOW_FONT_PICKER && <Sec id="font" style={hl("font")} className="!gap-3">
                 {company ? <SecTitle icon="text_fields" title="서체" desc="프리텐다드 다섯 굵기로 고정입니다 — 산출물에 서체 파일을 함께 넣습니다" />
                   : <FontPicker vertical={purpose === "submit"} title={fontTitle} body={fontBody} onTitle={setFontTitle} onBody={setFontBody} disabled={working} lang={lang} />}
-              </Sec>
+              </Sec>}
             </>}
 
             {/* ── 3단계 세부 설정 — 왼쪽 220px 라벨 칸 + 오른쪽 입력 ── */}
             {design && step === 3 && (
               <section className="flex flex-col">
-                <Row id="count" style={hl("count")} icon="filter_none" title="장 수" sub={company ? "14쪽 안팎 권장" : "8장까지 권장"}>
+                {/* 기존 구성 그대로 — 장 수·강조색·사업명·표지 고르기는 원본을 따르므로 묻지 않는다(11-03 사용자 '선택 최소화') */}
+                {!keepOn && <Row id="count" style={hl("count")} icon="filter_none" title={submit ? "목표 쪽 수(본문)" : "장 수"} sub={company ? "14쪽 안팎 권장" : submit ? "비우면 RFP 권고 목차대로" : "8장까지 권장"}>
                   <div className="flex flex-col gap-2.5">
                     <div className="flex items-center gap-3 flex-wrap">
                       <div className="flex items-center gap-1.5 whitespace-nowrap">
-                        <input className="field !h-[38px] !w-[72px] !px-3 text-right font-mono" inputMode="numeric" value={slideN} placeholder={String(slideDef)} aria-label="장 수"
+                        <input className="field !h-[38px] !w-[72px] !px-3 text-right font-mono" inputMode="numeric" value={slideN} placeholder={submit ? "자동" : String(slideDef)} aria-label={submit ? "목표 쪽 수" : "장 수"}
                           aria-describedby={slideUnset ? "slide-unset" : undefined}
-                          onChange={(e) => setSlideN(e.target.value.replace(/\D/g, "").slice(0, 3))} />장
+                          onChange={(e) => setSlideN(e.target.value.replace(/\D/g, "").slice(0, 3))} />{submit ? "쪽" : "장"}
                       </div>
-                      <span className="sec-desc">{company ? "AI 가 구성을 정하며 이 쪽 수 안팎으로 맞춥니다. 표지·목차·간지·연락처를 포함한 수입니다" : "한 번에 8장까지가 가장 안정적입니다. 더 많으면 8장씩 묶어 차례로 만듭니다"}</span>
+                      <span className="sec-desc">{company ? "AI 가 구성을 정하며 이 쪽 수 안팎으로 맞춥니다. 표지·목차·간지·연락처를 포함한 수입니다"
+                        : submit ? "적으면 그 쪽 수에 맞춰 목차 항목을 줄입니다. RFP 권고 목차의 절은 빼지 않아, 절 수보다 적게는 줄지 않습니다. 표지·목차·간지는 빼고 센 수입니다"
+                        : "한 번에 8장까지가 가장 안정적입니다. 더 많으면 8장씩 묶어 차례로 만듭니다"}</span>
                     </div>
                     {slideUnset && (
                       <div id="slide-unset" role="status" className="rounded-md border border-orange-line bg-orange-tint px-3.5 py-2.5 text-[13px] text-ink3 leading-[1.6] break-keep">
-                        <b className="text-ink">장 수를 적지 않으면 {slideDef}장{company ? " 안팎으로" : "만"} 만듭니다.</b>{" "}
-                        자료가 많아도 늘리지 않습니다. 더 필요하면 원하는 장 수를 적어 주세요.
+                        {submit ? <>
+                          <b className="text-ink">쪽 수를 적지 않으면 RFP 권고 목차대로 만듭니다.</b>{" "}
+                          목차가 크면 본문이 수십 쪽이 되고 시간이 오래 걸립니다. 먼저 짧게 보려면 쪽 수를 적어 주세요(목차를 만들면 최소 쪽 수를 작업 기록에 알려 드립니다).
+                        </> : <>
+                          <b className="text-ink">장 수를 적지 않으면 {slideDef}장{company ? " 안팎으로" : "만"} 만듭니다.</b>{" "}
+                          자료가 많아도 늘리지 않습니다. 더 필요하면 원하는 장 수를 적어 주세요.
+                        </>}
                       </div>
                     )}
-                    {slides > 8 && !company && (
+                    {slides > 8 && !company && !submit && (
                       <div className="rounded-md border border-orange-line bg-orange-tint px-3.5 py-2.5 text-[13px] text-ink3 leading-[1.6] break-keep">
                         <b className="text-ink">{slides}장은 8장씩 {Math.ceil(slides / 8)}묶음으로 나눠 차례로 만듭니다.</b> 한 번에 다 만들면 뒤쪽 장의 품질이 떨어지고 중간에 실패하면 전부 다시 해야 해서, 시안·장표 제작·발표 대본 모두 8장 단위로 진행합니다. 먼저 8장 이하로 방향을 확인한 뒤 늘리는 것을 권합니다.
                       </div>
                     )}
                   </div>
-                </Row>
+                </Row>}
                 {!direct && <Row id="timing" style={hl("timing")} icon="image" title="시안 이미지 시점" sub="비용 대부분 발생">
                   <div className="grid gap-2" style={{ gridTemplateColumns: "repeat(auto-fit,minmax(180px,1fr))" }}>
                     {([
@@ -634,7 +690,7 @@ export function Upload({ engine, isAdmin = false, onUploaded, onCancel, onSettin
                     <VerticalTonePicker value={vtone} onChange={(t) => { setVtone(t.id); setAccent(t.accent); }} disabled={working} />
                   </Row>
                 )}
-                {!company && <Row id="accent" style={hl("accent")} icon="format_color_fill" title="강조색" sub="핵심 단어 강조">
+                {!company && !keepOn && <Row id="accent" style={hl("accent")} icon="format_color_fill" title="강조색" sub="핵심 단어 강조">
                   <div className="flex flex-col gap-2.5">
                     <div className="flex items-center gap-1.5 flex-wrap">
                       {ACCENTS.map(([c, l]) => (
@@ -657,12 +713,12 @@ export function Upload({ engine, isAdmin = false, onUploaded, onCancel, onSettin
                 </Row>}
                 <Row id="frame" style={hl("frame")} icon="web_asset" title={company ? "회사 로고" : "머리 · 바닥 틀"} sub={company ? "모든 쪽 왼쪽 위" : "모든 장 공통"}>
                   <div className="flex flex-col gap-2">
-                    {!company && <input className="field" aria-label="사업명" value={project} maxLength={80} onChange={(e) => setProject(e.target.value)} placeholder="사업명 — 머리 띠 오른쪽 (예: OO시 업무지원포털 시스템 유지관리)" />}
+                    {!company && !keepOn && <input className="field" aria-label="사업명" value={project} maxLength={80} onChange={(e) => setProject(e.target.value)} placeholder="사업명 — 머리 띠 오른쪽 (예: OO시 업무지원포털 시스템 유지관리)" />}
                     {/* 미리보기 틀 — 실제 들어가는 자리와 같다: 바닥 왼쪽 발주기관 로고 · 가운데 쪽번호 · 오른쪽 제안사 로고. 회사소개서는 회사 로고 하나(왼쪽 위) */}
                     <div className="border border-line rounded-md overflow-hidden text-[12px] bg-white">
                       {!company && <>
                       <div className="bg-ink text-white flex justify-between gap-4 px-3 py-2 font-semibold">
-                        <span className="whitespace-nowrap flex-none">장 이름 · 절 제목</span><span className={cn("truncate min-w-0", !project.trim() && "opacity-70")}>{project.trim() || "사업명"}</span>
+                        <span className="whitespace-nowrap flex-none">장 이름 · 절 제목</span><span className={cn("truncate min-w-0", (keepOn || !project.trim()) && "opacity-70")}>{keepOn ? "원본 꼬리표 그대로 (예: 사업이해도 | 5점)" : project.trim() || "사업명"}</span>
                       </div>
                       <div className="h-14 grid place-items-center text-faint">본문 (시안 이미지)</div>
                       </>}
@@ -680,12 +736,12 @@ export function Upload({ engine, isAdmin = false, onUploaded, onCancel, onSettin
                               {logos[w].map((lf, li) => (
                                 <div key={li} className="flex flex-col gap-1 px-2 py-1.5 rounded-md bg-panel border border-line">
                                   <div className="flex items-center gap-2">
-                                    <span className="text-[11.5px] font-bold text-faint flex-none">기본</span>
+                                    <span className="text-[11.5px] font-bold text-faint flex-none" title="밝은 바탕 장(본문)에 쓰는 기본 로고 — 필수">라이트</span>
                                     <span className="flex-1 min-w-0 truncate font-bold text-[13px] text-[#13235B]" title={lf.name}>{lf.name}</span>
                                     <button type="button" className="btn-icon danger !w-5 !h-5" title="빼기" aria-label="로고 빼기" onClick={() => dropLogo(w, li)}><Ms name="close" size={17} /></button>
                                   </div>
                                   <div className="flex items-center gap-2 text-[12.5px]" title="표지·간지처럼 어두운 바탕에 쓰는 흰색 로고(선택). 없으면 기본 로고 모양을 흰색으로 바꿔 씁니다">
-                                    <span className="text-[11.5px] font-bold text-faint flex-none">흰색</span>
+                                    <span className="text-[11.5px] font-bold text-faint flex-none" title="어두운 바탕 장(표지·간지 등)에 쓰는 흰색 로고 — 선택">다크</span>
                                     {whites[w][li] ? (
                                       <>
                                         <span className="flex-1 min-w-0 truncate font-semibold text-ink2">{whites[w][li]!.name}</span>
@@ -693,7 +749,7 @@ export function Upload({ engine, isAdmin = false, onUploaded, onCancel, onSettin
                                       </>
                                     ) : (
                                       <>
-                                        <span className="flex-1 min-w-0 truncate text-faint">선택 — 없으면 자동</span>
+                                        <span className="flex-1 min-w-0 truncate text-faint">흰색 · 선택 — 없으면 자동</span>
                                         <button type="button" className="text-orange-d font-bold whitespace-nowrap hover:underline" onClick={() => setLogoFind({ w, white: li })}>찾기</button>
                                         <label className="text-ink3 font-semibold whitespace-nowrap cursor-pointer hover:underline rounded-md focus-within:shadow-[0_0_0_3px_var(--color-orange-soft)]">파일<input type="file" accept=".png,.jpg,.jpeg" className="sr-only" onChange={(e) => { pickLogo(w, e.target.files?.[0], li); e.target.value = ""; }} /></label>
                                       </>
@@ -724,10 +780,10 @@ export function Upload({ engine, isAdmin = false, onUploaded, onCancel, onSettin
                       </div>
                     </div>
                     {company ? <div className="sec-desc">모든 쪽 왼쪽 위에 들어갑니다. 어두운 표지·간지에는 흰색 로고를 쓰고, 없으면 기본 로고를 흰색으로 바꿔 씁니다(투명 PNG 일 때). 로고가 없으면 회사 이름을 글자로 넣습니다.</div> :
-                    <div className="sec-desc">모든 장에 같은 위치·크기로 들어갑니다 (시안과 실제 장표 모두). 기본 로고는 필수입니다. 표지·간지처럼 어두운 바탕에 쓸 흰색 로고는 선택이며, 없으면 기본 로고를 흰색으로 바꿔 씁니다. 로고는 PNG·JPG, 5MB 까지. 주관기관이 둘 이상이거나 컨소시엄이면 3개까지 더할 수 있습니다 — 올린 순서대로 나란히 놓입니다.</div>}
+                    <div className="sec-desc">모든 장에 같은 위치·크기로 들어갑니다 (시안과 실제 장표 모두). <b className="text-ink2">라이트(기본) 로고만 넣어도 됩니다.</b> 다크(흰색) 로고를 더 넣으면 표지·간지처럼 어두운 바탕 장에 그 로고를 쓰고, 없으면 라이트 로고를 흰색으로 바꿔 씁니다. 파워플러스에서 찾은 로고에 흰색판이 있으면 다크에 함께 들어갑니다. 로고는 PNG·JPG, 5MB 까지. 주관기관이 둘 이상이거나 컨소시엄이면 3개까지 더할 수 있습니다 — 올린 순서대로 나란히 놓입니다.</div>}
                   </div>
                 </Row>
-                {!company && <Row id="extras" style={hl("extras")} icon="auto_stories" title="표지 · 목차 · 간지" sub={PLANS_UI ? "자동 생성 · 무료" : "자동 생성"}>
+                {!company && !keepOn && <Row id="extras" style={hl("extras")} icon="auto_stories" title="표지 · 목차 · 간지" sub={PLANS_UI ? "자동 생성 · 무료" : "자동 생성"}>
                   <div className="flex flex-col gap-2">
                     <div className="flex gap-2 flex-wrap">
                       {([["cover", "표지", "사업명 · 제목 · 날짜 · 로고"], ["toc", "목차", "장 이름과 쪽 범위"], ["divider", "간지", "장이 바뀔 때마다 — 장이 둘 이상일 때만"]] as const).map(([k, t, d]) => (
@@ -821,7 +877,8 @@ export function Upload({ engine, isAdmin = false, onUploaded, onCancel, onSettin
       </div>
 
       {working && <UploadModal heading={heading} title={shownTitle || "새 작업"} pct={all} steps={modalSteps} onStop={() => abort.current?.abort()} />}
-      {logoFind && <LogoSearch title={(logoFind.w === "client" ? "발주기관 로고" : "제안사 로고") + (logoFind.white != null ? " — 흰색(어두운 바탕용)" : "")} onClose={() => setLogoFind(null)} onPick={(f) => pickLogo(logoFind.w, f, logoFind.white)} />}
+      {logoFind && <LogoSearch title={(logoFind.w === "client" ? "발주기관 로고" : "제안사 로고") + (logoFind.white != null ? " — 다크(어두운 바탕용 흰색)" : " — 라이트(기본)")} onClose={() => setLogoFind(null)}
+        pairWhite={logoFind.white == null} onPick={(f, wf) => pickLogo(logoFind.w, f, logoFind.white, wf)} />}
     </>
   );
 }

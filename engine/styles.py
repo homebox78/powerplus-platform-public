@@ -27,7 +27,12 @@ def of_job(j):
             o = json.loads(o)
         except Exception:
             o = None
+    if (o or {}).get("keep"):   # 기존 구성 그대로 — 색·구성·앞장이 원본이라 타입은 고르지 않는다. 시험·취합본이 모두 e(화면 KEEP_STYLE 과 같게, R239)
+        return KEEP_STYLE
     return str((o or {}).get("style") or "a")
+
+
+KEEP_STYLE = "e"
 
 
 def frame(st, accent):

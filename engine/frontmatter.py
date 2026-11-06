@@ -12,6 +12,7 @@ from pptx.enum.shapes import MSO_SHAPE
 from pptx.enum.text import MSO_ANCHOR, PP_ALIGN
 from pptx.util import Emu, Pt
 import fontset
+import logosize
 
 sys.stdout.reconfigure(encoding="utf-8")
 IN = 914400
@@ -101,16 +102,33 @@ class Page:
                     rPr.append(el)
         return self._name(tb)
 
-    def logo(self, path, x, y, h, right=False):
+    def logo(self, path, x, y, h, right=False, which=""):
         if not path or not os.path.isfile(path):
-            return
+            return None
         try:
             pic = self.s.shapes.add_picture(path, Emu(int(x * IN)), Emu(int(y * IN)), height=Emu(int(h * IN)))
             if right:
                 pic.left = Emu(int(x * IN)) - pic.width
             self._name(pic)
+            if which:   # 로고 쌍 검사(logosize.check)가 알아보게 — pd_front_<종류>_N_client_logo
+                pic.name += f"_{which}_logo"
+            return pic
         except Exception:
-            pass
+            return None
+
+    def logo_pair(self, client, vendor, cy, h, x_left, x_right, lim_w):
+        """아래 양쪽 로고 — 발주기관(왼쪽)이 제안사(오른쪽)보다 15% 크게(면적·높이, logosize.fit_pair, R121). cy = 세로 가운데(in), h = 제안사 기준 높이"""
+        c = self.logo(client, x_left, cy - h / 2, h, which="client")
+        v = self.logo(vendor, x_right, cy - h / 2, h, right=True, which="vendor")
+        cs, vs = logosize.fit_pair((c.width, c.height) if c is not None else None, (v.width, v.height) if v is not None else None,
+                                   h * IN * 5 ** 0.5, int(h * logosize.RATIO * IN), int(lim_w * IN))
+        cs, vs = logosize.ints_pair(cs, vs)
+        for pic, wh, right in ((c, cs, False), (v, vs, True)):
+            if pic is None or wh is None:
+                continue
+            pic.width, pic.height = wh
+            pic.top = Emu(int(cy * IN - pic.height / 2))
+            pic.left = Emu(int(x_right * IN) - pic.width) if right else Emu(int(x_left * IN))
 
 
 def tw(t):
@@ -180,6 +198,8 @@ def build(prs, plan, o):
     title = clean(o.get("title") or plan.get("title") or "")
     project = clean(o.get("project") or "")
     made = []
+    # 기획 앞장 항목(design.front_specs) — 기존 구성 그대로면 원본 앞장 글(목차 제목·간지 목록·끝인사·표지 키메시지·꼬리표, R206)
+    fr = {x.get("id"): x for x in (plan.get("front") or []) if isinstance(x, dict)}
 
     # ── 간지: 장이 바뀌는 본문 장 앞에 (뒤에서부터 넣어야 앞 번호가 안 밀린다)
     if o.get("divider") and multi:
@@ -190,9 +210,14 @@ def build(prs, plan, o):
             pg.text(0.9, 1.25, 4, 1.9, f"{ci + 1:02d}", 120, "60A5FA", F_KEY, anchor=MSO_ANCHOR.MIDDLE, wrap=False)
             pg.box(0.95, 3.35, 0.9, 0.08, accent)
             pg.text(0.9, 3.6, pg.W - 1.8, 1.0, re.sub(r"^[ⅠⅡⅢⅣⅤⅥⅦⅧⅨⅩ\dIVX]+\s*[.．]\s*", "", c["name"]) or c["name"], 36, "FFFFFF", F_KEY, anchor=MSO_ANCHOR.TOP)
-            rows = [[(f"{n:>2}   ", "93C5FD"), (t, "DBEAFE")] for n, t in c["items"][:8]]
-            longest = max((f"{n:>2}   {t}" for n, t in c["items"][:8]), key=tw, default="")
-            pg.text(0.95, 4.75, pg.W - 1.9, 2.2, rows, fit_size(longest, pg.W - 1.9, 14, 11), "DBEAFE", F_M, spacing=1.45)
+            own = [clean(t) for t in ((fr.get(f"div{ci + 1}") or {}).get("list") or []) if clean(t)]
+            if own:   # 원본 간지 목록 그대로 — 줄이거나 자르지 않는다
+                longest = max(own, key=tw)
+                pg.text(0.95, 4.6, pg.W - 1.9, 2.6, [[(t, "DBEAFE")] for t in own], fit_size(longest, pg.W - 1.9, 13, 8), "DBEAFE", F_M, spacing=1.2 if len(own) > 8 else 1.45)
+            else:
+                rows = [[(f"{n:>2}   ", "93C5FD"), (t, "DBEAFE")] for n, t in c["items"][:8]]
+                longest = max((f"{n:>2}   {t}" for n, t in c["items"][:8]), key=tw, default="")
+                pg.text(0.95, 4.75, pg.W - 1.9, 2.2, rows, fit_size(longest, pg.W - 1.9, 14, 11), "DBEAFE", F_M, spacing=1.45)
             made.append("간지")
 
     # ── 목차
@@ -202,7 +227,8 @@ def build(prs, plan, o):
         off = 1
         pg.box(0, 0, pg.W, pg.H, "FFFFFF")
         pg.box(0, 0, 3.3, pg.H, "1D4ED8", "3B82F6", 90)
-        pg.text(0.6, 2.75, 2.4, 0.9, "목차", 40, "FFFFFF", F_KEY)
+        head = clean((fr.get("toc") or {}).get("heading")) or "목차"
+        pg.text(0.6, 2.75, 2.4, 0.9, head, fit_size(head, 2.4, 40, 18), "FFFFFF", F_KEY)
         pg.box(0.62, 3.75, 0.7, 0.07, accent)
         pg.text(0.6, 3.95, 2.4, 0.4, "CONTENTS", 12, "BFDBFE", F_SB)
         x, w, top, bot = 4.0, pg.W - 4.0 - 0.7, 0.9, pg.H - 0.8
@@ -233,12 +259,16 @@ def build(prs, plan, o):
 
     # ── 엔딩 · 질의응답 — 맨 뒤 세트(시안이 있으면 워커가 시안대로 만든 장으로 갈아 끼운다)
     if o.get("ending") and slides:
-        for kind, big, small in (("end", "감사합니다", ""), ("qna", "질의응답", "Q&A")):
+        fe = fr.get("end") or {}
+        for kind, big, small in (("end", clean(fe.get("title")) or "감사합니다", str(fe.get("lead") or "").strip()), ("qna", "질의응답", "Q&A")):
+            if kind == "qna" and not o.get("qna", True):   # 기존 구성 그대로 — 원본에 없는 질의응답은 빼기
+                continue
             pg = Page(prs, kind, len(prs.slides._sldIdLst))
             pg.box(0, 0, pg.W, pg.H, "1E40AF", "3B82F6", 35)
             pg.text(0.9, pg.H / 2 - 1.0, pg.W - 1.8, 1.2, big, 54, "FFFFFF", F_KEY, PP_ALIGN.CENTER, MSO_ANCHOR.MIDDLE, wrap=False)
             if small:
-                pg.text(0.9, pg.H / 2 + 0.35, pg.W - 1.8, 0.6, small, 20, "BFDBFE", F_SB, PP_ALIGN.CENTER, MSO_ANCHOR.TOP, wrap=False)
+                nl = small.count("\n") + 1
+                pg.text(0.9, pg.H / 2 + 0.35, pg.W - 1.8, 0.4 * nl + 0.2, [[(ln, None)] for ln in small.split("\n")], fit_size(max(small.split("\n"), key=tw), pg.W - 1.8, 20, 12), "BFDBFE", F_SB, PP_ALIGN.CENTER, MSO_ANCHOR.TOP, wrap=False)
             made.append("엔딩" if kind == "end" else "질의응답")
 
     # ── 표지
@@ -250,6 +280,12 @@ def build(prs, plan, o):
         main, _, tail = (project or title).partition(" — ")   # 표지 큰 글 = 사업명(없으면 작업 이름). '제목 — 부제' 는 부제를 작게 한 줄로
         if not tail:
             main, _, tail = title.partition(" - ")
+        fc = fr.get("cover") or {}
+        if not project and clean(fc.get("title")):   # 원본 표지 사업명(기존 구성 그대로)
+            main = clean(fc.get("title"))
+        tail = clean(fc.get("tail")) or tail
+        if clean(fc.get("slogan")):
+            pg.text(0.9, 2.05, pg.W - 1.8, 0.35, clean(fc.get("slogan")), 14, "BFDBFE", F_SB, wrap=False)
         cap = (pg.W - 1.8) * 72   # 한 줄 폭(pt). 한글 한 자 ≈ 글자 크기
         size = max(26, min(40, int(cap / max(1, len(main)))))
         if len(main) * size > cap:   # 26pt 로도 한 줄이 안 되면 두 줄
@@ -259,8 +295,8 @@ def build(prs, plan, o):
         if tail:
             pg.text(0.9, 2.6 + size / 72 * 1.35 * lines + 0.25, pg.W - 1.8, 0.5, tail, 20, "BFDBFE", F_SB, wrap=False)
         pg.text(0.9, pg.H - 1.75, 4, 0.35, o.get("date") or datetime.date.today().strftime("%Y. %m."), 13, "DBEAFE", F_M, wrap=False)
-        pg.logo(o.get("client_logo"), 0.9, pg.H - 0.8, 0.45)
-        pg.logo(o.get("vendor_logo"), pg.W - 0.9, pg.H - 0.8, 0.45, right=True)
+        # 아래 흰 띠(1.15in) 가운데 줄 — 제안사 기준 높이 0.45in(예전 두 로고 공통 높이), 발주기관은 그 1.15배까지
+        pg.logo_pair(o.get("client_logo"), o.get("vendor_logo"), pg.H - 0.8 + 0.45 / 2, 0.45, 0.9, pg.W - 0.9, pg.W / 2 - 1.2)
         made.insert(0, "표지")
     return made
 
@@ -285,8 +321,10 @@ if __name__ == "__main__":
                 shapes = [s.shapes.add_shape(MSO_SHAPE.RECTANGLE, 0, 0, Emu(9525), Emu(9525))]
                 shapes[0].fill.background()
                 shapes[0].line.fill.background()
-            for n, sh in enumerate(shapes, 1):
-                sh.name = f"pd_front_{k}_{n}"
+            roles = [logosize.role(sh) for sh in shapes]   # 로고 역할은 이름을 바꾸기 전에 읽는다(이름·그림 설명 '<id>_logo_client.png')
+            for n, (sh, r) in enumerate(zip(shapes, roles), 1):
+                sh.name = f"pd_front_{k}_{n}" + (f"_{r}_logo" if r else "")
+            logosize.enforce_slide(s)   # 안전망(R121) — 발주기관 로고가 제안사 로고보다 15% 크지 않으면 제안사 로고를 줄인다
         prs.save(sys.argv[2])
         sys.exit(0)
     src, plan_p, opt_p, dst = sys.argv[1:5]

@@ -63,8 +63,8 @@ def exec_tool(job, cwd, name, args):
         if BLOCK_PAT.search(cmd):
             raise RuntimeError("금지된 명령입니다(git/창띄우기/외부전송)")
         timeout = min(int(args.get("timeout") or TOOL_TIMEOUT), 600)
-        env = dict(os.environ, PD_PROGRESS=getattr(job, "_or_prog", "") or os.path.join(cwd, "progress.jsonl"),
-                   PYTHONIOENCODING="utf-8")
+        env = dict(getattr(job, "env", None) or os.environ, PD_PROGRESS=getattr(job, "_or_prog", "") or os.path.join(cwd, "progress.jsonl"),
+                   PYTHONIOENCODING="utf-8")   # job.env = 고른 서체(PD_FONT_*) — 에이전트가 부르는 도구(textlines·finalize)도 같은 서체로 잰다
         # 작업 폴더 밖 쓰기 방지: .. 로 나가는 cd 차단(단순 검사)
         r = subprocess.run(cmd, cwd=cwd, shell=True, capture_output=True, text=True,
                            encoding="utf-8", errors="replace", timeout=timeout, env=env)
@@ -132,7 +132,8 @@ def exec_tool(job, cwd, name, args):
 
 
 SYS_SUFFIX = ("\n\n[도구 사용법] 네가 쓸 수 있는 도구는 Bash·Read·Write·Edit·Glob·Grep·TodoWrite 뿐이다(WebFetch/WebSearch 없음)."
-              " 진행은 반드시 `python pd.py`가 아니라 지시문의 {{PD}} 명령(Bash)으로 보고한다."
+              " 진행은 반드시 `python pd.py`가 아니라 지시문의 진행 보고 명령(pd.py stage …, Bash)으로 보고한다 — 단계가 바뀔 때마다 stage 로(note 만 쓰면 화면 단계가 멈춘다)."
+              " 비용을 아끼려고: 긴 스크립트는 파일(_work/*.py)로 한 번 쓰고 고칠 때는 Edit 로 바뀐 줄만 — 같은 스크립트를 통째로 다시 쓰지 않는다."
               " 끝에는 반드시 result.json을 남긴다(없으면 실패). 질문 없이 끝까지 한다.")
 
 
@@ -176,6 +177,44 @@ def _size(messages):
         else:
             n += len(c or "") // 3
         n += len(json.dumps(m.get("tool_calls") or "", ensure_ascii=False)) // 3
+    return n
+
+
+COMPACT_AT = 90000     # 실제 입력 토큰(직전 호출 usage)이 이만큼 넘으면 오래된 도구 결과·그림·긴 명령을 한 번에 줄인다
+KEEP_TAIL = 16         # 줄일 때 건드리지 않는 마지막 메시지 수
+
+
+def compact(messages, keep_tail=KEEP_TAIL):
+    """문맥 줄이기 — 처음 두 메시지(지시)와 마지막 keep_tail 개는 그대로, 그 사이의
+    도구 결과(300자로), 그림(글 한 줄로), 에이전트가 보낸 긴 명령·스크립트(인자 400자로)를 줄인다.
+    매 호출 조금씩 자르면 프롬프트 캐시가 매번 깨져 더 비싸다 — 넘을 때 한 번에 크게 줄이고 다시 캐시가 쌓이게 한다(10-28: 호출당 입력 4~13만 토큰).
+    반환: 줄인 메시지 수"""
+    n = 0
+    end = max(2, len(messages) - keep_tail)
+    for m in messages[2:end]:
+        c = m.get("content")
+        if isinstance(c, list):
+            m["content"] = " ".join(p.get("text", "") for p in c if p.get("type") == "text")[:300] + " (그림은 문맥을 아끼려고 뺐다)"
+            n += 1
+        elif m.get("role") in ("tool", "user") and len(c or "") > 400:
+            m["content"] = (c or "")[:300] + "\n…(앞 결과 — 문맥을 아끼려고 줄였다. 필요하면 다시 연다)"
+            n += 1
+        for tc in m.get("tool_calls") or []:
+            fn = tc.get("function") or {}
+            a = fn.get("arguments")
+            if isinstance(a, str) and len(a) > 600:
+                try:
+                    d = json.loads(a)
+                    for k, v in list(d.items()):
+                        if isinstance(v, str) and len(v) > 400:
+                            d[k] = v[:400] + "…(앞 명령 — 줄였다)"
+                    fn["arguments"] = json.dumps(d, ensure_ascii=False)
+                except Exception:
+                    fn["arguments"] = json.dumps({"command": a[:400] + "…(줄였다)"}, ensure_ascii=False)
+                n += 1
+        if m.get("role") == "assistant" and isinstance(m.get("content"), str) and len(m["content"]) > 1500:
+            m["content"] = m["content"][:1200] + "…(앞 설명 — 줄였다)"
+            n += 1
     return n
 
 
@@ -232,10 +271,17 @@ def run_agent(job, prompt, cwd, prog_file=None, req_fn=None, model=None, effort=
         job.event(f"엔진 모델: {model} — 도구 {'호출' if caps['tools'] else '글 규약'} · 그림 {'봄' if caps['vision'] else '못 봄'} · 문맥 {caps['ctx'] // 1000}k")
     messages = [{"role": "system", "content": sys_txt}, {"role": "user", "content": prompt + SYS_SUFFIX}]
     total_cost, turns, final_text, minimal, fails = 0.0, 0, "", False, 0
+    last_in = 0
+    soft = int(W.CFG.get("build_ctx_soft") or COMPACT_AT)
     for it in range(MAX_ITERS):
         if getattr(job, "cancel", False):
             final_text = "취소됨"
             break
+        if last_in > soft:
+            k = compact(messages)
+            if k and not quiet:
+                job.event(f"문맥이 {last_in // 1000}k 토큰이라 오래된 도구 결과·그림 {k}개를 줄였습니다(비용 줄이기).")
+            last_in = 0
         _trim(messages, int(caps["ctx"] * 0.7) - max_tokens)
         try:
             msg, info = _chat(job, req_fn, model, effort, messages, max_tokens, caps, minimal)
@@ -256,6 +302,8 @@ def run_agent(job, prompt, cwd, prog_file=None, req_fn=None, model=None, effort=
             continue
         total_cost += info["cost"]
         turns += 1
+        last_in = info.get("in") or 0
+        job.agent_turns = getattr(job, "agent_turns", 0) + 1   # 화면 진행률이 단계 안에서 조금씩 오르게(polish_resume.track)
         content = msg.get("content") or ""
         if isinstance(content, list):  # parts 배열 대응
             content = "".join(x.get("text", "") for x in content if isinstance(x, dict))
@@ -312,6 +360,9 @@ def run_agent(job, prompt, cwd, prog_file=None, req_fn=None, model=None, effort=
         if images:
             messages.append({"role": "user", "content": images})
         # result.json 생기면 조기 종료하지 않음 — 대조·마감까지 하도록 둔다(프롬프트가 정한다)
+        if it == MAX_ITERS - 8 and not os.path.isfile(os.path.join(cwd, "result.json")):
+            # 차례 상한에 닿으면 result.json 없이 끊겨 실패가 된다(10-28 7f9b 다듬기 120차례·$7.76, R128) — 미리 마무리를 시킨다
+            messages.append({"role": "user", "content": "남은 차례가 8번뿐이다. 새 작업을 벌이지 말고 지금까지 만든 마지막 판으로 결과 파일과 result.json 을 지금 남기고 끝내라."})
     return {"text": (final_text or "")[-2000:], "cost": round(total_cost, 6), "turns": turns,
             "model": model, "is_error": False}
 

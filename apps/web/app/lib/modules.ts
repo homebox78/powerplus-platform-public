@@ -53,7 +53,7 @@ export const MODULES: PlatformModule[] = [
       { slug: "", label: "시작하기", desc: "파워목업으로 할 수 있는 일과 요청 예시." },
       { slug: "plan", label: "기획", desc: "와이어프레임을 짜고 판정합니다." },
       { slug: "mockups", label: "시안", desc: "목업 제작·판정·게시. 내 시안과 갤러리.", auth: true },
-      { slug: "components", label: "컴포넌트", desc: "시안에서 뽑은 키트 부품과 React·Vue 코드 받기.", auth: true },
+      { slug: "components", label: "컴포넌트", desc: "시안이 쓰는 키트 부품과 React·Vue 화면 코드 받기.", auth: true },
     ],
   },
   {

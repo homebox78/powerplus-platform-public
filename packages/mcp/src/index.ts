@@ -40,6 +40,7 @@ import { AssemblyResult, taxonomy } from "@pp/shared";
 import { registerGuideTools } from "./tools/guide.ts";
 import { registerDeckKitTools } from "./tools/deck-kit.ts";
 import { absolutizeUrls, buildCallBlocks, CALL_RECORD_SKIP, collectImages, moduleOf } from "./call-record.ts";
+import { judgeRecordHeaders, judgeOrg, planHeaders, rememberOrg, sha256Hex, wireQuery } from "./tools/mock-judge.ts";
 import { registerMockWireTools, resolveWire, wireContent, mergeWireKit, compactWire, wireArg, wireIdArg, type WireDoc } from "./tools/mock-wire.ts";
 
 // ---------------------------------------------------------------- [공통] 설정·별칭·백엔드 호출
@@ -88,7 +89,8 @@ const scopeOf = (tool: string) => (tool.split("_")[0] ?? "all");
  *  플랜 판정은 플랫폼 /keys/verify 한 곳(staff·pro·team·admin = pro). 레퍼런스 엔진은 서비스 키가 유효할 때만 이 헤더를 믿는다
  *  (2026-10-09 시험: staff 키가 "Pro 이상" 402 — 엔진이 서비스 키 소유자 구독만 보고 있었다). */
 function legacyHeaders(plan: "pro" | "free", accept = "application/json"): Record<string, string> {
-  const headers: Record<string, string> = { Accept: accept, "X-Pp-Plan": plan };
+  // 서명(MC-131): 엔진이 서명이 맞을 때만 X-Pp-Plan 을 믿는다 — 예전엔 아무 유효 키나 헤더만 붙이면 staff 로 올라갔다
+  const headers: Record<string, string> = { Accept: accept, "X-Pp-Plan": plan, ...planHeaders(JUDGE_SECRET, plan) };
   if (LEGACY_KEY) { headers.Authorization = `Bearer ${LEGACY_KEY}`; headers["X-Homebox-Key"] = LEGACY_KEY; }
   return headers;
 }
@@ -671,7 +673,7 @@ function buildServer(key: string | null): McpServer {
     const g = await guard("mock_get_main_mockup"); if (g) return g;
     let wd: { id: string | null; wire: WireDoc } | null = null;
     if (a.wire_id || a.wire) { const rw = await resolveWire({ pp, key, ppMsg }, { wire: a.wire, wire_id: a.wire_id }, true); if (!rw.ok) return err(rw.message, rw.code); wd = rw; }
-    const r = await get<Record<string, unknown> & { html?: string; sample_images?: SampleImage[]; site_slug?: string; screen_id?: number }>(`/mockups/main?${qs({ org_type: a.org_type, org_name: a.org_name, project: a.project, ref: a.ref, rank: a.rank, wire: wd ? JSON.stringify(compactWire(wd.wire)) : undefined, wire_ref: wd?.id ?? undefined })}`);
+    const r = await get<Record<string, unknown> & { html?: string; sample_images?: SampleImage[]; site_slug?: string; screen_id?: number }>(`/mockups/main?${qs({ org_type: a.org_type, org_name: a.org_name, project: a.project, ref: a.ref, rank: a.rank, ...(wd ? wireQuery(compactWire(wd.wire)) : {}), wire_ref: wd?.id ?? undefined })}`);
     const html = (r.html ?? "").replace(/src="(\/[^"]*\/api\/samples\/file\/|\/api\/samples\/file\/)/g, (_m, p: string) => `src="${PUBLIC_ORIGIN}${p}`);
     return { content: [{ type: "text" as const, text: JSON.stringify({ ...r, html, sample_images: (r.sample_images ?? []).map(absSample), attribution: ATTRIBUTION }) }] };
   });
@@ -695,7 +697,7 @@ function buildServer(key: string | null): McpServer {
     const g = await guard("mock_build_homepage"); if (g) return g;
     let wd: { id: string | null; wire: WireDoc } | null = null;
     if (a.wire_id || a.wire) { const rw = await resolveWire({ pp, key, ppMsg }, { wire: a.wire, wire_id: a.wire_id }, true); if (!rw.ok) return err(rw.message, rw.code); wd = rw; }
-    const r = await get<{ main?: { html?: string; sample_images?: SampleImage[] }; pages?: { html?: string; sample_images?: SampleImage[] }[] } & Record<string, unknown>>(`/mockups/site?${qs({ org_type: a.org_type, org_name: a.org_name, project: a.project, ref: a.ref, rank: a.rank, pages: a.pages, primary: a.primary, font: a.font, wire: wd ? JSON.stringify(compactWire(wd.wire)) : undefined, wire_ref: wd?.id ?? undefined })}`);
+    const r = await get<{ main?: { html?: string; sample_images?: SampleImage[] }; pages?: { html?: string; sample_images?: SampleImage[] }[] } & Record<string, unknown>>(`/mockups/site?${qs({ org_type: a.org_type, org_name: a.org_name, project: a.project, ref: a.ref, rank: a.rank, pages: a.pages, primary: a.primary, font: a.font, ...(wd ? wireQuery(compactWire(wd.wire)) : {}), wire_ref: wd?.id ?? undefined })}`);
     const abs = (h?: string) => (h ?? "").replace(/src="(\/[^"]*\/api\/samples\/file\/|\/api\/samples\/file\/)/g, (_m, p: string) => `src="${PUBLIC_ORIGIN}${p}`);
     const main = r.main ? { ...r.main, html: abs(r.main.html), sample_images: (r.main.sample_images ?? []).map(absSample) } : r.main;
     const pages = (r.pages ?? []).map((p) => ({ ...p, html: abs(p.html), sample_images: (p.sample_images ?? []).map(absSample) }));
@@ -730,7 +732,7 @@ function buildServer(key: string | null): McpServer {
       if (!rw.ok) return err(rw.message, rw.code, "wire_id 는 내 와이어 id, wire 는 {screen, org, rows:[{zone, cols:[{k, span}]}]} 꼴");
       wd = rw;
     }
-    const r = await get<Record<string, unknown> & { reference?: { capture_url?: string | null; site_slug?: string; screen_id?: number; width?: number; height?: number } }>(`/mockups/replica?${qs({ org_type: a.org_type, org_name: a.org_name ?? wd?.wire.org_name, project: a.project, ref: a.ref, rank: a.rank, page: wd ? wd.wire.screen : a.page, primary: a.primary, width: a.width, font: a.font, lang: a.lang, icon_style: a.icon_style, wire: wd ? JSON.stringify(compactWire(wd.wire)) : undefined, wire_ref: wd?.id ?? undefined })}`);
+    const r = await get<Record<string, unknown> & { reference?: { capture_url?: string | null; site_slug?: string; screen_id?: number; width?: number; height?: number } }>(`/mockups/replica?${qs({ org_type: a.org_type, org_name: a.org_name ?? wd?.wire.org_name, project: a.project, ref: a.ref, rank: a.rank, page: wd ? wd.wire.screen : a.page, primary: a.primary, width: a.width, font: a.font, lang: a.lang, icon_style: a.icon_style, ...(wd ? wireQuery(compactWire(wd.wire)) : {}), wire_ref: wd?.id ?? undefined })}`);
     const ref = r.reference ?? {};
     const cbox = (ref as { content?: { x: number; w: number } }).content;
     const zoom = a.zoom && cbox ? { x: cbox.x, w: cbox.w, vw: ref.width ?? 1920 } : undefined;
@@ -807,10 +809,7 @@ function buildServer(key: string | null): McpServer {
     // 판정 기록은 서명해서 보낸다 — 플랫폼이 이 서명 없는 점수·통과를 받지 않는다(mock.php)
     let headers: Record<string, string> | undefined;
     const m = p.match(/^mockup-pages\/([^/]+)\/check$/);
-    if (m && JUDGE_SECRET) {
-      const score = Math.max(0, Math.min(100, Math.trunc(Number(body.score) || 0)));
-      headers = { "X-Pp-Judge": createHmac("sha256", JUDGE_SECRET).update(`${decodeURIComponent(m[1] ?? "")}|${score}|${body.pass ? 1 : 0}`).digest("hex") };
-    }
+    if (m && JUDGE_SECRET) headers = judgeRecordHeaders(JUDGE_SECRET, decodeURIComponent(m[1] ?? ""), body.score, body.pass, String(body.html_sha256 ?? ""));
     const r = await pp<Record<string, unknown>>(route, key, { method: "POST", body, headers });
     const json = (r.ok ? (r.data ?? {}) : { error: { code: r.body?.code, message: ppMsg(r, "요청 실패") } }) as (Record<string, unknown> & { error?: { code?: string; message?: string } });
     return { ok: r.ok, status: r.status, json };
@@ -864,8 +863,6 @@ function buildServer(key: string | null): McpServer {
     return text(r);
   });
 
-  // 다시 판정(token)할 때 앞서 받은 기관명을 쓴다(D5) — 프로세스 안에만 둔다
-  const checkOrg = new Map<string, string>();
   server.registerTool("mock_check_mockup", {
     title: "시안 판정(보관·렌더·대조·고칠 목록)",
     description: "mock_get_replica_kit 으로 만든 시안을 홈박스가 보관하고 실제 브라우저로 렌더해 판정한다 — 레퍼런스와 줄·칸 수·높이·밝기 구성 대조(와이어 묶음 ref_id(wire1:…)이거나 wire_id·wire 를 주면 레퍼런스 대신 와이어와 줄 순서·칸 수·칸 폭·칸 종류를 대조하는 wire_match — 와이어와 다르면 치명, 높이는 참고만), 레퍼런스 기관 정보 노출, 안 뜨는 이미지·외부 이미지, 빈 칸·글자 기호·세로 중심 게이트, 캐러셀·탭·메뉴·레이어·검색 실제 동작. 점수(100)·고칠 목록(fixes)·token 을 주고, Pro 면 레퍼런스|시안 나란히 이미지도 준다(와이어 묶음이면 와이어 도식|시안). 85점 이상·치명 항목 0 이 통과. ① 처음: mock_check_mockup(ref_id, html). ② 미통과: HTML 을 처음부터 다시 쓰지 말고 mock_check_mockup(token, edits=[{find, replace}]) 로 고친 부분만 보낸다(find 는 시안 원문에 한 번만 나오는 글자 그대로). ③ 통과: mock_publish_mockup(token). 미통과인 채로 끝내지 않는다(미통과 시안은 목록·갤러리에 남지 않는다). 받아쓰기 줄이기: 동작 스크립트는 <script data-hb-behavior></script> 한 줄만 적으면 채워지고, 서브 페이지는 base_token 과 <!--hb:use style|header|footer--> 로 메인의 공통 부분을 채운다. 한 번에 수십 초 걸린다. 부르기 전에 mock_get_replica_kit 응답 맨 앞의 preflight 항목(가로 스크롤·반응형·본문 폭·세로 간격·높이·동작·주 메뉴·호버·서브 비주얼·게이트 등 — 개수는 응답 preflight 그대로)을 직접 확인하면 한 번에 통과한다.",
@@ -888,7 +885,7 @@ function buildServer(key: string | null): McpServer {
     if (!a.html && !a.token) return err("처음 판정은 html, 다시 판정은 token(+edits)이 필요합니다.", "INVALID_ARGS", "처음: mock_check_mockup(ref_id, html) · 다시: mock_check_mockup(token, edits)", { field: "html" });
     if (!refId && !a.token) return err("처음 판정에는 ref_id 가 필요합니다(mock_get_replica_kit 응답의 reference.ref_id).", "INVALID_ARGS", "다시 판정할 때는 token 만 주면 보관된 시안의 ref_id 를 쓴다", { field: "ref_id" });
     // 보관(새 HTML 또는 고친 부분 적용) → 적용된 HTML 을 받아 렌더한다. 다시 판정(token)은 ref_id 를 안 줘도 보관된 시안의 ref_id 를 쓴다
-    const d = await internal("mockup-pages", { mode: "draft", token: a.token, base_token: a.base_token, html: a.html, edits: a.edits, title: a.title, ref_id: refId });
+    const d = await internal("mockup-pages", { mode: "draft", token: a.token, base_token: a.base_token, html: a.html, edits: a.edits, title: a.title, ref_id: refId, device: a.device });
     if (!d.ok || !d.json?.token) return err(d.json?.error?.message ?? `시안을 보관하지 못했습니다(HTTP ${d.status}).`, d.json?.error?.code ?? "ERROR");
     if (!refId) refId = String(d.json.ref_id ?? "");
     if (!refId) return err("이 시안에는 보관된 ref_id 가 없습니다. ref_id 를 함께 보내세요(mock_get_replica_kit 응답의 reference.ref_id).", "INVALID_ARGS", undefined, { field: "ref_id" });
@@ -916,8 +913,10 @@ function buildServer(key: string | null): McpServer {
     const usedJudge = (!ref.capture_url && !!ref.judge_url) || !!ref.pieces?.some((p) => !p.capture_url && !!p.judge_url);
     ref = { ...ref, judge_url: undefined, pieces: ref.pieces?.map(({ judge_url: _j, ...p }) => p) };
     const token = String(d.json.token); const html = String(d.json.html ?? "");
-    if (a.org_name) { checkOrg.set(token, a.org_name); if (checkOrg.size > 2000) checkOrg.delete(checkOrg.keys().next().value as string); }
-    const want = a.org_name ?? checkOrg.get(token) ?? "";
+    rememberOrg(token, a.org_name);
+    const want = judgeOrg(token, a.org_name, d.json.org_name);
+    // 기기는 보관된 값이 기본 — 다시 판정에서 device 를 빼도 모바일 시안을 PC 폭으로 재지 않는다(MC-128)
+    const device = a.device ?? (d.json.device === "mobile" ? "mobile" : "pc");
     try {
       const { checkMockup } = await import("./qa/check.mjs");
       const pw = await import("playwright-core");
@@ -929,19 +928,24 @@ function buildServer(key: string | null): McpServer {
       // 판정 브라우저는 사용자 HTML 을 그리므로 샌드박스를 켠다(O-34). Playwright 는 chromiumSandbox:true 를 줘야 --no-sandbox 를 안 붙인다(args 에서 빼는 것만으론 안 켜진다). 서버는 AppArmor 프로필(scripts/apparmor-pw-headless-shell)이 있어야 뜬다 —
       // 프로필이 없는 서버(이관 직후 등)에선 PP_JUDGE_NO_SANDBOX=1 로 예전처럼 끌 수 있다
       const judgeArgs = engine === "chromium" ? [...(process.env.PP_JUDGE_NO_SANDBOX === "1" ? ["--no-sandbox"] : []), "--disable-dev-shm-usage"] : [];
-      const { result, compare, thumb } = await checkMockup({ html, ref, refImage, sharp, want, textKeys: await textSampleKeys(key), iconKeys: textKeyCache.icons, peers: Array.isArray(d.json.peers) ? d.json.peers : [], width: a.device === "mobile" ? 390 : 1920, wire: judgeWire, launch: () => pw[engine].launch({ args: judgeArgs, chromiumSandbox: engine === "chromium" && process.env.PP_JUDGE_NO_SANDBOX !== "1", handleSIGTERM: false, handleSIGINT: false, handleSIGHUP: false }) });
-      const rec = await internal(`mockup-pages/${token}/check`, { score: result.score, pass: result.pass, ref_id: refId, result: { ...result, rows: undefined }, thumb: thumb ? thumb.toString("base64") : undefined, device: a.device ?? "pc", page: refId.startsWith("mix1:") ? "main" : judgeWire?.screen ?? String((ref as { page_type?: string }).page_type ?? "") }).catch(() => null);
+      const { result, compare, thumb } = await checkMockup({ html, ref, refImage, sharp, want, textKeys: await textSampleKeys(key), iconKeys: textKeyCache.icons, peers: Array.isArray(d.json.peers) ? d.json.peers : [], width: device === "mobile" ? 390 : 1920, wire: judgeWire, launch: () => pw[engine].launch({ args: judgeArgs, chromiumSandbox: engine === "chromium" && process.env.PP_JUDGE_NO_SANDBOX !== "1", handleSIGTERM: false, handleSIGINT: false, handleSIGHUP: false }) });
+      const rec = await internal(`mockup-pages/${token}/check`, { score: result.score, pass: result.pass, html_sha256: sha256Hex(html), ref_id: refId, result: { ...result, rows: undefined, ...(want ? { org_name: want } : {}) }, thumb: thumb ? thumb.toString("base64") : undefined, device, page: refId.startsWith("mix1:") ? "main" : judgeWire?.screen ?? String((ref as { page_type?: string }).page_type ?? "") }).catch(() => null);
       // 기록이 안 되면 점수·통과가 DB 에 NULL 로 남아 게시가 막힌다 — 조용히 넘기지 않고 로그에 남긴다(PP_JUDGE_SECRET 누락이 흔한 원인)
       if (!rec?.ok) console.error(`[mcp] 판정 기록 실패 token=${token.slice(0, 8)} status=${rec?.status ?? "-"} ${rec?.json?.error?.message ?? ""}${JUDGE_SECRET ? "" : " (PP_JUDGE_SECRET 없음)"}`);
       console.log(`[mcp] mock_check_mockup key=${keyId} token=${token.slice(0, 8)} ref=${refId.slice(0, 40)} score=${result.score} pass=${result.pass}${result.wire_match ? ` wire=${result.wire_match.score}${result.wire_match.pass ? "" : "x"}` : ""} fixes=${result.fixes.length}[${result.fixes.map((f: string) => String(f).split(/[ ·:(—]/)[0]).join(",")}] n=${a.token ? "re" : 1} bytes=${html.length}${a.edits ? ` edits=${a.edits.length}` : ""}`);
       // 기록이 안 됐는데 '통과 — 게시하라'고 하면 게시가 NOT_PASSED(409)로 막히고, 오류 글이 "fixes 를 고쳐 다시 판정"이라 AI 가 같은 원인으로
       // 판정을 되풀이하며 하루 한도를 썼다(2026-10-18 전수조사 B/C). 기록 실패는 결과에 싣고 다음 할 일을 바꾼다.
       const recorded = !!rec?.ok;
-      const next = result.pass && !recorded
+      // 판정하는 동안 시안이 바뀌면 플랫폼이 기록을 거부한다(MC-127) — 시안 탓도 서버 탓도 아니니 그대로 한 번 더 판정하게 한다
+      const htmlChanged = rec?.json?.error?.code === "HTML_CHANGED";
+      const unpublished = rec?.json?.unpublished === true ? ` 게시돼 있던 주소는 내렸다 — 통과한 뒤 같은 token 으로 mock_publish_mockup 을 다시 부르면 같은 주소로 열린다.` : "";
+      const next = htmlChanged
+        ? `판정하는 동안 이 시안이 바뀌어(다른 호출의 수정) 결과를 기록하지 않았다. 바뀐 내용으로 mock_check_mockup(token="${token}") 을 다시 부른다. 같은 token 으로 판정을 겹쳐 부르지 않는다.`
+        : result.pass && !recorded
         ? `판정은 통과(${result.score}점)했지만 결과가 서버에 기록되지 않아 아직 게시할 수 없다(시안 탓 아님 — 판정기·서버 문제). 시안을 고치지 말고 mock_check_mockup(token="${token}") 을 한 번만 다시 부른다. 또 record_saved=false 면 멈추고 사용자에게 "판정 기록 실패 — 관리자 확인 필요"라고 알린다.`
         : result.pass
         ? `통과 — mock_publish_mockup(token="${token}") 으로 게시하고, 받은 url(미리보기)·download_url(HTML 파일)을 답 마지막에 준다. HTML 을 다시 보내지 않고 아티팩트로도 띄우지 않는다(파워에셋 사진이 엑스박스로 보인다).`
-        : `미통과(${result.score}점) — fixes 를 위에서부터 고친다. HTML 전체를 다시 보내지 말고 mock_check_mockup(token="${token}", edits=[{find, replace}]) 로 고친 부분만 보낸다(ref_id 는 다시 안 줘도 된다). 85점 이상·치명 0 이 통과. 통과할 때까지 반복한다 — 미통과 시안은 사용자 목록·갤러리에 남지 않고 하루 뒤 지워지므로, 미통과인 채로 작업을 끝내거나 결과로 내놓지 않는다.`;
+        : `미통과(${result.score}점) — fixes 를 위에서부터 고친다. HTML 전체를 다시 보내지 말고 mock_check_mockup(token="${token}", edits=[{find, replace}]) 로 고친 부분만 보낸다(ref_id 는 다시 안 줘도 된다). 85점 이상·치명 0 이 통과. 통과할 때까지 반복한다 — 미통과 시안은 사용자 목록·갤러리에 남지 않고 하루 뒤 지워지므로, 미통과인 채로 작업을 끝내거나 결과로 내놓지 않는다.${unpublished}`;
       // 디자이너 선호 조언(2026-10-03) — 시안에 든 요소에 맞는 designus 투표 규칙. 점수에는 넣지 않는다(조언)
       const preference_tips = Array.isArray(d.json.pref_tips) && d.json.pref_tips.length ? { how: "디자이너 A/B 투표에서 뚜렷하게 갈린 결과다. 시안의 같은 요소가 instead_of 쪽이면 rule 쪽으로 바꾸는 것을 권한다(감점 없음).", tips: d.json.pref_tips } : undefined;
       // 개선 체크리스트 되먹임(2026-10-15) — 다른 시안들에서 반복된 결함. fixes 와 별개로, 지금 시안에 같은 것이 없는지 보게 한다(점수에는 넣지 않는다)
@@ -952,6 +956,8 @@ function buildServer(key: string | null): McpServer {
       else if (pro && compare?.slices?.length) compare.slices.slice(0, 6).forEach((s, i) => content.push({ type: "text", text: judgeWire ? `[나란히 ${i + 1}] 왼쪽 와이어 도식(빨강 = 안 맞는 줄, 점선 = 시안에 없는 줄) · 오른쪽 시안 (y ${s.from}~${s.to})` : `[나란히 ${i + 1}] 왼쪽 레퍼런스 · 오른쪽 시안 (y ${s.from}~${s.to})` }, { type: "image", data: s.jpeg.toString("base64"), mimeType: "image/jpeg" }));
       return { content };
     } catch (e) {
+      // 시간 초과(MC-126)는 같은 HTML 로 다시 불러도 또 멈춘다 — 스크립트를 고치게 한다
+      if ((e as { code?: string }).code === "JUDGE_TIMEOUT") return err(`${String((e as Error).message)} 시안 스크립트를 고쳐 mock_check_mockup(token="${token}", edits) 으로 다시 판정한다. 같은 HTML 을 그대로 다시 부르지 않는다.`, "JUDGE_TIMEOUT");
       return err(`판정 렌더에 실패했습니다: ${String((e as Error).message).slice(0, 200)} (시안은 token="${token}" 으로 보관돼 있다 — 같은 token 으로 다시 부른다)`, "RENDER_FAILED");
     }
   });

@@ -98,5 +98,25 @@
   "base_em": 0.3549,
   "scale": 0.9901,
   "lo_em": 0.0356
+ },
+ "Freesentation 3 Light": {
+  "base_em": 0.364,
+  "scale": 1.0087
+ },
+ "Pretendard Light": {
+  "base_em": 0.3597,
+  "scale": 0.98
+ },
+ "a시월구일2": {
+  "base_em": 0.3623,
+  "scale": 0.9857
+ },
+ "a시월구일3": {
+  "base_em": 0.3621,
+  "scale": 0.9931
+ },
+ "a시월구일4": {
+  "base_em": 0.3627,
+  "scale": 0.9952
  }
 }

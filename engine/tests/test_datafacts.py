@@ -413,13 +413,21 @@ def test_mockup_fit_sends_two_images():
 def test_fidelity_parse_robust():
     assert Q.parse('```json\n{"score": 86, "layout_ok": true, "numbers_ok": true, "missing": []}\n```')["score"] == 86
     assert Q.parse('판정: {"score": "62", "layout_ok": "false", "missing": "연도별 건수, 결론"}') == {
-        "score": 62, "layout_ok": False, "numbers_ok": True, "missing": ["연도별 건수", "결론"], "extra": [], "moved": [], "note": ""}
+        "score": 62, "layout_ok": False, "numbers_ok": True, "missing": ["연도별 건수", "결론"], "extra": [], "moved": [], "uneven": [], "note": ""}
     assert Q.parse('{"score": 0.9}')["score"] == 90
     assert Q.parse('{"score": 140}')["score"] == 100
     assert Q.parse('{"score": null, "error": "no_vision"}') is None
     assert Q.parse("I cannot see images.") is None and Q.parse("") is None
     assert Q.parse("Score: 55 — layout differs")["score"] == 55
     assert Q.need_retry(Q.parse('{"score": 80, "layout_ok": false}')) and not Q.need_retry(Q.parse('{"score": 80}'))
+    # 끝선 어긋남·빈 칸은 점수가 높아도 다시 그린다(11-03) — 새 배지만 덧붙은 건 점수로만
+    assert Q.need_retry(Q.parse('{"score": 90, "uneven": ["범 부처"]}')) and Q.need_retry(Q.parse('{"score": 90, "extra": ["empty: 운영 체계화"]}'))
+    assert not Q.need_retry(Q.parse('{"score": 90, "extra": ["새 배지"]}'))
+    # 빈 칸 목록 밖 그림 — 다시 그리고, 그 그림만 빼라(10차 시험)
+    ri = Q.parse('{"score": 85, "extra": ["illustration: R&R 경계 모호", "새 배지"]}')
+    assert Q.need_retry(ri) and "Remove the illustration / 3D object from these blocks and leave their layout and text as they are: R&R 경계 모호" in Q.fix_text(ri)
+    t = Q.fix_text(Q.parse('{"score": 80, "extra": ["empty: 운영 체계화", "새 배지"], "uneven": ["범 부처"]}'))
+    assert "Fill these large empty areas" in t and "Remove what is not in the wireframe: 새 배지" in t and "same bottom line" in t and "empty:" not in t, t
     assert Q.better(Q.parse('{"score": 60}'), Q.parse('{"score": 75}')) and not Q.better(Q.parse('{"score": 80}'), Q.parse('{"score": 75}'))
 
 

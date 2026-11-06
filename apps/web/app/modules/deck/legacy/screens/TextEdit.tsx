@@ -1,6 +1,6 @@
 // 글 고치기(장 목록 | 가운데 | 오른쪽 패널) — 출처: powerDeck web/src/screens/TextEdit.tsx (옛 화면 그대로 이식, eslint.config.js legacy 구역).
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { api, fileUrl, isEditing, type Job } from "../api";
+import { api, editFailure, fileUrl, isEditing, type Job } from "../api";
 import { cn, Ms, useToastOn } from "../ui";
 
 type Item = { id: string; x: number; y: number; w: number; h: number; text: string; key?: boolean };
@@ -15,8 +15,9 @@ export function Thumbs({ items, sel, onSel }: { items: { n: number; src: string;
     <div className="pd-rail border-r border-line overflow-y-auto scroll-thin p-3 flex flex-col gap-3 bg-panel min-h-0">
       {items.map((s) => (
         <button key={s.n} onClick={() => onSel(s.n)} aria-label={`${s.label ?? `${s.n}쪽`} 보기`} aria-current={sel === s.n} className="border-0 bg-transparent p-0 text-left flex flex-col gap-1 items-stretch flex-none">
-          <span className="relative block w-full aspect-[16/9] bg-white rounded-md overflow-hidden" style={{ boxShadow: sel === s.n ? "0 0 0 2px var(--color-point)" : "0 0 0 1px var(--color-line)" }}>
-            <img src={s.src} alt="" loading="lazy" className="absolute inset-0 w-full h-full object-contain" />
+          {/* 틀 비율은 그림 비율대로 — 16:9 틀에 13:9 장표를 넣으면 좌우에 흰 여백이 생겼다(10-28 사용자) */}
+          <span className="relative block w-full bg-white rounded-md overflow-hidden min-h-[40px]" style={{ boxShadow: sel === s.n ? "0 0 0 2px var(--color-point)" : "0 0 0 1px var(--color-line)" }}>
+            <img src={s.src} alt="" loading="lazy" className="block w-full h-auto" />
             {!!s.badge && <span className="absolute right-1 top-1 min-w-[18px] h-[18px] px-1 rounded-full bg-orange text-white text-[12px] font-bold inline-flex items-center justify-center">{s.badge}</span>}
           </span>
           <span className={cn("text-[12px]", sel === s.n ? "text-orange-d font-semibold" : "text-dim")}>{s.label ?? `${s.n}쪽`}</span>
@@ -50,11 +51,11 @@ export function TextEdit({ job, onChange, toolbar, sel: selProp, onSel }: { job:
   // 반영 중 — 엔진이 그 글만 바꿔 다시 렌더하는 동안. 끝나면 고친 목록을 비우고 새 그림·글 위치를 받는다
   const editing = isEditing(job);
   const was = useRef(false);
+  const failed = editFailure(job.events);   // 실패하면 고친 글을 지우지 않는다 — 그대로 다시 보낼 수 있게(R152)
   useEffect(() => {
-    if (was.current && !editing) { setBusy(false); setEdits({}); setPick(null); }
+    if (was.current && !editing) { setBusy(false); if (!failed) { setEdits({}); setPick(null); } }
     was.current = editing;
-  }, [editing]);
-  const last = (job.events ?? []).slice(-1)[0];
+  }, [editing, failed]);
   const box = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
@@ -97,6 +98,7 @@ export function TextEdit({ job, onChange, toolbar, sel: selProp, onSel }: { job:
               <div className="sec-title !whitespace-normal">장표의 글을 바로 고칠 수 있습니다</div>
               <div className="text-[14px] text-ink2 mt-2 leading-[1.75] break-keep">장표 그림에서 글을 눌러 그 자리에서 고치면, AI 를 다시 돌리지 않고 그 글만 바꿉니다.<br />이 작업은 글 위치 정보가 아직 없어 먼저 한 번 읽어 와야 합니다(1분 안팎, 비용 없음).</div>
               {err && <div className="mt-3 text-[13px] font-semibold text-[var(--color-warn)]">{err}</div>}
+              {!editing && failed && <div role="alert" className="mt-3 text-[13px] font-semibold text-[var(--color-warn)]">{failed}</div>}
               <button className="btn-next mt-5 mx-auto min-w-[220px] justify-center" disabled={busy || (mapFile != null && !map)} onClick={() => send([])}><Ms name="find_in_page" size={19} />{busy ? "요청 중…" : mapFile ? "읽는 중…" : "글 위치 읽어 오기"}</button>
             </div>
           </div>
@@ -107,8 +109,8 @@ export function TextEdit({ job, onChange, toolbar, sel: selProp, onSel }: { job:
                 <i className="w-2.5 h-2.5 rounded-full bg-orange pulse flex-none" />장표에 반영하는 중입니다 — 고친 장만 다시 그려 30초 안팎이면 바뀝니다. 이 화면에 그대로 계시면 됩니다.
               </div>
             )}
-            {!editing && last?.kind === "warn" && /글 고치기에 실패/.test(last.message) && (
-              <div className="mb-3 rounded-md bg-[var(--color-warn-soft)] border border-[var(--color-warn-line)] px-3.5 py-2.5 text-[13.5px] text-[var(--color-warn)]">{last.message}</div>
+            {!editing && failed && (
+              <div role="alert" className="mb-3 rounded-md bg-[var(--color-warn-soft)] border border-[var(--color-warn-line)] px-3.5 py-2.5 text-[13.5px] text-[var(--color-warn)]">{failed} 고친 글은 그대로 남아 있습니다. 다시 반영해 보세요.</div>
             )}
             <div className="relative mx-auto w-full bg-white rounded-md overflow-hidden shadow-[0_1px_3px_rgba(17,17,17,.08),0_0_0_1px_var(--color-line)]" style={{ maxWidth: `calc((100vh - 260px) * ${ratio})` }}>
               {img && <img src={fileUrl(job.id, "after", img.name) + `&v=${img.ts ?? 0}`} className="block w-full select-none" alt="" draggable={false}

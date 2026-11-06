@@ -20,6 +20,7 @@ use Pp\Core\Actor;
 use Pp\Core\Audit;
 use Pp\Core\Config;
 use Pp\Core\Db;
+use Pp\Core\DisplayName;
 use Pp\Core\HttpError;
 use Pp\Core\Response;
 use Pp\Core\Router;
@@ -40,7 +41,7 @@ return static function (Router $r): void {
         'has_billing_key' => $s['billing_key_enc'] !== null && $s['billing_key_enc'] !== '', 'memo' => $s['memo'],
         'period_start' => $s['current_period_start'], 'period_end' => $s['current_period_end'], 'canceled_at' => $s['canceled_at'],
         'created_at' => $s['created_at'],
-        'owner' => ['type' => $s['owner_type'], 'id' => $s['u_pid'], 'name' => $s['u_name'], 'email' => $s['u_email']],
+        'owner' => ['type' => $s['owner_type'], 'id' => $s['u_pid'], 'name' => DisplayName::of($s['u_name'], $s['u_email']), 'email' => $s['u_email']],
     ];
     $subRow = static function (string $pid): array {
         $s = Db::row('SELECT * FROM core_subscriptions WHERE public_id = ?', [$pid]);
@@ -144,7 +145,7 @@ return static function (Router $r): void {
             'amount' => (int) $i['amount_krw'] + (int) $i['vat_krw'], 'vat' => (int) $i['vat_krw'], 'status' => $i['status'],
             'pg' => $i['pg_payment_key'] !== null && $i['pg_payment_key'] !== '', 'receipt_url' => $i['receipt_url'],
             'issued_at' => $i['issued_at'], 'paid_at' => $i['paid_at'], 'refunded_at' => $i['refunded_at'],
-            'user' => ['id' => $i['u_pid'], 'name' => $i['u_name'], 'email' => $i['u_email']],
+            'user' => ['id' => $i['u_pid'], 'name' => DisplayName::of($i['u_name'], $i['u_email']), 'email' => $i['u_email']],
         ], $rows), $total, $page, $limit);
     }, ['auth' => true]);
 

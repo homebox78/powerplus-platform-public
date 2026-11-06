@@ -88,7 +88,7 @@ return static function (Router $r): void {
         [$visSql, $visParams] = \Pp\Core\Access::whereVisible($a, 'i');
         $row = Db::row("SELECT COUNT(*) AS total, SUM(i.category = 'icon') AS icon, SUM(i.category = 'photo') AS photo
                         FROM asset_items i WHERE i.deleted_at IS NULL AND i.category <> 'mockup_sample' AND {$visSql}", $visParams) ?? [];
-        $gallery = (int) (Db::row("SELECT COUNT(*) AS n FROM mock_gallery WHERE status = 'shared'")['n'] ?? 0);
+        $gallery = (int) (Db::row("SELECT COUNT(*) AS n FROM mock_gallery g JOIN mock_mockups m ON m.id = g.mockup_id WHERE g.status = 'shared' AND m.deleted_at IS NULL")['n'] ?? 0);
         $parts = count(\Pp\Guide\Data::registry()['metas'] ?? []);
         Response::json([
             'assets' => (int) ($row['total'] ?? 0), 'icons' => (int) ($row['icon'] ?? 0), 'photos' => (int) ($row['photo'] ?? 0),

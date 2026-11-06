@@ -4,7 +4,7 @@ import { Trash2 } from "lucide-react";
 import { BulkBar, useSelection } from "@/components/admin/admin-ui";
 import { Checkbox } from "@/components/ui/checkbox";
 import { postJson } from "@/lib/api";
-import { api, fileUrl, fmtSize, usd, type Job } from "../api";
+import { api, fileUrl, fmtSize, listLoadState, usd, type Job } from "../api";
 import { Arrow, Modal, Ms, STATUS, Seg, StatusPill, cn, parseTs, useToastOn, useContextMenu, type CtxItem } from "../ui";
 import { stageLabel } from "../stages";
 import { DESIGN_TYPES } from "../DesignTypes";
@@ -42,8 +42,8 @@ function Opts({ job }: { job: Job }) {
 }
 
 const kindLabel = (j: Job) => (j.kind === "design" ? <>내용<Arrow size={14} />장표</> : "초안 다듬기");
-/** 진행 중 · 확인 대기 — 취소할 수 있는 작업 */
-const isLive = (j: Job) => j.status === "queued" || j.status === "running" || j.status === "review";
+/** 진행 중 · 확인 대기 · 시작 대기 — 취소할 수 있는 작업(시작 대기도 동시 진행 한도에 들어가 취소할 수 있어야 한다, 10-28 점검 D14) */
+const isLive = (j: Job) => j.status === "queued" || j.status === "running" || j.status === "review" || j.status === "hold";
 
 /** 단계 칸에 보일 말 — 진행률·대기 순번·확인 대기·멈춘 단계 */
 /** 카드의 상태 꼬리표 옆 말 — 꼬리표와 겹치는 "완료"·"실패"·"취소됨"은 빼고 남는 정보만 */
@@ -91,8 +91,8 @@ function Thumb({ job, card }: { job: Job; card?: boolean }) {
 }
 
 /** 내 작업 — 창을 닫았다 와도 여기서 이어 본다. 목록·카드 보기, 작업마다 제목 편집·취소·삭제. */
-export function JobList({ jobs, all, isAdmin, onToggleAll, onOpen, onNew, onChanged }: {
-  jobs: Job[] | null; all: boolean; isAdmin: boolean; onToggleAll: () => void; onOpen: (id: string) => void; onNew: () => void; onChanged: () => void;
+export function JobList({ jobs, loadErr = null, all, isAdmin, onToggleAll, onOpen, onNew, onChanged }: {
+  jobs: Job[] | null; loadErr?: string | null; all: boolean; isAdmin: boolean; onToggleAll: () => void; onOpen: (id: string) => void; onNew: () => void; onChanged: () => void;
 }) {
   const [busy, setBusy] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
@@ -211,7 +211,14 @@ export function JobList({ jobs, all, isAdmin, onToggleAll, onOpen, onNew, onChan
 
       <div className="pd-grow px-6 py-4">
         {err && <div role="alert" className="mb-3 flex items-center gap-1.5 text-[13px] font-semibold text-[var(--color-warn)]"><Ms name="error" size={18} />{err}</div>}
-        {jobs === null ? (
+        {listLoadState(jobs, loadErr) === "error" ? (
+          <div className="mt-16 flex flex-col items-center text-center" role="alert">
+            <span className="w-14 h-14 rounded-full bg-bar grid place-items-center text-faint"><Ms name="error" size={28} /></span>
+            <div className="mt-4 text-[14px] font-bold">작업 목록을 불러오지 못했습니다</div>
+            <div className="mt-1 text-[13px] text-dim break-keep">{loadErr}</div>
+            <button className="btn-next mt-5" onClick={onChanged}><Ms name="refresh" size={19} />다시 불러오기</button>
+          </div>
+        ) : jobs === null ? (
           <div className="mt-16 flex flex-col items-center text-center" role="status">
             <span className="w-14 h-14 rounded-full bg-bar grid place-items-center text-faint"><Ms name="hourglass_top" size={28} className="pulse" /></span>
             <div className="mt-4 text-[14px] font-bold text-dim">작업 목록을 불러오는 중…</div>

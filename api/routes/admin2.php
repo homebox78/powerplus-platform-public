@@ -11,6 +11,7 @@ use Pp\Core\Actor;
 use Pp\Core\Audit;
 use Pp\Core\Auth;
 use Pp\Core\Db;
+use Pp\Core\DisplayName;
 use Pp\Core\HttpError;
 use Pp\Core\Ids;
 use Pp\Core\Notify;
@@ -60,7 +61,7 @@ return static function (Router $r): void {
             'score' => $x['score'] === null ? null : (int) $x['score'], 'passed' => $x['passed'] === null ? null : (bool) $x['passed'],
             'checks' => (int) $x['check_count'], 'checked_at' => $x['checked_at'], 'check' => $check,
             'published' => $x['published_at'] !== null, 'published_at' => $x['published_at'], 'discarded' => $x['discarded_at'] !== null, 'discarded_at' => $x['discarded_at'],
-            'owner' => $x['owner_name'], 'owner_email' => $x['owner_email'], 'owner_id' => $x['owner_pid'],
+            'owner' => DisplayName::of($x['owner_name'], $x['owner_email']), 'owner_email' => $x['owner_email'], 'owner_id' => $x['owner_pid'],
             'created_at' => $x['created_at'], 'updated_at' => $x['updated_at'], 'expires_at' => $x['expires_at'],
             'gallery' => $x['g_id'] ? ['id' => (int) $x['g_id'], 'status' => $x['g_status'], 'likes' => (int) $x['g_likes'], 'views' => (int) $x['g_views'], 'unlocks' => (int) $x['g_unlocks'], 'shared_at' => $x['g_shared_at'], 'note' => $x['g_note']] : null,
             'preview_url' => '/api/v1/mock/mockups/' . $x['token'] . '/html',
@@ -74,7 +75,8 @@ return static function (Router $r): void {
         Response::json($mockupOut($mockup((string) $p['id'])));
     });
 
-    // 폐기 — discarded_at 표시, 갤러리에 올라가 있으면 숨김. 시안 html·점수는 그대로(복원 가능).
+    // 폐기 — discarded_at 표시, 갤러리에 올라가 있으면 숨김, 공개 주소는 닫힘(mock.php /p). 시안 html·점수는 그대로(복원 가능).
+    // 아래 Audit 기록이 '관리자 폐기' 표시다 — Rules::NOT_ADMIN_DISCARDED 가 이것으로 하루 삭제에서 뺀다. 액션 이름을 바꾸면 거기도 바꾼다(R174).
     $r->delete('/admin/mockups/{id}', function (array $p, Actor $a) use ($need, $mockup, $mockupOut): void {
         $need($a);
         $m = $mockup((string) $p['id']);
@@ -146,7 +148,7 @@ return static function (Router $r): void {
         'comments' => (int) $x['comment_count'], 'likes' => (int) $x['like_count'], 'views' => (int) $x['view_count'],
         'created_at' => $x['created_at'], 'updated_at' => $x['updated_at'],
         'ai' => isset($x['ai']) && $x['ai'] !== null ? json_decode((string) $x['ai'], true) : null,
-        'author' => ['id' => $x['author_pid'], 'name' => trim((string) ($x['author_name'] ?? '')) ?: '회원', 'email' => $x['author_email'], 'staff' => ($x['author_kind'] ?? '') === 'staff'],
+        'author' => ['id' => $x['author_pid'], 'name' => DisplayName::of($x['author_name'] ?? null, $x['author_email'] ?? null) ?? '회원', 'email' => $x['author_email'], 'staff' => ($x['author_kind'] ?? '') === 'staff'],
     ];
     $postRow = static function (string $pid) use ($authorSql): array {
         $row = Db::row("SELECT p.*, $authorSql FROM comm_posts p JOIN core_users u ON u.id = p.owner_user_id WHERE p.public_id = ?", [$pid]);
@@ -293,7 +295,7 @@ return static function (Router $r): void {
     $commentOut = static fn (array $c): array => [
         'id' => (int) $c['id'], 'body' => $c['body'], 'created_at' => $c['created_at'], 'hidden' => $c['deleted_at'] !== null,
         'post' => ['id' => $c['post_pid'], 'title' => $c['post_title'], 'category' => $c['post_category']],
-        'author' => ['id' => $c['author_pid'], 'name' => trim((string) ($c['author_name'] ?? '')) ?: '회원', 'email' => $c['author_email'], 'staff' => ($c['author_kind'] ?? '') === 'staff'],
+        'author' => ['id' => $c['author_pid'], 'name' => DisplayName::of($c['author_name'] ?? null, $c['author_email'] ?? null) ?? '회원', 'email' => $c['author_email'], 'staff' => ($c['author_kind'] ?? '') === 'staff'],
     ];
     $commentFrom = "FROM comm_comments c JOIN comm_posts p ON p.id = c.post_id JOIN core_users u ON u.id = c.user_id";
     $commentSel = "SELECT c.*, p.public_id AS post_pid, p.title AS post_title, p.category AS post_category, $authorSql";

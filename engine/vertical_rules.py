@@ -313,14 +313,17 @@ def check(items, pages, fig_ok, fill=None, empty=None):
     for k, n in cnt.items():
         c = max(2, round(len(pages) * 0.25)) if k == "process" else cap   # 절차는 25% — 5차에도 타임라인이 13쪽에 나와 반복감(사용자 '반복되는 느낌')
         if k not in ("table", "text") and n > c:
-            bad.append({"title": "(장 전체)", "why": f"{NAMES.get(k, k)} 구성을 {n}쪽에 썼다(최대 {c}) — 다른 구성으로 바꿀 것"})
+            bad.append({"title": "(장 전체)", "why": f"{NAMES.get(k, k)} 구성을 {n}쪽에 썼다(최대 {c}) — 다른 구성으로 바꿀 것",
+                        "rule": "kind_cap", "kind": k, "n": n, "max": c})
+    # 장 전체 위반에는 rule·수치를 함께 — 고쳐 쓰기가 장 전체를 한 요청으로 다시 쓰지 않고 고칠 쪽만 고르게(vertical._pinpoint, R107)
     if len(pages) >= 3 and not cnt.get("photo"):
-        bad.append({"title": "(장 전체)", "why": "사진(photo) 블록이 없다 — 장마다 1~2개, 현장·장비·서비스 장면을 검색어로"})
+        bad.append({"title": "(장 전체)", "why": "사진(photo) 블록이 없다 — 장마다 1~2개, 현장·장비·서비스 장면을 검색어로", "rule": "no_photo"})
     halves = sum(1 for pg in pages if any(b.get("half") for b in pg.get("blocks") or []))
     if len(pages) >= 3 and halves * 3 < len(pages):
-        bad.append({"title": "(장 전체)", "why": f"2단 쪽이 {halves}/{len(pages)} — 3분의 1 이상은 작은 블록 둘을 half 로 나란히"})
+        bad.append({"title": "(장 전체)", "why": f"2단 쪽이 {halves}/{len(pages)} — 3분의 1 이상은 작은 블록 둘을 half 로 나란히",
+                    "rule": "halves", "have": halves, "need": -(-len(pages) // 3)})
     if total and texts * 4 > total:
-        bad.append({"title": "(장 전체)", "why": f"글 블록이 {texts}/{total} — 4분의 1 이하로"})
+        bad.append({"title": "(장 전체)", "why": f"글 블록이 {texts}/{total} — 4분의 1 이하로", "rule": "text_ratio", "texts": texts, "cap": total // 4})
     return bad, fixed
 
 

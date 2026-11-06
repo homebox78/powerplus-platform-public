@@ -44,8 +44,17 @@ def name_strings(path, ids=(0, 7, 8, 13)):
     return out
 
 
+COMPANY = ("a시월구일",)   # 회사가 라이선스를 가진 서체 — 임직원 전용 사이트라 산출물에 넣는다(2026-10-28 사용자 "우리만 쓰는 거니 서체 배포 같이 해도 될 듯")
+
+
+def company(path):
+    return os.path.basename(path).startswith(COMPANY)
+
+
 def shippable(path):
-    """(넣어도 되는가, 이유) — 모르는 제작사는 넣는다(오픈 라이선스·무료 배포 서체가 대부분이라 목록으로 막는 쪽)"""
+    """(넣어도 되는가, 이유) — 모르는 제작사는 넣는다(오픈 라이선스·무료 배포 서체가 대부분이라 목록으로 막는 쪽). 회사 라이선스 서체는 넣는다"""
+    if company(path):
+        return True, ""
     s = " ".join(name_strings(path).values()).lower()
     for k, why in NO_SHIP.items():
         if k in s:
@@ -66,9 +75,11 @@ def write_notice(paths, out_dir):
     """산출물 서체 폴더에 '서체_라이선스.txt'(서체별 저작권 고지 + SIL OFL 1.1 전문) + 배포처 동봉 문서를 쓴다.
     OFL 은 서체를 다시 배포할 때 저작권 고지와 라이선스 전문을 함께 넣으라고 한다 — 돌려주는 값은 쓴 파일 경로들"""
     os.makedirs(out_dir, exist_ok=True)
-    lines = ["이 폴더의 서체 파일은 모두 SIL Open Font License 1.1 로 배포되는 무료 서체입니다.",
-             "서체 파일만 따로 판매할 수 없습니다. 다시 배포할 때는 이 안내를 함께 넣어 주세요.",
-             "AstaSans-BoldPD·HadaRound-BoldPD 는 원본 Bold 의 이름표(가족 이름)만 바꾼 OFL 수정판입니다(글자 모양은 원본과 같음).", ""]
+    lines = (["※ a시월구일은 회사가 라이선스를 가진 서체입니다 — 임직원 업무용으로만 설치·사용하고 회사 밖으로 나눠 주지 마세요.", ""]
+             if any(company(p) for p in paths) else [])
+    lines += ["이 폴더의 서체 파일은 " + ("a시월구일을 뺀 나머지가 " if lines else "모두 ") + "SIL Open Font License 1.1 로 배포되는 무료 서체입니다.",
+              "서체 파일만 따로 판매할 수 없습니다. 다시 배포할 때는 이 안내를 함께 넣어 주세요.",
+              "AstaSans-BoldPD·HadaRound-BoldPD 는 원본 Bold 의 이름표(가족 이름)만 바꾼 OFL 수정판입니다(글자 모양은 원본과 같음).", ""]
     extra = []
     for p in paths:
         n = name_strings(p, (0, 1, 4, 13))

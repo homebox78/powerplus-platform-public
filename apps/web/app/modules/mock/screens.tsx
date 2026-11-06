@@ -4,9 +4,10 @@
 import { ArrowLeft, Copy as CopyIcon, ExternalLink, Eye, Heart, Layers, Lock, MoreHorizontal, Share2, Trash2, Trophy } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link, useSearchParams } from "react-router";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useInfiniteQuery, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { MobileCarousel } from "@/components/hb/mobile-carousel";
+import { LoadError } from "@/components/hb/load-error";
 import { MockupPreview } from "@/components/hb/mockup-preview";
 import { BulkBar, SelectAllCell, SelectCell, useSelection } from "@/components/admin/admin-ui";
 import { ChoiceButton } from "@/components/hb/choice-button";
@@ -32,7 +33,8 @@ import { apiFetch, postJson } from "@/lib/api";
 import { useMe } from "@/lib/auth";
 import { PLANS_UI } from "@/lib/plans-ui";
 import { useIsSaved } from "@/lib/saved";
-import { fmtDate, galleryQuery, leadersQuery, myMockupsQuery, pointsQuery, useGalleryDetail, useMockMutations, type GalleryItem, type MockupCheck, type MockupItem } from "@/lib/mock";
+import { ApiError } from "@/lib/api";
+import { fmtDate, galleryPagesQuery, galleryQuery, leadersQuery, myMockupsQuery, pointsQuery, useGalleryDetail, useMockMutations, type GalleryItem, type MockupCheck, type MockupItem } from "@/lib/mock";
 import { cn } from "@/lib/utils";
 import { WireframeScreen } from "./wireframe";
 
@@ -43,12 +45,13 @@ const copyText = (s: string, done = "복사했습니다.") => navigator.clipboar
 
 // ---------------------------------------------------------------- 내 시안
 function MyMockups({ onGallery }: { onGallery: (id: number) => void }) {
-  const q = useQuery(myMockupsQuery);
+  const q = useInfiniteQuery(myMockupsQuery);
   const m = useMockMutations();
   const [share, setShare] = useState<MockupItem | null>(null);
   const [preview, setPreview] = useState<MockupItem | null>(null);
   const qc = useQueryClient();
-  const items = q.data?.items ?? [];
+  const items = q.data?.pages.flatMap((pg) => pg.items) ?? [];
+  const first = q.data?.pages[0];
   // 여러 개 지우기 — 서버가 내 시안만 지운다(/me/bulk/mockups/delete)
   const sel = useSelection(items.map((it) => it.token));
   const bulkDelete = async (ids: string[]) => {
@@ -59,7 +62,8 @@ function MyMockups({ onGallery }: { onGallery: (id: number) => void }) {
     } catch (e) { toastError(e); }
   };
   if (q.isPending) return <Skeleton className="mt-6 h-56 rounded-card" />;
-  const cut = q.data?.meta.cut ?? 80;
+  if (q.isError && items.length === 0) return <LoadError what="내 시안" error={q.error} onRetry={() => void q.refetch()} className="mt-6" />;
+  const cut = first?.meta.cut ?? 84;
   if (preview) return <PreviewPage item={preview} onBack={() => setPreview(null)} />;
   if (items.length === 0) {
     return (
@@ -71,7 +75,7 @@ function MyMockups({ onGallery }: { onGallery: (id: number) => void }) {
   }
   return (
     <>
-      <p className="mt-6 text-sm text-ink-4">시안 {items.length}개 · 판정을 통과한 시안({cut + 1}점 이상·치명 0)만 보관되고, 보관본을 갤러리에 공유하면 포인트가 쌓입니다. 시안 주소는 만든 뒤 30일 동안 열립니다.</p>
+      <p className="mt-6 text-sm text-ink-4">시안 {first?.total ?? items.length}개 · 판정을 통과한 시안({cut + 1}점 이상·치명 0)만 보관되고, 보관본을 갤러리에 공유하면 포인트가 쌓입니다. 시안 주소는 게시한 뒤 30일 동안 열리고, 기간이 끝나면 다시 게시할 수 있습니다.</p>
       <Table className="mt-4 table-fixed">
         <TableHeader>
           <TableRow>
@@ -92,15 +96,15 @@ function MyMockups({ onGallery }: { onGallery: (id: number) => void }) {
               <TableCell className="max-md:hidden">{DEVICE_KO[it.device]}</TableCell>
               <TableCell className="text-right max-md:hidden">{it.score === null ? "—" : `${it.score}점`}</TableCell>
               <TableCell className="max-md:hidden">{it.passed === null ? <Tag tone="line">미판정</Tag> : it.passed ? <Tag tone="soft">통과</Tag> : <Tag tone="warn">미통과</Tag>}</TableCell>
-              <TableCell className="max-md:hidden">{it.published && it.path ? <span className="inline-flex items-center gap-1.5"><button type="button" onClick={() => setPreview(it)} className="pp-hit text-ink underline-offset-2 hover:underline">열기</button><a href={it.path} target="_blank" rel="noreferrer" aria-label="새 창으로 열기" title="새 창으로 열기" className="pp-hit text-ink-4 hover:text-ink"><ExternalLink className="size-3.5" aria-hidden /></a></span> : <span className="text-ink-4">—</span>}</TableCell>
-              <TableCell className="max-md:hidden">{it.gallery ? (it.gallery.status === "shared" ? <button type="button" onClick={() => onGallery(it.gallery!.id)} className="text-ink underline-offset-2 hover:underline">공유 중 · ♥{it.gallery.likes}</button> : it.gallery.status === "hidden" ? <span className="text-ink-4">내림</span> : <Tag tone="soft">보관</Tag>) : it.discarded ? <span className="text-ink-4">폐기({cut}점 이하)</span> : <span className="text-ink-4">—</span>}</TableCell>
+              <TableCell className="max-md:hidden">{it.published && it.path ? <span className="inline-flex items-center gap-1.5"><button type="button" onClick={() => setPreview(it)} className="pp-hit text-ink underline-offset-2 hover:underline">열기</button><a href={it.path} target="_blank" rel="noreferrer" aria-label="새 창으로 열기" title="새 창으로 열기" className="pp-hit text-ink-4 hover:text-ink"><ExternalLink className="size-3.5" aria-hidden /></a></span> : it.expired ? <Tag tone="warn">기간 끝남</Tag> : <span className="text-ink-4">—</span>}</TableCell>
+              <TableCell className="max-md:hidden">{it.gallery ? (it.gallery.status === "shared" ? <button type="button" onClick={() => onGallery(it.gallery!.id)} className="text-ink underline-offset-2 hover:underline">공유 중 · ♥{it.gallery.likes}</button> : it.gallery.status === "hidden" ? <span className="text-ink-4">숨김</span> : <Tag tone="soft">보관</Tag>) : it.discarded ? <span className="text-ink-4">폐기({cut}점 이하)</span> : <span className="text-ink-4">—</span>}</TableCell>
               <TableCell className="max-md:hidden">{fmtDate(it.created_at)}</TableCell>
               <TableCell>
                 <span className="flex items-center gap-1 max-md:hidden">
                   <Button variant="ghost" size="xs" onClick={() => setPreview(it)} aria-label="미리보기"><Eye aria-hidden /></Button>
-                  {it.passed && !it.published && <Button variant="outline" size="xs" onClick={() => m.publish.mutate(it.token, { onSuccess: () => toast.success("게시했습니다. 주소를 복사해 공유하세요."), onError: (e) => toastError(e) })}>게시</Button>}
+                  {it.passed && !it.published && <Button variant="outline" size="xs" onClick={() => m.publish.mutate(it.token, { onSuccess: () => toast.success("게시했습니다. 주소를 복사해 공유하세요."), onError: (e) => toastError(e) })}>{it.expired ? "다시 게시" : "게시"}</Button>}
                   {it.published && it.path && <Button variant="ghost" size="xs" onClick={() => void copyText(`${location.origin}${it.path}`, "시안 주소를 복사했습니다.")} aria-label="주소 복사"><CopyIcon aria-hidden /></Button>}
-                  {it.gallery && it.gallery.status !== "shared" && <Button variant="outline" size="xs" onClick={() => setShare(it)}><Share2 aria-hidden />공유</Button>}
+                  {it.gallery?.status === "study" && <Button variant="outline" size="xs" onClick={() => setShare(it)}><Share2 aria-hidden />공유</Button>}
                   {it.gallery?.status === "shared" && <Button variant="ghost" size="xs" onClick={() => m.hide.mutate(it.gallery!.id, { onSuccess: () => toast.success("갤러리에서 내렸습니다."), onError: (e) => toastError(e) })}>내리기</Button>}
                   <Button variant="ghost" size="xs" aria-label="삭제" onClick={() => confirmToast("이 시안을 지울까요? 게시 주소도 닫힙니다.", () => m.remove.mutate(it.token, { onSuccess: () => toast.success("지웠습니다."), onError: (e) => toastError(e) }), { action: "지우기" })}><Trash2 aria-hidden /></Button>
                 </span>
@@ -109,9 +113,9 @@ function MyMockups({ onGallery }: { onGallery: (id: number) => void }) {
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild><Button variant="ghost" size="xs" aria-label="더보기"><MoreHorizontal aria-hidden /></Button></DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
-                      {it.passed && !it.published && <DropdownMenuItem onSelect={() => m.publish.mutate(it.token, { onSuccess: () => toast.success("게시했습니다. 주소를 복사해 공유하세요."), onError: (e) => toastError(e) })}>게시</DropdownMenuItem>}
+                      {it.passed && !it.published && <DropdownMenuItem onSelect={() => m.publish.mutate(it.token, { onSuccess: () => toast.success("게시했습니다. 주소를 복사해 공유하세요."), onError: (e) => toastError(e) })}>{it.expired ? "다시 게시" : "게시"}</DropdownMenuItem>}
                       {it.published && it.path && <DropdownMenuItem onSelect={() => void copyText(`${location.origin}${it.path}`, "시안 주소를 복사했습니다.")}>주소 복사</DropdownMenuItem>}
-                      {it.gallery && it.gallery.status !== "shared" && <DropdownMenuItem onSelect={() => setShare(it)}>갤러리에 공유</DropdownMenuItem>}
+                      {it.gallery?.status === "study" && <DropdownMenuItem onSelect={() => setShare(it)}>갤러리에 공유</DropdownMenuItem>}
                       {it.gallery?.status === "shared" && <DropdownMenuItem onSelect={() => m.hide.mutate(it.gallery!.id, { onSuccess: () => toast.success("갤러리에서 내렸습니다."), onError: (e) => toastError(e) })}>갤러리에서 내리기</DropdownMenuItem>}
                       <DropdownMenuItem onSelect={() => confirmToast("이 시안을 지울까요? 게시 주소도 닫힙니다.", () => m.remove.mutate(it.token, { onSuccess: () => toast.success("지웠습니다."), onError: (e) => toastError(e) }), { action: "지우기" })}>삭제</DropdownMenuItem>
                     </DropdownMenuContent>
@@ -122,6 +126,8 @@ function MyMockups({ onGallery }: { onGallery: (id: number) => void }) {
           ))}
         </TableBody>
       </Table>
+      {q.hasNextPage && <div className="mt-6 text-center"><Button variant="outline" size="sm" disabled={q.isFetchingNextPage} onClick={() => void q.fetchNextPage()}>{q.isFetchingNextPage ? "불러오는 중…" : `더 보기 (${items.length}/${first?.total ?? items.length})`}</Button></div>}
+      {q.isFetchNextPageError && <p role="alert" className="mt-2 text-center text-sm text-ink-3">다음 시안을 불러오지 못했습니다. 더 보기를 다시 눌러 주세요.</p>}
       <BulkBar sel={sel} actions={[{ label: "삭제", icon: <Trash2 aria-hidden />, danger: true, confirm: "고른 시안 {n}개를 지웁니다. 게시 주소도 닫히고 갤러리에서 내려갑니다.", onRun: (ids) => void bulkDelete(ids) }]} />
       <ShareDialog item={share} onClose={() => setShare(null)} />
     </>
@@ -205,11 +211,13 @@ function Gallery({ open, onOpen }: { open: number | null; onOpen: (id: number | 
   const setKey = sp.get("set") ?? "";
   const set = (k: string, v: string) => setSp((p) => { const n = new URLSearchParams(p); if (v) n.set(k, v); else n.delete(k); return n; }, { replace: true });
   const openSet = (s: string) => { setSp((p) => { const n = new URLSearchParams(p); n.set("set", s); return n; }); document.getElementById("mock-gallery")?.scrollIntoView({ block: "start" }); };
-  const q = useQuery(galleryQuery({ view, sort, type: setKey ? "all" : type, set: setKey || undefined }));
+  const q = useInfiniteQuery(galleryPagesQuery({ view, sort, type: setKey ? "all" : type, set: setKey || undefined }));
+  const galleryItems = q.data?.pages.flatMap((pg) => pg.items) ?? [];
+  const firstPage = q.data?.pages[0];
   const leaders = useQuery(leadersQuery);
   const { me } = useMe();
   const [points, setPoints] = useState(false);
-  const cost = q.data?.meta.unlock_cost ?? 30;
+  const cost = firstPage?.meta.unlock_cost ?? 30;
   if (open !== null) return <GalleryDetail id={open} onClose={() => onOpen(null)} onOpen={onOpen} />;
   return (
     <div id="mock-gallery" className="mt-6 grid scroll-mt-24 grid-cols-1 gap-12 lg:grid-cols-[1fr_300px]">
@@ -218,8 +226,8 @@ function Gallery({ open, onOpen }: { open: number | null; onOpen: (id: number | 
           <div className="flex flex-wrap items-center gap-3">
             <button type="button" onClick={() => setSp((p) => { const n = new URLSearchParams(p); n.delete("set"); return n; })} className="inline-flex h-9 items-center gap-1.5 text-sm font-semibold text-ink-3 hover:text-ink"><ArrowLeft className="size-4" aria-hidden />전체 시안</button>
             <span className="h-5 w-px bg-line" aria-hidden />
-            <h3 className="min-w-0 truncate text-lg font-bold">{q.data?.items[0]?.title ?? "세트"}<span className="ml-2 text-sm font-semibold text-ink-4">세트</span></h3>
-            <span className="ml-auto text-sm text-ink-4">{q.data ? `메인 ${q.data.items.filter((x) => x.role !== "sub").length} · 서브 ${q.data.items.filter((x) => x.role === "sub").length}` : ""}</span>
+            <h3 className="min-w-0 truncate text-lg font-bold">{galleryItems[0]?.title ?? "세트"}<span className="ml-2 text-sm font-semibold text-ink-4">세트</span></h3>
+            <span className="ml-auto text-sm text-ink-4">{firstPage ? `메인 ${galleryItems.filter((x) => x.role !== "sub").length} · 서브 ${galleryItems.filter((x) => x.role === "sub").length}` : ""}</span>
           </div>
         ) : (
           <div className="flex flex-wrap items-center gap-2">
@@ -227,16 +235,20 @@ function Gallery({ open, onOpen }: { open: number | null; onOpen: (id: number | 
             <ChoiceButton label="구분" value={type} onChange={(v) => set("type", v === "all" ? "" : v)} options={[{ id: "all", label: "전체" }, { id: "main", label: "메인" }, { id: "sub", label: "서브" }]} size="sm" />
             <span className="h-5 w-px bg-line" aria-hidden />
             <ChoiceButton label="정렬" value={sort} onChange={(v) => set("sort", v)} options={Object.entries(SORT_KO).map(([id, label]) => ({ id, label }))} size="sm" />
-            <span className="ml-auto text-sm text-ink-4">{q.data ? `${q.data.total}개` : ""}</span>
+            <span className="ml-auto text-sm text-ink-4">{firstPage ? `${firstPage.total}개` : ""}</span>
           </div>
         )}
         {q.isPending ? (
           <div className="mt-8 grid grid-cols-1 gap-x-6 gap-y-10 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">{Array.from({ length: 8 }).map((_, i) => <Skeleton key={i} className="aspect-[16/10] rounded-panel" />)}</div>
-        ) : (q.data?.items.length ?? 0) === 0 ? (
+        ) : q.isError && galleryItems.length === 0 ? (
+          <LoadError what="갤러리" error={q.error} onRetry={() => void q.refetch()} className="mt-5" />
+        ) : galleryItems.length === 0 ? (
           <section className="mt-5 rounded-panel border border-dashed border-line-3 p-10 text-center text-md text-ink-4"><Copy text={view === "mine" ? "보관된 내 시안이 없습니다. 판정 점수가 기준을 넘으면 자동으로 보관됩니다." : "아직 공유된 시안이 없습니다. 첫 시안을 공유해 보세요."} /></section>
         ) : (
-          <div className="mt-8 grid grid-cols-1 gap-x-6 gap-y-10 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">{q.data!.items.map((g) => <GalleryCard key={g.id} g={g} onOpen={onOpen} unlockCost={cost} onSet={setKey ? undefined : openSet} />)}</div>
+          <div className="mt-8 grid grid-cols-1 gap-x-6 gap-y-10 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">{galleryItems.map((g) => <GalleryCard key={g.id} g={g} onOpen={onOpen} unlockCost={cost} onSet={setKey ? undefined : openSet} />)}</div>
         )}
+        {q.hasNextPage && <div className="mt-8 text-center"><Button variant="outline" size="sm" disabled={q.isFetchingNextPage} onClick={() => void q.fetchNextPage()}>{q.isFetchingNextPage ? "불러오는 중…" : `더 보기 (${galleryItems.length}/${firstPage?.total ?? galleryItems.length})`}</Button></div>}
+        {q.isFetchNextPageError && <p role="alert" className="mt-2 text-center text-sm text-ink-3">다음 시안을 불러오지 못했습니다. 더 보기를 다시 눌러 주세요.</p>}
       </div>
       <aside className="flex flex-col gap-8">
         <section className="rounded-panel border border-line bg-ground p-6">
@@ -251,7 +263,7 @@ function Gallery({ open, onOpen }: { open: number | null; onOpen: (id: number | 
         <section className="rounded-panel border border-line bg-ground p-6">
           <h3 className="text-lg font-bold">포인트</h3>
           <p className="mt-2 text-md leading-[1.7] text-ink-3"><Copy as="span" text={`시안 공유 50P, 내 시안이 열릴 때마다 10P. 다른 사람 시안은 ${cost}P 로 엽니다.`} /></p>
-          {me ? <Button variant="outline" size="sm" className="mt-4" onClick={() => setPoints(true)}>내 포인트 {q.data?.meta.points ?? "—"}P</Button> : <Button asChild variant="outline" size="sm" className="mt-4"><Link to="/login?next=/mock/mockups">로그인</Link></Button>}
+          {me ? <Button variant="outline" size="sm" className="mt-4" onClick={() => setPoints(true)}>내 포인트 {firstPage?.meta.points ?? "—"}P</Button> : <Button asChild variant="outline" size="sm" className="mt-4"><Link to="/login?next=/mock/mockups">로그인</Link></Button>}
         </section>
       </aside>
       <PointsDialog open={points} onClose={() => setPoints(false)} />
@@ -327,7 +339,7 @@ function GalleryDetail({ id, onClose, onOpen }: { id: number; onClose: () => voi
   return (
     <div id="mock-detail" className="mt-6 scroll-mt-24">
       <button type="button" onClick={onClose} className="inline-flex h-9 items-center gap-1.5 text-sm font-semibold text-ink-3 hover:text-ink"><ArrowLeft className="size-4" aria-hidden />갤러리</button>
-      {q.isPending ? <Skeleton className="mt-4 h-[70vh] rounded-card" /> : !g ? <p className="py-20 text-center text-ink-4">시안을 찾을 수 없습니다.</p> : (
+      {q.isPending ? <Skeleton className="mt-4 h-[70vh] rounded-card" /> : !g ? (q.isError && !(q.error instanceof ApiError && q.error.status === 404) ? <LoadError what="시안" error={q.error} onRetry={() => void q.refetch()} className="mt-4" /> : <p className="py-20 text-center text-ink-4">시안을 찾을 수 없습니다.</p>) : (
         <>
           <div className="mt-4 flex flex-wrap items-start gap-4">
             <div className="min-w-0">
@@ -386,7 +398,7 @@ function PointsDialog({ open, onClose }: { open: boolean; onClose: () => void })
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="rounded-panel p-8 sm:max-w-none" style={{ width: "min(640px, 96vw)" }}>
         <DialogHeader><DialogTitle className="text-2xl font-extrabold tracking-[-0.02em]">내 포인트 {q.data ? `${q.data.points.toLocaleString()}P` : ""}</DialogTitle><DialogDescription className="text-md text-ink-3">적립 규칙과 최근 내역</DialogDescription></DialogHeader>
-        {q.isPending ? <Skeleton className="h-48 rounded-card" /> : q.data && (
+        {q.isPending ? <Skeleton className="h-48 rounded-card" /> : q.isError ? <LoadError what="포인트 내역" error={q.error} onRetry={() => void q.refetch()} /> : q.data && (
           <div className="grid gap-6">
             <ul className="grid grid-cols-2 gap-x-6 gap-y-1.5 text-sm">
               {q.data.rules.map((r) => <li key={r.reason} className="flex justify-between gap-2"><span className="text-ink-3">{r.name}</span><span className={cn("font-semibold", r.points < 0 && "text-ink-4")}>{r.points > 0 ? "+" : ""}{r.points}P{r.daily_cap ? ` · 일 ${r.daily_cap}회` : ""}</span></li>)}
@@ -429,8 +441,8 @@ function ComponentsScreen() {
         <Button asChild size="sm" className="mt-4"><Link to="/guide/components">부품 보러 가기</Link></Button>
       </div>
       <div className="rounded-panel border border-line bg-ground p-6">
-        <h3 className="text-lg font-bold">시안에서 코드로</h3>
-        <p className="mt-2 text-md leading-[1.7] text-ink-3"><Copy as="span" text="판정을 통과한 시안은 AI 도구에서 powerMCP 에 '코드로 받기'를 요청하면 React·Vue 페이지 코드와 부품 대응표를 받습니다. 받은 코드는 키트 기준으로 타입 검사가 끝난 상태입니다." /></p>
+        <h3 className="text-lg font-bold">화면 코드 받기</h3>
+        <p className="mt-2 text-md leading-[1.7] text-ink-3"><Copy as="span" text="AI 도구에서 powerMCP 에 화면 종류와 키워드를 말하면 React·Vue 페이지 코드와 부품 대응표를 새로 조립해 줍니다. 내가 만든 시안을 그대로 코드로 바꿔 주는 것은 아닙니다. 시안은 게시한 뒤 HTML 파일로 받을 수 있습니다." /></p>
       </div>
     </section>
   );
@@ -442,7 +454,7 @@ const MOCK_CAN: { title: string; desc: string; soon?: boolean; to: string }[] = 
   { title: "기획 와이어프레임", desc: "레퍼런스 구성을 따라 화면 와이어를 짭니다. 바로 고치고 판정합니다.", to: "/mock/plan" },
   { title: "시안 제작", desc: "만들 화면을 말하면 시안이 나옵니다. 메인과 서브 페이지 모두 됩니다.", to: "/mock/mockups" },
   { title: "시안 판정·고치기", desc: "만든 시안을 점수로 판정합니다. 고칠 곳만 AI 가 고칩니다.", to: "/mock/mockups" },
-  { title: "게시·공유·코드", desc: "통과한 시안은 주소로 공유합니다. React·Vue 코드도 받습니다.", to: "/mock/components" },
+  { title: "게시·공유·코드", desc: "통과한 시안은 주소로 공유하고 HTML 로 받습니다. React·Vue 화면 코드는 따로 조립해 받습니다.", to: "/mock/components" },
 ];
 const MOCK_FLOW: [string, string][] = [
   ["연결", "쓰는 AI 도구에 powerMCP 를 연결합니다."],

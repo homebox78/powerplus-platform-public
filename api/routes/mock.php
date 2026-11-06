@@ -169,11 +169,14 @@ return static function (Router $r): void {
     };
 
     $mockupPub = static function (array $m, ?array $g = null): array {
+        // 게시 기간이 끝나면 '게시'가 아니다(R173) — 열리지 않는 주소를 주지 않고, 화면은 다시 게시를 보여 준다. is_expired 는 목록·상세 SELECT 가 DB 시각으로 잰다(PHP·DB 시간대가 달라도 /p 판정과 같게)
+        $expired = $m['published_at'] !== null && !empty($m['is_expired']);
+        $live = $m['published_at'] !== null && !$expired;
         return [
             'id' => $m['public_id'], 'token' => $m['token'], 'title' => (string) $m['title'] ?: '제목 없는 시안', 'ref_id' => $m['ref_id'],
             'device' => $m['device'], 'bytes' => (int) $m['bytes'], 'score' => $m['score'] === null ? null : (int) $m['score'],
             'passed' => $m['passed'] === null ? null : (bool) $m['passed'], 'check_count' => (int) $m['check_count'],
-            'published' => $m['published_at'] !== null, 'path' => $m['published_at'] !== null ? '/api/v1/p/' . $m['token'] : null,
+            'published' => $live, 'expired' => $expired, 'path' => $live ? '/api/v1/p/' . $m['token'] : null,
             'views' => (int) $m['views'], 'thumb_url' => (int) $m['has_thumb'] === 1 ? '/api/v1/mock/mockups/' . $m['token'] . '/thumb?v=' . strtotime((string) $m['updated_at']) : null,
             'discarded' => $m['discarded_at'] !== null, 'expires_at' => $m['expires_at'], 'created_at' => $m['created_at'], 'checked_at' => $m['checked_at'],
             'gallery' => $g ? ['id' => (int) $g['id'], 'status' => $g['status'], 'likes' => (int) $g['likes'], 'unlocks' => (int) $g['unlocks']] : null,
@@ -200,7 +203,11 @@ return static function (Router $r): void {
                 }
                 return;
             }
-            Db::exec('UPDATE mock_mockups SET discarded_at = NULL WHERE id = ?', [$mid]);
+            // 판정 탈락 폐기만 통과로 풀린다. 관리자 폐기는 재판정으로 풀리지 않고 갤러리에도 다시 넣지 않는다(R172)
+            Db::exec('UPDATE mock_mockups SET discarded_at = NULL WHERE id = ? AND ' . \Pp\Mock\Rules::NOT_ADMIN_DISCARDED, [$mid]);
+            if (Db::val('SELECT discarded_at FROM mock_mockups WHERE id = ?', [$mid]) !== null) {
+                return;
+            }
             $dev = $device === 'mobile' ? 'mobile' : 'pc';
             if ($old === null) {
                 Db::exec('INSERT INTO mock_gallery (mockup_id, owner_user_id, title, score, ref_id, device, html, check_json) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
@@ -236,10 +243,9 @@ return static function (Router $r): void {
         $token = $tokenOf((string) ($b['token'] ?? ''));
         $edits = is_array($b['edits'] ?? null) ? $b['edits'] : [];
         $newHtml = isset($b['html']) ? (string) $b['html'] : null;
-        $device = ($b['device'] ?? 'pc') === 'mobile' ? 'mobile' : 'pc';
         Db::exec('DELETE FROM mock_mockups WHERE expires_at < NOW(3) AND id NOT IN (SELECT mockup_id FROM mock_gallery)');
-        // 미통과(폐기) 시안은 다시 판정할 하루만 두고 삭제한다
-        Db::exec('UPDATE mock_mockups SET deleted_at = NOW(3), published_at = NULL WHERE discarded_at IS NOT NULL AND discarded_at < NOW(3) - INTERVAL 1 DAY AND deleted_at IS NULL');
+        // 미통과(폐기) 시안은 다시 판정할 하루만 두고 삭제한다. 관리자 폐기는 복원할 수 있어야 하니 빼고(R174)
+        Db::exec('UPDATE mock_mockups SET deleted_at = NOW(3), published_at = NULL WHERE discarded_at IS NOT NULL AND discarded_at < NOW(3) - INTERVAL 1 DAY AND deleted_at IS NULL AND ' . \Pp\Mock\Rules::NOT_ADMIN_DISCARDED);
 
         $own = null;
         if ($token !== '') {
@@ -252,10 +258,15 @@ return static function (Router $r): void {
                 throw HttpError::forbidden('다른 계정이 만든 시안은 고칠 수 없습니다. html 을 보내 새로 판정하세요.');
             }
         }
+        // 기기: 보낸 값 → 보관된 값 → pc. 다시 판정에서 빠져도 모바일 시안이 PC 로 바뀌지 않는다(MC-128)
+        $device = isset($b['device']) ? ($b['device'] === 'mobile' ? 'mobile' : 'pc') : (string) ($own['device'] ?? 'pc');
 
         if ($mode === 'publish' && $newHtml === null && !$edits) {
             if ($own === null) {
                 throw HttpError::invalid('check_mockup 이 돌려준 token 을 보내세요.');
+            }
+            if ($own['discarded_at'] !== null) {
+                Response::error('DISCARDED', '폐기된 시안은 게시할 수 없습니다.', 409, '판정에서 떨어진 시안이면 고쳐 통과시키고, 관리자가 폐기한 시안이면 관리자에게 복원을 요청하세요.');
             }
             if ((int) ($own['passed'] ?? 0) !== 1) {
                 Response::error('NOT_PASSED', '이 시안은 아직 판정(check_mockup)을 통과하지 못했습니다.', 409, 'fixes 를 고쳐 token 과 edits 로 다시 판정하고, 통과하면 게시하세요.');
@@ -266,8 +277,14 @@ return static function (Router $r): void {
             Response::json($mockupPub($m));
         }
 
+        // 기준 시안은 내 것만(R176) — 남의 token 을 넣으면 내 서브가 남의 세트에 섞였다. 이미 보관된 값을 그대로 다시 보내는 것은 막지 않는다(만료로 지워졌을 수 있다)
+        $bt = $tokenOf((string) ($b['base_token'] ?? ''));
+        if ($bt !== '' && $bt !== $token && $bt !== (string) ($own['base_token'] ?? '')
+            && Db::row('SELECT 1 AS x FROM mock_mockups WHERE token = ? AND owner_user_id = ?', [$bt, $uid]) === null) {
+            throw HttpError::forbidden('base_token 은 내가 만든 시안의 token 만 쓸 수 있습니다.');
+        }
         if ($newHtml !== null) {
-            $newHtml = $expand(str_replace("\r\n", "\n", $newHtml), $uid, $tokenOf((string) ($b['base_token'] ?? '')));
+            $newHtml = $expand(str_replace("\r\n", "\n", $newHtml), $uid, $bt);
         }
         $html = $newHtml ?? $resync((string) ($own['html'] ?? ''), $uid, (string) ($own['base_token'] ?? ''));
         if ($html === '') {
@@ -283,7 +300,6 @@ return static function (Router $r): void {
         if ($bytes > MOCK_MAX_BYTES) {
             Response::error('TOO_LARGE', '한 장에 2MB 까지 받습니다.', 413, '이미지를 data URI 로 넣지 말고 에셋 주소를 그대로 쓰세요.');
         }
-        $bt = $tokenOf((string) ($b['base_token'] ?? ''));
         if ($own !== null) {
             $changed = $html !== (string) $own['html'];
             Db::exec('UPDATE mock_mockups SET html = ?, bytes = ?, device = ?, title = IF(? = \'\', title, ?), ref_id = IF(? = \'\', ref_id, ?), base_token = IF(? = \'\', base_token, ?),'
@@ -325,7 +341,10 @@ return static function (Router $r): void {
             }
         }
         $m = Db::row('SELECT * FROM mock_mockups WHERE id = ?', [$id]);
-        Response::json($mockupPub($m) + ['html' => $html, 'peers' => $peers], $own === null ? 201 : 200);
+        // 앞선 판정이 쓴 기관명 — 다시 판정에서 org_name 을 빼도 대조가 꺼지지 않게 powerMCP 에 돌려준다(MC-129)
+        $prev = $own !== null ? json_decode((string) ($own['check_json'] ?? ''), true) : null;
+        $orgName = is_array($prev) && is_string($prev['org_name'] ?? null) ? $prev['org_name'] : null;
+        Response::json($mockupPub($m) + ['html' => $html, 'peers' => $peers, 'org_name' => $orgName], $own === null ? 201 : 200);
     }, ['auth' => true]);
 
     $r->post('/mock/mockups/{token}/check', static function (array $p, Actor $a) use ($tokenOf, $galleryStore): void {
@@ -349,17 +368,40 @@ return static function (Router $r): void {
             // R11·MC-34: 비밀이 비면 모든 판정이 거부된다 — 조용히 넘기지 말고 서버 로그에 남긴다.
             error_log('[mock] 판정 서명 비밀(mock.judge_secret·worker.key)이 비어 판정 기록을 거부함');
         }
-        if ($secret === '' || $sig === '' || !hash_equals(hash_hmac('sha256', $token . '|' . $score . '|' . $pass, $secret), $sig)) {
+        // 새 서명은 판정한 HTML 의 해시까지 묶는다(MC-127). 옛 판 powerMCP 는 옛 서명만 보낸다 — 배포 순서가 어느 쪽이어도 기록이 끊기지 않게 받되 로그를 남긴다
+        $htmlHash = strtolower((string) ($b['html_sha256'] ?? ''));
+        $sigKind = \Pp\Mock\Rules::judgeSignature($token, $score, $pass, $htmlHash, (string) ($_SERVER['HTTP_X_PP_JUDGE_HTML'] ?? ''), $sig, $secret);
+        if ($sigKind === null) {
             throw new HttpError('JUDGE_REQUIRED', '판정은 powerMCP 의 mock_check_mockup 으로만 기록됩니다.', 403, 'AI 도구에서 mock_check_mockup 을 불러 주세요.');
+        }
+        if ($sigKind === 'legacy') {
+            error_log('[mock] 옛 형식 판정 서명(HTML 해시 없음) — powerMCP 재배포 필요');
         }
         $res = is_array($b['result'] ?? null) ? $b['result'] : [];
         $refId = mb_substr(trim((string) ($b['ref_id'] ?? '')), 0, 255);
         // 어떤 페이지인지(레퍼런스 화면의 page_type) — 게시본끼리 링크에 쓴다
         $page = (string) preg_replace('/[^a-z_]/', '', (string) ($b['page'] ?? ''));
-        Db::exec('UPDATE mock_mockups SET score = ?, passed = ?, check_count = check_count + 1, check_json = ?, ref_id = IF(? = \'\', ref_id, ?), page = IF(? = \'\', page, ?), checked_at = NOW(3) WHERE id = ?',
-            [$score, $pass, json_encode($res, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), $refId, $refId, $page, $page, (int) $m['id']]);
+        // 행을 잠그고 대조한 뒤 기록한다 — 판정하는 수십 초 사이에 고친 HTML 에 통과가 붙으면 판정 안 된 시안이 게시·갤러리로 간다(R171).
+        // 불합격이면 게시도 내린다(R175): 게시 주소는 '마지막 판정이 통과'인 동안만 연다. 다시 통과하면 같은 token 으로 다시 게시한다
+        $wasPublished = $m['published_at'] !== null;
+        $saved = Db::tx(static function () use ($m, $sigKind, $htmlHash, $score, $pass, $res, $refId, $page): bool {
+            $cur = Db::row('SELECT html FROM mock_mockups WHERE id = ? FOR UPDATE', [(int) $m['id']]);
+            if ($cur === null || ($sigKind === 'html' && !hash_equals(hash('sha256', (string) $cur['html']), $htmlHash))) {
+                return false;
+            }
+            Db::exec('UPDATE mock_mockups SET score = ?, passed = ?, check_count = check_count + 1, check_json = ?, ref_id = IF(? = \'\', ref_id, ?), page = IF(? = \'\', page, ?),'
+                . ($pass === 1 ? '' : ' published_at = NULL, visibility = \'private\',') . ' checked_at = NOW(3) WHERE id = ?',
+                [$score, $pass, json_encode($res, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), $refId, $refId, $page, $page, (int) $m['id']]);
+            return true;
+        });
+        if (!$saved) {
+            Response::error('HTML_CHANGED', '판정하는 동안 시안이 바뀌어 이 판정 결과를 기록하지 않았습니다.', 409, '바뀐 내용으로 mock_check_mockup 을 다시 불러 주세요.');
+        }
         $m = Db::row('SELECT * FROM mock_mockups WHERE id = ?', [(int) $m['id']]);
-        $galleryStore($m, $score, isset($b['thumb']) ? (string) $b['thumb'] : null, (string) ($b['device'] ?? $m['device']), $pass === 1);
+        // 잠금을 푼 직후 또 고쳤으면 판정 안 된 HTML 이 갤러리 사본이 되지 않게 건너뛴다 — 그 수정이 통과를 이미 지웠다
+        if ($sigKind !== 'html' || hash_equals(hash('sha256', (string) $m['html']), $htmlHash)) {
+            $galleryStore($m, $score, isset($b['thumb']) ? (string) $b['thumb'] : null, (string) ($b['device'] ?? $m['device']), $pass === 1);
+        }
         // 개선 체크리스트 누적 — 실패해도 판정 기록은 막지 않는다
         try {
             \Pp\Mock\Checklist::fromJudge($res, $token, $refId !== '' ? $refId : null, $score);
@@ -373,28 +415,39 @@ return static function (Router $r): void {
             $lessons = [];
             error_log('[pp-checklist] ' . $e->getMessage());
         }
-        Response::json(['token' => $token, 'score' => $score, 'passed' => (bool) $pass, 'kept' => $pass === 1 && $score > MOCK_GALLERY_CUT, 'lessons' => $lessons]);
+        Response::json(['token' => $token, 'score' => $score, 'passed' => (bool) $pass, 'kept' => $pass === 1 && $score > MOCK_GALLERY_CUT, 'unpublished' => $wasPublished && $pass !== 1, 'lessons' => $lessons]);
     }, ['auth' => true]);
 
     $r->get('/mock/mockups', static function (array $p, Actor $a) use ($mockupPub): void {
         $u = Auth::requireUser($a);
         [$page, $limit, $offset] = Response::paging(30, 100);
         $owners = array_merge([(int) $u['id']], \Pp\Core\TestLogin::mirrorIds((int) $u['id']));   // 테스트 계정 거울(읽기 전용)
-        $where = 'm.owner_user_id IN (' . implode(',', array_fill(0, count($owners), '?')) . ') AND m.deleted_at IS NULL AND m.discarded_at IS NULL AND m.passed = 1';   // 통과한 시안만 목록에(미통과·미판정은 다시 판정할 하루만 두고 지운다)
+        // 통과한 시안 + 한 번 보관됐다가 재판정에 떨어졌거나 고친 뒤 판정 전인 시안(갤러리 사본이 있어 지워지지 않는다 — 주인이 고치거나 지울 수 있게 보여 준다, R175).
+        // 처음부터 통과 못 한 시안은 지금처럼 다시 판정할 하루만 두고 지운다
+        $where = 'm.owner_user_id IN (' . implode(',', array_fill(0, count($owners), '?')) . ') AND m.deleted_at IS NULL AND m.discarded_at IS NULL AND (m.passed = 1 OR g.id IS NOT NULL)';
         $args = $owners;
-        $total = (int) Db::val("SELECT COUNT(*) FROM mock_mockups m WHERE {$where}", $args);
-        $rows = Db::rows("SELECT m.*, g.id AS g_id, g.status AS g_status, g.likes AS g_likes, g.unlocks AS g_unlocks FROM mock_mockups m LEFT JOIN mock_gallery g ON g.mockup_id = m.id WHERE {$where} ORDER BY m.created_at DESC LIMIT {$limit} OFFSET {$offset}", $args);
+        $total = (int) Db::val("SELECT COUNT(*) FROM mock_mockups m LEFT JOIN mock_gallery g ON g.mockup_id = m.id WHERE {$where}", $args);
+        // 목록은 $mockupPub 가 쓰는 칸만 — m.* 는 시안마다 HTML(평균 54KB)까지 읽어 100건에 5MB 가 됐다
+        $rows = Db::rows("SELECT m.id, m.public_id, m.owner_user_id, m.token, m.title, m.ref_id, m.device, m.bytes, m.score, m.passed, m.check_count, m.checked_at, m.has_thumb, m.views, m.published_at, m.expires_at, m.discarded_at, m.created_at, m.updated_at, (m.expires_at <= NOW(3)) AS is_expired, g.id AS g_id, g.status AS g_status, g.likes AS g_likes, g.unlocks AS g_unlocks FROM mock_mockups m LEFT JOIN mock_gallery g ON g.mockup_id = m.id WHERE {$where} ORDER BY m.created_at DESC LIMIT {$limit} OFFSET {$offset}", $args);
         $items = array_map(static fn ($m) => $mockupPub($m, $m['g_id'] ? ['id' => $m['g_id'], 'status' => $m['g_status'], 'likes' => $m['g_likes'], 'unlocks' => $m['g_unlocks']] : null), $rows);
         Response::list($items, $total, $page, $limit, ['cut' => MOCK_GALLERY_CUT, 'points' => Points::balance((int) $u['id'])]);
     }, ['auth' => true]);
 
-    $r->get('/mock/mockups/{token}/thumb', static function (array $p, Actor $a) use ($tokenOf, $galleryDir): void {
+    // 폐기한 시안은 주소를 아는 남에게 닫는다 — visibility 가 public 으로 남아 있어도(R172). 주인·관리자·큐레이터는 그대로 본다
+    $closeDiscarded = static function (array $m, Actor $a): void {
+        if ($m['discarded_at'] !== null && !Access::can($a, $m, 'edit')) {
+            throw HttpError::notFound('시안');
+        }
+    };
+
+    $r->get('/mock/mockups/{token}/thumb', static function (array $p, Actor $a) use ($tokenOf, $galleryDir, $closeDiscarded): void {
         $m = Db::row('SELECT m.*, g.id AS g_id, g.status AS g_status FROM mock_mockups m LEFT JOIN mock_gallery g ON g.mockup_id = m.id WHERE m.token = ? AND m.deleted_at IS NULL', [$tokenOf($p['token'])]);
         if ($m === null || !$m['g_id']) {
             throw HttpError::notFound('썸네일');
         }
         if ($m['g_status'] !== 'shared') {
             Access::assert($a, $m, 'view');
+            $closeDiscarded($m, $a);
         }
         $f = $galleryDir() . '/' . (int) $m['g_id'] . '.jpg';
         if (!is_file($f)) {
@@ -406,14 +459,15 @@ return static function (Router $r): void {
         exit;
     });
 
-    $r->get('/mock/mockups/{token}', static function (array $p, Actor $a) use ($tokenOf, $mockupPub): void {
+    $r->get('/mock/mockups/{token}', static function (array $p, Actor $a) use ($tokenOf, $mockupPub, $closeDiscarded): void {
         $u = Auth::requireUser($a);
-        $m = Db::row('SELECT m.*, g.id AS g_id, g.status AS g_status, g.likes AS g_likes, g.unlocks AS g_unlocks FROM mock_mockups m LEFT JOIN mock_gallery g ON g.mockup_id = m.id WHERE m.token = ? AND m.deleted_at IS NULL', [$tokenOf($p['token'])]);
+        $m = Db::row('SELECT m.*, (m.expires_at <= NOW(3)) AS is_expired, g.id AS g_id, g.status AS g_status, g.likes AS g_likes, g.unlocks AS g_unlocks FROM mock_mockups m LEFT JOIN mock_gallery g ON g.mockup_id = m.id WHERE m.token = ? AND m.deleted_at IS NULL', [$tokenOf($p['token'])]);
         if ($m === null) {
             throw HttpError::notFound('시안');
         }
         Access::assert($a, $m, 'view');
-        $out = $mockupPub($m, $m['g_id'] ? ['id' => $m['g_id'], 'status' => $m['g_status'], 'likes' => $m['g_likes'], 'unlocks' => $m['g_unlocks']] : null);
+        $closeDiscarded($m, $a);
+        $out = $mockupPub($m,$m['g_id'] ? ['id' => $m['g_id'], 'status' => $m['g_status'], 'likes' => $m['g_likes'], 'unlocks' => $m['g_unlocks']] : null);
         $out['check'] = $m['check_json'] !== null ? json_decode((string) $m['check_json'], true) : null;
         // 이 시안 판정에 걸린 체크리스트 항목(짧게) — 표가 없거나 실패해도 응답은 그대로
         $out['checklist'] = [];
@@ -437,19 +491,34 @@ return static function (Router $r): void {
         Response::json($out);
     }, ['auth' => true]);
 
+    /**
+     * 세트 메뉴 링크를 게시 주소로(R177) — 게시본(/p)·미리보기·갤러리 보기가 같은 함수를 쓴다.
+     * 받는 곳이 sandbox iframe 이라 링크를 누를 때 세션 쿠키가 실리지 않는다(실측) — 로그인이 필요 없는 게시 주소로만 잇는다. 게시 안 한 페이지는 링크 그대로.
+     * $canOpen 을 주면 그 함수가 허락한 행만 잇는다(갤러리: 열람권 없는 페이지의 token 을 주지 않는다).
+     */
+    $linkSiblings = static function (string $html, int $ownerId, string $root, ?callable $canOpen = null): string {
+        $rows = Db::rows('SELECT m.token, m.page, g.id AS g_id FROM mock_mockups m LEFT JOIN mock_gallery g ON g.mockup_id = m.id WHERE m.owner_user_id = ? AND (m.token = ? OR m.base_token = ?) AND m.deleted_at IS NULL AND m.discarded_at IS NULL AND m.published_at IS NOT NULL AND m.expires_at > NOW(3) ORDER BY m.checked_at DESC', [$ownerId, $root, $root]);
+        return \Pp\Mock\Rules::linkPages($html, \Pp\Mock\Rules::siblingMap($canOpen !== null ? array_values(array_filter($rows, $canOpen)) : $rows, $root));
+    };
+
     // 내 시안 미리보기(게시 전) — 게시 화면과 같은 sandbox
-    $r->get('/mock/mockups/{token}/html', static function (array $p, Actor $a) use ($tokenOf): void {
+    $r->get('/mock/mockups/{token}/html', static function (array $p, Actor $a) use ($tokenOf, $closeDiscarded, $linkSiblings): void {
         $m = Db::row('SELECT * FROM mock_mockups WHERE token = ? AND deleted_at IS NULL', [$tokenOf($p['token'])]);
         if ($m === null) {
             throw HttpError::notFound('시안');
         }
         Access::assert($a, $m, 'view');
+        $closeDiscarded($m, $a);
         header('X-Robots-Tag: noindex, nofollow, noarchive');
         header('Content-Type: text/html; charset=utf-8');
         header('Cache-Control: private, no-store');
         header("Content-Security-Policy: sandbox allow-scripts allow-popups allow-forms allow-modals; form-action 'none'");
         header('X-AI-Generated: true'); // LEGAL-003: AI 생성 산출물 표시
-        echo \Pp\Mock\FrameHeight::inject((string) $m['html']);
+        $html = \Pp\Mock\Rules::webSamples((string) $m['html']);
+        if ((int) $m['owner_user_id'] > 0) {
+            $html = $linkSiblings($html, (int) $m['owner_user_id'], (string) ($m['base_token'] ?: $m['token']));
+        }
+        echo \Pp\Mock\FrameHeight::inject($html);
         exit;
     });
 
@@ -466,16 +535,18 @@ return static function (Router $r): void {
     }, ['auth' => true]);
 
     // 게시된 시안 — powerplus.hom2box.com/p/{token} (Apache 가 /api/v1/p 로 넘긴다)
-    $r->get('/p/{token}', static function (array $p) use ($tokenOf): void {
+    $r->get('/p/{token}', static function (array $p) use ($tokenOf, $linkSiblings): void {
         $token = $tokenOf($p['token']);
-        $row = $token === '' ? null : Db::row('SELECT id, token, base_token, owner_user_id, html, published_at FROM mock_mockups WHERE token = ? AND deleted_at IS NULL AND expires_at > NOW(3)', [$token]);
+        $row = $token === '' ? null : Db::row('SELECT id, token, base_token, owner_user_id, html, published_at, discarded_at FROM mock_mockups WHERE token = ? AND deleted_at IS NULL AND expires_at > NOW(3)', [$token]);
         header('X-Robots-Tag: noindex, nofollow, noarchive');
         header('Referrer-Policy: no-referrer');
-        if ($row === null || $row['published_at'] === null) {
+        // 폐기하면 게시 기록이 남아 있어도 닫는다. 복원하면 같은 주소가 다시 열린다(R172)
+        if ($row === null || $row['published_at'] === null || $row['discarded_at'] !== null) {
             http_response_code(404);
             header('Content-Type: text/html; charset=utf-8');
             header('Cache-Control: no-store');
-            $msg = $row === null ? '시안 주소가 만료됐거나 없습니다. 시안 주소는 만든 뒤 30일 동안 열립니다.' : '아직 판정을 통과하지 못한 시안입니다. 통과해서 게시하면 이 주소에서 열립니다.';
+            $msg = $row === null ? '시안 주소가 만료됐거나 없습니다. 시안 주소는 게시한 뒤 30일 동안 열립니다. 시안을 만든 분은 내 시안에서 다시 게시할 수 있습니다.'
+                : ($row['discarded_at'] !== null ? '폐기된 시안입니다.' : '게시 중이 아닌 시안입니다. 판정을 통과해 게시하면 이 주소에서 열립니다.');
             echo '<!doctype html><meta charset="utf-8"><meta name="robots" content="noindex"><title>시안을 볼 수 없습니다</title><p style="font:16px/1.6 sans-serif;padding:48px">' . $msg . '</p>';
             exit;
         }
@@ -484,25 +555,9 @@ return static function (Router $r): void {
         header('Cache-Control: private, max-age=30');
         header("Content-Security-Policy: sandbox allow-scripts allow-popups allow-forms allow-modals; form-action 'none'");
         header('X-AI-Generated: true'); // LEGAL-003: AI 생성 산출물 표시
-        // 샘플 원본 주소는 웹 사본으로 — 예전 묶음(url_template …/original)으로 만든 시안도 가볍게 연다
-        $html = (string) preg_replace('#(/api/v1/assets/samples/[a-z0-9]{8,32})/original\b#', '$1/web', (string) $row['html']);
-        // 게시본끼리 링크: 같은 묶음(메인 + 그 메인을 기준으로 만든 서브)에서 main.html·greeting.html 같은 파일 이름을 게시 주소로
+        // 샘플 원본 주소는 웹 사본으로, 게시본끼리 링크: 같은 묶음(메인 + 그 메인을 기준으로 만든 서브)에서 main.html·greeting.html 같은 파일 이름을 게시 주소로
         // (2026-10-15 시험: 메뉴의 greeting.html 이 /api/v1/p/greeting.html 404 — 메인에서 서브로 못 넘어감)
-        $root = (string) ($row['base_token'] ?: $row['token']);
-        $sib = Db::rows('SELECT token, base_token, page FROM mock_mockups WHERE owner_user_id = ? AND (token = ? OR base_token = ?) AND deleted_at IS NULL AND published_at IS NOT NULL AND expires_at > NOW(3) ORDER BY checked_at DESC', [(int) $row['owner_user_id'], $root, $root]);
-        $map = [];
-        foreach ($sib as $s) {
-            $pg = $s['token'] === $root ? 'main' : (string) ($s['page'] ?? '');
-            if ($pg !== '' && !isset($map[$pg])) {
-                $map[$pg] = '/api/v1/p/' . $s['token'];
-            }
-        }
-        if (isset($map['main'])) {
-            $map['index'] = $map['main'];
-        }
-        if ($map) {
-            $html = (string) preg_replace_callback('/\bhref="(?:\.\/)?([a-z_]+)\.html(#[^"]*)?"/', static fn (array $mm) => isset($map[$mm[1]]) ? 'href="' . $map[$mm[1]] . ($mm[2] ?? '') . '"' : $mm[0], $html);
-        }
+        $html = $linkSiblings(\Pp\Mock\Rules::webSamples((string) $row['html']), (int) $row['owner_user_id'], (string) ($row['base_token'] ?: $row['token']));
         // ?download=1 — HTML 파일로 받기(사용자 2026-10-19 "클로드에서 아티팩트 안 뜨게 하고 마지막에 다운로드 url"). 내 PC 에서 열어도
         // 사진·페이지 링크가 살게 /api/v1/… 를 절대 주소로 바꾼다. 미리보기용 높이 맞춤 스크립트는 넣지 않는다
         if (($_GET['download'] ?? '') === '1') {
@@ -519,7 +574,8 @@ return static function (Router $r): void {
 
     // ---------------------------------------------------------------- 갤러리·포인트
     $gItem = static function (int $id): array {
-        $g = Db::row('SELECT g.*, m.token, m.public_id AS mockup_public_id, m.base_token AS m_base, m.page AS m_page, u.name AS owner_name, u.avatar_url AS owner_avatar FROM mock_gallery g JOIN mock_mockups m ON m.id = g.mockup_id LEFT JOIN core_users u ON u.id = g.owner_user_id WHERE g.id = ?', [$id]);
+        // 지운 시안은 갤러리에서도 없는 것으로 본다(R172) — 예전엔 숨김만 믿어 주인이 다시 공유하면 되살아났다
+        $g = Db::row('SELECT g.*, m.token, m.public_id AS mockup_public_id, m.base_token AS m_base, m.page AS m_page, m.discarded_at AS m_discarded, u.name AS owner_name, u.avatar_url AS owner_avatar FROM mock_gallery g JOIN mock_mockups m ON m.id = g.mockup_id LEFT JOIN core_users u ON u.id = g.owner_user_id WHERE g.id = ? AND m.deleted_at IS NULL', [$id]);
         if ($g === null) {
             throw HttpError::notFound('시안');
         }
@@ -544,7 +600,8 @@ return static function (Router $r): void {
         $base = (string) ($g['m_base'] ?? '');
         $pg = (string) ($g['m_page'] ?? '');
         $isSub = !str_starts_with($ref, 'mix1:') && ($base !== '' || ($pg !== '' && $pg !== 'main'));
-        $set = $base !== '' ? $base : (string) ($g['token'] ?? '');
+        // 세트 열쇠는 token 이 아니라 그 해시 — token 이 카드에 실리면 포인트 없이 /p·판정 기록을 열 수 있었다(R176)
+        $set = \Pp\Mock\Rules::setKey($base !== '' ? $base : (string) ($g['token'] ?? ''));
         return [
             'id' => (int) $g['id'], 'title' => (string) $g['title'] ?: '제목 없는 시안', 'score' => (int) $g['score'], 'device' => $g['device'],
             'kind' => str_starts_with($ref, 'mix1:') ? 'mix' : (str_starts_with($ref, 'wire1:') ? 'wire' : 'single'), // wire = 사용자 와이어로 만든 시안(2026-10-18)
@@ -577,31 +634,33 @@ return static function (Router $r): void {
         if ($view === 'mine' && $a->isAdmin() && ($_GET['all'] ?? '') === '1') {
             [$where, $args] = ['1 = 1', []];
         }
+        $where .= ' AND m.deleted_at IS NULL';   // 지운 시안은 목록에서 뺀다(R172)
         // 세트 크기는 보이는 범위(공유·내 것) 안에서 센다 — 구분·세트 거르기 전 조건
         [$seeWhere, $seeArgs] = [$where, $args];
         $type = (string) ($_GET['type'] ?? '');
         if ($type === 'main' || $type === 'sub') {
             $where .= $type === 'sub' ? " AND {$gSub}" : " AND NOT {$gSub}";
         }
-        $set = preg_replace('/[^A-Za-z0-9_-]/', '', (string) ($_GET['set'] ?? ''));
+        $set = \Pp\Mock\Rules::setParam((string) ($_GET['set'] ?? ''));
         if ($set !== '') {
-            $where .= ' AND (m.token = ? OR m.base_token = ?)';
-            $args = array_merge($args, [$set, $set]);
-            $order = "(m.token = '{$set}') DESC, m.created_at ASC, g.id ASC";   // 메인 먼저, 서브는 만든 순서
+            $where .= " AND LEFT(SHA2(COALESCE(NULLIF(m.base_token, ''), m.token), 256), 24) = ?";
+            $args[] = $set;
+            $order = "(COALESCE(m.base_token, '') = '') DESC, m.created_at ASC, g.id ASC";   // 메인 먼저, 서브는 만든 순서
         }
         $from = 'mock_gallery g JOIN mock_mockups m ON m.id = g.mockup_id';
-        $rows = Db::rows("SELECT g.*, m.token, m.base_token AS m_base, m.page AS m_page, u.name AS owner_name, u.avatar_url AS owner_avatar FROM {$from} LEFT JOIN core_users u ON u.id = g.owner_user_id WHERE {$where} ORDER BY {$order} LIMIT {$limit} OFFSET {$offset}", $args);
+        // 카드($gCard)가 쓰는 칸만 — g.* 는 장마다 HTML·판정 기록까지 읽었다
+        $rows = Db::rows("SELECT g.id, g.owner_user_id, g.title, g.score, g.ref_id, g.device, g.note, g.status, g.likes, g.views, g.unlocks, g.shared_at, g.created_at, g.updated_at, m.token, m.base_token AS m_base, m.page AS m_page, u.name AS owner_name, u.avatar_url AS owner_avatar FROM {$from} LEFT JOIN core_users u ON u.id = g.owner_user_id WHERE {$where} ORDER BY {$order} LIMIT {$limit} OFFSET {$offset}", $args);
         $total = (int) Db::val("SELECT COUNT(*) FROM {$from} WHERE {$where}", $args);
         $setSize = [];
         $keys = array_values(array_unique(array_map(static fn ($x) => (string) ($x['m_base'] ?: $x['token']), $rows)));
         if ($keys) {
             $in = implode(',', array_fill(0, count($keys), '?'));
             foreach (Db::rows("SELECT COALESCE(NULLIF(m.base_token, ''), m.token) AS k, COUNT(*) AS n FROM {$from} WHERE {$seeWhere} AND (m.token IN ({$in}) OR m.base_token IN ({$in})) GROUP BY k", array_merge($seeArgs, $keys, $keys)) as $s) {
-                $setSize[(string) $s['k']] = (int) $s['n'];
+                $setSize[\Pp\Mock\Rules::setKey((string) $s['k'])] = (int) $s['n'];
             }
         }
         $sharedBy = [];
-        foreach (Db::rows("SELECT owner_user_id, COUNT(*) AS n FROM mock_gallery WHERE status = 'shared' AND owner_user_id IS NOT NULL GROUP BY owner_user_id") as $s) {
+        foreach (Db::rows("SELECT g.owner_user_id, COUNT(*) AS n FROM mock_gallery g JOIN mock_mockups m ON m.id = g.mockup_id WHERE g.status = 'shared' AND m.deleted_at IS NULL AND g.owner_user_id IS NOT NULL GROUP BY g.owner_user_id") as $s) {
             $sharedBy[(int) $s['owner_user_id']] = (int) $s['n'];
         }
         $liked = [];
@@ -624,7 +683,7 @@ return static function (Router $r): void {
         $rows = Db::rows("SELECT l.user_id, SUM(l.delta) AS pts, u.name, u.avatar_url FROM core_point_ledger l JOIN core_users u ON u.id = l.user_id
                            WHERE l.delta > 0 AND l.created_at >= NOW(3) - INTERVAL 30 DAY GROUP BY l.user_id ORDER BY pts DESC LIMIT 10");
         $shared = [];
-        foreach (Db::rows("SELECT owner_user_id, COUNT(*) AS n FROM mock_gallery WHERE status = 'shared' AND owner_user_id IS NOT NULL GROUP BY owner_user_id") as $s) {
+        foreach (Db::rows("SELECT g.owner_user_id, COUNT(*) AS n FROM mock_gallery g JOIN mock_mockups m ON m.id = g.mockup_id WHERE g.status = 'shared' AND m.deleted_at IS NULL AND g.owner_user_id IS NOT NULL GROUP BY g.owner_user_id") as $s) {
             $shared[(int) $s['owner_user_id']] = (int) $s['n'];
         }
         Response::json(['items' => array_map(static fn ($x) => ['name' => trim((string) $x['name']) ?: '회원', 'avatar' => $x['avatar_url'] ?: null, 'points' => (int) $x['pts'], 'shared' => $shared[(int) $x['user_id']] ?? 0, 'badge' => $badge($shared[(int) $x['user_id']] ?? 0)], $rows)], 200, [], true);
@@ -645,7 +704,7 @@ return static function (Router $r): void {
         exit;
     });
 
-    $r->get('/mock/gallery/{id}/html', static function (array $p, Actor $a) use ($gItem, $gCanSee, $gUnlocked): void {
+    $r->get('/mock/gallery/{id}/html', static function (array $p, Actor $a) use ($gItem, $gCanSee, $gUnlocked, $linkSiblings): void {
         $g = $gItem((int) $p['id']);
         // 공유가 내려간 시안은 열람권이 있어도 열지 않는다 — 주인·관리자만(leak-audit 2026-10-06)
         if (!$gCanSee($g, $a)) {
@@ -659,7 +718,14 @@ return static function (Router $r): void {
         header('Cache-Control: private, no-store');
         header("Content-Security-Policy: sandbox allow-scripts allow-popups allow-forms allow-modals; form-action 'none'");
         header('X-AI-Generated: true'); // LEGAL-003: AI 생성 산출물 표시
-        echo \Pp\Mock\FrameHeight::inject((string) $g['html']);
+        $html = \Pp\Mock\Rules::webSamples((string) $g['html']);
+        if ((int) $g['owner_user_id'] > 0) {
+            // 세트 메뉴는 이 사람이 열 수 있는 페이지만 잇는다 — 열람권 없는 페이지의 게시 주소를 HTML 로 흘리지 않는다(R176)
+            $free = $a->isAdmin() || (int) $g['owner_user_id'] === $a->id();
+            $mine = $free ? [] : array_flip(array_map(static fn (array $x): int => (int) $x['gallery_id'], Db::rows('SELECT gallery_id FROM mock_gallery_unlocks WHERE user_id = ?', [$a->id()])));
+            $html = $linkSiblings($html, (int) $g['owner_user_id'], (string) ($g['m_base'] ?: $g['token']), static fn (array $s): bool => $free || isset($mine[(int) $s['g_id']]));
+        }
+        echo \Pp\Mock\FrameHeight::inject($html);
         exit;
     });
 
@@ -669,7 +735,7 @@ return static function (Router $r): void {
             throw HttpError::notFound('시안');
         }
         $open = $gUnlocked($g, $a);
-        $sharedN = (int) Db::val("SELECT COUNT(*) FROM mock_gallery WHERE status = 'shared' AND owner_user_id = ?", [(int) $g['owner_user_id']]);
+        $sharedN = (int) Db::val("SELECT COUNT(*) FROM mock_gallery g JOIN mock_mockups m ON m.id = g.mockup_id WHERE g.status = 'shared' AND m.deleted_at IS NULL AND g.owner_user_id = ?", [(int) $g['owner_user_id']]);
         $liked = $a->id() !== null && Db::row('SELECT 1 AS x FROM mock_gallery_likes WHERE gallery_id = ? AND user_id = ?', [(int) $g['id'], $a->id()]) ? [(int) $g['id'] => true] : [];
         $card = $gCard($g, $a, [(int) $g['owner_user_id'] => $sharedN], $liked, $open ? [(int) $g['id'] => true] : []);
         $notes = null;
@@ -741,6 +807,10 @@ return static function (Router $r): void {
         if ((int) $g['owner_user_id'] !== (int) $u['id'] && !$a->isAdmin()) {
             throw HttpError::forbidden('내가 만든 시안만 공유할 수 있습니다.');
         }
+        // 관리자가 숨기거나 폐기한 시안은 주인이 되살리지 못한다(R172) — 복원·공개는 관리자 화면에서
+        if (($g['status'] === 'hidden' || $g['m_discarded'] !== null) && !$a->isAdmin()) {
+            throw new HttpError('GALLERY_BLOCKED', '관리자가 숨기거나 폐기한 시안은 공유할 수 없습니다.', 403, '다시 올려야 하면 관리자에게 요청하세요.');
+        }
         $b = Response::input();
         $title = trim((string) ($b['title'] ?? ''));
         $note = trim((string) ($b['note'] ?? ''));
@@ -762,6 +832,10 @@ return static function (Router $r): void {
         if ((int) $g['owner_user_id'] !== (int) $u['id'] && !$a->isAdmin()) {
             throw HttpError::forbidden('내가 만든 시안만 내릴 수 있습니다.');
         }
+        // 숨김을 '보관'으로 바꾸는 길이 되지 않게 — 숨긴 시안은 이미 내려가 있다(R172)
+        if ($g['status'] === 'hidden' && !$a->isAdmin()) {
+            Response::json(['ok' => true]);
+        }
         Db::exec("UPDATE mock_gallery SET status = 'study' WHERE id = ?", [(int) $g['id']]);
         Response::json(['ok' => true]);
     }, ['auth' => true]);
@@ -773,12 +847,13 @@ return static function (Router $r): void {
         $rules = Db::rows('SELECT reason, delta, daily_cap, yearly_cap, note FROM core_point_rules WHERE enabled = 1 ORDER BY delta DESC');
         $names = [];
         foreach ($rules as $x) {
-            $names[$x['reason']] = (string) $x['note'];
+            // 보관 기준은 코드 한 곳(MOCK_GALLERY_CUT) — 규칙 표 글은 옛 '81점+' 가 남아 있을 수 있다(R179)
+            $names[$x['reason']] = $x['reason'] === 'mockup_keep' ? '시안 보관 ' . (MOCK_GALLERY_CUT + 1) . '점+' : (string) $x['note'];
         }
         Response::json([
             'points' => Points::balance($uid),
             'ledger' => array_map(static fn ($x) => ['delta' => (int) $x['delta'], 'reason' => $x['reason'], 'name' => $names[$x['reason']] ?? $x['reason'], 'created_at' => $x['created_at']], $rows),
-            'rules' => array_map(static fn ($x) => ['reason' => $x['reason'], 'points' => (int) $x['delta'], 'name' => (string) $x['note'], 'daily_cap' => $x['daily_cap'] === null ? null : (int) $x['daily_cap']], $rules),
+            'rules' => array_map(static fn ($x) => ['reason' => $x['reason'], 'points' => (int) $x['delta'], 'name' => $names[$x['reason']], 'daily_cap' => $x['daily_cap'] === null ? null : (int) $x['daily_cap']], $rules),
             'unlock_cost' => Points::cost('use_mockup_open'), 'cut' => MOCK_GALLERY_CUT,
         ]);
     }, ['auth' => true]);

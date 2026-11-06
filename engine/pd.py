@@ -8,14 +8,18 @@
 import json, os, sys, time
 
 # 단계 이름 — web/src/stages.ts 와 같은 값. polish(다듬기)·design 제작 단계 + design 기획 단계
-STAGES = ["준비", "실측", "디자인 시스템", "톤 통일", "이미지 분류", "자산 교체", "도식 재구성", "마감", "자동 탐지", "재검수", "결과 정리",
+STAGES = ["준비", "실측", "디자인 시스템", "톤 통일", "이미지 분류", "에셋 교체", "도식 재구성", "마감", "자동 탐지", "재검수", "결과 정리",
           "기획", "시안 생성", "시안 정리"]
+# 지시문·옛 습관의 다른 이름 — 화면 이름으로 바꿔 적는다('자산 교체' 를 화면이 못 찾아 단계가 멈춰 보였다, 10-28)
+ALIAS = {"자산 교체": "에셋 교체", "자산교체": "에셋 교체", "에셋교체": "에셋 교체"}
 path = os.environ.get("PD_PROGRESS") or os.path.join(os.getcwd(), "progress.jsonl")
 a = sys.argv[1:]
 d = {"ts": time.time()}
 if not a:
     sys.exit("사용: pd.py stage <단계> <진행률> [메시지] | note <메시지> | warn <메시지>")
 if a[0] == "stage":
+    if len(a) >= 2:
+        a[1] = ALIAS.get(a[1].strip(), a[1].strip())
     if len(a) < 3 or a[1] not in STAGES:
         sys.exit("단계 이름은 다음 중 하나: " + ", ".join(STAGES))
     d.update(stage=a[1], progress=int(a[2]), message=(a[3] if len(a) > 3 else f"{a[1]} 단계 시작"))

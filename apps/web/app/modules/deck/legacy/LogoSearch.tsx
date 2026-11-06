@@ -9,7 +9,23 @@ const fileOf = (p: string) => `${API}/logos/file?p=${encodeURIComponent(p)}`;
 /** 분류는 서버 목록(Deck/Logos.php TOPICS, 건수 포함)을 받는다 — 공공 줄 / 기업(biz-*) 줄. 받기 전엔 '전체'만 */
 type Topic = { id: string; label: string; count: number };
 
-export function LogoSearch({ title, onPick, onClose }: { title: string; onPick: (f: File) => void; onClose: () => void }) {
+/** 고른 로고의 흰색판(이름 + ' 흰색', 기관 공식 로고 등록 규칙 — db/migrate-legacy/register-official-logos.mjs) — 있으면 다크용으로 함께 넣는다. 없거나 실패하면 undefined */
+async function whiteOf(l: Logo): Promise<File | undefined> {
+  if (/흰색|화이트|white/i.test(l.name)) return undefined;
+  try {
+    const want = `${l.name} 흰색`;
+    const raw = await (await fetch(`${API}/logos?${new URLSearchParams({ q: want, topic: "" })}`)).json();
+    const d = raw && raw.data && !Array.isArray(raw.data) ? raw.data : raw;
+    const w = ((d?.data ?? []) as Logo[]).find((x) => x.name === want);
+    if (!w) return undefined;
+    const r = await fetch(fileOf(w.img || w.thumb));
+    if (!r.ok) return undefined;
+    const b = await r.blob();
+    return new File([b], `${w.name}.png`, { type: b.type || "image/png" });
+  } catch { return undefined; }
+}
+
+export function LogoSearch({ title, onPick, onClose, pairWhite = false }: { title: string; onPick: (f: File, white?: File) => void; onClose: () => void; pairWhite?: boolean }) {
   const [q, setQ] = useState("");
   const [topic, setTopic] = useState("");
   const [list, setList] = useState<Logo[]>([]);
@@ -53,7 +69,7 @@ export function LogoSearch({ title, onPick, onClose }: { title: string; onPick: 
       if (!r.ok) throw new Error("로고 그림을 받지 못했습니다");
       const b = await r.blob();
       const ext = (l.img.split(".").pop() || "png").toLowerCase();
-      onPick(new File([b], `${l.name}.${ext === "jpeg" ? "jpg" : ext}`, { type: b.type || "image/png" }));
+      onPick(new File([b], `${l.name}.${ext === "jpeg" ? "jpg" : ext}`, { type: b.type || "image/png" }), pairWhite ? await whiteOf(l) : undefined);
       onClose();
     } catch (e) { setErr((e as Error).message); }
     setPicking(null);

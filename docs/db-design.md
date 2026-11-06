@@ -44,7 +44,7 @@ comm_posts ─< comm_comments · comm_likes
 ## 2. core_ (계정·권한·과금·운영)
 | 표 | 핵심 열 | 인덱스(쿼리) |
 |---|---|---|
-| `core_users` | public_id, email(UNIQUE), name, avatar_file_id, kind ENUM(staff,external), plan ENUM(staff,free,pro,team), org_id, birthday DATE NULL, marketing_opt_in, name_changed_at, last_seen_at, deleted_at | `ux_email`, `ix_kind_plan`(관리자 목록), `ix_last_seen`(휴면) |
+| `core_users` | public_id, email(UNIQUE), name, avatar_file_id, kind ENUM(staff,external), plan ENUM(staff,free,pro,team), org_id, birthday DATE NULL, marketing_opt_in, name_changed_at, last_seen_at, deleted_at · (0048) nickname VARCHAR(40) NULL(닉네임, 선택), dept VARCHAR(60) NULL(소속·부서, 선택), profile_at DATETIME(3) NULL(첫 화면 정보 입력을 마친 때 — NULL 이고 이름이 비었거나 임시 이름(`사용자`·이메일 앞부분)이면 로그인 직후 입력 창, 서버는 428 PROFILE_REQUIRED) | `ux_email`, `ix_kind_plan`(관리자 목록), `ix_last_seen`(휴면) |
 | `core_user_logins` | user_id, provider ENUM(otp,google,naver,kakao), provider_uid, email, email_verified, linked_at | `ux_provider_uid(provider, provider_uid)`, `ix_user` |
 | `core_user_roles` | user_id, role ENUM(admin,curator,support), granted_by, granted_at | `ux_user_role`(복수 허용, 중복 금지) |
 | `core_orgs` | public_id, name, kind ENUM(company,team), domain(회사 메일 도메인 — staff 판정), seats, owner_user_id | `ux_domain`(NULL 허용) |

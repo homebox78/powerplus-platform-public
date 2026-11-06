@@ -225,6 +225,10 @@ def sanitize_note(out):
 def bundle(pptx, out_dir):
     """쓰인 서체 파일을 out_dir 에 복사하고 라이선스·설치 안내를 쓴다. (넣은 파일 경로들[서체+문서], 엔진에 없는 서체, 재배포 안 되는 서체)"""
     os.makedirs(out_dir, exist_ok=True)
+    for old in os.listdir(out_dir):   # 앞 실행·마감 단계가 넣어 둔 서체는 비운다 — 산출물은 이 폴더를 통째로 올려, 다시 돌린 057f 에 10-20 실행의 프리젠테이션·프리텐다드가 섞였다(R141)
+        p = os.path.join(out_dir, old)
+        if os.path.isfile(p):
+            os.remove(p)
     reg = osdep.installed_fonts()
     got, miss, noship, rows = [], [], [], []
     for f in sorted(faces_in(pptx)):
@@ -255,7 +259,10 @@ def bundle(pptx, out_dir):
                         shutil.copy2(src, os.path.join(out_dir, d))
                         docs.append(os.path.join(out_dir, d))
         g = os.path.join(out_dir, "서체_설치안내.txt")
-        open(g, "w", encoding="utf-8").write(GUIDE.replace("{rows}", "\n".join(rows)))
+        _g = GUIDE.replace("{rows}", "\n".join(rows))
+        if any(fontlicense.company(x) for x in got):   # 회사 라이선스 서체가 들었으면 OFL 문구를 바로잡는다
+            _g = _g.replace("모두 SIL Open Font License 1.1 무료 서체입니다", "a시월구일은 회사 라이선스 서체(임직원 업무용 — 회사 밖으로 나눠 주지 않음), 나머지는 SIL Open Font License 1.1 무료 서체입니다")
+        open(g, "w", encoding="utf-8").write(_g)
         docs.append(g)
     return got + list(dict.fromkeys(docs)), miss, list(dict.fromkeys(noship))
 

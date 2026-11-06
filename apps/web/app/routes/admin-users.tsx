@@ -57,7 +57,7 @@ export default function AdminUsers() {
   const canGrantAdmin = Boolean(list.data?.meta?.can_grant_admin);
   const current = items.find((u) => u.id === openId) ?? null;
   const sel = useSelection(items.map((u) => u.id), [kind, status, role, q, page]);
-  const st = useSort(items, { name: (u) => u.name, kind: (u) => KIND_KO[u.kind], status: (u) => u.status, plan: (u) => PLAN_KO[u.plan], role: (u) => (u.roles.includes("superadmin") ? 4 : u.roles.includes("admin") ? 3 : u.roles.includes("curator") ? 2 : u.roles.length ? 1 : null), active: (u) => u.last_active });
+  const st = useSort(items, { name: (u) => u.name, kind: (u) => KIND_KO[u.kind], status: (u) => u.status, plan: (u) => PLAN_KO[u.plan], role: (u) => (u.roles.includes("superadmin") ? 4 : u.roles.includes("admin") ? 3 : u.roles.includes("curator") ? 2 : u.roles.length ? 1 : null), joined: (u) => u.created_at, active: (u) => u.last_active }, { key: "joined", dir: "desc" });   // 기본 = 가입일시 최근 순(서버도 같은 순서로 쪽을 나눈다)
   const qc = useQueryClient();
   const unblock = useMutation({
     mutationFn: bulkUsers,
@@ -92,6 +92,8 @@ export default function AdminUsers() {
               <SortHead s={st} k="status" className="w-[76px]">상태</SortHead>
               <SortHead s={st} k="plan" className="hidden w-[84px] md:table-cell">플랜</SortHead>
               <SortHead s={st} k="role" className="hidden w-[200px] md:table-cell">역할</SortHead>
+              {/* 가입일시: "2026.10.28 14:05" 16자(약 110px)+30 = 140px(R08). 넓은 화면(xl)에서만 — lg 에서는 이름 칸이 좁아진다 */}
+              <SortHead s={st} k="joined" className="hidden w-[140px] xl:table-cell">가입일시</SortHead>
               <SortHead s={st} k="active" className="hidden w-[150px] lg:table-cell">마지막 활동</SortHead>
             </TableRow>
           </TableHeader>
@@ -109,11 +111,12 @@ export default function AdminUsers() {
                 <TableCell className="hidden text-center md:table-cell">
                   {u.roles.length ? <span className="inline-flex flex-wrap justify-center gap-1">{u.roles.map((r) => <Tag key={r} tone={r === "superadmin" || r === "admin" ? "ink" : "soft"}>{ROLE_KO[r]}</Tag>)}</span> : <span className="text-ink-4">—</span>}
                 </TableCell>
+                <TableCell className="hidden text-center tabular-nums text-ink-3 xl:table-cell">{fmtAt(u.created_at)}</TableCell>
                 <TableCell className="hidden text-center tabular-nums text-ink-3 lg:table-cell">{fmtAt(u.last_active)}</TableCell>
               </TableRow>
             ))}
-            {list.data && items.length === 0 && <TableRow><TableCell colSpan={7} className="py-12 text-center text-ink-4">해당하는 사용자가 없습니다.</TableCell></TableRow>}
-            {list.isLoading && <TableRow><TableCell colSpan={7} className="py-12 text-center text-ink-4">불러오는 중</TableCell></TableRow>}
+            {list.data && items.length === 0 && <TableRow><TableCell colSpan={8} className="py-12 text-center text-ink-4">해당하는 사용자가 없습니다.</TableCell></TableRow>}
+            {list.isLoading && <TableRow><TableCell colSpan={8} className="py-12 text-center text-ink-4">불러오는 중</TableCell></TableRow>}
           </TableBody>
         </Table>
       </div>

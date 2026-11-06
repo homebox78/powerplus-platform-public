@@ -21,11 +21,12 @@ Judge ONLY whether the mockup follows the wireframe — not beauty, not colors.
 Check: (1) every wireframe block exists in the mockup at roughly the same position and relative size, in the same order;
 (2) each block's title text appears (Korean, small spelling differences are fine);
 (3) every number in the wireframe (values, %, units) appears unchanged in the mockup and no invented numbers were added;
-(4) the visual kind matches (a chart stays a chart of the same type, a table stays a table, a flow stays a flow).
+(4) the visual kind matches (a chart stays a chart of the same type, a table stays a table, a flow stays a flow);
+(5) even bottoms: cards or panels side by side in one row end on the same bottom line, and their content (last chip row / last text line) ends at about the same height — a card whose content stops clearly early, leaving an empty band at its bottom while its neighbor is full, is uneven.
 If you cannot see both images, answer {"score": null, "error": "no_vision"}.
 Answer with ONE JSON object only, no prose:
-{"score": 0-100, "layout_ok": true|false, "numbers_ok": true|false, "missing": ["block titles not present in the mockup"], "extra": ["blocks or numbers in the mockup that are not in the wireframe"], "moved": ["block titles placed in a clearly different position"], "note": "one short sentence"}
-Scoring: start at 100; -15 per missing block, -10 per moved block, -10 per wrong/missing number (max -40), -10 per extra block, -25 if the overall arrangement (columns/rows) differs."""
+{"score": 0-100, "layout_ok": true|false, "numbers_ok": true|false, "missing": ["block titles not present in the mockup"], "extra": ["blocks or numbers in the mockup that are not in the wireframe"], "moved": ["block titles placed in a clearly different position"], "uneven": ["block titles whose bottom or content end is clearly off from the blocks beside it"], "note": "one short sentence"}
+Scoring: start at 100; -15 per missing block, -10 per moved block, -10 per wrong/missing number (max -40), -10 per extra block, -25 if the overall arrangement (columns/rows) differs, -6 per uneven block (max -18)."""
 
 
 def _pos(b):
@@ -139,11 +140,13 @@ def parse(text):
     sc = int(round(max(0.0, min(100.0, sc))))
     missing, extra, moved = _as_list(d.get("missing")), _as_list(d.get("extra")), _as_list(d.get("moved"))
     return {"score": sc, "layout_ok": _as_bool(d.get("layout_ok"), sc >= PASS), "numbers_ok": _as_bool(d.get("numbers_ok"), True),
-            "missing": missing, "extra": extra, "moved": moved, "note": str(d.get("note") or "")[:200]}
+            "missing": missing, "extra": extra, "moved": moved, "uneven": _as_list(d.get("uneven")), "note": str(d.get("note") or "")[:200]}
 
 
 def need_retry(r):
-    return bool(r) and (r["score"] < PASS or not r["layout_ok"])
+    # 끝선 어긋남·빈 칸도 다시 그린다(점수만 보면 -6 으로는 70 밑으로 안 내려가 그대로 남았다, 11-03)
+    return bool(r) and (r["score"] < PASS or not r["layout_ok"] or bool(r.get("uneven"))
+                        or any(str(x).lower().startswith(("empty:", "illustration:")) for x in r.get("extra") or []))
 
 
 def fix_text(r):
@@ -155,8 +158,17 @@ def fix_text(r):
         out.append("Missing blocks that MUST appear: " + "; ".join(r["missing"]))
     if r["moved"]:
         out.append("Put these back in their wireframe position: " + "; ".join(r["moved"]))
-    if r["extra"]:
-        out.append("Remove what is not in the wireframe: " + "; ".join(r["extra"]))
+    empty = [x for x in r["extra"] if str(x).lower().startswith("empty:")]   # 기존 구성 그대로 — 빈 칸은 빼라가 아니라 채우라(11-03 사용자)
+    pics = [x for x in r["extra"] if str(x).lower().startswith("illustration:")]   # 빈 칸 목록 밖 그림 — 그 그림만 빼라(10차 시험)
+    extra = [x for x in r["extra"] if x not in empty and x not in pics]
+    if extra:
+        out.append("Remove what is not in the wireframe: " + "; ".join(extra))
+    if pics:
+        out.append("Remove the illustration / 3D object from these blocks and leave their layout and text as they are: " + "; ".join(str(x).split(":", 1)[1].strip() for x in pics))
+    if empty:
+        out.append("Fill these large empty areas with ONE topic object illustration each (no text, deck blue family): " + "; ".join(str(x)[6:].strip() for x in empty))
+    if r.get("uneven"):   # 11-03 사용자 "카드 안 컨텐츠도 마감 마지막에 서로 맞게"
+        out.append("Make these end on the same bottom line as the blocks beside them (spread their existing rows, add nothing): " + "; ".join(r["uneven"]))
     if not r["numbers_ok"]:
         out.append("Print every number exactly as written in the wireframe — no changed, rounded or invented numbers.")
     if r.get("note"):

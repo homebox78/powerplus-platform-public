@@ -8,6 +8,7 @@ declare(strict_types=1);
 
 use Pp\Core\Actor;
 use Pp\Core\Db;
+use Pp\Core\DisplayName;
 use Pp\Core\HttpError;
 use Pp\Core\RateLimit;
 use Pp\Core\Response;
@@ -90,8 +91,8 @@ return static function (Router $r): void {
         $pages = array_map(static fn (array $x): array => ['path' => (string) $x['path'], 'module' => (string) $x['module'], 'pv' => (int) $x['pv'], 'uv' => (int) $x['uv']],
             $rows("SELECT path, MAX(module) module, COUNT(*) pv, COUNT(DISTINCT vid) uv FROM stat_hits WHERE {$W} GROUP BY path ORDER BY pv DESC LIMIT 20"));
         $direct = (int) ($one("SELECT COUNT(DISTINCT sid) n FROM stat_hits WHERE {$webOnly} AND ref_host IS NULL", $args)['n'] ?? 0);
-        $members = array_map(static fn (array $x): array => ['name' => (string) ($x['name'] ?: '이름 없음'), 'pv' => (int) $x['pv'], 'days' => (int) $x['days'], 'last' => (string) $x['last_at']],
-            $rows("SELECT u.name name, COUNT(*) pv, COUNT(DISTINCT h.day) days, MAX(h.at) last_at FROM stat_hits h JOIN core_users u ON u.id = h.user_id WHERE {$W} GROUP BY h.user_id ORDER BY pv DESC LIMIT 10"));
+        $members = array_map(static fn (array $x): array => ['name' => DisplayName::of($x['name'], $x['email']) ?? '이름 없음', 'pv' => (int) $x['pv'], 'days' => (int) $x['days'], 'last' => (string) $x['last_at']],
+            $rows("SELECT u.name name, u.email email, COUNT(*) pv, COUNT(DISTINCT h.day) days, MAX(h.at) last_at FROM stat_hits h JOIN core_users u ON u.id = h.user_id WHERE {$W} GROUP BY h.user_id ORDER BY pv DESC LIMIT 10"));
         Response::json([
             'from' => $from, 'to' => $to, 'days' => $span, 'prev' => ['from' => $pFrom, 'to' => $pTo] + $prev,
             'total' => $now + ['bounce' => $bounce, 'new_visitors' => $newV, 'pages_per_visit' => $now['visits'] > 0 ? round($now['pv'] / $now['visits'], 2) : 0.0],

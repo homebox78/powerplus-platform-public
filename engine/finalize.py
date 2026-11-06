@@ -13,7 +13,7 @@ from pptx import Presentation
 from pptx.dml.color import RGBColor
 from pptx.enum.text import MSO_ANCHOR, PP_ALIGN
 from pptx.util import Pt
-import fontlicense, fontset, osdep
+import flatfx, fontlicense, fontset, osdep
 
 sys.stdout.reconfigure(encoding="utf-8")
 src, fonts_dir = os.path.abspath(sys.argv[1]), os.path.abspath(sys.argv[2])
@@ -22,6 +22,7 @@ TEXT_OUT = sys.argv[sys.argv.index("--text") + 1] if "--text" in sys.argv else N
 PLAN = json.load(open(sys.argv[sys.argv.index("--plan") + 1], encoding="utf-8")) if "--plan" in sys.argv else {}
 ACCENT = sys.argv[sys.argv.index("--accent") + 1] if "--accent" in sys.argv else "#FF2A6D"
 ACCENT = ACCENT[:7] if re.match(r"^#[0-9A-Fa-f]{6}", ACCENT or "") else "#FF2A6D"
+MOCKUP = sys.argv[sys.argv.index("--mockup") + 1] if "--mockup" in sys.argv else None   # 시안 폴더(_mockup) — 카드 바탕색을 시안 같은 자리 색과 대조
 KEY_FONT, KEY_PT = fontset.KEY_FONT, 25
 KEY_PT_EFF = round(KEY_PT * fontset.KEY_SCALE)   # 제목 서체 덩어리감 보정한 키메시지 크기
 KEY_ALIGN = PP_ALIGN.LEFT if "--key-align" in sys.argv and sys.argv[sys.argv.index("--key-align") + 1] == "left" else PP_ALIGN.CENTER   # 디자인 타입(B·D 는 왼쪽)
@@ -324,7 +325,7 @@ def title_gap(slide, key):
 
 def readability(no, slide, key):
     """가독성 점검(AI 없이) — ① 바탕과 글자의 명도 대비: 3:1 아래면 흰 글자/진한 글자 중 대비가 큰 쪽으로 바꾼다
-    ② 글자 크기·굵기 강약: 본문 글이 거의 한 크기·한 굵기면 알린다 ③ 잘라 넣은 그림의 해상도: 150dpi 아래면 알린다. 반환: 고친 글 수"""
+    ② 글자 크기·굵기 강약: 본문 글이 거의 한 크기·한 굵기면 알린다 ③ 잘라 넣은 그림의 해상도: 120dpi 아래면 알린다. 반환: 고친 글 수"""
     fixed, sizes, levels, low = 0, [], set(), []
     for s in walk(slide.shapes):
         if is_pic(s):
@@ -332,7 +333,7 @@ def readability(no, slide, key):
                 px = s.image.size[0]
                 crop = 1 - (s.crop_left or 0) - (s.crop_right or 0)
                 dpi = px * crop / max(0.05, s.width / IN)
-                if dpi < 150 and s.width > int(0.8 * IN):
+                if dpi < 120 and s.width > int(0.8 * IN):   # 시안 그림 원본이 1536px(쪽 폭 기준 142dpi)라 150 이면 거의 모든 쪽이 걸려 경고가 무뎌졌다(R146)
                     low.append(f"{s.width / IN:.1f}in 폭 그림 {dpi:.0f}dpi")
             except Exception:
                 pass
@@ -366,6 +367,14 @@ def readability(no, slide, key):
             warn(no, "글자 크기 강약이 약함", f"본문 글이 {small:g}~{big:g}pt 로 거의 한 크기입니다 — 제목·키워드는 크고 굵게, 설명은 작게 차이를 주세요")
         if len(levels - {-1}) <= 1:
             warn(no, "글자 굵기 강약이 없음", "모든 글이 같은 굵기입니다 — 제목·강조어는 굵은 서체(3·4), 설명은 본문 서체(2)")
+    try:   # 검사 하나의 예외로 마무리 전체(키메시지·가이드)가 빠지지 않게(R164)
+        left = flatfx.leftovers(slide)
+        if left:
+            warn(no, "빈칸·메모 문구가 남음", " / ".join(left[:3]) + " — 내용을 채우거나 지워 주세요")
+        for top_, under in flatfx.covered_text(slide)[:2]:
+            warn(no, "글을 덮는 상자", f"'{top_}' 상자가 '{under}' 글을 가립니다 — 자리를 옮겨 주세요")
+    except Exception as e:
+        warn(no, "빈칸·겹침 검사를 건너뜀", f"{type(e).__name__}: {str(e)[:120]}")
     if low:
         warn(no, "저화질 그림", ", ".join(low[:3]) + " — 인쇄·큰 화면에서 흐려 보입니다. 시안을 다시 만들거나 고화질 자산으로 바꿔 주세요")
     if fixed:
@@ -417,49 +426,10 @@ def align_tables(slide):
     return n
 
 
-def _hsl(h):
-    r, g, b = (int(h[i:i + 2], 16) / 255 for i in (0, 2, 4))
-    mx, mn = max(r, g, b), min(r, g, b)
-    l = (mx + mn) / 2
-    if mx == mn:
-        return 0.0, 0.0, l
-    d = mx - mn
-    s = d / (2 - mx - mn) if l > 0.5 else d / (mx + mn)
-    hue = ((g - b) / d % 6) if mx == r else ((b - r) / d + 2) if mx == g else ((r - g) / d + 4)
-    return hue * 60, s, l
-
-
-def _blue_step(h):
-    """파랑이면 단계(0 진한 남색 · 1 주 파랑 · 2 중간 · 3 옅은 바탕), 아니면 None"""
-    hue, sat, l = _hsl(h)
-    if not (200 <= hue <= 245 and sat >= 0.25):
-        return None
-    return 0 if l < 0.30 else 1 if l < 0.55 else 2 if l < 0.85 else 3
-
-
 def snap_blues(prs):
-    """파랑을 4단계로(장표규칙 9-1) — 덱 안에서 단계마다 가장 많이 쓴 파랑 하나로 모은다. 강조색·그림은 건드리지 않는다.
-    디자인 타입마다 팔레트가 달라 고정값이 아니라 그 덱의 대표색을 쓴다."""
-    acc = ACCENT.lstrip("#").upper()
-    els, cnt = [], {}
-    for slide in prs.slides:
-        for el in slide._element.iter(A + "srgbClr"):
-            v = (el.get("val") or "").upper()
-            if len(v) != 6 or v == acc:
-                continue
-            st = _blue_step(v)
-            if st is None:
-                continue
-            els.append((el, st))
-            cnt.setdefault(st, {}).setdefault(v, 0)
-            cnt[st][v] += 1
-    rep = {st: max(c, key=c.get) for st, c in cnt.items()}
-    n = 0
-    for el, st in els:
-        if el.get("val", "").upper() != rep[st]:
-            el.set("val", rep[st])
-            n += 1
-    return n
+    """파랑을 4단계로(장표규칙 9-1) — 같은 단계 안에서 아주 가까운 색끼리만 모은다(flatfx.snap_blues).
+    예전에는 단계 안의 색을 모두 하나로 모아, 테두리색이 거의 흰 카드 바탕까지 덮어써 카드가 회청색이 됐다(2026-10-28 팀장 지적)."""
+    return flatfx.snap_blues(prs, ACCENT)
 
 
 def is_pic(s):
@@ -560,6 +530,7 @@ if "--unify-only" in sys.argv:   # 표지·목차·간지처럼 키메시지·�
             fontbundle.fallback(part._element)
     except Exception as e:
         print("다른 언어 글 서체 검사 실패(무시):", str(e)[:120])
+    flatfx.set_lang(prs)   # 한글 단어 단위 줄바꿈(R199) — 앞장·서체만 맞추는 길에도
     prs.save(src)
     print(f"서체 {fontset.NAME} 로 {nswap}곳 · 큰 글자 {nbig}곳 {KEY_FONT}")
     sys.exit(0)
@@ -567,9 +538,11 @@ if "--polish" in sys.argv:   # 초안 다듬기 — 배치는 그대로 두고 �
     for part in list(prs.slide_masters) + list(prs.slide_layouts) + list(prs.slides):
         nswap += unify_fonts(part._element)
     for no, slide in enumerate(prs.slides, 1):
-        for r in slide._element.iter(A + "r"):   # 20pt 이상 큰 글자(장 제목·표지 제목)는 제목 서체
-            rPr = r.find(A + "rPr")
-            if rPr is not None and int(rPr.get("sz") or 0) >= 2000:
+        for r in slide._element.iter(A + "r"):   # 제목 서체 글(키메시지·앞장 큰 글 — polish_prep 이 정한 것)만 제목 서체 크기·자간으로.
+            rPr = r.find(A + "rPr")          # 예전엔 20pt 이상이면 모두 제목 서체로 바꿔 머리 띠 제목·숫자 강조까지 G마켓이 됐다(사용자 11-02 "키메시지 외에는 a시월구일", R183)
+            if rPr is not None and int(rPr.get("sz") or 0) >= 2000 and any(
+                    rPr.find(A + tag) is not None and (rPr.find(A + tag).get("typeface") == KEY_FONT or rPr.find(A + tag).get("typeface") in fontset.TITLE_FACES
+                                                       or re.match(r"^(G마켓|Gmarket)", rPr.find(A + tag).get("typeface") or "", re.I)) for tag in ("latin", "ea")):
                 fresh = all((rPr.find(A + tag) is None or rPr.find(A + tag).get("typeface") != KEY_FONT) for tag in ("latin", "ea"))
                 for tag in ("latin", "ea", "cs"):
                     el = rPr.find(A + tag)
@@ -589,6 +562,7 @@ if "--polish" in sys.argv:   # 초안 다듬기 — 배치는 그대로 두고 �
             elif getattr(sh, "has_text_frame", False) and sh.text_frame.text.strip():
                 lines.append(sh.text_frame.text.strip())
         deck.append({"n": no, "text": chr(10).join(lines)[:2500]})
+    flatfx.set_lang(prs)   # 초안 다듬기도 한글 단어 단위 줄바꿈(R199)
     prs.save(src)
     if TEXT_OUT:
         json.dump(deck, open(TEXT_OUT, "w", encoding="utf-8"), ensure_ascii=False)
@@ -726,7 +700,44 @@ elif not FONTS_ONLY:
         ncon += readability(no, slide, key)
         ntable += align_tables(slide)
         deck.append({"n": no, "text": "\n".join(lines)[:2500]})
+    nfill = 0
+    if MOCKUP:   # 카드 바탕색을 시안대로 — 파랑 단계 모으기보다 먼저(시안에서 잰 거의 같은 색은 그다음 단계에서 하나로 모인다)
+        try:
+            _fills = flatfx.match_fills(prs, MOCKUP, log=lambda m: warn(0, "카드 바탕색 시안 대조 건너뜀", m))
+            nfill = len(_fills)
+            _by = {}
+            for _k, _nm, _a, _b in _fills:   # 장마다 한 줄로(확인 목록이 길어지지 않게)
+                _by.setdefault(_k, []).append(f"#{_a}→#{_b}")
+            for _k, _v in _by.items():
+                warn(_k, "카드 바탕색을 시안대로 되돌림", f"시안과 다른 바탕색 {len(_v)}곳을 시안 같은 자리 색으로: " + ", ".join(_v[:4]))
+        except Exception as e:
+            warn(0, "카드 바탕색 시안 대조 실패", str(e)[:160])
     nblue = snap_blues(prs)
+    _nth, _nref = flatfx.kill_theme_shadows(prs)   # 테마 그림자(빈 effectLst 를 무시하는 LibreOffice 에서도 안 생기게)
+    _nsh = flatfx.drop_heavy_shadows(prs)
+    _nl = flatfx.set_lang(prs)   # 한글 런 lang=ko-KR — 없으면 PowerPoint 가 단어 중간에서 끊는다(R199)
+    if _nl:
+        print(f"한글 글 {_nl}곳 언어 표시(단어 단위 줄바꿈)")
+    try:   # 나란한 같은 종류 글은 같은 크기로 꼬리 줄·어절 잘림 없애기, 글을 덮는 그림 줄이기(R198)
+        import fitgroup
+        _ng, _np = fitgroup.run(prs)
+        if _ng or _np:
+            print(f"같은 종류 글 {_ng}묶음 함께 줄임 · 글을 덮던 그림 {_np}개 줄임")
+    except Exception as e:
+        warn(0, "같은 종류 글 맞춤 건너뜀", str(e)[:160])
+    try:   # 숨은 옛 조각 지우기·나란한 그림 크기감·표 칸 글 크기·칩 아이콘 여백·배지 줄·안내선(R208~R213)
+        import tidy
+        _td = tidy.run(prs)
+        print("장표 정리 " + " · ".join(f"{k} {v}" for k, v in _td.items()))
+    except Exception as e:
+        warn(0, "장표 정리 건너뜀", str(e)[:160])
+    _nq = flatfx.fix_quotes(prs)   # ’24.8 — 한글 서체 전각 따옴표 벌어짐(R196)
+    if _nq:
+        print(f"홑따옴표 {_nq}곳 라틴 서체로")
+    _ncell, _ntbl = flatfx.fix_tables(prs)   # 표 칸 테두리를 PowerPoint 가 버리지 않게(채움이 테두리 앞이면 검은 격자로 그림)
+    for _no, _t, _cut in flatfx.strip_memos(prs):   # 기획 메모 줄은 장표가 아니라 확인 목록으로
+        warn(_no, "기획 메모를 장표에서 뺌" if _cut else "카드 전체가 기획 메모 — 내용 채우기 필요", _t)
+    print(f"카드 바탕색 시안대로 {nfill}곳 · 테마 그림자 끊음 {_nref}곳 · 진한 그림자 {_nsh}개 지움 · 표 칸 순서 {_ncell}칸·격자 {_ntbl}표")
     prs.save(src)
     if TEXT_OUT:
         json.dump(deck, open(TEXT_OUT, "w", encoding="utf-8"), ensure_ascii=False)

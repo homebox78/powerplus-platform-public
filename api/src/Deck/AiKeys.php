@@ -617,6 +617,7 @@ final class AiKeys
      */
     public static function creditCheck(string $email, float $need = 0.5): void
     {
+        self::imageGuard($email);   // 사람별 그림 월 상한 — 시안 단계로 가기 전에 먼저 알린다
         if (self::imageProviderFor($email) === 'higgsfield') {
             $hf = self::hfStatus();
             if (($hf['state'] ?? '') !== 'no_credits') return;   // Higgsfield 로 만든다 — OpenRouter 잔액은 상관없다
@@ -653,11 +654,13 @@ final class AiKeys
         $m = Db::pdo()->prepare("SELECT COALESCE(SUM(cost_usd),0) FROM deck_ai_usage WHERE email = ? AND kind NOT IN " . self::SUBS_SQL . " AND created_at >= DATE_FORMAT(NOW(), '%Y-%m-01')");
         $m->execute([strtolower($email)]);
         $d = self::setting('job_budget_usd');
-        $c = self::setting('monthly_cap_usd');
+        $c = self::setting(self::uk('mcap', $email)) ?? self::setting('monthly_cap_usd');   // 사람별 월 상한이 있으면 그것(관리자가 그 사람만 늘림 — 그림 상한 imgcap 과 같은 방식, 2026-10-28)
         return [
             'default' => $d !== null && (float) $d > 0 ? (float) $d : null,
             'monthly_cap' => $c !== null && (float) $c > 0 ? (float) $c : null,
             'month_spent' => round((float) $m->fetchColumn(), 4),
+            'image_cap' => self::imageCap(),   // 전체 값(관리자 설정 칸). 그 사람에게 적용되는 값은 imageState
+            'image_month_spent' => round(self::imageMonthSpent($email), 4),
         ];
     }
 
@@ -705,7 +708,129 @@ final class AiKeys
             }
         }
         if (array_key_exists('monthly_cap_usd', $b)) self::setSetting('monthly_cap_usd', $num($b['monthly_cap_usd']));
+        // 그림 월 상한 — 비우면 '0'(없음)으로 둔다. 설정이 아예 없을 때만 기본 $20
+        if (array_key_exists('image_cap_usd', $b)) self::setSetting('image_cap_usd', $num($b['image_cap_usd']) ?? '0');
         return ['ok' => true];
+    }
+
+    /**
+     * 시안 그림(OpenRouter 이미지) 사람별 월 상한 — 2026-10-27 사용자 지시 "이미지 제작 개인 한도 최대 $20".
+     * 무의미한 그림 작업으로 비용을 쓰는 것을 막는다. 기획·대본 등 글 작업(Claude API)은 이 상한에 들지 않는다.
+     * 관리자 설정 image_cap_usd: 없으면 $20, '0' 이면 상한 없음. 관리자·슈퍼관리자 계정은 보지 않는다.
+     */
+    private const IMAGE_CAP_DEFAULT = 20.0;
+
+    public static function imageCap(): ?float
+    {
+        $v = self::setting('image_cap_usd');
+        if ($v === null) return self::IMAGE_CAP_DEFAULT;
+        return (float) $v > 0 ? (float) $v : null;
+    }
+
+    /** 이달 그 사람의 그림 비용(작업 주인 기준) */
+    public static function imageMonthSpent(string $email): float
+    {
+        $st = Db::pdo()->prepare("SELECT COALESCE(SUM(cost_usd),0) FROM deck_ai_usage WHERE email = ? AND kind = 'image' AND created_at >= DATE_FORMAT(NOW(), '%Y-%m-01')");
+        $st->execute([strtolower($email)]);
+        return (float) $st->fetchColumn();
+    }
+
+    private static function isAdminEmail(string $email): bool
+    {
+        try {
+            $st = Db::pdo()->prepare("SELECT 1 FROM core_users u JOIN core_user_roles r ON r.user_id = u.id WHERE LOWER(u.email) = ? AND r.role IN ('admin','superadmin') LIMIT 1");
+            $st->execute([strtolower($email)]);
+            return (bool) $st->fetchColumn();
+        } catch (Throwable) {
+            return false;   // 확인이 실패하면 상한을 그대로 건다
+        }
+    }
+
+    public static function imageStopMessage(float $cap, float $spent): string
+    {
+        return sprintf('이달 시안 그림 비용 상한($%.2f)에 도달했습니다 (사용 $%.2f). ', $cap, $spent)
+            . '기획·대본 같은 글 작업은 그대로 쓸 수 있습니다. 그림이 더 필요하면 관리자에게 요청해 주세요(관리자 › AI 설정 › 비용 한도 › 그림 월 상한). 다음 달 1일에 풀립니다.';
+    }
+
+    public static function imageGuard(string $email): void
+    {
+        $cap = self::imageCapFor($email);
+        if ($cap === null || self::isAdminEmail($email)) return;
+        $spent = self::imageMonthSpent($email);
+        if ($spent >= $cap) Legacy::fail(self::imageStopMessage($cap, $spent), 402);
+    }
+
+    /** 그 사람에게 적용되는 그림 월 상한 — 관리자가 늘려 준 개인 값(imgcap:…, '0' = 없음)이 있으면 그것, 없으면 전체 값 */
+    public static function imageCapFor(string $email): ?float
+    {
+        $v = self::setting(self::uk('imgcap', $email));
+        if ($v !== null) return (float) $v > 0 ? (float) $v : null;
+        return self::imageCap();
+    }
+
+    /** 화면용 — 막혔는지(blocked)·증액 요청을 이미 보냈는지(requested). 요청 버튼은 blocked 일 때만 보인다 */
+    public static function imageState(string $email): array
+    {
+        $cap = self::imageCapFor($email);
+        $spent = self::imageMonthSpent($email);
+        $admin = self::isAdminEmail($email);
+        $req = self::openLimitRequest($email);
+        return [
+            'cap' => $cap, 'spent' => round($spent, 2),
+            'personal' => self::setting(self::uk('imgcap', $email)) !== null,
+            'blocked' => !$admin && $cap !== null && $spent >= $cap,
+            'requested' => $req,
+        ];
+    }
+
+    private static function openLimitRequest(string $email): bool
+    {
+        $st = Db::pdo()->prepare("SELECT 1 FROM core_contacts WHERE email = ? AND topic = 'limit' AND status = 'open' LIMIT 1");
+        $st->execute([strtolower($email)]);
+        return (bool) $st->fetchColumn();
+    }
+
+    /** 증액 요청 — 막힌 사람만, 열린 요청은 한 사람에 하나. 문의(core_contacts, topic=limit)로 쌓이고 운영자에게 알림 */
+    public static function requestImageCap(string $email, ?int $userId, string $name, string $reason): array
+    {
+        $s = self::imageState($email);
+        if (!$s['blocked']) Legacy::fail('그림 한도에 걸린 경우에만 증액을 요청할 수 있습니다.', 409);
+        if ($s['requested']) Legacy::fail('이미 증액을 요청했습니다. 관리자가 확인하면 알림으로 알려 드립니다.', 409);
+        $reason = trim(mb_substr($reason, 0, 1000));
+        $msg = sprintf("[시안 그림 월 상한 증액 요청]\n이달 사용 $%.2f / 상한 $%.2f\n\n", $s['spent'], (float) $s['cap'])
+            . ($reason !== '' ? "사유: {$reason}" : '사유: (적지 않음)')
+            . "\n\n관리자 › 문의에서 이 요청을 열고 '그림 한도 늘리기'로 바로 올릴 수 있습니다.";
+        $pid = \Pp\Core\Ids::publicId();
+        Db::pdo()->prepare('INSERT INTO core_contacts (public_id, user_id, topic, module, name, email, message, ip) VALUES (?, ?, ?, ?, ?, ?, ?, ?)')
+            ->execute([$pid, $userId, 'limit', 'deck', mb_substr($name !== '' ? $name : $email, 0, 60), strtolower($email), $msg, \Pp\Core\Audit::ip()]);
+        try {
+            $st = Db::pdo()->query("SELECT DISTINCT user_id FROM core_user_roles WHERE role IN ('superadmin','admin')");
+            foreach ($st->fetchAll() as $r) \Pp\Core\Notify::send((int) $r['user_id'], 'contact', "그림 한도 증액 요청: {$name}", '/admin/contacts');
+        } catch (Throwable) {}   // 알림이 실패해도 요청은 접수된다
+        return self::imageState($email);
+    }
+
+    /**
+     * 관리자 — 한 사람의 그림 월 상한을 바꾼다. $cap null = 개인 값 지우기(전체 값으로), 0 = 상한 없음.
+     * 열린 증액 요청은 답변 완료로 닫고 그 사람에게 알린다.
+     */
+    public static function setUserImageCap(string $email, ?float $cap, ?int $adminId): array
+    {
+        $email = strtolower(trim($email));
+        if (!filter_var($email, FILTER_VALIDATE_EMAIL)) Legacy::fail('이메일이 올바르지 않습니다.');
+        if ($cap !== null && ($cap < 0 || $cap > 10000)) Legacy::fail('$0 ~ $10,000 사이로 적어 주세요.');
+        self::setSetting(self::uk('imgcap', $email), $cap === null ? null : (string) round($cap, 2));
+        $now = self::imageCapFor($email);
+        $label = $now === null ? '상한 없음' : sprintf('$%.2f', $now);
+        Db::pdo()->prepare("UPDATE core_contacts SET status = 'answered', reply = ?, handled_by = ?, handled_at = NOW(3) WHERE email = ? AND topic = 'limit' AND status = 'open'")
+            ->execute(["시안 그림 월 상한을 {$label}(으)로 바꿨습니다.", $adminId, $email]);
+        try {
+            $st = Db::pdo()->prepare('SELECT id FROM core_users WHERE LOWER(email) = ? LIMIT 1');
+            $st->execute([$email]);
+            $uid = $st->fetchColumn();
+            if ($uid) \Pp\Core\Notify::send((int) $uid, 'contact', "시안 그림 월 상한이 {$label}(으)로 바뀌었습니다", '/deck', $adminId);
+        } catch (Throwable) {}
+        return self::imageState($email);
     }
 
     /** 한도 판정에 들어가는 사용 종류의 이름 — 오류 글에서 "어느 단계가 한도를 썼는지" 보이게 */
@@ -716,7 +841,7 @@ final class AiKeys
      * 한도는 작업 하나에 기획·시안·장표 제작·대본을 합친 금액이라, 장표 단계 시작 전에 이미 한도 근처일 수 있다 — 그 사실을 글로 알린다.
      * $byKind = [kind => usd]. DB 없이 시험할 수 있게 순수 함수로 둔다.
      */
-    public static function budgetStopMessage(float $budget, float $spent, array $byKind, float $base = 0.0): string
+    public static function budgetStopMessage(float $budget, float $spent, array $byKind, float $base = 0.0, bool $direct = false): string
     {
         $parts = [];
         foreach ($byKind as $k => $usd) {
@@ -724,9 +849,12 @@ final class AiKeys
             $parts[] = (self::KIND_LABEL[$k] ?? (string) $k) . sprintf(' $%.2f', (float) $usd);
         }
         // 한도는 시안 확정 때 다시 채운다(0043 budget_base_usd) — 확정 전에 멈췄는지 뒤에 멈췄는지에 따라 할 말이 다르다
-        $stage = $base > 0
-            ? sprintf('시안 확정 때 한도를 다시 채웠고, 확정 전 사용 $%.2f 은 빼고 셉니다. ', $base)
-            : '시안을 확정하면 장표 제작용으로 한도가 다시 채워집니다. ';
+        // 세로 제안서·회사소개서는 시안 확정이 없다 — 한도를 다시 채우는 때는 다시 돌리기뿐이다(R153)
+        $stage = $direct
+            ? '이 문서는 시안 확정 단계가 없습니다. 다시 돌리면 그때까지 쓴 금액을 빼고 한도를 다시 채웁니다. '
+            : ($base > 0
+                ? sprintf('시안 확정·다시 돌리기 때 한도를 다시 채웠고, 확정 전 사용 $%.2f 은 빼고 셉니다. ', $base)
+                : '시안을 확정하면 장표 제작용으로 한도가 다시 채워집니다. ');
         return sprintf('이 작업의 비용 한도($%.2f)에 도달했습니다 (한도에 드는 사용 $%.4f). ', $budget, $spent)
             . ($parts ? '작업 전체 내역: ' . implode(' · ', $parts) . '. ' : '')
             . $stage
@@ -769,7 +897,8 @@ final class AiKeys
                 $st->execute([(string) $job['id']]);
                 foreach ($st->fetchAll() as $r) $by[(string) $r['kind']] = (float) $r['usd'];
             } catch (Throwable) {}   // 내역을 못 읽어도 멈추는 판정은 그대로
-            Legacy::fail(self::budgetStopMessage($budget, $spent, $by, (float) ($job['budget_base_usd'] ?? 0)), 402);
+            $purpose = (string) ((json_decode((string) ($job['opts'] ?? ''), true) ?: [])['purpose'] ?? '');
+            Legacy::fail(self::budgetStopMessage($budget, $spent, $by, (float) ($job['budget_base_usd'] ?? 0), in_array($purpose, ['submit', 'company'], true)), 402);
         }
         $bi = self::budgetInfo($email);
         if ($bi['monthly_cap'] !== null && $bi['month_spent'] >= $bi['monthly_cap']) Legacy::fail(self::monthlyStopMessage($bi['monthly_cap'], $bi['month_spent']), 402);
@@ -798,7 +927,8 @@ final class AiKeys
         $kind = in_array($b['kind'] ?? '', ['image', 'digest', 'build', 'check'], true) ? $b['kind'] : 'plan';
         unset($b['kind']);
         // 엔진이 정한 기다릴 시간(선택 단계는 짧게) — 60~300초, 없으면 300(2026-10-07 속도 점검)
-        $wait = isset($b['_timeout']) ? max(60, min(300, (int) $b['_timeout'])) : 300;
+        // 긴 본문(장 한 번에 쓰기)은 엔진이 560초까지 달라고 한다 — 300초에서 끊겨 더 길게 다시 보내던 악순환(R104). PHP 600초·프록시 620초 안
+        $wait = isset($b['_timeout']) ? max(60, min(560, (int) $b['_timeout'])) : 300;
         unset($b['_timeout']);
         // 글(기획·요약·제작 에이전트)은 이미지 외 전부 글 모델(muse-spark xhigh 기본, 본인·회사가 고른 글 모델이 있으면 그것)로 — 이미지는 전용 모델 그대로. build는 워커가 명시한 모델 우선.
         $b['model'] = (string) ($b['model'] ?? '') !== '' ? (string) $b['model']
@@ -810,6 +940,7 @@ final class AiKeys
         // 그림(시안)은 늘 OpenRouter 전용 이미지 API(/images: prompt·aspect_ratio·quality·input_references → data[].b64_json),
         // 글(기획·요약·제작)은 관리자가 고른 경로(OpenRouter chat/completions 또는 Claude API) — 답은 어느 쪽이든 OpenAI 꼴
         if ($kind === 'image') {
+            self::imageGuard($email);   // 사람별 그림 월 상한
             if (trim((string) ($b['prompt'] ?? '')) === '') Legacy::fail('prompt 가 필요합니다.');
             [$status, $raw] = self::http('POST', '/images', self::effectiveKey($email), $b, 300);
         } else {
@@ -889,6 +1020,7 @@ final class AiKeys
     {
         $kind = ($b['kind'] ?? 'plan') === 'image' ? 'image' : 'plan';
         unset($b['kind']);
+        if ($kind === 'image') self::imageGuard($email);   // 사람별 그림 월 상한
         $b['model'] = (string) ($b['model'] ?? '') !== '' ? (string) $b['model'] : ($kind === 'image' ? self::models($email)[$kind] : self::textModelFor($email));
         if (!preg_match('#^[a-z0-9._-]+/[a-z0-9._:-]+$#i', $b['model'])) Legacy::fail('모델 이름이 올바르지 않습니다.');
         if (!isset($b['messages']) || !is_array($b['messages'])) Legacy::fail('messages 가 필요합니다.');

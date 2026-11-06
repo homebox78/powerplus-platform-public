@@ -26,6 +26,10 @@ const STAGES_PLAN: { name: string; label?: string; desc: string }[] = [
   { name: "시안 정리", desc: "기획·시안 저장 · 확인 단계로" },
 ];
 const STAGE_PCT_PLAN = [2, 5, 20, 96, 100];
+// 세로 제안서는 '기획' 안에서 장 본문을 쓰며 12→38% 를 보낸다(engine/vertical.py), 회사소개서는 구성을 30% 에서 마친다 — 19% 에 묶이면
+// 남은 시간이 경과×7 로 불어났다(10-28 "12% 에서 안 나간다", R105)
+const STAGE_PCT_VERTICAL = [2, 5, 40, 96, 100];
+const STAGE_PCT_COMPANY = [2, 5, 35, 96, 100];
 
 // 세로 제안서(제출용) — 시안 없이 기획에서 바로 PPT 를 조립한다(engine/vertical.py). 엔진이 보고하는 name 은 STAGES_PLAN 과 같고 화면 말만 다르다
 const STAGES_VERTICAL: { name: string; label?: string; desc: string }[] = [
@@ -42,6 +46,8 @@ const STAGES_COMPANY: { name: string; label?: string; desc: string }[] = [
   { name: "시안 정리", label: "쪽 캡처", desc: "만든 PPT 를 쪽마다 그림으로" },
 ];
 const isSubmit = (j: Job) => j.opts?.purpose === "submit";
+/** 진행률 범위를 고를 작업 종류 — 세로 제안서·회사소개서는 '기획' 범위가 넓다 */
+export const progressKind = (j: Job): "vertical" | "company" | "" => (isSubmit(j) ? "vertical" : j.opts?.purpose === "company" ? "company" : "");
 
 // design 작업의 장표 제작 단계 (prompt_design.md 가 쓰는 부분집합)
 // name 은 엔진이 보고하는 이름(바꾸지 말 것), label·desc 는 화면에 보이는 말
@@ -66,14 +72,17 @@ export const hasMockup = (j: Job) => {
 export const stagesOf = (j: Job) => (isPlanPhase(j) ? (isSubmit(j) ? STAGES_VERTICAL : j.opts?.purpose === "company" ? STAGES_COMPANY : STAGES_PLAN) : j.kind === "design" ? STAGES_BUILD : STAGES);
 
 /** 화면에 보일 단계 이름 — 엔진이 보고하는 이름(name)이 아니라 사용자 말(label) */
-export const stageLabel = (j: Job) => { const s = stagesOf(j).find((x) => x.name === j.stage); return s ? (s.label ?? s.name) : (j.stage ?? "준비"); };
+export const stageLabel = (j: Job) => { const st = j.stage ? (STAGE_ALIAS[j.stage] ?? j.stage) : j.stage; const s = stagesOf(j).find((x) => x.name === st); return s ? (s.label ?? s.name) : (j.stage ?? "준비"); };
 
-export const stageIndex = (s: string | null, list = STAGES) => (s ? list.findIndex((x) => x.name === s) : -1);
+// 엔진 옛 이름 — '자산'을 '에셋'으로 바꾼 뒤(ab754b3) 엔진이 보낸 '자산 교체'를 못 찾아 단계 표가 멈춰 보였다(2026-10-28). 이미 DB 에 남은 값도 맞춘다
+const STAGE_ALIAS: Record<string, string> = { "자산 교체": "에셋 교체" };
+export const stageIndex = (s: string | null, list = STAGES) => { const n = s ? (STAGE_ALIAS[s] ?? s) : s; return n ? list.findIndex((x) => x.name === n) : -1; };
 
 // 단계별 진행률 범위. 엔진이 엉뚱한 숫자를 보내도 화면·남은 시간은 이 범위 안에서 본다.
-export const clampProgress = (stage: string | null, p: number, plan = false, build = false) => {
+export const clampProgress = (stage: string | null, p: number, plan = false, build = false, kind: "vertical" | "company" | "" = "") => {
   if (build) return Math.max(1, Math.min(99, p));   // 엔진이 보고한 값 그대로
-  const list = plan ? STAGES_PLAN : STAGES, pct = plan ? STAGE_PCT_PLAN : STAGE_PCT;
+  const list = plan ? STAGES_PLAN : STAGES;
+  const pct = !plan ? STAGE_PCT : kind === "vertical" ? STAGE_PCT_VERTICAL : kind === "company" ? STAGE_PCT_COMPANY : STAGE_PCT_PLAN;
   const i = stageIndex(stage, list);
   if (i < 0) return p;
   return Math.max(pct[i]!, Math.min(pct[i + 1]! - 1, p));

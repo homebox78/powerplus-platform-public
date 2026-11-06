@@ -29,11 +29,12 @@ export function useFeedback(job: Job, me: string, target: "mockup" | "result") {
   const [showDone, setShowDone] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   useToastOn(err);
-  useEffect(() => {  // 팀원 의견이 들어오는지 8초마다
-    const f = () => api<{ data: PinComment[] }>(`/jobs/${job.id}/comments`).then((r) => setAll(unwrapList(r))).catch(() => {});
+  useEffect(() => {  // 팀원 의견이 들어오는지 8초마다 — 로그인 없이 보는 사람은 의견을 볼 수 없어 묻지 않는다(8초마다 401 이었다, R168)
+    if (job.anon) return;
+    const f = () => { if (!document.hidden) api<{ data: PinComment[] }>(`/jobs/${job.id}/comments`).then((r) => setAll(unwrapList(r))).catch(() => {}); };
     const t = setInterval(f, 8000);
     return () => clearInterval(t);
-  }, [job.id]);
+  }, [job.id, job.anon]);
   const comments = all.filter((c) => (c.target ?? "mockup") === target);
   const open = comments.filter((c) => !c.resolved);
   const authors = [...new Set(all.map((c) => c.email))];

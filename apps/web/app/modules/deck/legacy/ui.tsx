@@ -13,6 +13,7 @@ import fontData from "./data/fonts.json";
 
 const STYLES = (styleData as { styles: { id: string; name: string; desc: string }[] }).styles;
 const FONTS = fontData as unknown as { title: { id: string; name: string }[]; body: { id: string; name: string }[] };
+const KO_FONT = (fontData as unknown as { ko_unified?: { title: string; body: string } }).ko_unified;   // 국문 장표 통일 서체 — 엔진 fontset.KO_UNIFIED 와 같은 값
 
 export const cn = (...a: (string | false | null | undefined)[]) => a.filter(Boolean).join(" ");
 
@@ -153,12 +154,15 @@ function JobSettings({ job, onEdit }: { job: Job; onEdit?: () => void }) {
         <span className="min-w-0"><span className="block font-semibold">타입 {(style?.id ?? "a").toUpperCase()} · {style?.name}</span><span className="block text-[12.5px] text-dim leading-[1.45]">{style?.desc}</span></span>
       </span>],
     ] as [string, ReactNode][] : []),
-    ["서체", o?.purpose === "company" ? "프리텐다드(회사소개서 고정)" : `${font(FONTS.title, o?.font_title)} / ${font(FONTS.body, o?.font_body)}`],
+    ["서체", (o?.lang ?? "ko") === "ko" && KO_FONT ? `${font(FONTS.title, KO_FONT.title)} / ${font(FONTS.body, KO_FONT.body)}`   // 국문 통일 서체(2026-10-28)
+      : o?.purpose === "company" ? "프리텐다드(회사소개서 고정)" : `${font(FONTS.title, o?.font_title)} / ${font(FONTS.body, o?.font_body)}`],
     ...(design && o?.purpose === "company" ? [
       ["장 수", o?.slides ? `${o.slides}장 안팎` : "14장 안팎"],
     ] as [string, ReactNode][] : design ? [
       ["강조색", job.theme ? <span className="inline-flex items-center gap-1.5"><span className="w-3.5 h-3.5 rounded-full border border-black/10" style={{ background: job.theme.slice(0, 7) }} /><span className="font-mono text-[13px]">{job.theme.slice(0, 7).toUpperCase()}</span></span> : "기본"],
-      ["장 수", o?.slides ? `${o.slides}장으로 지정` : `알아서${job.slides ? ` — 지금 ${job.slides}장` : ""}`],
+      o?.purpose === "submit" && o?.slides_set !== undefined   // 세로 제안서(10-28 뒤 새 작업) — 적었으면 그 쪽 수, 아니면 RFP 권고 목차대로
+        ? ["목표 쪽 수", o.slides_set ? `본문 ${o.slides}쪽(목차 항목을 이 수에 맞춰 줄임)` : `자동 — RFP 권고 목차대로${job.slides ? ` · 지금 ${job.slides}장` : ""}`]
+        : ["장 수", o?.slides ? `${o.slides}장으로 지정` : `알아서${job.slides ? ` — 지금 ${job.slides}장` : ""}`],
       ...(o?.purpose === "submit" ? [] : [["시안", o?.mockups === "all" ? "전부 바로 만들기" : o?.mockups === "sample" ? `샘플 ${o.sample}장 먼저` : "기획부터 보기"] as [string, ReactNode]]),
       ["구성", front.length ? front.join(" · ") + " 넣기" : "본문만"],
     ] as [string, ReactNode][] : []),
@@ -217,7 +221,7 @@ export function JobHeader<T extends string>({ job, meta, actions, tabs, tab, onT
       <div className="flex flex-wrap items-center gap-x-4 gap-y-2 min-h-[72px] py-2.5">
         <div className="min-w-0 flex-1 basis-[280px]">
           <div className="flex items-center gap-2 min-w-0">
-            <a href="#/list" className="pp-hit text-[14px] text-dim whitespace-nowrap hover:text-ink">내 작업</a><span className="text-[var(--color-line-3)]">/</span>
+            <a href="/deck/jobs" onClick={(e) => { e.preventDefault(); pdGo("/list"); }} className="pp-hit text-[14px] text-dim whitespace-nowrap hover:text-ink">내 작업</a><span className="text-[var(--color-line-3)]">/</span>
             <div className="font-bold text-[15.5px] truncate" title={job.title}>{job.title}</div>
             <StatusPill status={job.status} small />
             <JobSettings job={job} onEdit={onSettings} />

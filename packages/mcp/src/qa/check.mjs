@@ -238,9 +238,46 @@ async function sideBySide(sharp, refBuf, mockBuf, w = 560, sliceH = 1600, maxSli
  * @param {{ html: string, ref: any, refImage: Buffer|null, launch: () => Promise<any>, sharp: any, width?: number }} o
  */
 export function checkMockup(o) {
-  const run = queue.then(() => doCheck(o));
+  const run = queue.then(() => withDeadline(o));
   queue = run.catch(() => {});
   return run;
+}
+
+/** 판정 한 건의 전체 시간 제한 — Apache ProxyTimeout(120초) 안에 이유를 돌려주려고 110초. 차례를 기다리는 시간은 세지 않는다. PP_JUDGE_TIMEOUT_MS 로 바꾼다 */
+const judgeTimeoutMs = () => Number(process.env.PP_JUDGE_TIMEOUT_MS) || 110_000;
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+/**
+ * 시간을 넘긴 판정을 끊고 대기열을 넘긴다(MC-126, R170). 예전엔 시안의 무한 반복 스크립트 하나로 p.evaluate(시간 제한 없음)가 끝나지 않아
+ * 대기열이 하나뿐인 판정이 재시작 전까지 모든 사용자에게 멈췄다.
+ */
+async function withDeadline(o) {
+  const ms = o.timeoutMs ?? judgeTimeoutMs();
+  const live = { ctx: null };
+  const work = doCheck({ ...o, live });
+  work.catch(() => {}); // 끊은 뒤 늦게 오는 'Target closed' 는 아무도 안 받는다
+  let timer;
+  const expired = new Promise((_, no) => {
+    timer = setTimeout(() => no(Object.assign(new Error(`판정이 ${Math.round(ms / 1000)}초 안에 끝나지 않아 중단했습니다. 시안 스크립트의 무한 반복(while(true)·끝없는 재귀 등)이 흔한 원인입니다.`), { code: "JUDGE_TIMEOUT" })), ms);
+  });
+  try {
+    return await Promise.race([work, expired]);
+  } catch (e) {
+    if (e?.code === "JUDGE_TIMEOUT") await forceClose(live);
+    throw e;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+/** 멈춘 문맥을 닫는다(멈춘 렌더러도 실측 10ms 안에 닫힘 — Chromium·Firefox). 닫지 못하거나 문맥이 아직 없으면(브라우저 띄우기에서 멈춤) 브라우저째 버린다 */
+async function forceClose(live) {
+  const closed = live.ctx ? await Promise.race([live.ctx.close().then(() => true, () => false), sleep(5000).then(() => false)]) : false;
+  if (closed) return;
+  const old = browserP; browserP = null;
+  console.error("[mcp] 판정 시간 초과 — 문맥을 닫지 못해 브라우저를 버린다");
+  const b = old ? await Promise.race([old.catch(() => null), sleep(2000).then(() => null)]) : null;
+  if (b) await Promise.race([b.close().catch(() => {}), sleep(5000)]);
 }
 
 /** 서버가 내려갈 때 판정 브라우저를 닫는다(MC-125) — 남은 판정이 끝난 뒤에. */
@@ -251,10 +288,11 @@ export async function closeJudgeBrowser() {
   await b?.close().catch(() => {});
 }
 
-async function doCheck({ html, ref, refImage, launch, sharp, width = 1920, peers = [], want = "", textKeys = [], iconKeys = [], wire = null }) {
+async function doCheck({ html, ref, refImage, launch, sharp, width = 1920, peers = [], want = "", textKeys = [], iconKeys = [], wire = null, live = {} }) {
   const browser = await getBrowser(launch);
   // serviceWorkers block: 서비스 워커 요청은 route 를 거치지 않아 막이를 우회한다
   const ctx = await browser.newContext({ viewport: { width, height: width < 800 ? 844 : 1080 }, reducedMotion: "reduce", serviceWorkers: "block" });
+  live.ctx = ctx; // 시간을 넘기면 withDeadline 이 이 문맥을 닫는다
   // 개발 환경(API 가 127.0.0.1)에서만 루프백을 허용한다 — 운영은 공개 주소만
   const blockedNet = await guardContext(ctx, { allowLoopback: /^https?:\/\/(127\.|localhost)/.test(process.env.HOMEBOX_API ?? "http://127.0.0.1") });
   const p = await ctx.newPage();

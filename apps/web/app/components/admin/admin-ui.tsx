@@ -202,9 +202,10 @@ export function BulkBar({ sel, actions, children }: { sel: Selection; actions: B
  */
 type SortVal = string | number | boolean | null | undefined;
 type Sort<T> = { rows: T[]; key: string | null; dir: "asc" | "desc"; toggle: (k: string) => void };
-export function useSort<T>(items: T[], get: Record<string, (x: T) => SortVal>): Sort<T> {
-  const [key, setKey] = useState<string | null>(null);
-  const [dir, setDir] = useState<"asc" | "desc">("asc");
+// init: 처음 정렬(머리글에 화살표가 보이게). 없으면 받은 순서 그대로 — 기존 호출부는 바뀌지 않는다.
+export function useSort<T>(items: T[], get: Record<string, (x: T) => SortVal>, init?: { key: string; dir: "asc" | "desc" }): Sort<T> {
+  const [key, setKey] = useState<string | null>(init?.key ?? null);
+  const [dir, setDir] = useState<"asc" | "desc">(init?.dir ?? "asc");
   const fn = key ? get[key] : undefined;
   const rows = useMemo(() => {
     if (!fn) return items;

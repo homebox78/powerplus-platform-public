@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """PowerPoint 없이 '도형 안 글이 몇 줄로, 어디서 끊기는가'를 계산한다 — 리눅스 엔진의 TextRange.Lines 대신.
-줄 나누기는 PowerPoint 한글 규칙을 따른다: 한글·한자·가나는 글자 사이 어디서나(그래서 어절이 잘린다),
+줄 나누기는 PowerPoint 규칙을 따른다: 한국어 표시(lang=ko-KR) 글의 한글은 띄어쓰기에서만(R199), 표시가 없으면 한글·한자·가나는 글자 사이 어디서나(어절이 잘린다),
 영문·숫자는 단어째, 공백 뒤에서 끊고, 줄 머리 금지 문장부호(, . ) ! ? 등)는 앞 글자에 붙인다.
 글자 폭은 서체 파일(PIL getlength)로, 줄 높이는 PowerPoint 글줄 수치표(fonts/ppt_metrics.json, vcenter.py 와 같은 표)로 잰다.
 
@@ -27,6 +27,7 @@ MEMO = {"FFFF00", "FFFFCC", "FFFF99", "FFFF87"}
 NO_HEAD = set(",.!?)]}%:;·…」』〉》’”、。，．！？）］｝")   # 줄 머리에 못 오는 글자
 NO_TAIL = set("([{〈《「『‘“（［｛")                     # 줄 끝에 못 오는 글자
 WORD = re.compile(r"[0-9A-Za-z가-힣]")
+HANGUL = re.compile(r"[가-힣]")
 SP = "  \t"
 SAFE = float(os.environ.get("TL_SAFE", "0.97"))   # 폭 여유 — LibreOffice·PowerPoint 가 PIL 계산보다 2~3% 넓게 그린다
 
@@ -66,16 +67,19 @@ class Para:
         self.ind = int(ppr.get("indent", "0")) / EMU if ppr is not None else 0.0
         self.chars, self.hard = [], set()    # hard: 그 위치 앞에서 강제 줄바꿈(<a:br/>)
         self.runs = []
+        self.ko = []   # 글자마다 lang=ko-KR 인가 — 한국어 표시가 있으면 PowerPoint 는 어절째 끊는다(R199)
         for el in p:
             if el.tag in (qn("a:r"), qn("a:fld")):
                 rp = el.find(qn("a:rPr"))
-                face = V._face(rp, self.end, ldef)
-                pt = V._sz(rp, self.end, ldef) * fscale
+                face = V._face(rp, ldef, self.end)
+                pt = V._sz(rp, ldef, self.end) * fscale
                 spc = int(rp.get("spc", "0")) / 100 if rp is not None and rp.get("spc") else 0.0
                 t = el.findtext(qn("a:t")) or ""
                 self.runs.append(el)
+                ko = rp is not None and str(rp.get("lang") or "").lower().startswith("ko")   # 표시 없는 파일은 PowerPoint 도 글자 사이에서 끊는다
                 for i, c in enumerate(t):
                     self.chars.append((c, cwidth(face, c, pt) + spc, el, i))
+                    self.ko.append(ko)
             elif el.tag == qn("a:br"):
                 self.hard.add(len(self.chars))
         self.text = "".join(c[0] for c in self.chars)
@@ -83,7 +87,7 @@ class Para:
     def biggest(self):
         rs = [r.find(qn("a:rPr")) for r in self.runs] or [None]
         rp = max(rs, key=lambda r: V._sz(r, self.end, self.ldef))
-        return V._sz(rp, self.end, self.ldef) * self.fscale, V._face(rp, self.end, self.ldef)
+        return V._sz(rp, self.ldef, self.end) * self.fscale, V._face(rp, self.ldef, self.end)
 
     def can_break(self, i):
         """i 번째 글자 앞에서 끊을 수 있는가"""
@@ -96,6 +100,8 @@ class Para:
             return True
         if b in SP:
             return False
+        if self.ko[i - 1] and self.ko[i] and (HANGUL.match(a) or HANGUL.match(b)):
+            return False   # 한국어 표시 글 — 한글은 띄어쓰기에서만
         return self.ea and (cjk(a) or cjk(b))
 
     def lines(self, width):
@@ -162,8 +168,10 @@ class Box:
         na = bp.find(qn("a:normAutofit")) if bp is not None else None
         self.fscale = int(na.get("fontScale", "100000")) / 100000 if na is not None else 1.0
         self.lred = int(na.get("lnSpcReduction", "0")) / 100000 if na is not None else 0.0
-        self.box_w = sh.Width / sh.sx - li - ri
-        self.box_h = sh.Height / sh.sy - ti - bi
+        # 글 칸은 장 위 실제 폭 — PowerPoint 는 크기를 바꾼 그룹 안에서도 글자 크기는 그대로 두고 상자만 그룹 배율로 그린다.
+        # 예전 자식 좌표 폭(Width/sx)은 배율 0.45 그룹의 '보유기관 (249종 연계)' 칸을 231pt 로 봐 꺾임을 놓쳤다(실제 93pt, 10-29 R130)
+        self.box_w = sh.Width - li - ri
+        self.box_h = sh.Height - ti - bi
         lst = tx.find(qn("a:lstStyle"))
         self.lst = lst
         self.paras = []
@@ -254,7 +262,7 @@ def _set_size(pa, delta):
         if rp is None:
             rp = r.makeelement(qn("a:rPr"), {})
             r.insert(0, rp)
-        cur = V._sz(rp, pa.end, pa.ldef)
+        cur = V._sz(rp, pa.ldef, pa.end)
         rp.set("sz", str(int(round((cur + delta) * 100))))
 
 
@@ -383,6 +391,9 @@ def main():
         return
     cmd = a[0]
     pres = Presentation(a[1])
+    if "--raw" not in sys.argv:   # 마무리(finalize)가 한글 문단에 lang=ko-KR 을 넣으므로 최종 파일처럼 어절 단위로 계산한다(R199). --raw = 파일 그대로
+        import flatfx
+        flatfx.set_lang(pres)
     if cmd == "lines":
         sno, key = int(a[2]), (a[3] if len(a) > 3 else "")
         for b in boxes(pres.slides[sno - 1]):

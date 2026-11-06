@@ -14,6 +14,7 @@ declare(strict_types=1);
  */
 
 use Pp\Core\Actor;
+use Pp\Core\Audit;
 use Pp\Core\HttpError;
 use Pp\Core\Response;
 use Pp\Core\Router;
@@ -101,6 +102,11 @@ return static function (Router $r): void {
         Legacy::jsonOut(['job' => $cj, 'engine_model' => AiKeys::engineModel(), 'text_engine' => AiKeys::textEngine(),
             'image_provider' => $ce !== '' ? AiKeys::imageProviderFor($ce) : AiKeys::imageProvider(), 'hf_key' => AiKeys::hfKey($ce !== '' ? $ce : null)]);
     });
+    // 엔진이 막 켜졌다 — 이 엔진 이름으로 진행 중인 작업을 바로 대기열로(15분 reap 을 기다리지 않고 이어 하기, 2026-10-28)
+    $r->post('/deck/worker/restarted', static function (array $p, Actor $a) use ($worker): void {
+        $w = $worker($a);
+        Legacy::jsonOut(Jobs::workerRestarted($w));
+    });
     $r->post('/deck/worker/jobs/{id}/usage', static function (array $p, Actor $a) use ($worker, $hex16): void {
         $w = $worker($a);
         Legacy::jsonOut(Jobs::workerUsage($hex16($p['id']), $w, Legacy::body()));
@@ -137,7 +143,7 @@ return static function (Router $r): void {
     });
     $r->post('/deck/worker/jobs/{id}/ai', static function (array $p, Actor $a) use ($worker, $hex16): void {
         $w = $worker($a);
-        set_time_limit(320);
+        set_time_limit(600);   // AI 대기 최대 560초(R104)
         AiKeys::chatForJob(Jobs::forWorker($hex16($p['id']), $w), Legacy::body());   // OpenRouter 응답 JSON 을 그대로 내보낸다(옛 모양)
     });
     $r->post('/deck/worker/dev/test_job', static function (array $p, Actor $a) use ($worker): void {
@@ -259,14 +265,37 @@ return static function (Router $r): void {
         [$e, $admin] = $user($a);
         Legacy::jsonOut(AiKeys::settings($e, $admin));
     });
-    $r->get('/deck/ai/key/check', static function (array $p, Actor $a) use ($user): void {
-        [$e] = $user($a);
+    $r->get('/deck/ai/key/check', static function (array $p, Actor $a) use ($user): void {   // 회사 OpenRouter 키의 잔액·사용액 — 관리자만(R167)
+        [$e, $admin] = $user($a);
+        if (!$admin) Legacy::fail('관리자만 볼 수 있습니다.', 403);
         Legacy::jsonOut(AiKeys::check($e));
     });
     $r->get('/deck/admin/usage', static function (array $p, Actor $a) use ($user): void {
         [, $admin] = $user($a);
         if (!$admin) Legacy::fail('관리자만 볼 수 있습니다.', 403);
         Legacy::jsonOut(AiKeys::adminUsage((int) ($_GET['days'] ?? 30)));
+    });
+    // 시안 그림 월 상한 — 내 상태(막혔는지·요청했는지), 증액 요청(막힌 사람만), 관리자의 사람별 상한 보기·바꾸기
+    $r->get('/deck/ai/image-cap', static function (array $p, Actor $a) use ($user): void {
+        [$e] = $user($a);
+        Legacy::jsonOut(AiKeys::imageState($e));
+    });
+    $r->post('/deck/ai/image-cap/request', static function (array $p, Actor $a) use ($user): void {
+        [$e] = $user($a);
+        $b = Legacy::body();
+        Legacy::jsonOut(AiKeys::requestImageCap($e, $a->id(), (string) ($a->user['name'] ?? ''), (string) ($b['reason'] ?? '')));
+    });
+    $r->get('/deck/ai/image-cap/user', static function (array $p, Actor $a) use ($user): void {
+        [, $admin] = $user($a);
+        if (!$admin) Legacy::fail('관리자만 볼 수 있습니다.', 403);
+        Legacy::jsonOut(AiKeys::imageState((string) ($_GET['email'] ?? '')));
+    });
+    $r->put('/deck/ai/image-cap/user', static function (array $p, Actor $a) use ($user): void {
+        [, $admin] = $user($a);
+        if (!$admin) Legacy::fail('관리자만 바꿀 수 있습니다.', 403);
+        $b = Legacy::body();
+        $cap = !array_key_exists('cap', $b) || $b['cap'] === null || $b['cap'] === '' ? null : (float) $b['cap'];
+        Legacy::jsonOut(AiKeys::setUserImageCap((string) ($b['email'] ?? ''), $cap, $a->id()));
     });
     $r->put('/deck/ai/budget', static function (array $p, Actor $a) use ($user): void {
         [, $admin] = $user($a);
@@ -323,7 +352,15 @@ return static function (Router $r): void {
     });
     $r->patch('/deck/jobs/{id}', static function (array $p, Actor $a) use ($user, $hex16): void {
         [$e, $admin] = $user($a);
-        Legacy::jsonOut(Jobs::patch($hex16($p['id']), $e, $admin, Legacy::body()));
+        $id = $hex16($p['id']);
+        $b = Legacy::body();
+        // 공유 — 로그인 없이 열리는 주소(3)는 받기 링크처럼 웹 화면에서만 켠다(엠바고). 바꾸면 감사 기록(R167)
+        $share = array_key_exists('shared', $b) && $b['shared'] !== null ? ($b['shared'] === true ? 1 : max(0, min(3, (int) $b['shared']))) : null;
+        if ($share === 3 && $a->via !== 'session') Legacy::fail('로그인 없이 보는 공유는 웹 화면에서만 켤 수 있습니다.', 403);
+        $before = $share !== null ? (int) (Jobs::own($id, $e, $admin)['shared'] ?? 0) : null;
+        $out = Jobs::patch($id, $e, $admin, $b);
+        if ($share !== null && $share !== $before) Audit::log($a, 'deck.share', 'deck_jobs:' . $id, ['shared' => $before], ['shared' => $share]);
+        Legacy::jsonOut($out);
     });
     $r->delete('/deck/jobs/{id}', static function (array $p, Actor $a) use ($user, $hex16): void {
         [$e, $admin] = $user($a);
@@ -332,8 +369,8 @@ return static function (Router $r): void {
     $r->get('/deck/jobs/{id}/events', static function (array $p, Actor $a) use ($user, $hex16): void {
         [$e, $admin] = $user($a);
         $id = $hex16($p['id']);
-        Jobs::get($id, $e, $admin);   // 권한 확인
-        Legacy::jsonOut(['data' => Jobs::events($id, (int) ($_GET['after'] ?? 0))]);
+        $j = Jobs::get($id, $e, $admin);   // 권한 확인 — 작업 기록은 주인·관리자만(자료 이름·비용·오류가 적힌다, R151)
+        Legacy::jsonOut(['data' => !empty($j['mine']) ? Jobs::events($id, (int) ($_GET['after'] ?? 0)) : []]);
     });
     $r->get('/deck/jobs/{id}/comments', static function (array $p, Actor $a) use ($user, $hex16): void {
         [$e, $admin] = $user($a);

@@ -10,6 +10,7 @@ import { toast } from "sonner";
 import { ChoiceButton } from "@/components/hb/choice-button";
 import { confirmToast, toastError } from "@/components/hb/confirm";
 import { Copy } from "@/components/hb/copy";
+import { LoadError } from "@/components/hb/load-error";
 import { SectionHeading } from "@/components/hb/section-heading";
 import { Tag } from "@/components/hb/tag";
 import { Button } from "@/components/ui/button";
@@ -446,6 +447,8 @@ export function WireframeScreen() {
   const [gen, setGen] = useState<GenResult | null>(null);
   const [wire, setWire] = useState<Wire | null>(null);
   const [check, setCheck] = useState<WireCheck | null>(null);
+  // 고친 뒤 판정을 다시 받지 못했다 — 화면의 점수·통과는 고치기 전 값이니 통과로 보이지 않게 한다
+  const [checkStale, setCheckStale] = useState(false);
   const [device, setDevice] = useState<"pc" | "mobile">("pc");
   const [sel, setSel] = useState<{ r: number; c: number } | null>(null);
   const [title, setTitle] = useState("");
@@ -477,14 +480,14 @@ export function WireframeScreen() {
   })), [opt.data]);
   const typeH = useMemo(() => new Map((opt.data?.types ?? []).filter((t) => t.h).map((t) => [t.k, t.h as number])), [opt.data]);
 
-  // 편집하면 서버 판정을 다시 받는다(결정적·비용 0, 0.4초 묶음)
+  // 편집하면 서버 판정을 다시 받는다(결정적·비용 0, 0.4초 묶음). 실패를 삼키면 옛 '통과'가 남는다
+  const recheck = (w: Wire) => postJson<{ check: WireCheck }>("/mock/wire/check", { wire: w }).then((r) => { setCheck(r.check); setCheckStale(false); }, () => setCheckStale(true));
   useEffect(() => {
     if (!wire) return;
     if (firstCheck.current) { firstCheck.current = false; return; }
-    const t = setTimeout(() => {
-      postJson<{ check: WireCheck }>("/mock/wire/check", { wire }).then((r) => setCheck(r.check), () => undefined);
-    }, 400);
+    const t = setTimeout(() => { void recheck(wire); }, 400);
     return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [wire]);
 
   const generate = async (v = 0, st = style) => {
@@ -493,7 +496,7 @@ export function WireframeScreen() {
       const r = await postJson<GenResult>("/mock/wire/generate", { screen, org, style: st, variant: v, request, ai });
       setVariant(r.basis.style?.variant ?? v);
       firstCheck.current = true;
-      setGen(r); setWire(r.wire); setCheck(r.check); setSel(null); setSavedId(null);
+      setGen(r); setWire(r.wire); setCheck(r.check); setCheckStale(false); setSel(null); setSavedId(null);
       const sc = opt.data?.screens.find((s) => s.id === screen)?.label ?? "";
       setTitle(`${opt.data?.orgs.find((o) => o.id === org)?.label ?? ""} ${sc} 와이어`.trim());
       if (r.note) toast.message(r.note);
@@ -592,7 +595,7 @@ export function WireframeScreen() {
     try {
       const r = await apiFetch<{ id: string; title: string; request: string; source?: string; wire: Wire; check: WireCheck; prompt: string; basis?: WireBasis }>(`/mock/wireframes/${id}`);
       firstCheck.current = true;
-      setWire(r.wire); setCheck(r.check); setTitle(r.title); setRequest(r.request); setSavedId(r.id); setSavedSig(sigOf(r.wire)); setSel(null);
+      setWire(r.wire); setCheck(r.check); setCheckStale(false); setTitle(r.title); setRequest(r.request); setSavedId(r.id); setSavedSig(sigOf(r.wire)); setSel(null);
       setScreen(r.wire.screen); setOrg(r.wire.org);
       if (r.wire.style) { setStyle(r.wire.style); setVariant(r.wire.variant ?? 0); }
       // 저장해 둔 근거 요약 + 서버가 다시 계산한 분포·닮음(옛 저장본은 표본 수만이라도 서버 값으로)
@@ -653,6 +656,7 @@ export function WireframeScreen() {
   }, [screen]);
 
   if (opt.isPending) return <Skeleton className="mt-6 h-64 rounded-card" />;
+  if (opt.isError) return <LoadError what="기획 화면 설정" error={opt.error} onRetry={() => void opt.refetch()} className="mt-6" />;
   const screens = (opt.data?.screens ?? []).map((s) => ({ id: s.id, label: s.label, hint: s.desc }));
   const orgs = (opt.data?.orgs ?? []).map((o) => ({ id: o.id, label: o.label }));
   // 원형 스타일(포털·LLM·랜딩…)은 메인 전용 — 서브 화면이면 레퍼런스 구성만 고른다
@@ -754,7 +758,12 @@ export function WireframeScreen() {
                 <h4 className="text-md font-bold">판정</h4>
                 <span className="text-2xl font-extrabold">{check.score}<span className="text-sm font-semibold text-ink-4">점</span></span>
               </div>
-              <p className={cn("mt-1 text-sm font-semibold", check.pass ? "text-ink-2" : "text-ink-3")}>{check.pass ? "통과 — 시안으로 넘겨도 됩니다." : "고칠 점이 남아 있습니다."}</p>
+              {checkStale ? (
+                <div role="alert" className="mt-1 text-sm text-ink-3">
+                  <p className="font-semibold">판정을 다시 받지 못했습니다. 이 점수는 고치기 전 값입니다.</p>
+                  <Button size="sm" variant="outline" className="mt-2" onClick={() => { if (wire) void recheck(wire); }}>다시 판정</Button>
+                </div>
+              ) : <p className={cn("mt-1 text-sm font-semibold", check.pass ? "text-ink-2" : "text-ink-3")}>{check.pass ? "통과 — 시안으로 넘겨도 됩니다." : "고칠 점이 남아 있습니다."}</p>}
               {issues.length === 0 ? <p className="mt-3 text-sm text-ink-4">고칠 점이 없습니다.</p> : (
                 <ul className="mt-3 grid gap-2.5">
                   {issues.map((it, i) => (
@@ -815,7 +824,7 @@ export function WireframeScreen() {
       {me && (
         <section aria-label="내 와이어">
           <SectionHeading title="내 와이어" />
-          {mine.isPending ? <Skeleton className="mt-4 h-24 rounded-card" /> : (mine.data ?? []).length === 0 ? (
+          {mine.isPending ? <Skeleton className="mt-4 h-24 rounded-card" /> : mine.isError ? <LoadError what="내 와이어" error={mine.error} onRetry={() => void mine.refetch()} className="mt-4" /> : (mine.data ?? []).length === 0 ? (
             <p className="mt-4 text-md text-ink-4">아직 저장한 와이어가 없습니다.</p>
           ) : (
             <Table className="mt-4">

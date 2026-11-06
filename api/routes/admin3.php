@@ -11,6 +11,7 @@ use Pp\Core\Actor;
 use Pp\Core\Audit;
 use Pp\Core\Config;
 use Pp\Core\Db;
+use Pp\Core\DisplayName;
 use Pp\Core\HttpError;
 use Pp\Core\Ids;
 use Pp\Core\Mail;
@@ -311,7 +312,7 @@ return static function (Router $r): void {
             'last_used_at' => $k['last_used_at'], 'revoked_at' => $k['revoked_at'], 'created_at' => $k['created_at'],
         ], Db::rows('SELECT * FROM core_api_keys WHERE user_id = ? ORDER BY revoked_at IS NULL DESC, id DESC', [$uid]));
         $audit = array_map(static fn ($x) => [
-            'id' => (int) $x['id'], 'action' => $x['action'], 'actor' => $x['actor_name'], 'actor_email' => $x['actor_email'],
+            'id' => (int) $x['id'], 'action' => $x['action'], 'actor' => DisplayName::of($x['actor_name'], $x['actor_email']), 'actor_email' => $x['actor_email'],
             'before' => $x['before_json'] ? json_decode((string) $x['before_json'], true) : null,
             'after' => $x['after_json'] ? json_decode((string) $x['after_json'], true) : null, 'created_at' => $x['created_at'],
         ], Db::rows(

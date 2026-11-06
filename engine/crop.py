@@ -52,42 +52,118 @@ for k, v in enumerate(a):   # 박힌 글자 지우기 — 지정한 범위 안�
     top = max(cnt, key=cnt.get)   # 범위에서 가장 많은 색 = 바탕
     base = [px[i, j] for j in range(y0, y1) for i in range(x0, x1) if (px[i, j][0] >> 4, px[i, j][1] >> 4, px[i, j][2] >> 4) == top]
     fill = tuple(sorted(c[ch] for c in base)[len(base) // 2] for ch in range(3))
-    ink = [(i, j) for j in range(y0, y1) for i in range(x0, x1) if max(abs(px[i, j][ch] - fill[ch]) for ch in range(3)) > 36]
+    # 글자 = 바탕과 다른 픽셀. 바탕이 그라데이션(입체 면)이면 한 색과 비교할 때 면 자체가 글자로 잡혀 지우기를 그만뒀다(R137) —
+    # 범위 둘레 2px(글자를 감싼 바탕)로 색 평면(c = a + b·x + c·y, 채널마다)을 맞추고, 평면에서 24 넘게 벗어난 픽셀만 글자로 본다
+    ring = [(i, j) for j in range(y0, y1) for i in range(x0, x1) if i < x0 + 2 or i >= x1 - 2 or j < y0 + 2 or j >= y1 - 2]
+
+    def _fit(pts):
+        s = [[0.0] * 3 for _ in range(3)]
+        rhs = [[0.0] * 3 for _ in range(3)]
+        for i, j in pts:
+            v = (1.0, i - x0, j - y0)
+            for r in range(3):
+                for c in range(3):
+                    s[r][c] += v[r] * v[c]
+                for ch in range(3):
+                    rhs[ch][r] += v[r] * px[i, j][ch]
+        out = []
+        for ch in range(3):   # 3×3 가우스 소거
+            m = [s[r][:] + [rhs[ch][r]] for r in range(3)]
+            for c in range(3):
+                p = max(range(c, 3), key=lambda r: abs(m[r][c]))
+                m[c], m[p] = m[p], m[c]
+                if abs(m[c][c]) < 1e-9:
+                    return None
+                for r in range(3):
+                    if r != c:
+                        f = m[r][c] / m[c][c]
+                        m[r] = [m[r][q] - f * m[c][q] for q in range(4)]
+            out.append([m[r][3] / m[r][r] for r in range(3)])
+        return out
+
+    def _bg(cf, i, j):
+        return [cf[ch][0] + cf[ch][1] * (i - x0) + cf[ch][2] * (j - y0) for ch in range(3)]
+
+    cf = _fit(ring)
+    if cf:   # 둘레에 걸친 글자 획은 빼고 한 번 더 맞춘다
+        ring2 = [(i, j) for i, j in ring if max(abs(px[i, j][ch] - b) for ch, b in enumerate(_bg(cf, i, j))) <= 24]
+        cf = _fit(ring2) if len(ring2) > 0.5 * len(ring) else cf
+    if cf:
+        ink = [(i, j) for j in range(y0, y1) for i in range(x0, x1) if max(abs(px[i, j][ch] - b) for ch, b in enumerate(_bg(cf, i, j))) > 24]
+    else:
+        ink = [(i, j) for j in range(y0, y1) for i in range(x0, x1) if max(abs(px[i, j][ch] - fill[ch]) for ch in range(3)) > 24]
     if len(ink) > 0.45 * (x1 - x0) * (y1 - y0):   # 범위가 글자 밖(옷·얼굴·다른 그림)까지 걸쳤다 — 덮으면 그림이 망가지므로 그만둔다
         print(f"erase {a[k + 1]} SKIPPED - {len(ink) * 100 // ((x1 - x0) * (y1 - y0))}% of the range differs from its base color: the range covers more than text. Narrow it to the text only.")
         continue
     hit = set(ink)
-    for i, j in ink:   # 글자 둘레 1px(번진 가장자리)까지
-        for u, v2 in ((i + 1, j), (i - 1, j), (i, j + 1), (i, j - 1)):
-            if x0 <= u < x1 and y0 <= v2 < y1:
-                hit.add((u, v2))
+    for i, j in ink:   # 글자 둘레 3px(번진 가장자리)까지 — 1px 이면 계단·그라데이션 위에 글자 테두리 자국이 남았다(R137)
+        for du in range(-3, 4):
+            for dv in range(-3, 4):
+                u, v2 = i + du, j + dv
+                if x0 <= u < x1 and y0 <= v2 < y1:
+                    hit.add((u, v2))
+    # 한 색으로 덮으면 그라데이션·입체 면 위에서 얼룩이 된다(058d 계단 '1단계 Transmit' 자리, 10-29) —
+    # 상하좌우로 가장 가까운 지우지 않은 픽셀 색을 거리에 반비례해 섞는다(범위 밖 4px 까지 참고)
+    src_px = [[px[i, j] for i in range(im.size[0])] for j in range(im.size[1])]
+    lx0, ly0, lx1, ly1 = max(0, x0 - 4), max(0, y0 - 4), min(im.size[0], x1 + 4), min(im.size[1], y1 + 4)
     for i, j in hit:
-        px[i, j] = fill + (px[i, j][3],)
-    print(f"erase {a[k + 1]} -> {len(hit)}px fill {fill}")
+        acc, wsum = [0.0, 0.0, 0.0], 0.0
+        for di, dj in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+            u, v2, d = i + di, j + dj, 1
+            while lx0 <= u < lx1 and ly0 <= v2 < ly1 and (u, v2) in hit:
+                u, v2, d = u + di, v2 + dj, d + 1
+            if lx0 <= u < lx1 and ly0 <= v2 < ly1:
+                c = src_px[v2][u]
+                acc = [acc[ch] + c[ch] / d for ch in range(3)]
+                wsum += 1 / d
+        c = tuple(round(acc[ch] / wsum) for ch in range(3)) if wsum else fill
+        px[i, j] = c + (px[i, j][3],)
+    print(f"erase {a[k + 1]} -> {len(hit)}px inpaint (base {fill})")
 
 if transparent:
+    # 바탕색을 둘레에서 재고(가운데값), 그 색과 아주 가까운 픽셀만 지운다. 예전엔 '밝고 채도 낮은 픽셀'을 모두 지워
+    # 3D 그림의 흰 받침판·밝은 면까지 날아가 깨져 보였고(11-03 사용자, R197), 어두운 띠 위 아이콘은 바탕이 안 지워져 네모가 남았다.
+    # 경계 2px 은 바탕과 섞인 정도만큼 반투명으로(색은 바탕을 빼서 되살림) — 계단이 지지 않게
     px = im.load()
     w2, h2 = im.size
+    ring = [px[i, j] for i in range(w2) for j in (0, 1, h2 - 2, h2 - 1)] + [px[i, j] for j in range(h2) for i in (0, 1, w2 - 2, w2 - 1)]
+    bg = tuple(sorted(p[ch] for p in ring)[len(ring) // 2] for ch in range(3))
+    dist = lambda p: max(abs(p[0] - bg[0]), abs(p[1] - bg[1]), abs(p[2] - bg[2]))
+    ds = sorted(dist(p) for p in ring)
+    spread = ds[int(len(ds) * 0.8)]   # 바탕 그라데이션·잡티 폭
+    btol = max(6, min(16, tol, spread + 5))
     seen = bytearray(w2 * h2)
+    gone = bytearray(w2 * h2)
     q = deque()
     for i in range(w2):
         q.append((i, 0)); q.append((i, h2 - 1))
     for j in range(h2):
         q.append((0, j)); q.append((w2 - 1, j))
-
-    def light(p):  # 밝고 채도가 낮은 픽셀 = 배경(흰색·아주 옅은 하늘색)
-        r, g, b = p[0], p[1], p[2]
-        return min(r, g, b) >= 255 - tol * 2 and max(r, g, b) - min(r, g, b) <= tol
-
     while q:
         i, j = q.popleft()
         if i < 0 or j < 0 or i >= w2 or j >= h2 or seen[j * w2 + i]:
             continue
         seen[j * w2 + i] = 1
-        if not light(px[i, j]):
+        if dist(px[i, j]) > btol:
             continue
-        px[i, j] = (255, 255, 255, 0)
+        gone[j * w2 + i] = 1
         q.extend(((i + 1, j), (i - 1, j), (i, j + 1), (i, j - 1)))
+    soft = 48
+    for j in range(h2):
+        for i in range(w2):
+            if gone[j * w2 + i]:
+                px[i, j] = (bg[0], bg[1], bg[2], 0)
+                continue
+            near = any(0 <= i + di < w2 and 0 <= j + dj < h2 and gone[(j + dj) * w2 + i + di] for di in (-2, -1, 0, 1, 2) for dj in (-2, -1, 0, 1, 2))
+            if not near:
+                continue
+            p = px[i, j]
+            d = dist(p)
+            if d >= soft:
+                continue
+            al = max(0.15, d / soft)
+            c = tuple(max(0, min(255, round(bg[ch] + (p[ch] - bg[ch]) / al))) for ch in range(3))
+            px[i, j] = c + (round(255 * al),)
     # 원래 상자에 걸친 덩어리만 남긴다 — 넓힌 둘레에만 있는 것(옆 그림·글)은 지운다
     ix0, iy0, ix1, iy1 = inner[0] - box[0], inner[1] - box[1], inner[2] - box[0], inner[3] - box[1]
     lab = [0] * (w2 * h2)
@@ -127,5 +203,10 @@ if transparent:
 if transparent and max(im.size) < 160:   # 작은 아이콘 — 장표에서 계단이 지지 않게 3배로 부드럽게 키워 저장(놓는 크기는 place 그대로)
     im = im.resize((im.size[0] * 3, im.size[1] * 3), Image.LANCZOS)
 im.save(out)
+try:   # 옆 기록 — 제작 뒤 illus.py 가 이 그림만 따로 크게 다시 그려 바꿔 끼운다(R197)
+    import json as _json
+    _json.dump({"src": src, "box": list(box), "transparent": transparent}, open(out + ".json", "w", encoding="utf-8"))
+except Exception:
+    pass
 print(f"ok {out} {im.size[0]}x{im.size[1]} from {box}")
 print(f"place {box[0] / W * 100:.2f}% {box[1] / H * 100:.2f}% {(box[2] - box[0]) / W * 100:.2f}% {(box[3] - box[1]) / H * 100:.2f}%")

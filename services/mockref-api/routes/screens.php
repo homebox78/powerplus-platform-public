@@ -181,7 +181,7 @@ function homebox_kit_subpage(array $sc, array $rows, array $site = []): array
             'screen_id' => (int) $sc['id'], 'site_slug' => $sc['slug'], 'page_type' => $pt, 'layout' => 'kit_subpage',
             'composition' => $k['composition'], 'tokens' => $tok, 'html' => $k['html'], 'sample_images' => $k['samples'],
             'persona' => array_diff_key($persona, ['real' => 1]), 'content_basis' => Homebox\SampleContent::BASIS,
-            'usage' => '그대로 .html 로 저장하면 열린다(키트 CSS 는 hom2box.com 에서 불러온다). 뼈대·본문은 홈박스 키트(KRDS) 블록, 메뉴 이름·색·글꼴·모서리는 레퍼런스, 기관·인물·글은 가상 샘플이다.',
+            'usage' => '그대로 .html 로 저장하면 열린다(키트 CSS 는 powerPlus 서버에서 불러온다). 뼈대·본문은 홈박스 키트(KRDS) 블록, 메뉴 이름·색·글꼴·모서리는 레퍼런스, 기관·인물·글은 가상 샘플이다.',
             'attribution' => '토큰·메뉴 출처: ' . $sc['org_name'] . ' (' . $sc['url'] . '). KRDS(공공누리 제1유형) 마크업 사용. 홈박스는 저작권을 주장하지 않으며 참고용입니다.',
         ];
 }

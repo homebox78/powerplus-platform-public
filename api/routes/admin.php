@@ -12,6 +12,7 @@ use Pp\Assets\Service as AssetService;
 use Pp\Core\Actor;
 use Pp\Core\Audit;
 use Pp\Core\Db;
+use Pp\Core\DisplayName;
 use Pp\Core\HttpError;
 use Pp\Core\Mail;
 use Pp\Core\Response;
@@ -67,7 +68,7 @@ return static function (Router $r): void {
             'removals' => ['pending' => (int) ($removal['pending'] ?? 0), 'overdue' => (int) ($removal['overdue'] ?? 0)],
             'audit' => array_map(static fn (array $x): array => [
                 'id' => (int) $x['id'], 'action' => $x['action'], 'target' => $x['target_type'] . ':' . $x['target_id'],
-                'actor' => $x['actor_name'] ?? null, 'actor_email' => $x['actor_email'] ?? null, 'created_at' => $x['created_at'],
+                'actor' => DisplayName::of($x['actor_name'] ?? null, $x['actor_email'] ?? null), 'actor_email' => $x['actor_email'] ?? null, 'created_at' => $x['created_at'],
             ], $audit),
         ]);
     });
@@ -341,11 +342,11 @@ return static function (Router $r): void {
         $total = (int) Db::val("SELECT COUNT(*) FROM core_users u WHERE {$w}", $args);
         $rows = Db::rows("SELECT u.*, GREATEST(COALESCE(u.last_seen_at, '1970-01-01'), COALESCE((SELECT MAX(l.last_login_at) FROM core_user_logins l WHERE l.user_id = u.id), '1970-01-01')) AS last_active,
                                  (SELECT GROUP_CONCAT(rr.role) FROM core_user_roles rr WHERE rr.user_id = u.id) AS role_list
-                          FROM core_users u WHERE {$w} ORDER BY last_active DESC, u.id DESC LIMIT {$limit} OFFSET {$off}", $args);
+                          FROM core_users u WHERE {$w} ORDER BY u.created_at DESC, u.id DESC LIMIT {$limit} OFFSET {$off}", $args);   // 최근 가입자가 위(팀장 2026-10-28)
         $out = array_map(static function (array $u) use ($a): array {
             $last = (string) $u['last_active'];
             return [
-                'id' => $u['public_id'], 'name' => $u['name'], 'email' => $u['email'], 'kind' => $u['kind'], 'status' => $u['status'] ?? 'active',
+                'id' => $u['public_id'], 'name' => DisplayName::of($u['name'], $u['email']), 'email' => $u['email'], 'kind' => $u['kind'], 'status' => $u['status'] ?? 'active',
                 'plan' => Users::plan($u), 'roles' => $u['role_list'] ? explode(',', (string) $u['role_list']) : [],
                 'last_active' => str_starts_with($last, '1970') ? null : $last, 'created_at' => $u['created_at'],
                 'dormant_requested_at' => $u['dormant_requested_at'] ?? null, 'access_until' => $u['access_until'] ?? null,
@@ -509,7 +510,7 @@ return static function (Router $r): void {
             $counts[$c['status']] = (int) $c['n'];
         }
         $out = array_map(static fn (array $x): array => [
-            'id' => $x['id'], 'title' => $x['title'], 'filename' => $x['filename'], 'email' => $x['email'], 'owner' => $x['owner_name'],
+            'id' => $x['id'], 'title' => $x['title'], 'filename' => $x['filename'], 'email' => $x['email'], 'owner' => DisplayName::of($x['owner_name'], $x['email']),
             'status' => $x['status'], 'stage' => $x['stage'], 'progress' => (int) $x['progress'], 'slides' => $x['slides'] === null ? null : (int) $x['slides'],
             'kind' => $x['kind'], 'phase' => $x['phase'], 'worker' => $x['worker'],
             'error' => $x['error'] === null ? null : mb_substr((string) $x['error'], 0, 600),
@@ -552,7 +553,7 @@ return static function (Router $r): void {
             'id' => $x['public_id'], 'title' => $x['title'] !== '' ? $x['title'] : null, 'ref_id' => $x['ref_id'], 'device' => $x['device'],
             'score' => $x['score'] === null ? null : (int) $x['score'], 'passed' => $x['passed'] === null ? null : (bool) $x['passed'],
             'checks' => (int) $x['check_count'], 'published' => $x['published_at'] !== null, 'discarded' => $x['discarded_at'] !== null,
-            'owner' => $x['owner_name'], 'owner_email' => $x['owner_email'], 'created_at' => $x['created_at'], 'expires_at' => $x['expires_at'],
+            'owner' => DisplayName::of($x['owner_name'], $x['owner_email']), 'owner_email' => $x['owner_email'], 'created_at' => $x['created_at'], 'expires_at' => $x['expires_at'],
             'gallery' => $x['g_id'] ? ['id' => (int) $x['g_id'], 'status' => $x['g_status'], 'likes' => (int) $x['g_likes']] : null,
             'preview_url' => '/api/v1/mock/mockups/' . $x['token'] . '/html',
             'public_url' => $x['published_at'] !== null ? '/p/' . $x['token'] : null,
@@ -606,7 +607,7 @@ return static function (Router $r): void {
         $opts = !empty($j['opts']) ? json_decode((string) $j['opts'], true) : null;
         return [
             'id' => $j['id'], 'title' => $j['title'], 'filename' => $j['filename'], 'size' => (int) $j['size'],
-            'email' => $j['email'], 'owner' => $j['owner_name'] ?? null, 'owner_id' => $j['owner_pid'] ?? null,
+            'email' => $j['email'], 'owner' => DisplayName::of($j['owner_name'] ?? null, $j['email']), 'owner_id' => $j['owner_pid'] ?? null,
             'status' => $j['status'], 'stage' => $j['stage'], 'progress' => (int) $j['progress'],
             'slides' => $j['slides'] === null ? null : (int) $j['slides'], 'kind' => $j['kind'], 'source_kind' => $j['source_kind'],
             'phase' => $j['phase'], 'pilot_slide' => $j['pilot_slide'] === null ? null : (int) $j['pilot_slide'],
@@ -758,6 +759,83 @@ return static function (Router $r): void {
             'workers' => array_map(static fn (array $w): array => ['name' => $w['name'], 'info' => $w['info'], 'seen_at' => $w['seen_at'], 'online' => (int) $w['online'] === 1, 'running' => (int) $w['running']], $workers),
             'queue' => ['queued' => (int) ($q['queued'] ?? 0), 'running' => (int) ($q['running'] ?? 0), 'hold' => (int) ($q['hold'] ?? 0), 'review' => (int) ($q['review'] ?? 0),
                 'stale' => (int) ($q['stale'] ?? 0), 'oldest_queued' => $q['oldest_queued'] ?? null],
+        ]);
+    });
+
+    // 지금 도는 장표 작업 — 대시보드 맨 위 패널(팀장 2026-10-28 "모든 사용자가 돌리는 작업 모니터링", 7초마다).
+    // 가볍게: 필요한 칸만(plan·brief·report 같은 큰 칸은 읽지 않는다), 작업 기록은 작업마다 최신 1줄만. 시간은 DB NOW() 기준 초로 보낸다(시간대 어긋남 없음).
+    $r->get('/admin/deck/live', function (array $p, Actor $a) use ($need): void {
+        $need($a, 'admin');
+        $rows = Db::rows("SELECT j.id, j.email, j.title, j.kind, j.phase, j.status, j.stage, j.progress, j.worker, j.cancel_requested,
+                                 JSON_UNQUOTE(JSON_EXTRACT(j.opts, '$.purpose')) AS purpose, j.spent_usd, j.budget_usd, j.created_at, j.started_at, j.heartbeat_at,
+                                 TIMESTAMPDIFF(SECOND, COALESCE(j.started_at, j.created_at), NOW()) AS elapsed_sec,
+                                 TIMESTAMPDIFF(SECOND, j.created_at, NOW()) AS wait_sec,
+                                 TIMESTAMPDIFF(SECOND, j.heartbeat_at, NOW()) AS hb_sec,
+                                 u.name AS owner_name,
+                                 e.ts AS ev_ts, e.kind AS ev_kind, e.message AS ev_msg
+                          FROM deck_jobs j
+                          LEFT JOIN core_users u ON u.email = j.email AND u.deleted_at IS NULL
+                          LEFT JOIN deck_job_events e ON e.id = (SELECT MAX(x.id) FROM deck_job_events x WHERE x.job_id = j.id)
+                          WHERE j.status IN ('running', 'queued', 'review', 'hold') AND j.deleted_at IS NULL
+                          ORDER BY FIELD(j.status, 'running', 'queued', 'review', 'hold'), j.created_at
+                          LIMIT 200");
+        $qpos = 0;
+        $jobs = array_map(static function (array $x) use (&$qpos): array {
+            $queued = $x['status'] === 'queued';
+            if ($queued) {
+                $qpos++;
+            }
+            $msg = $x['ev_msg'] === null ? null : mb_substr(trim((string) $x['ev_msg']), 0, 160);
+            return [
+                'id' => (string) $x['id'], 'title' => (string) $x['title'], 'email' => $x['email'],
+                'owner' => DisplayName::of($x['owner_name'], $x['email']), 'owner_name' => $x['owner_name'],
+                'kind' => $x['kind'], 'phase' => $x['phase'], 'purpose' => $x['purpose'] === null || $x['purpose'] === 'null' ? null : (string) $x['purpose'],
+                'status' => $x['status'], 'stage' => $x['stage'], 'progress' => (int) $x['progress'], 'worker' => $x['worker'],
+                'cancel_requested' => (bool) $x['cancel_requested'],
+                'spent_usd' => round((float) $x['spent_usd'], 4), 'budget_usd' => $x['budget_usd'] === null ? null : (float) $x['budget_usd'],
+                'created_at' => $x['created_at'], 'started_at' => $x['started_at'], 'heartbeat_at' => $x['heartbeat_at'],
+                // 진행 중이면 시작부터, 대기는 들어온 뒤부터, 확인·시작 대기는 마지막으로 바뀐 뒤(들어온 뒤)부터
+                'elapsed_sec' => $x['status'] === 'running' ? (int) $x['elapsed_sec'] : (int) $x['wait_sec'],
+                'heartbeat_sec' => $x['status'] === 'running' && $x['hb_sec'] !== null ? (int) $x['hb_sec'] : null,
+                'queue_pos' => $queued ? $qpos : null,
+                'last_event' => $msg === null ? null : ['ts' => $x['ev_ts'], 'kind' => $x['ev_kind'], 'message' => $msg],
+                'url' => '/deck/jobs?id=' . rawurlencode((string) $x['id']),
+            ];
+        }, $rows);
+
+        $today = Db::row("SELECT SUM(status = 'done') AS done, SUM(status = 'failed') AS failed, SUM(status = 'canceled') AS canceled
+                          FROM deck_jobs WHERE finished_at >= CURDATE() AND deleted_at IS NULL") ?? [];
+        $fails = array_map(static fn (array $x): array => [
+            'id' => (string) $x['id'], 'title' => (string) $x['title'], 'owner' => DisplayName::of($x['owner_name'], $x['email']),
+            'stage' => $x['stage'], 'error' => $x['error'] === null ? null : mb_substr(trim((string) $x['error']), 0, 140), 'finished_at' => $x['finished_at'],
+            'url' => '/deck/jobs?id=' . rawurlencode((string) $x['id']),
+        ], Db::rows("SELECT j.id, j.title, j.email, j.stage, j.error, j.finished_at, u.name AS owner_name
+                     FROM deck_jobs j LEFT JOIN core_users u ON u.email = j.email AND u.deleted_at IS NULL
+                     WHERE j.status = 'failed' AND j.finished_at >= CURDATE() AND j.deleted_at IS NULL ORDER BY j.finished_at DESC LIMIT 5"));
+
+        // 엔진 — 2분 안에 통신한 것만 온라인(Jobs::engine 과 같은 기준). 자리 수는 엔진이 X-Worker-Info 에 적는 slots=N
+        $workers = array_map(static function (array $w): array {
+            $slots = preg_match('/slots=(\d+)/', (string) $w['info'], $m) === 1 ? max(1, (int) $m[1]) : null;
+            return ['name' => $w['name'], 'seen_sec' => (int) $w['seen_sec'], 'slots' => $slots, 'running' => (int) $w['running']];
+        }, Db::rows("SELECT w.name, w.info, TIMESTAMPDIFF(SECOND, w.seen_at, NOW()) AS seen_sec,
+                            (SELECT COUNT(*) FROM deck_jobs j WHERE j.worker = w.name AND j.status = 'running') AS running
+                     FROM deck_workers w WHERE w.seen_at > (NOW() - INTERVAL 2 MINUTE) ORDER BY w.seen_at DESC"));
+        $slots = 0;
+        $known = true;
+        foreach ($workers as $w) {
+            if ($w['slots'] === null) {
+                $known = false;
+            } else {
+                $slots += $w['slots'];
+            }
+        }
+        $count = static fn (string $s): int => count(array_filter($jobs, static fn (array $j): bool => $j['status'] === $s));
+        Response::json([
+            'now' => (string) Db::val('SELECT NOW()'),
+            'jobs' => $jobs,
+            'counts' => ['running' => $count('running'), 'queued' => $count('queued'), 'review' => $count('review'), 'hold' => $count('hold')],
+            'today' => ['done' => (int) ($today['done'] ?? 0), 'failed' => (int) ($today['failed'] ?? 0), 'canceled' => (int) ($today['canceled'] ?? 0), 'failures' => $fails],
+            'engine' => ['online' => $workers !== [], 'workers' => $workers, 'slots' => $workers === [] ? 0 : ($known ? $slots : null)],
         ]);
     });
 
@@ -921,11 +999,11 @@ return static function (Router $r): void {
             'category_ko' => AssetService::CATEGORY_KO[$x['category']] ?? $x['category'], 'uses' => (int) $x['n'], 'thumb_url' => AssetService::fileUrl($x['public_id'], 'thumb'),
         ], $safeRows('SELECT i.public_id, i.name, i.alt, i.category, COUNT(*) AS n FROM asset_uses u JOIN asset_items i ON i.id = u.item_id AND i.deleted_at IS NULL GROUP BY i.id ORDER BY n DESC, i.id DESC LIMIT 10'));
         $topUsers = array_map(static fn (array $x): array => [
-            'name' => $x['name'], 'email' => $mask($x['email']), 'kind' => $x['kind'], 'uses' => (int) $x['n'],
+            'name' => DisplayName::of($x['name'], $x['email'], true), 'email' => $mask($x['email']), 'kind' => $x['kind'], 'uses' => (int) $x['n'],
             'share' => $insTotal > 0 ? round((int) $x['n'] * 100 / $insTotal, 1) : 0,
         ], $safeRows('SELECT c.name, c.email, c.kind, COUNT(*) AS n FROM asset_uses u JOIN core_users c ON c.id = u.user_id GROUP BY c.id ORDER BY n DESC LIMIT 10'));
         $recent = array_map(static fn (array $x): array => [
-            'at' => $x['created_at'], 'channel' => $x['channel'], 'user' => $x['uname'], 'email' => $mask($x['email']),
+            'at' => $x['created_at'], 'channel' => $x['channel'], 'user' => DisplayName::of($x['uname'], $x['email'], true), 'email' => $mask($x['email']),
             'asset' => $x['public_id'] ? [
                 'id' => $x['public_id'], 'name' => $x['name'] ?: ($x['alt'] ?: null), 'category_ko' => AssetService::CATEGORY_KO[$x['category']] ?? $x['category'],
                 'thumb_url' => AssetService::fileUrl($x['public_id'], 'thumb'),
@@ -975,7 +1053,7 @@ return static function (Router $r): void {
         }
         $deckRecent = array_map(static fn (array $x): array => [
             'id' => (string) $x['id'], 'title' => $x['title'], 'status' => $x['status'], 'slides' => $x['slides'] === null ? null : (int) $x['slides'],
-            'kind' => $x['kind'], 'user' => $x['uname'], 'email' => $mask($x['email']), 'at' => $x['created_at'], 'finished_at' => $x['finished_at'],
+            'kind' => $x['kind'], 'user' => DisplayName::of($x['uname'], $x['email'], true), 'email' => $mask($x['email']), 'at' => $x['created_at'], 'finished_at' => $x['finished_at'],
             'error' => $x['error'] ? mb_substr((string) $x['error'], 0, 120) : null,
         ], $safeRows('SELECT j.id, j.title, j.status, j.slides, j.kind, j.created_at, j.finished_at, j.error, c.name AS uname, j.email
                       FROM deck_jobs j LEFT JOIN core_users c ON c.email = j.email WHERE j.deleted_at IS NULL ORDER BY j.created_at DESC LIMIT 30'));
@@ -983,12 +1061,12 @@ return static function (Router $r): void {
             $safeRows("SELECT LEFT(COALESCE(NULLIF(TRIM(error),''),'(사유 없음)'), 60) AS reason, COUNT(*) AS n FROM deck_jobs WHERE deleted_at IS NULL AND status = 'failed' GROUP BY reason ORDER BY n DESC LIMIT 8"));
         $mockRecent = array_map(static fn (array $x): array => [
             'token' => $x['token'], 'title' => $x['title'], 'score' => $x['score'] === null ? null : (int) $x['score'], 'passed' => $x['passed'] === null ? null : (bool) $x['passed'],
-            'device' => $x['device'], 'checks' => (int) $x['check_count'], 'published' => $x['published_at'] !== null, 'user' => $x['uname'], 'email' => $mask($x['email']), 'at' => $x['checked_at'],
+            'device' => $x['device'], 'checks' => (int) $x['check_count'], 'published' => $x['published_at'] !== null, 'user' => DisplayName::of($x['uname'], $x['email'], true), 'email' => $mask($x['email']), 'at' => $x['checked_at'],
         ], $safeRows('SELECT m.token, m.title, m.score, m.passed, m.device, m.check_count, m.published_at, m.checked_at, c.name AS uname, c.email
                       FROM mock_mockups m LEFT JOIN core_users c ON c.id = m.owner_user_id WHERE m.deleted_at IS NULL AND m.checked_at IS NOT NULL ORDER BY m.checked_at DESC LIMIT 30'));
         // 사용자 교차: 모듈별 건수(어느 한 모듈이라도 쓴 사람, 합계 순 20)
         $cross = array_map(static fn (array $x): array => [
-            'name' => $x['name'], 'email' => $mask($x['email']), 'kind' => $x['kind'],
+            'name' => DisplayName::of($x['name'], $x['email'], true), 'email' => $mask($x['email']), 'kind' => $x['kind'],
             'assets' => (int) $x['a'], 'deck' => (int) $x['d'], 'mock' => (int) $x['m'], 'total' => (int) $x['a'] + (int) $x['d'] + (int) $x['m'],
         ], $safeRows('SELECT c.name, c.email, c.kind,
                         (SELECT COUNT(*) FROM asset_uses u WHERE u.user_id = c.id) AS a,

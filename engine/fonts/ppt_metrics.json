@@ -236,5 +236,19 @@
   "k": 0.774,
   "lhk": 1.0025,
   "file": "NotoSansSC-Black.ttf"
+ },
+ "Pretendard Light": {
+  "asc": 0.963,
+  "lh": 1.197,
+  "k": 0.783,
+  "lhk": 1.0025,
+  "file": "Pretendard-Light.ttf"
+ },
+ "Freesentation 3 Light": {
+  "asc": 0.9675,
+  "lh": 1.197,
+  "k": 0.774,
+  "lhk": 1.0025,
+  "file": "Freesentation-3Light.ttf"
  }
 }

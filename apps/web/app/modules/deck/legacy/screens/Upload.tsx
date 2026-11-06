@@ -189,6 +189,10 @@ export function Upload({ engine, isAdmin = false, onUploaded, onCancel, onSettin
   // 기존 구성 그대로는 발표용 + '장표 내용'으로 올린 .pptx 가 있을 때만 — 장 수는 원본 장 수를 따른다
   const keepPptx = keepPptx0;
   const keepOn = keep && purpose === "present" && keepPptx;
+  // 기존 구성 그대로는 2단계(디자인)에 고를 것이 없다 — 내용 → 세부 설정으로 바로(R240)
+  const skip2 = design && keepOn;
+  const nextStep = (s: Step): Step => (skip2 && s === 1 ? 3 : Math.min(3, s + 1)) as Step;
+  const prevStep = (s: Step): Step => (skip2 && s === 3 ? 1 : Math.max(1, s - 1)) as Step;
   const slideDef = company ? 14 : submit ? 0 : 5;
   const slides = slideUnset ? slideDef : parseInt(slideN);
   const planOpts = { slides, slides_set: !slideUnset, mockups, sample: Math.max(1, parseInt(sampleN) || 3), front, style: keepOn ? KEEP_STYLE : style, vstyle, vtone, ctheme, ctone, cfree, purpose, keep: keepOn, lang, font_title: fontTitle, font_body: fontBody, event: event.trim(), date: evDate.trim() };
@@ -292,6 +296,7 @@ export function Upload({ engine, isAdmin = false, onUploaded, onCancel, onSettin
 
   /** 단계 이동 — 필수 입력(1단계: 내용이나 자료)이 비어 있으면 넘어가지 않고 알린다 */
   const goStep = (st: Step) => {
+    if (skip2 && st === 2) st = 3;
     if (st > 1 && !ready) {
       toast("장표에 담을 내용을 적거나 자료 파일을 올린 뒤 다음 단계로 갈 수 있습니다.", "warn");
       setStep(1); setFocus("content");
@@ -326,10 +331,10 @@ export function Upload({ engine, isAdmin = false, onUploaded, onCancel, onSettin
     ["용도", purpose === "present" ? (keepOn ? "발표용 · 기존 구성 그대로" : "발표용") : company ? "회사소개용" : "제출용", 1, "purpose"],
     ["언어", DECK_LANGS.find((x) => x[0] === lang)?.[1] ?? "한국어", 1, "lang"],
     ["자료", items.length ? `${hasText ? "글 + " : ""}${items.length}개 · ${fmtSize(totalSize)}` : text.trim() ? "직접 적은 글" : "없음", 1, "files"],
-    ["디자인", company ? `테마 ${ctheme.toUpperCase()} · ${companyThemeName(ctheme)}${cfree ? " · 자유도" : ""}` : purpose === "submit" ? `세로 제안서 · ${verticalStyleName(vstyle)}` : keepOn ? "원본 색 · 모양 자동" : `타입 ${style.toUpperCase()} · ${typeName(style)}`, 2, "design"],
+    ["디자인", company ? `테마 ${ctheme.toUpperCase()} · ${companyThemeName(ctheme)}${cfree ? " · 자유도" : ""}` : purpose === "submit" ? `세로 제안서 · ${verticalStyleName(vstyle)}` : keepOn ? "원본 색 · 모양 자동" : `타입 ${style.toUpperCase()} · ${typeName(style)}`, skip2 ? 1 : 2, skip2 ? "purpose" : "design"],
     ...(purpose === "submit" ? [["톤", verticalToneName(vtone), 3, "vtone"] as [string, ReactNode, Step, string]]
       : company ? [["톤", companyToneName(ctone), 3, "ctone"] as [string, ReactNode, Step, string]] : []),
-    ["서체", fontTxt, 2, "font"],
+    ["서체", fontTxt, skip2 ? 1 : 2, skip2 ? "purpose" : "font"],
     keepOn ? ["장 수", "원본 그대로", 3, "timing"] : submit ? ["목표 쪽 수", slideUnset ? "자동 — RFP 권고 목차대로" : `본문 ${slides}쪽`, 3, "count"] : ["장 수", slideUnset ? `${slideDef}장 (장 수 미입력)` : `${slides}장`, 3, "count"],
     ...(direct ? [] : [["시안", `${MODE_LABEL[mockups]}${mockups === "sample" ? ` ${planOpts.sample}장` : ""}`, 3, "timing"] as [string, ReactNode, Step, string]]),
     ...(company ? [] : [["강조색", keepOn ? "원본 강조색 자동" : <span className="inline-flex items-center gap-1.5 font-mono text-[13px]"><i className="w-3 h-3 rounded-full flex-none" style={{ background: accentOk ? accent : "var(--color-line-3)" }} />{accent}</span>, 3, keepOn ? "timing" : "accent"] as [string, ReactNode, Step, string]]),
@@ -383,8 +388,8 @@ export function Upload({ engine, isAdmin = false, onUploaded, onCancel, onSettin
 
   const umenu = useContextMenu();
   const uItems = (): CtxItem[] => [
-    ...(design && step > 1 ? [{ label: "이전 단계", icon: "arrow_back", onClick: () => goStep((step - 1) as Step) }] : []),
-    ...(design && step < 3 ? [{ label: "다음 단계", icon: "arrow_forward", onClick: () => goStep((step + 1) as Step) }] : []),
+    ...(design && step > 1 ? [{ label: "이전 단계", icon: "arrow_back", onClick: () => goStep(prevStep(step)) }] : []),
+    ...(design && step < 3 ? [{ label: "다음 단계", icon: "arrow_forward", onClick: () => goStep(nextStep(step)) }] : []),
     ...(last ? [{ label: startLabel, icon: "play_arrow", disabled: !canStart, onClick: start }] : []),
     ...(onCancel ? ["-" as const, { label: "취소", icon: "close", onClick: onCancel }] : []),
   ];
@@ -398,8 +403,8 @@ export function Upload({ engine, isAdmin = false, onUploaded, onCancel, onSettin
         <span className="vsep" />
         {design && (
           <div className="flex items-center gap-1 min-w-0">
-            {STEPS.map((l, i) => {
-              const n = (i + 1) as Step, cur = step === n, done = step > n;
+            {STEPS.map((l, i) => ({ l, n: (i + 1) as Step })).filter((x) => !(skip2 && x.n === 2)).map(({ l, n }, i, shown) => {
+              const cur = step === n, done = step > n;
               return (
                 <span key={l} className="contents">
                   <button type="button" aria-current={cur ? "step" : undefined} onClick={() => { if (goStep(n)) setFocus(null); }}
@@ -407,10 +412,10 @@ export function Upload({ engine, isAdmin = false, onUploaded, onCancel, onSettin
                     style={{ background: cur ? "var(--color-ground-3)" : "transparent", color: cur ? "var(--color-ink)" : done ? "var(--color-ink-2)" : "var(--color-ink-4)" }}>
                     <span className="w-[18px] h-[18px] rounded-full grid place-items-center text-[12px] flex-none"
                       style={{ background: cur ? "var(--color-ink)" : done ? "var(--color-ok-soft)" : "var(--color-ground-3)", color: cur ? "var(--color-ground)" : done ? "var(--color-ok)" : "var(--color-ink-4)" }}>
-                      {done ? <Ms name="check" size={13} style={{ fontWeight: 700 }} /> : n}
+                      {done ? <Ms name="check" size={13} style={{ fontWeight: 700 }} /> : i + 1}
                     </span>{l}
                   </button>
-                  {i < 2 && <span className="w-4 h-px bg-[var(--color-line-3)] flex-none" />}
+                  {i < shown.length - 1 && <span className="w-4 h-px bg-[var(--color-line-3)] flex-none" />}
                 </span>
               );
             })}
@@ -419,7 +424,7 @@ export function Upload({ engine, isAdmin = false, onUploaded, onCancel, onSettin
         <div className="ml-auto flex items-center gap-2 flex-none">
           {onCancel && <button type="button" className="btn-ghost" onClick={onCancel}>취소</button>}
           <span className="vsep mr-1" />
-          {design && step > 1 && <button type="button" className="btn-back !pl-2.5 !pr-3.5" onClick={() => { setStep((step - 1) as Step); setFocus(null); }}><Ms name="arrow_back" size={18} />이전</button>}
+          {design && step > 1 && <button type="button" className="btn-back !pl-2.5 !pr-3.5" onClick={() => { setStep(prevStep(step)); setFocus(null); }}><Ms name="arrow_back" size={18} />이전</button>}
           {last
             ? (() => {
               // 필수 입력이 비었으면 누를 때 무엇이 빠졌는지 알린다(버튼을 꺼 두기만 하면 이유를 알 수 없다)
@@ -429,7 +434,7 @@ export function Upload({ engine, isAdmin = false, onUploaded, onCancel, onSettin
                 onClick={() => { if (canStart && !why) start(); else if (why) { toast(why, "warn"); if (!ready && design) goStep(1); else if (design && !company && (!logos.client.length || !logos.vendor.length)) focusSec(3, "frame"); } }}>
                 {busy ?? startLabel}<Ms name="play_arrow" size={18} /></button>;
             })()
-            : <button type="button" className="btn-next !pr-3.5" onClick={() => { if (goStep((step + 1) as Step)) setFocus(null); }}>다음 — {STEPS[step]}<Ms name="arrow_forward" size={18} /></button>}
+            : <button type="button" className="btn-next !pr-3.5" onClick={() => { if (goStep(nextStep(step))) setFocus(null); }}>다음 — {STEPS[nextStep(step) - 1]}<Ms name="arrow_forward" size={18} /></button>}
         </div>
       </header>
 

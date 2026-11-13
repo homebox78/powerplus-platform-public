@@ -107,7 +107,9 @@ final class TestLogin
         $s = self::settings();
         $writable = (string) ($s['auth.test.writable'] ?? '') === '1' && strtotime((string) ($s['auth.test.writable_until'] ?? '2000-01-01')) > time();
         $isWrite = in_array($method, ['POST', 'PUT', 'PATCH', 'DELETE'], true)
-            && !in_array($path, ['/auth/logout', '/auth/logout-all', '/auth/test-login', '/me/consents'], true);
+            && !in_array($path, ['/auth/logout', '/auth/logout-all', '/auth/test-login', '/me/consents',
+                // 글을 보내 답만 받는 조회 — 저장하지 않는다. 막으면 애드인 '이 슬라이드에 맞는 자료 찾기'·검색어 종류 고르기가 테스트 계정에서 안 됐다(11-09)
+                '/addin/suggest', '/addin/route'], true);
         if (!$writable && $isWrite) {
             throw new HttpError('TEST_READ_ONLY', '테스트 계정은 읽기 전용입니다.', 403, '보기만 할 수 있습니다. 바꾸려면 본인 계정으로 로그인하세요.');
         }

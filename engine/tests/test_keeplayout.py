@@ -978,6 +978,23 @@ def test_keep_style():
     assert styles.of_job({"opts": {}}) == "a"
 
 
+def test_keep_single_chapter_divider():
+    """R241 — 기존 구성 그대로는 장이 하나여도 원본 간지를 넣는다. keep 이 아닌 기획은 예전처럼 장 둘 이상일 때만(음성 대조)"""
+    import frontmatter
+    def run(keep):
+        prs = Presentation()
+        for _ in range(2):
+            prs.slides.add_slide(prs.slide_layouts[6])
+        plan = {"slides": [{"n": 1, "chapter": "사업의 이해", "section": "사업의 이해 · 배경", "title": "배경"},
+                           {"n": 2, "chapter": "사업의 이해", "section": "사업의 이해 · 범위", "title": "범위"}]}
+        if keep:
+            plan.update({"keep": True, "chapters": [{"name": "사업의 이해"}]})
+        frontmatter.build(prs, plan, {"divider": True, "cover": False, "toc": False, "ending": False, "qna": False, "accent": "#1866DA"})
+        return frontmatter.kinds(prs)
+    assert run(True) == ["div", "body", "body"], run(True)
+    assert run(False) == ["body", "body"], run(False)
+
+
 if __name__ == "__main__":
     for n, f in list(globals().items()):
         if n.startswith("test_"):

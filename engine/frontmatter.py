@@ -194,7 +194,8 @@ def build(prs, plan, o):
         accent = "#FF2A6D"
     chs = chapters(slides) if len(slides) == body else []   # 본문 장 수가 기획과 다르면 장 묶음을 믿을 수 없다
     named = [c for c in chs if c["name"]]
-    multi = len(named) >= 2
+    # 간지는 장이 둘 이상일 때만 — 단 기존 구성 그대로는 원본에 있던 간지를 그대로 둔다(장 하나여도). 회사 서버 시험에서 장 하나짜리 원본의 간지가 빠졌다(11-13, R241)
+    multi = len(named) >= 2 or (bool(plan.get("keep")) and bool(plan.get("chapters")) and len(named) >= 1)
     title = clean(o.get("title") or plan.get("title") or "")
     project = clean(o.get("project") or "")
     made = []

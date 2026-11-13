@@ -440,6 +440,27 @@ def run_claude(job: Job, prompt: str):
     return p.returncode, final
 
 
+def keep_notes(job, out):
+    """기존 구성 그대로 — 원본 발표 스크립트(노트)를 결과의 같은 장에(R237). keep 이 아니거나 파일이 없으면 도구가 건너뜀.
+    처음 만들 때와 '앞장 다시 넣기'(R242) 두 길이 같이 쓴다. 반환: 확인 목록에 더할 항목"""
+    plan_p = os.path.join(job.dir, "_mockup", "plan.json")
+    src = os.path.join(job.dir, "원본.pptx")
+    if not (os.path.isfile(plan_p) and os.path.isfile(src)):
+        return []
+    warn = []
+    try:
+        for ln in (tool(job, [os.path.join(HERE, "keepnotes.py"), out, src, plan_p]) or "").strip().splitlines():
+            if ln.startswith("WARN: "):
+                no, title, detail = (ln[6:].split("|", 2) + ["", ""])[:3]
+                warn.append({"slide": int(no) if no.isdigit() else 0, "title": title, "detail": detail, "level": "warn"})
+            elif ln.strip() and "건너뜀" not in ln:
+                job.event(ln.strip()[:300], "done")
+    except Exception as e:
+        log("발표 스크립트 옮기기 실패:", e)
+        warn.append({"slide": 0, "title": "발표 스크립트를 옮기지 못함", "detail": str(e)[:200], "level": "warn"})
+    return warn
+
+
 FRONT_TPL = "앞장템플릿"   # 화면이 앞장 템플릿 파일 이름 앞에 붙여 맥락 자료로 올린다(Upload.tsx) — 맥락 글로는 읽지 않는다
 
 
@@ -1153,6 +1174,8 @@ def run_edit(job, j):
         front = (review or {}).get("front")
         if isinstance(front, dict):   # 표지·목차·간지 넣기/빼기
             msg = (msg + " " if edits else "") + "표지·목차·간지 — " + front_matter(job, j, out, front)
+            if j.get("kind") == "design":   # 다시 넣은 앞장에도 원본 발표 스크립트를(R242 — 이 길에선 빠져 앞장 노트가 비었다)
+                keep_notes(job, out)
         if edits or isinstance(front, dict):
             job.push("결과 정리", 70)
             # 표지·목차·간지를 건드렸으면 전부, 글만 고쳤으면 고친 장만 다시 렌더
@@ -1529,19 +1552,10 @@ def process(j):
             except Exception as e:
                 log("그림자 정리 실패:", e)
                 rep["checklist"] = [{"slide": 0, "title": "마감 정리를 하지 못함", "detail": f"그림자·표 테두리·메모·바닥 채움이 적용되지 않았습니다 ({str(e)[:160]})", "level": "warn"}] + list(rep.get("checklist") or [])
-        _kplan = os.path.join(job.dir, "_mockup", "plan.json")
-        _ksrc = os.path.join(job.dir, "원본.pptx")
-        if design_job and os.path.isfile(_kplan) and os.path.isfile(_ksrc):   # 기존 구성 그대로 — 원본 발표 스크립트(노트)를 같은 장에(R237). keep 이 아니면 도구가 건너뜀
-            try:
-                for ln in (tool(job, [os.path.join(HERE, "keepnotes.py"), out, _ksrc, _kplan]) or "").strip().splitlines():
-                    if ln.startswith("WARN: "):
-                        no, title, detail = (ln[6:].split("|", 2) + ["", ""])[:3]
-                        rep["checklist"] = [{"slide": int(no) if no.isdigit() else 0, "title": title, "detail": detail, "level": "warn"}] + list(rep.get("checklist") or [])
-                    elif ln.strip() and "건너뜀" not in ln:
-                        job.event(ln.strip()[:300], "done")
-            except Exception as e:
-                log("발표 스크립트 옮기기 실패:", e)
-                rep["checklist"] = [{"slide": 0, "title": "발표 스크립트를 옮기지 못함", "detail": str(e)[:200], "level": "warn"}] + list(rep.get("checklist") or [])
+        if design_job:
+            _kw = keep_notes(job, out)
+            if _kw:
+                rep["checklist"] = _kw + list(rep.get("checklist") or [])
         try:   # 표지·목차·간지까지 붙은 최종 장표에 실제로 적힌 서체로 다시 모은다(앞장에 섞인 언어 서체도 — R82)
             import fontbundle
             _sz = fontbundle.sanitize_pptx(out)   # 앞장(표지·목차·간지)에 따라온 남의 서체까지(R97)

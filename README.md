@@ -5,10 +5,10 @@
 
 | 데모 | 주소 |
 |:---:|---|
-| 서비스 | https://powerplus.hom2box.com |
-| 관리자 | https://powerplus.hom2box.com/admin |
-| MCP 연결 가이드 | https://powerplus.hom2box.com/docs |
-| 상태 확인(API) | https://powerplus.hom2box.com/api/v1/health |
+| 서비스 | https://powerplus.solideos.com:46443 |
+| 관리자 | https://powerplus.solideos.com:46443/admin |
+| MCP 연결 가이드 | https://powerplus.solideos.com:46443/docs |
+| 상태 확인(API) | https://powerplus.solideos.com:46443/api/v1/health |
 
 ![powerPlus 홈](docs/screenshots/01-home.png)
 
@@ -382,7 +382,7 @@ flowchart TB
 ## 6. 관리자
 
 ### 6.1 들어가는 법
-- 주소: https://powerplus.hom2box.com/admin
+- 주소: https://powerplus.solideos.com:46443/admin
 - 로그인한 계정에 운영 역할이 있어야 들어갈 수 있습니다. 역할이 없으면 관리자 로그인 화면에서 막힙니다.
 - 오른쪽 위 「사용자모드」로 사이트를 새 창으로 엽니다.
 - 오른쪽 위 사용자 메뉴에서 테마(라이트·다크·시스템)를 바꿉니다.
@@ -446,7 +446,7 @@ flowchart TB
 
 | 항목 | 내용 |
 |:---:|---|
-| 로그인 위치 | https://powerplus.hom2box.com/login 아래쪽 「테스트 계정으로 로그인」 |
+| 로그인 위치 | https://powerplus.solideos.com:46443/login 아래쪽 「테스트 계정으로 로그인」 |
 | 아이디·비밀번호 | 제출 서류에 별도로 적어 드립니다(저장소에는 적지 않습니다) |
 | 권한 | 관리자 화면까지 볼 수 있는 **읽기 전용** 계정 |
 | 이용 기간 | 만들 때 정합니다(기본 15일, 최장 30일). 지나면 로그인 경로가 닫히고, 열려 있던 세션·키도 끊깁니다 |

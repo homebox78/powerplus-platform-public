@@ -816,7 +816,16 @@ final class Jobs
         $st->execute([':i' => $id]);
         $j = $st->fetch();
         if (!$j || (!$admin && $j['email'] !== $email)) Legacy::fail('작업을 찾을 수 없습니다.', 404);
+        self::hideFromTest($j, $email);
         return $j;
+    }
+
+    /** 테스트 계정에는 숨길 낱말(auth.test.hide)이 제목·파일 이름에 든 작업을 없는 것으로 답한다 — 목록·열기·파일 받기 모두(2026-11-20) */
+    private static function hideFromTest(array $j, string $email): void
+    {
+        if (\Pp\Core\TestLogin::isEmail($email) && \Pp\Core\TestLogin::hides((string) ($j['title'] ?? ''), (string) ($j['filename'] ?? ''), (string) ($j['result_name'] ?? ''))) {
+            Legacy::fail('작업을 찾을 수 없습니다.', 404);
+        }
     }
 
     /** 볼 수 있는 작업 — 주인·관리자, 또는 공유(shared)된 작업은 로그인한 누구나(시안 보기·의견 남기기만) */
@@ -832,6 +841,7 @@ final class Jobs
         $mirror = $j && $tid !== null && $email !== '' && strtolower($email) === strtolower((string) Db::val('SELECT email FROM core_users WHERE id = ?', [$tid]))
             && in_array(strtolower((string) $j['email']), \Pp\Core\TestLogin::mirrorEmails($tid), true);
         if (!$j || (!$admin && !$mirror && ($email === '' || $j['email'] !== $email) && !($sh > 0 && ($email !== '' || $sh === 3)))) Legacy::fail('작업을 찾을 수 없습니다.', 404);
+        self::hideFromTest($j, $email);
         return $j;
     }
 
@@ -977,6 +987,9 @@ final class Jobs
         $st = Db::pdo()->prepare($sql);
         $st->execute($args);
         $rows = $st->fetchAll();
+        if (\Pp\Core\TestLogin::isEmail($email) && \Pp\Core\TestLogin::hideWords()) {   // 테스트 계정 목록에서 숨길 작업을 뺀다(전체 보기 포함)
+            $rows = array_values(array_filter($rows, static fn (array $r): bool => !\Pp\Core\TestLogin::hides((string) $r['title'], (string) $r['filename'], (string) ($r['result_name'] ?? ''))));
+        }
         // 대기 순번
         $q = Db::pdo()->query("SELECT id FROM deck_jobs WHERE status = 'queued' ORDER BY created_at")->fetchAll(PDO::FETCH_COLUMN);
         $pos = array_flip($q);

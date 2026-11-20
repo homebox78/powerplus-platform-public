@@ -1326,8 +1326,7 @@ return static function (Router $r): void {
                 imagecopyresampled($dst, $src, 0, 0, 0, 0, $tw, $th, $w, $h);
                 $tpath = "{$cat}/thumbs/{$pid}." . ($isJpg ? 'jpg' : 'png');
                 $ok = $isJpg ? imagejpeg($dst, "{$storage}/{$tpath}", 86) : imagepng($dst, "{$storage}/{$tpath}", 6);
-                imagedestroy($src);
-                imagedestroy($dst);
+                unset($src, $dst);   // imagedestroy 는 PHP 8.5 에서 경고 — 변수를 놓아 메모리를 돌려준다
                 if ($ok) {
                     $files['thumb'] = [$tpath, $isJpg ? 'image/jpeg' : 'image/png', (int) filesize("{$storage}/{$tpath}"), $tw, $th, hash_file('sha256', "{$storage}/{$tpath}")];
                 }

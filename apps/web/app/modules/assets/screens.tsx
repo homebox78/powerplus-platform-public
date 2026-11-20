@@ -346,7 +346,7 @@ const INSTALL_STEPS: { img: string; title: string; body: string }[] = [
 ];
 const USE_STEPS: { img: string; title: string; body: string }[] = [
   { img: "addin-v3-login", title: "powerPlus 계정으로 로그인합니다.", body: "사이트와 같은 계정입니다. 이메일을 적고 받은 6자리 코드를 넣습니다. 메일이 안 보이면 스팸함을 봅니다." },
-  { img: "addin-v3-main", title: "카드를 누르면 슬라이드에 들어갑니다.", body: "전체·즐겨찾기·최근 탭으로 나뉩니다. 이 슬라이드에 맞는 자료 찾기를 누르면 지금 슬라이드 글로 골라 줍니다." },
+  { img: "addin-v3-main", title: "카드를 누르면 슬라이드에 들어갑니다.", body: "전체·즐겨찾기·최근 탭으로 나뉩니다." },   // '이 슬라이드에 맞는 자료 찾기' 안내는 버튼을 숨기면서 뺌(11-15, 애드인 SLIDE_PICK_ON)
   { img: "addin-v3-kind", title: "종류·정렬은 버튼 하나로 고릅니다.", body: "아이콘·사진·일러스트·다이어그램·로고·장표 중에서 고릅니다. 종류마다 등록된 개수가 함께 보입니다." },
   { img: "addin-v3-search", title: "검색은 동의어와 오타를 알아듣습니다.", body: "‘DB’·‘디비’·‘데이터베이스’가 같은 결과로 모입니다. 뒤로가기를 누르면 전체 목록으로 돌아갑니다." },
   { img: "addin-v3-help", title: "막히면 AI 도움말에 물어봅니다.", body: "상단 로봇 버튼을 누르고 질문을 적습니다. 맞는 도움말 문서를 찾아 보여 드립니다." },
@@ -355,7 +355,7 @@ const USE_STEPS: { img: string; title: string; body: string }[] = [
 
 /** 애드인 AI(빠른 판단) 장면 — 설치 안내와 달리 늘 보인다(2026-10-07). 캡처는 애드인 하네스, 서버는 addin/route·addin/suggest */
 const AI_STEPS = [
-  { img: "ai-v1-slide", title: "슬라이드에 맞는 자료를 골라 줍니다.", body: "슬라이드를 고르고 ‘이 슬라이드에 맞는 자료 찾기’를 누릅니다. 제목·본문을 읽고 자료 종류와 검색 낱말을 정해 바로 찾습니다." },
+  // ai-v1-slide('이 슬라이드에 맞는 자료 찾기')는 애드인에서 버튼을 숨기면서 뺌(11-15). 다시 켜면 되살린다.
   { img: "ai-v1-photo", title: "검색어로 자료 종류를 먼저 고릅니다.", body: "‘회의하는 사람들’처럼 적으면 사진에서 찾습니다. 다른 종류도 보고 싶으면 ‘전체에서 보기’를 누릅니다." },
   { img: "ai-v1-ppt", title: "장표도 같은 방식으로 찾습니다.", body: "‘표지’·‘목차’처럼 적으면 장표 템플릿에서 찾습니다. 고른 장표는 클릭 한 번으로 슬라이드에 들어갑니다." },
 ];

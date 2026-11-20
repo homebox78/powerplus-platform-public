@@ -328,7 +328,6 @@ final class MockSamples
         $w = imagesx($im);
         $h = imagesy($im);
         if (max($w, $h) <= 1920) {
-            imagedestroy($im);
             return [$src, $mime];
         }
         $r = 1920 / max($w, $h);
@@ -336,11 +335,11 @@ final class MockSamples
         imagealphablending($dst, false);
         imagesavealpha($dst, true);
         imagecopyresampled($dst, $im, 0, 0, 0, 0, imagesx($dst), imagesy($dst), $w, $h);
-        imagedestroy($im);
+        unset($im);   // imagedestroy 는 PHP 8.0 부터 아무 일도 안 하고 8.5 에서 경고를 낸다 — 변수를 놓아 메모리를 돌려준다
         @mkdir(dirname($out), 0775, true);
         $tmp = $out . '.part' . getmypid();
         $ok = $alpha ? imagepng($dst, $tmp, 6) : imagejpeg($dst, $tmp, 84);
-        imagedestroy($dst);
+        unset($dst);
         if (!$ok || !@rename($tmp, $out)) {
             @unlink($tmp);
             return [$src, $mime];

@@ -78,6 +78,52 @@ final class TestLogin
         return array_map('intval', array_column(Db::rows("SELECT id FROM core_users WHERE LOWER(email) IN ({$ph})", $em), 'id'));
     }
 
+    /**
+     * 테스트 계정에 보이지 않을 낱말 — 공개 전인 사업 이름처럼 심사·시연용 계정에 나가면 안 되는 글(2026-11-20 전체 점검:
+     * 거울 원본 계정의 작업 80건 가운데 24건의 제목에 공개 전 사업 이름이 그대로 보였다).
+     * 값은 core_settings auth.test.hide(쉼표) 에만 둔다 — 코드·문서에 사업 이름을 적지 않는다. 비어 있으면 아무것도 숨기지 않는다.
+     * @return list<string>
+     */
+    public static function hideWords(): array
+    {
+        $raw = self::settings()['auth.test.hide'] ?? '';
+        return array_values(array_filter(array_map('trim', explode(',', $raw)), static fn (string $w): bool => mb_strlen($w) >= 2));
+    }
+
+    /** 이 글들 가운데 숨길 낱말이 든 것이 있는가 */
+    public static function hides(?string ...$texts): bool
+    {
+        $words = self::hideWords();
+        if (!$words) {
+            return false;
+        }
+        $all = implode("\n", array_map(static fn (?string $t): string => (string) $t, $texts));
+        foreach ($words as $w) {
+            if (mb_stripos($all, $w) !== false) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /** 이 이메일이 테스트 계정의 것인가(장표 작업은 주인을 이메일로 가린다) */
+    public static function isEmail(string $email): bool
+    {
+        static $mine = null;
+        $id = self::userId();
+        if ($id === null || $email === '') {
+            return false;
+        }
+        if ($mine === null) {
+            try {
+                $mine = strtolower((string) Db::val('SELECT email FROM core_users WHERE id = ?', [$id]));
+            } catch (\Throwable) {
+                $mine = '';
+            }
+        }
+        return $mine !== '' && strtolower($email) === $mine;
+    }
+
     /** 로그인 화면에 테스트 로그인 칸을 보일지(auth.test.show_login, 기본 꺼짐 — test-account.php show/hide) */
     public static function shown(): bool
     {
@@ -126,6 +172,7 @@ final class TestLogin
             Audit::log($a, 'admin.view', 'page:' . mb_substr($path, 0, 35), null, ['path' => $path, 'query' => mb_substr((string) ($_SERVER['QUERY_STRING'] ?? ''), 0, 300)]);
         }
         $keep = strtolower((string) ($a->user['email'] ?? ''));
+        Mask::$hide = self::hideWords();   // 숨길 낱말은 모든 JSON 응답의 글에서 가린다 — 관리자 목록처럼 작업 표를 직접 읽는 화면까지 덮는 그물
         ob_start(static fn (string $out): string => Mask::buffer($out, $keep));
     }
 

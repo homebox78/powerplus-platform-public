@@ -20,6 +20,9 @@ final class Mask
     private const EMAIL_RE = '/[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}/u';
     private const PHONE_RE = '/(?<![A-Za-z0-9])(01[016789]|0[2-6][0-9]?)[\s.\-]?(\d{3,4})[\s.\-]?(\d{4})(?![A-Za-z0-9])/';
 
+    /** @var list<string> 테스트 계정 응답에서 가릴 낱말(TestLogin::hideWords — guard 가 채운다). 비어 있으면 아무것도 안 한다 */
+    public static array $hide = [];
+
     public static function email(string $e): string
     {
         $e = trim($e);
@@ -52,6 +55,9 @@ final class Mask
     {
         if ($s === '') {
             return $s;
+        }
+        if (self::$hide) {
+            $s = str_ireplace(self::$hide, '●●●', $s);
         }
         $s = (string) preg_replace_callback(self::EMAIL_RE, static fn (array $m): string => ($keep !== '' && strcasecmp($m[0], $keep) === 0) ? $m[0] : self::email($m[0]), $s);
         return self::phone($s);

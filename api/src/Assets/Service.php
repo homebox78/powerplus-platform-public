@@ -946,7 +946,6 @@ final class Service
             imagesavealpha($dst, true);
             imagefill($dst, 0, 0, imagecolorallocatealpha($dst, 0, 0, 0, 127));
             imagecopyresampled($dst, $im, 0, 0, 0, 0, $nw, $nh, $w, $h);
-            imagedestroy($im);
             $im = $dst;
             [$w, $h] = [$nw, $nh];
         } elseif (!imageistruecolor($im)) {
@@ -960,7 +959,7 @@ final class Service
         }
         $tmp = $out . '.part' . getmypid();
         $ok = $alpha ? imagepng($im, $tmp, 6) : imagejpeg($im, $tmp, 82);
-        imagedestroy($im);
+        unset($im);   // imagedestroy 는 PHP 8.5 에서 경고 — 변수를 놓아 메모리를 돌려준다
         if (!$ok || !@rename($tmp, $out)) {
             @unlink($tmp);
             $out = tempnam(sys_get_temp_dir(), 'ppw');

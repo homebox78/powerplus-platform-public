@@ -248,8 +248,7 @@ return static function (Router $r): void {
         }
         $name = $u['public_id'] . '-' . bin2hex(random_bytes(4)) . '.jpg';
         imagejpeg($dst, "$dir/$name", 88);
-        imagedestroy($src);
-        imagedestroy($dst);
+        unset($src, $dst);   // imagedestroy 는 PHP 8.5 에서 경고 — 변수를 놓아 메모리를 돌려준다
         // 이전 파일 정리(소셜에서 온 외부 URL 은 그대로 둔다)
         if (!empty($u['avatar_url']) && preg_match('#/files/avatars/([A-Za-z0-9-]+\.jpg)$#', (string) $u['avatar_url'], $m) && is_file("$dir/{$m[1]}")) {
             @unlink("$dir/{$m[1]}");

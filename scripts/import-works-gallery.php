@@ -84,7 +84,7 @@ foreach ($list['groups'] as $g) {
         }
         $tw = "$SRC/" . ($it['thumb'] ?? '');
         if (!empty($it['thumb']) && is_file($tw) && ($im = @imagecreatefromwebp($tw))) {
-            imagejpeg($im, "$thumbDir/$gid.jpg", 85); imagedestroy($im); $thumbs++;
+            imagejpeg($im, "$thumbDir/$gid.jpg", 85); unset($im); $thumbs++;
             $pdo->prepare('UPDATE mock_mockups SET has_thumb = 1 WHERE id = ?')->execute([$mid]);
         }
     }

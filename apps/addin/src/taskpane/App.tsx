@@ -29,6 +29,9 @@ import type { Announcement } from "./api/announcements";
 import { submitRequest } from "./api/requests";
 import { readSelectedSlide, routeQuery, suggestFromSlide } from "./api/jev";
 
+/** '이 슬라이드에 맞는 자료 찾기' 버튼 — 실사용에서 안 된다는 보고(11-15)로 숨김. 고친 뒤 true. */
+const SLIDE_PICK_ON = false;
+
 const SORTS = [
   { key: "latest", label: "최신순" },
   { key: "popular", label: "인기순" },
@@ -782,10 +785,13 @@ export default function App() {
         {(
           <div className="composer composer--top">
             <ComposerInput activeQuery={activeQuery} onSend={(q) => { void sendQuery(q); }} onClear={clearQuery} catButton={null} />
-            <button className="slidepick" onClick={() => void suggestForSlide()} disabled={slideBusy}>
-              <span className="slidepick__ic" aria-hidden>{Ic.spark}</span>
-              {slideBusy ? "슬라이드 읽는 중…" : "이 슬라이드에 맞는 자료 찾기"}
-            </button>
+            {/* '이 슬라이드에 맞는 자료 찾기' — 사용자 11-15 "실제로 안 되면 가려 놔" → 원인 확인 전까지 숨김(SLIDE_PICK_ON). 코드·서버(addin/suggest)는 그대로 둠 */}
+            {SLIDE_PICK_ON && (
+              <button className="slidepick" onClick={() => void suggestForSlide()} disabled={slideBusy}>
+                <span className="slidepick__ic" aria-hidden>{Ic.spark}</span>
+                {slideBusy ? "슬라이드 읽는 중…" : "이 슬라이드에 맞는 자료 찾기"}
+              </button>
+            )}
           </div>
         )}
 
